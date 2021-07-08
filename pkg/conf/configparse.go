@@ -1,8 +1,10 @@
 package conf
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/knadh/koanf"
+	koanfjson "github.com/knadh/koanf/parsers/json"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/file"
@@ -86,6 +88,19 @@ func (l *Parser) UnmarshalExact(intoCfg interface{}) error {
 		return err
 	}
 	return decoder.Decode(l.ToStringMap())
+}
+
+//UnmarshalByJson unmarshals the config named key into a struct, using JSON decode
+func (l Parser) UnmarshalByJson(key string, out interface{}) error {
+	s, err := l.Sub(key)
+	if err != nil {
+		return err
+	}
+	bts, err := s.k.Marshal(koanfjson.Parser())
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(bts, out)
 }
 
 // Get can retrieve any value given the key to use.

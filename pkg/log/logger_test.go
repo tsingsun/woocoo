@@ -13,6 +13,7 @@ var (
 )
 
 func init() {
+	conf.BaseDir = testdata.BaseDir()
 	logger.Apply(cnf, "log")
 }
 

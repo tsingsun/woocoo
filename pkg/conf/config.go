@@ -15,14 +15,18 @@ type Configurable interface {
 }
 
 type Config struct {
-	opts   options
-	parser *Parser
+	opts    options
+	parser  *Parser
+	basedir string
 }
 
-var global *Config
+var (
+	global  *Config
+	BaseDir = filepath.Dir(os.Args[0])
+)
 
 var defaultOptions = options{
-	localPath: filepath.Dir(os.Args[0]) + "./app.yaml",
+	localPath: BaseDir + "./app.yaml",
 	global:    true,
 }
 

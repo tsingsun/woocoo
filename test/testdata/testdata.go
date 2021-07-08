@@ -5,12 +5,16 @@ import (
 	"runtime"
 )
 
-// basepath is the root directory of this package.
-var basepath string
+// basedir is the root directory of this package.
+var basedir string
 
 func init() {
 	_, currentFile, _, _ := runtime.Caller(0)
-	basepath = filepath.Dir(currentFile)
+	basedir = filepath.Dir(currentFile)
+}
+
+func BaseDir() string {
+	return basedir
 }
 
 // Path returns the absolute path the given relative file or directory path,
@@ -21,7 +25,7 @@ func Path(rel string) string {
 		return rel
 	}
 
-	return filepath.Join(basepath, rel)
+	return filepath.Join(basedir, rel)
 }
 
 func Tmp(rel string) string {
@@ -29,6 +33,6 @@ func Tmp(rel string) string {
 		return rel
 	}
 
-	tmpPath := filepath.Join(filepath.Dir(basepath), "tmp")
+	tmpPath := filepath.Join(filepath.Dir(basedir), "tmp")
 	return filepath.Join(tmpPath, rel)
 }

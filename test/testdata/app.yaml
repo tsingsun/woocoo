@@ -1,0 +1,24 @@
+appname: woocoo
+log:
+  config:
+    level: debug
+    development: true
+    disableCaller: true
+    disableStacktrace: true
+    encoding: console
+    outputPaths:
+      - stdout
+      - "test.log"
+    errorOutputPaths:
+      - stderr
+
+trace:
+
+cache:
+  memory:
+  defaultExpiration: -1
+  cleanupInterval: 0
+  redis:
+  codec: true
+  addr: 127.0.0.1:6379
+  db: 1

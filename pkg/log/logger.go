@@ -1,14 +1,10 @@
-package logx
+package log
 
 import (
 	"context"
-	"github.com/mitchellh/mapstructure"
-	"github.com/tsingsun/woocoo/core/conf"
+	"github.com/tsingsun/woocoo/pkg/conf"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
-	"path/filepath"
-	"strings"
 )
 
 const (
@@ -20,9 +16,8 @@ const (
 
 //Logger integrate the Uber Zap library to use in woocoo
 type Logger struct {
-	opts       options
-	zap        *zap.Logger
-	ToZapField func(values []interface{}) []zapcore.Field
+	opts options
+	zap  *zap.Logger
 }
 
 var global *Logger
@@ -33,49 +28,27 @@ func init() {
 	global = &Logger{zap: zapLogger}
 }
 
+func New() (*Logger, error) {
+	return &Logger{opts: defaultOptions}, nil
+}
+
 // Sync calls the underlying Core's Sync method, flushing any buffered log
 // entries. Applications should take care to call Sync before exiting.
 func (l *Logger) Sync() error {
 	return l.zap.Sync()
 }
 
-// Configurable implement Configurable interface which can initial from a file used in JSON,YAML
-func (l *Logger) Configurable(config *conf.Config, configKey string) {
-	if &l.opts == nil {
-		l.opts = defaultOptions
+// Apply implement Configurable interface which can initial from a file used in JSON,YAML
+// Logger init trough Apply method will be set as Global.
+func (l *Logger) Apply(cnf *conf.Config, path string) {
+	config := Config{}
+	zl, err := config.BuildZap(cnf)
+	if err != nil {
+		Panicf("%s apply from configuration file err:%s", "log", err)
 	}
-	l.opts.config = config
-	var optFunc []Option
-	if configKey != "" {
-		le, ok := l.opts.config.Get(configKey).([]interface{})
-		if !ok {
-			panic("configuration file error at log.")
-		}
-		for _, v := range le {
-			if vv, ok := v.(map[interface{}]interface{}); ok {
-				switch strings.ToLower(vv["type"].(string)) {
-				case "file":
-					ll := lumberjack.Logger{}
-					if err := mapstructure.Decode(vv, &ll); err != nil {
-						panic(err)
-					}
-					if ll.Filename == "" {
-						panic("log configuration miss filename")
-					}
-					if f, err := filepath.Abs(ll.Filename); err != nil {
-						ll.Filename = f
-					}
-					optFunc = append(optFunc, LogRotate(&ll, vv["level"].(int)))
-				case "std":
-					optFunc = append(optFunc, Std(vv["level"].(int)))
-				}
-			}
-		}
-	}
-	for _, o := range optFunc {
-		o(&l.opts)
-	}
-	l.initCore()
+
+	l.zap = zl
+	global = l
 }
 
 func (l *Logger) initCore() {

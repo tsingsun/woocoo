@@ -16,20 +16,17 @@ const (
 
 //Logger integrate the Uber Zap library to use in woocoo
 type Logger struct {
-	opts options
-	zap  *zap.Logger
+	zap *zap.Logger
 }
 
 var global *Logger
 
-func init() {
-	core := zapcore.NewTee(zapcore.NewNopCore())
-	zapLogger := zap.New(core)
-	global = &Logger{zap: zapLogger}
+func New(zl *zap.Logger) (*Logger, error) {
+	return &Logger{zap: zl}, nil
 }
 
-func New() (*Logger, error) {
-	return &Logger{opts: defaultOptions}, nil
+func (l Logger) AsGlobal() {
+	global = &l
 }
 
 // Sync calls the underlying Core's Sync method, flushing any buffered log
@@ -49,15 +46,6 @@ func (l *Logger) Apply(cnf *conf.Config, path string) {
 
 	l.zap = zl
 	global = l
-}
-
-func (l *Logger) initCore() {
-	if len(l.opts.cores) == 0 {
-		l.opts.cores = append(l.opts.cores, zapcore.NewNopCore())
-	}
-	core := zapcore.NewTee(l.opts.cores...)
-	zapLogger := zap.New(core)
-	l.zap = zapLogger
 }
 
 func (l *Logger) With(fields ...zapcore.Field) *Logger {
@@ -84,16 +72,6 @@ func WithContext(ctx context.Context) *Logger {
 func TraceIdField(ctx context.Context) zap.Field {
 	val, _ := ctx.Value(TraceIdKey).(string)
 	return zap.String(TraceIdKey, val)
-}
-
-// build global logger with option
-func NewWithOption(opt ...Option) *Logger {
-	global.opts = defaultOptions
-	for _, o := range opt {
-		o(&global.opts)
-	}
-	global.initCore()
-	return global
 }
 
 // get the structured logger

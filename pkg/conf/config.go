@@ -11,7 +11,7 @@ import (
 // Configurable can initial by framework
 type Configurable interface {
 	// Apply initial from config
-	Apply(config *Config, path string)
+	Apply(cnf *Config, path string)
 }
 
 type Config struct {

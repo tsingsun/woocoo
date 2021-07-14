@@ -20,10 +20,13 @@ log:
 trace:
 
 cache:
-  memory:
-  defaultExpiration: -1
-  cleanupInterval: 0
   redis:
-  codec: true
-  addr: 127.0.0.1:6379
-  db: 1
+#    type: cluster
+#    addrs:
+#      - 127.0.0.1:6379
+    type: standalone
+    addr: 127.0.0.1:6379
+    db: 1
+  local:
+    size: 1000
+    ttl: 60

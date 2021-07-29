@@ -1,19 +1,17 @@
 package log_test
 
 import (
-	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"testing"
 )
 
 var (
-	cnf, _ = conf.BuildWithOption(conf.LocalPath(testdata.Path("app.yaml")))
+	cnf    = testdata.Config
 	logger = &log.Logger{}
 )
 
 func init() {
-	conf.BaseDir = testdata.BaseDir()
 	logger.Apply(cnf, "log")
 }
 

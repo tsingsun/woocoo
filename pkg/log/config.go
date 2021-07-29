@@ -22,27 +22,30 @@ type Config struct {
 	rotate    *lumberjack.Logger
 }
 
-func (c *Config) initConfig(conf *conf.Config) error {
+func (c *Config) initConfig(cfg *conf.Configuration) error {
 	//zap
 	var zc = zap.NewProductionConfig()
-	if err := conf.Operator().UnmarshalByJson(zapConfigPath, &zc); err != nil {
+	if err := cfg.Parser().UnmarshalByJson(zapConfigPath, &zc); err != nil {
 		return err
 	}
-
+	if cfg.IsSet("development") {
+		zc.Development = cfg.Bool("development")
+	}
 	c.zapConfig = &zc
 
-	if conf.IsSet(rotateConfigPath) {
-		var otps []string
-		for _, path := range c.zapConfig.OutputPaths {
-			u, err := convertPath(path)
-			if err != nil {
-				return err
-			}
-			otps = append(otps, u)
+	var otps []string
+	for _, path := range c.zapConfig.OutputPaths {
+		u, err := convertPath(path, cfg.GetBaseDir())
+		if err != nil {
+			return err
 		}
-		c.zapConfig.OutputPaths = otps
+		otps = append(otps, u)
+	}
+	c.zapConfig.OutputPaths = otps
+
+	if cfg.IsSet(rotateConfigPath) {
 		l := &lumberjack.Logger{ConcurrentSafe: false}
-		if err := conf.Operator().UnmarshalByJson(rotateConfigPath, l); err != nil {
+		if err := cfg.Parser().UnmarshalByJson(rotateConfigPath, l); err != nil {
 			return err
 		}
 
@@ -76,7 +79,7 @@ func (c *Config) initConfig(conf *conf.Config) error {
 	return nil
 }
 
-func (c *Config) BuildZap(cnf *conf.Config, opts ...zap.Option) (*zap.Logger, error) {
+func (c *Config) BuildZap(cnf *conf.Configuration, opts ...zap.Option) (*zap.Logger, error) {
 	if err := c.initConfig(cnf); err != nil {
 		return nil, err
 	}
@@ -88,7 +91,11 @@ func (c *Config) BuildZap(cnf *conf.Config, opts ...zap.Option) (*zap.Logger, er
 	return zl, err
 }
 
-func convertPath(path string) (string, error) {
+func (c *Config) buildZap(opts ...zap.Option) {
+
+}
+
+func convertPath(path string, base string) (string, error) {
 	u, err := url.Parse(path)
 	if err != nil {
 		return "", fmt.Errorf("can't parse %q as a URL: %v", path, err)
@@ -98,7 +105,7 @@ func convertPath(path string) (string, error) {
 	}
 	u.Scheme = rotateSchema
 	if !filepath.IsAbs(u.Path) {
-		u.Path = filepath.Join(conf.BaseDir, u.Path)
+		u.Path = filepath.Join(base, u.Path)
 	}
 	return u.String(), nil
 }

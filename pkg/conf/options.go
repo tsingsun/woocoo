@@ -6,10 +6,11 @@ import (
 )
 
 // configuration detail
-// attachFiles: the files will merge into main configuration and override it.
+// includeFiles: the files will merge into main configuration and override it.
 type options struct {
-	localPath   string
-	attachFiles []string
+	localPath    string
+	basedir      string
+	includeFiles []string
 	//use parser global
 	global bool
 }
@@ -29,16 +30,22 @@ func LocalPath(s string) Option {
 	}
 }
 
-// AttachFiles 附加文件中的配置将会重写主配置文件,对于非法的文件,将被忽略.
+func BaseDir(s string) Option {
+	return func(o *options) {
+		o.basedir = s
+	}
+}
+
+// IncludeFiles 附加文件中的配置将会重写主配置文件,对于非法的文件,将被忽略.
 // you can set a configuration for dev ENV,but attach instance only effect in local file configuration
-func AttachFiles(paths ...string) Option {
+func IncludeFiles(paths ...string) Option {
 	return func(o *options) {
 		for _, s := range paths {
 			_, err := os.Stat(s)
 			if err != nil {
 				panic(fmt.Errorf("attach config file %s error,%s", s, err))
 			}
-			o.attachFiles = append(o.attachFiles, s)
+			o.includeFiles = append(o.includeFiles, s)
 		}
 	}
 }

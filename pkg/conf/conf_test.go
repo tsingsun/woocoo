@@ -21,14 +21,14 @@ func TestNew(t *testing.T) {
 	}{
 		{"default", args{opt: nil}, false},
 		{"local",
-			args{opt: []conf.Option{conf.LocalPath(testdata.Path("app.yaml"))}},
+			args{opt: []conf.Option{conf.LocalPath(testdata.Path(testdata.DefaultConfigFile))}},
 			false,
 		},
 		//{"etcd",
 		//	args{opt: []conf.Option{conf.RemoteProvider("etcd", "http://localhost:2379", "woocoo/test", "")}}, false,
 		//},
 		{"attach",
-			args{opt: []conf.Option{conf.LocalPath(testdata.Path("app.yaml")), conf.AttachFiles(testdata.Path("attach.yaml"))}}, false,
+			args{opt: []conf.Option{conf.LocalPath(testdata.Path(testdata.DefaultConfigFile)), conf.IncludeFiles(testdata.Path("config/attach.yaml"))}}, false,
 		},
 	}
 	for _, tt := range tests {
@@ -41,7 +41,7 @@ func TestNew(t *testing.T) {
 //func TestConfig_WatchConfig(t *testing.T) {
 //	endpoint := "127.0.0.1:2379"
 //	path := "/woocoo/test/app.yaml"
-//	cl, _ := clientv3.New(clientv3.Config{
+//	cl, _ := clientv3.New(clientv3.Configuration{
 //		Endpoints: []string{endpoint},
 //	})
 //	_, err := cl.Put(context.Background(), path, "appname: woocoo")
@@ -80,7 +80,7 @@ func TestNew(t *testing.T) {
 //					t.Fatal(err)
 //				}
 //				time.Sleep(3 * time.Second)
-//				got := c.Operator().GetString("appname")
+//				got := c.Parser().GetString("appname")
 //				if got != tt.want {
 //					t.Errorf("NewConfig() = %v, want %v", got, tt.want)
 //				}

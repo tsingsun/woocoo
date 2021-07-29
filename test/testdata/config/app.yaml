@@ -1,0 +1,36 @@
+appname: woocoo
+development: true
+log:
+  config:
+    level: debug
+    disableCaller: true
+    disableStacktrace: true
+    encoding: json
+    outputPaths:
+      - stdout
+      - "test.log"
+    errorOutputPaths:
+      - stderr
+  rotate:
+    maxSize: 1
+    maxage: 1
+    maxbackups: 1
+    localtime: true
+    compress: false
+trace:
+
+cache:
+  redis:
+#    type: cluster
+#    addrs:
+#      - 127.0.0.1:6379
+    type: standalone
+    addr: 127.0.0.1:6379
+    db: 1
+  local:
+    size: 1000
+    ttl: 60
+includeFiles:
+  - config/attach.yaml
+  - config/router.yaml
+  - config/service.yaml

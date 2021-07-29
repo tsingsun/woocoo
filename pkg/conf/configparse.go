@@ -180,14 +180,14 @@ func decoderConfig(result interface{}) *mapstructure.DecoderConfig {
 // to a struct to resolve to the zero value of that struct.
 //
 // e.g. given a config type:
-// type Config struct { Thing *SomeStruct `mapstructure:"thing"` }
+// type Configuration struct { Thing *SomeStruct `mapstructure:"thing"` }
 //
 // and yaml of:
 // config:
 //   thing:
 //
-// we want an unmarshalled Config to be equivalent to
-// Config{Thing: &SomeStruct{}} instead of Config{Thing: nil}
+// we want an unmarshalled Configuration to be equivalent to
+// Configuration{Thing: &SomeStruct{}} instead of Configuration{Thing: nil}
 func expandNilStructPointers() mapstructure.DecodeHookFunc {
 	return func(from reflect.Value, to reflect.Value) (interface{}, error) {
 		// ensure we are dealing with map to map comparison

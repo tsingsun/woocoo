@@ -1,0 +1,37 @@
+development: true
+log:
+  config:
+    level: debug
+    disableCaller: true
+    disableStacktrace: true
+    encoding: json
+    outputPaths:
+      - stdout
+    errorOutputPaths:
+      - stderr
+service:
+  server:
+    listen: "20000"
+    location: /woocoo/service
+    version: "1.0"
+  registry:
+    schema: etcd
+    ttl: 60
+    tls:
+      ssl_certificate: ""
+      ssl_certificate_key: ""
+    etcd:
+      endpoints:
+      - :2379
+      dial-timeout: 3
+      dial-keep-alive-time: 30
+  prometheus:
+    addr: 0.0.0.0:2222
+  engine:
+    unaryinterceptors:
+      - trace:
+      - logger:
+      - prometheus:
+      - auth:
+      - recovery:
+    streamserverinterceptors:

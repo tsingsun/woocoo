@@ -1,4 +1,4 @@
-package testredis
+package redis
 
 import "github.com/alicebob/miniredis/v2"
 

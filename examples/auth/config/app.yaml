@@ -1,8 +1,7 @@
-appname: woocoo
+development: true
 log:
   config:
     level: debug
-    development: true
     disableCaller: true
     disableStacktrace: true
     encoding: json
@@ -17,16 +16,12 @@ log:
     maxbackups: 1
     localtime: true
     compress: false
-trace:
-
-cache:
-  redis:
-#    type: cluster
-#    addrs:
-#      - 127.0.0.1:6379
-    type: standalone
-    addr: 127.0.0.1:6379
-    db: 1
-  local:
-    size: 1000
-    ttl: 60
+web:
+  server:
+    addr: 0.0.0.0:33333
+  engine:
+    handleFuncs:
+    - logger:
+    - recovery:
+    - auth:
+        secret: 12345678

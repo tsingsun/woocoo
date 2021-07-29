@@ -6,9 +6,9 @@ import (
 )
 
 var (
-	_manager          = newManager()
-	defaultDriverName = "redis"
-	_defaultDriver    Cache
+	_manager           = newManager()
+	_defaultDriverName = "redis"
+	_defaultDriver     Cache
 )
 
 type manager struct {
@@ -22,8 +22,8 @@ func newManager() *manager {
 }
 
 func SetDefault(driver string) error {
-	defaultDriverName = driver
-	_defaultDriver = _manager.drivers[defaultDriverName]
+	_defaultDriverName = driver
+	_defaultDriver = _manager.drivers[_defaultDriverName]
 	return nil
 }
 
@@ -32,6 +32,9 @@ func RegisterCache(name string, cache Cache) error {
 		return fmt.Errorf("driver already registered for name %q", name)
 	}
 	_manager.drivers[name] = cache
+	if len(_manager.drivers) == 1 {
+		return SetDefault(name)
+	}
 	return nil
 }
 

@@ -126,7 +126,7 @@ var (
 	os_Stat = os.Stat
 
 	// megabyte is the conversion factor between MaxSize and bytes.  It is a
-	// variable so tests can mock it out and not need to write megabytes of data
+	// variable so tests can mock_redis it out and not need to write megabytes of data
 	// to disk.
 	megabyte = 1024 * 1024
 )

@@ -3,15 +3,14 @@ package redis_test
 import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/tsingsun/woocoo/pkg/cache/redis"
-	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"testing"
 	"time"
 )
 
 var (
-	cnf, _ = conf.BuildWithOption(conf.LocalPath(testdata.Path("app.yaml")))
-	mr     *miniredis.Miniredis
+	cnf = testdata.Config
+	mr  *miniredis.Miniredis
 )
 
 func initCache(t *testing.T, remote bool) *redis.Cache {
@@ -21,7 +20,7 @@ func initCache(t *testing.T, remote bool) *redis.Cache {
 		if mr, err = miniredis.Run(); err != nil {
 			t.Error(err)
 		}
-		cnf.Operator().Set("cache.redis.addr", mr.Addr())
+		cnf.Parser().Set("cache.redis.addr", mr.Addr())
 	}
 	//single node
 	cache.Apply(cnf, "cache")

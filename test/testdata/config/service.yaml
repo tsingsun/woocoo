@@ -1,0 +1,28 @@
+service:
+  server:
+    addr: :20000
+    location: /woocoo/service
+    version: "1.0"
+  registry:
+    schema: etcd
+    ttl: 600
+    tls:
+      ssl_certificate: ""
+      ssl_certificate_key: ""
+    etcd:
+      endpoints:
+      - 127.0.0.1:2379
+      dial-timeout: 3000
+      dial-keep-alive-time: 3000
+  prometheus:
+    addr: 0.0.0.0:2222
+  engine:
+  - keepalive:
+      time: 3600
+  - unaryinterceptors:
+    - trace:
+    - logger:
+    - prometheus:
+    - auth:
+    - recovery:
+  - streamserverinterceptors:

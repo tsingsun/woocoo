@@ -1,16 +1,26 @@
 package testdata
 
 import (
+	"github.com/tsingsun/woocoo/pkg/conf"
 	"path/filepath"
 	"runtime"
 )
 
 // basedir is the root directory of this package.
-var basedir string
+var (
+	basedir           string
+	DefaultConfigFile = "config/app.yaml"
+	Config            *conf.Configuration
+)
 
 func init() {
 	_, currentFile, _, _ := runtime.Caller(0)
 	basedir = filepath.Dir(currentFile)
+	var err error
+	Config, err = conf.BuildWithOption(conf.LocalPath(Path(DefaultConfigFile)), conf.BaseDir(basedir))
+	if err != nil {
+		panic(err)
+	}
 }
 
 func BaseDir() string {
@@ -18,7 +28,7 @@ func BaseDir() string {
 }
 
 // Path returns the absolute path the given relative file or directory path,
-// relative to the google.golang.org/grpc/testdata directory in the user's GOPATH.
+// relative to the google.golang.org/hello_grpc/testdata directory in the user's GOPATH.
 // If rel is already absolute, it is returned unmodified.
 func Path(rel string) string {
 	if filepath.IsAbs(rel) {

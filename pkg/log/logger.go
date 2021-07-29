@@ -27,6 +27,11 @@ func New(zl *zap.Logger) (*Logger, error) {
 
 func (l Logger) AsGlobal() {
 	global = &l
+	zap.ReplaceGlobals(l.zap)
+}
+
+func (l Logger) Operator() *zap.Logger {
+	return l.zap
 }
 
 // Sync calls the underlying Core's Sync method, flushing any buffered log
@@ -37,15 +42,15 @@ func (l *Logger) Sync() error {
 
 // Apply implement Configurable interface which can initial from a file used in JSON,YAML
 // Logger init trough Apply method will be set as Global.
-func (l *Logger) Apply(cnf *conf.Config, path string) {
+func (l *Logger) Apply(cfg *conf.Configuration, path string) {
 	config := Config{}
-	zl, err := config.BuildZap(cnf)
+	zl, err := config.BuildZap(cfg)
 	if err != nil {
 		Panicf("%s apply from configuration file err:%s", "log", err)
 	}
 
 	l.zap = zl
-	global = l
+	l.AsGlobal()
 }
 
 func (l *Logger) With(fields ...zapcore.Field) *Logger {
@@ -82,29 +87,56 @@ func Operator() *zap.Logger {
 func Debug(args ...interface{}) {
 	global.zap.Sugar().Debug(args...)
 }
+func (l *Logger) Debug(msg string, fields ...zap.Field) {
+	l.zap.Debug(msg, fields...)
+}
 
 func Info(args ...interface{}) {
 	global.zap.Sugar().Info(args...)
+}
+
+func (l *Logger) Info(msg string, fields ...zap.Field) {
+	l.zap.Info(msg, fields...)
 }
 
 func Warn(args ...interface{}) {
 	global.zap.Sugar().Warn(args...)
 }
 
+func (l *Logger) Warn(msg string, fields ...zap.Field) {
+	l.zap.Warn(msg, fields...)
+}
+
 func Error(args ...interface{}) {
 	global.zap.Sugar().Error(args...)
+}
+
+func (l *Logger) Error(msg string, fields ...zap.Field) {
+	l.zap.Error(msg, fields...)
 }
 
 func DPanic(args ...interface{}) {
 	global.zap.Sugar().DPanic(args...)
 }
 
+func (l *Logger) DPanic(msg string, fields ...zap.Field) {
+	l.zap.DPanic(msg, fields...)
+}
+
 func Panic(args ...interface{}) {
 	global.zap.Sugar().Panic(args...)
 }
 
+func (l *Logger) Panic(msg string, fields ...zap.Field) {
+	l.zap.Panic(msg, fields...)
+}
+
 func Fatal(args ...interface{}) {
 	global.zap.Sugar().Fatal(args...)
+}
+
+func (l *Logger) Fatal(msg string, fields ...zap.Field) {
+	l.zap.Fatal(msg, fields...)
 }
 
 // Debugf uses fmt.Sprintf to log a templated message.

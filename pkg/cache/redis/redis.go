@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/go-redis/cache/v8"
 	"github.com/go-redis/redis/v8"
+	manager "github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"time"
 )
@@ -13,12 +14,12 @@ type Cache struct {
 	client *cache.Cache
 }
 
-func (c *Cache) Apply(cnf *conf.Config, path string) {
+func (c *Cache) Apply(cnf *conf.Configuration, path string) {
 	var local *cache.TinyLFU
 	if cnf.IsSet("cache.local") {
 		local = cache.NewTinyLFU(cnf.Int("cache.local.size"), time.Second*time.Duration(cnf.Int("cache.local.ttl")))
 	}
-	cc, err := cnf.Operator().Sub(path)
+	cc, err := cnf.Parser().Sub(path)
 	if err != nil {
 		panic(err)
 	}
@@ -49,6 +50,9 @@ func (c *Cache) Apply(cnf *conf.Config, path string) {
 			Redis:      cl,
 			LocalCache: local,
 		})
+	}
+	if err = manager.RegisterCache("redis", c); err != nil {
+		panic(err)
 	}
 }
 

@@ -5,6 +5,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web/handler"
+	"github.com/tsingsun/woocoo/web/handler/auth"
+	"github.com/tsingsun/woocoo/web/handler/logger"
+	"github.com/tsingsun/woocoo/web/handler/recovery"
 	"reflect"
 	"runtime"
 )
@@ -12,7 +15,6 @@ import (
 type RuleManager map[string]gin.RouteInfo
 
 var registerRule = RuleManager{}
-var registerHandler = map[string]gin.HandlerFunc{}
 
 //Router is base on Gin
 //you can use AfterRegisterInternalHandler to replace an inline HandlerFunc or add a new
@@ -51,12 +53,13 @@ func (r *Router) Apply(cfg *conf.Configuration, path string) error {
 	}
 	for _, k := range hfs {
 		var name string
-		for s, _ := range k.Raw() {
+		for s := range k.Raw() {
 			name = s
 			break
 		}
-		if hf, ok := registerHandler[name]; ok {
-			r.Engine.Use(hf)
+		if hf, ok := handler.RegisterHandler[name]; ok {
+
+			r.Engine.Use(hf(cfg.CutFromOperator(k)))
 		} else {
 			return errors.New("middleware not found:" + name)
 		}
@@ -96,15 +99,15 @@ func RegisterRouteRule(path, method string, handlerFunc gin.HandlerFunc) error {
 	return nil
 }
 
-func RegisterHandlerFunc(name string, handlerFunc gin.HandlerFunc) {
+func RegisterHandlerFunc(name string, handlerFunc handler.HandlerApplyFunc) {
 	//if _, ok := registerHandler[name]; ok {
 	//	panic("handlerFunc exists:" + name)
 	//}
-	registerHandler[name] = handlerFunc
+	handler.RegisterHandler[name] = handlerFunc
 }
 
 func registerInternalHandler(router *Router) {
-	RegisterHandlerFunc("accessLog", handler.AccessLogHandler(router.server.logger))
-	RegisterHandlerFunc("recovery", handler.RecoveryHandler(router.server.logger, true))
-	RegisterHandlerFunc("auth", handler.AuthHandler(router.server.configuration))
+	RegisterHandlerFunc("accessLog", logger.AccessLogHandler(router.server.logger))
+	RegisterHandlerFunc("recovery", recovery.RecoveryHandler(router.server.logger, true))
+	RegisterHandlerFunc("auth", auth.AuthHandler(router.server.configuration))
 }

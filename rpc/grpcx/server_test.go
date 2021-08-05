@@ -1,21 +1,24 @@
+package grpcx_test
+
+import (
+	"bytes"
+	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/rpc/grpcx"
+	"github.com/tsingsun/woocoo/test/testdata"
+	"testing"
+)
+
+var (
+	cnf = testdata.Config
+)
+
+func TestServer_Apply(t *testing.T) {
+	b := []byte(`
 service:
   server:
     addr: :20000
     location: /woocoo/service
     version: "1.0"
-  registry:
-    schema: etcd
-    ttl: 600
-    tls:
-      ssl_certificate: ""
-      ssl_certificate_key: ""
-    etcd:
-      endpoints:
-      - 127.0.0.1:2379
-      dial-timeout: 3000
-      dial-keep-alive-time: 3000
-  prometheus:
-    addr: 0.0.0.0:2222
   engine:
   - keepalive:
       time: 3600
@@ -35,4 +38,12 @@ service:
         privKey: config/privKey.pem
         pubKey: config/pubKey.pem
         tenantHeader: Qeelyn-Org-Id
-  - streamInterceptors:
+`)
+	p, err := conf.NewParserFromBuffer(bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := cnf.CutFromParser(p)
+	s := grpcx.New()
+	s.Apply(cfg, "service")
+}

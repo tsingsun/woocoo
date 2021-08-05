@@ -117,7 +117,7 @@ func (s Server) runAndGracefulShutdown(srv *http.Server) {
 		} else {
 			err = srv.ListenAndServe()
 		}
-		if err != nil && errors.Is(err, http.ErrServerClosed) {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Errorf("listen: %s\n", err)
 		}
 	}()

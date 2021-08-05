@@ -91,8 +91,13 @@ func (l *Parser) UnmarshalExact(intoCfg interface{}) error {
 }
 
 //UnmarshalByJson unmarshals the config named key into a struct, using JSON decode
-func (l Parser) UnmarshalByJson(key string, out interface{}) error {
-	s, err := l.Sub(key)
+func (l Parser) UnmarshalByJson(key string, out interface{}) (err error) {
+	var s *Parser
+	if key == "" {
+		s = &l
+	} else {
+		s, err = l.Sub(key)
+	}
 	if err != nil {
 		return err
 	}

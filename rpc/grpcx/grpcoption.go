@@ -1,10 +1,15 @@
 package grpcx
 
 import (
+	"crypto/tls"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/auth"
+	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/logger"
+	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/recovery"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
-	"strings"
+	"path/filepath"
 )
 
 var (
@@ -14,43 +19,66 @@ var (
 
 func init() {
 	RegisterGrpcServerOptions("keepalive", keepaliveHandler)
+	RegisterGrpcServerOptions("tls", tlsHandler)
+	RegisterGrpcUnaryInterceptor("auth", auth.UnaryServerInterceptor)
+	RegisterGrpcUnaryInterceptor("accessLog", logger.UnaryServerInterceptor)
+	RegisterGrpcUnaryInterceptor("recovery", recovery.UnaryServerInterceptor)
 }
 
 type configurableGrpcServerOptions struct {
-	ms   map[string]func(*conf.Configuration, string) grpc.ServerOption
-	usit map[string]func(*conf.Configuration, string) grpc.UnaryServerInterceptor
-	ssit map[string]func(*conf.Configuration, string) grpc.StreamServerInterceptor
+	ms   map[string]func(*conf.Configuration) grpc.ServerOption
+	usit map[string]func(*conf.Configuration) grpc.UnaryServerInterceptor
+	ssit map[string]func(*conf.Configuration) grpc.StreamServerInterceptor
 }
 
 func newConfigurableGrpcOptions() *configurableGrpcServerOptions {
 	return &configurableGrpcServerOptions{
-		ms:   make(map[string]func(cnf *conf.Configuration, path string) grpc.ServerOption),
-		usit: make(map[string]func(*conf.Configuration, string) grpc.UnaryServerInterceptor),
-		ssit: make(map[string]func(*conf.Configuration, string) grpc.StreamServerInterceptor),
+		ms:   make(map[string]func(*conf.Configuration) grpc.ServerOption),
+		usit: make(map[string]func(*conf.Configuration) grpc.UnaryServerInterceptor),
+		ssit: make(map[string]func(*conf.Configuration) grpc.StreamServerInterceptor),
 	}
 }
 
-func RegisterGrpcServerOptions(name string, handler func(cnf *conf.Configuration, path string) grpc.ServerOption) error {
+func RegisterGrpcServerOptions(name string, handler func(cnf *conf.Configuration) grpc.ServerOption) error {
 	cGrpcServerOptions.ms[name] = handler
 	return nil
 }
 
-func RegisterGrpcUnaryInterceptor(name string, hanlder func(*conf.Configuration, string) grpc.UnaryServerInterceptor) error {
-	cGrpcServerOptions.usit[name] = hanlder
+func RegisterGrpcUnaryInterceptor(name string, handler func(*conf.Configuration) grpc.UnaryServerInterceptor) error {
+	cGrpcServerOptions.usit[name] = handler
 	return nil
 }
 
-func keepaliveHandler(cnf *conf.Configuration, path string) grpc.ServerOption {
+func keepaliveHandler(cfg *conf.Configuration) grpc.ServerOption {
 	sp := keepalive.ServerParameters{}
-	if err := cnf.Parser().UnmarshalByJson(path, &sp); err != nil {
+	if err := cfg.Parser().UnmarshalByJson("", &sp); err != nil {
 		panic(err)
 	}
 	return grpc.KeepaliveParams(sp)
 }
 
-func unaryInterceptorHandler(cnf *conf.Configuration, path string) grpc.ServerOption {
+func tlsHandler(cfg *conf.Configuration) grpc.ServerOption {
+	ssl_certificate := cfg.String("ssl_certificate")
+	ssl_certificate_key := cfg.String("ssl_certificate_key")
+	if ssl_certificate != "" && ssl_certificate_key != "" {
+		if !filepath.IsAbs(ssl_certificate) {
+			ssl_certificate = filepath.Join(cfg.GetBaseDir(), ssl_certificate)
+		}
+		if !filepath.IsAbs(ssl_certificate_key) {
+			ssl_certificate_key = filepath.Join(cfg.GetBaseDir(), ssl_certificate_key)
+		}
+		cert, err := tls.LoadX509KeyPair(ssl_certificate, ssl_certificate_key)
+		if err != nil {
+			panic(err)
+		}
+		return grpc.Creds(credentials.NewServerTLSFromCert(&cert))
+	}
+	return nil
+}
+
+func unaryInterceptorHandler(cnf *conf.Configuration) grpc.ServerOption {
 	var opts []grpc.UnaryServerInterceptor
-	its := cnf.ParserOperator().Slices(path)
+	its := cnf.SubOperator("")
 	for _, it := range its {
 		var name string
 		for s, _ := range it.Raw() {
@@ -58,16 +86,11 @@ func unaryInterceptorHandler(cnf *conf.Configuration, path string) grpc.ServerOp
 			break
 		}
 		if handler, ok := cGrpcServerOptions.usit[name]; ok {
-			k := strings.Join([]string{path, name}, conf.KeyDelimiter)
-			opts = append(opts, handler(cnf, k))
+			itcfg := cnf.CutFromOperator(it)
+			opts = append(opts, handler(itcfg))
 		}
 	}
 	return grpc.ChainUnaryInterceptor(opts...)
-}
-
-func accessLogInt(cnf *conf.Configuration, path string) grpc.UnaryServerInterceptor {
-
-	return nil
 }
 
 func (c configurableGrpcServerOptions) Apply(cnf *conf.Configuration, path string) (opts []grpc.ServerOption) {
@@ -78,9 +101,15 @@ func (c configurableGrpcServerOptions) Apply(cnf *conf.Configuration, path strin
 			name = s
 			break
 		}
+		if name == "unaryInterceptors" {
+			itcfg := cnf.CutFromOperator(hf)
+			opts = append(opts, unaryInterceptorHandler(itcfg))
+		}
 		if handler, ok := cGrpcServerOptions.ms[name]; ok {
-			k := strings.Join([]string{path, name}, conf.KeyDelimiter)
-			opts = append(opts, handler(cnf, k))
+			itcfg := cnf.CutFromOperator(hf)
+			if h := handler(itcfg); h != nil {
+				opts = append(opts, h)
+			}
 		}
 	}
 	return

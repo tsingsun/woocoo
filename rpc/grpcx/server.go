@@ -18,11 +18,15 @@ const (
 	configPath = "service"
 )
 
+var defaultInterceptor = []grpc.UnaryServerInterceptor{}
+
 type ServerConfig struct {
-	Addr        string              `json:"addr" yaml:"addr"`
-	Location    string              `json:"location" yaml:"location"`
-	Version     string              `json:"version" yaml:"version"`
-	grpcOptions []grpc.ServerOption `json:"-" yaml:"-"`
+	Addr              string              `json:"addr" yaml:"addr"`
+	SSLCertificate    string              `json:"ssl_certificate" yaml:"ssl_certificate"`
+	SSLCertificateKey string              `json:"ssl_certificate_key" yaml:"ssl_certificate_key"`
+	Location          string              `json:"location" yaml:"location"`
+	Version           string              `json:"version" yaml:"version"`
+	grpcOptions       []grpc.ServerOption `json:"-" yaml:"-"`
 }
 
 type Server struct {
@@ -35,19 +39,19 @@ type Server struct {
 	NodeInfo      *registry.NodeInfo
 }
 
-func (s *Server) Apply(cnf *conf.Configuration, path string) {
-	if err := cnf.Sub(path).Parser().UnmarshalByJson("server", s.config); err != nil {
+func (s *Server) Apply(cfg *conf.Configuration, path string) {
+	if err := cfg.Sub(path).Parser().UnmarshalByJson("server", s.config); err != nil {
 		panic(err)
 	}
-	if k := strings.Join([]string{path, "registry"}, conf.KeyDelimiter); cnf.IsSet(k) {
-		s.registry = registry.GetRegistry(cnf.String(strings.Join([]string{path, "registry", "schema"}, conf.KeyDelimiter)))
+	if k := strings.Join([]string{path, "registry"}, conf.KeyDelimiter); cfg.IsSet(k) {
+		s.registry = registry.GetRegistry(cfg.String(strings.Join([]string{path, "registry", "schema"}, conf.KeyDelimiter)))
 		if ap, ok := s.registry.(conf.Configurable); ok {
-			ap.Apply(cnf, k)
+			ap.Apply(cfg, k)
 		}
 	}
 	//engine
-	if k := strings.Join([]string{path, "engine"}, conf.KeyDelimiter); cnf.IsSet(k) {
-
+	if k := strings.Join([]string{path, "engine"}, conf.KeyDelimiter); cfg.IsSet(k) {
+		s.config.grpcOptions = cGrpcServerOptions.Apply(cfg, k)
 	}
 
 }

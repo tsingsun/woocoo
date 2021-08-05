@@ -38,7 +38,9 @@ func UseLogger() Option {
 	return func(s *Server) {
 		logger.Apply(s.configuration, "log")
 		s.logger = logger
-		lg := logger.With(zap.String("system", "grpc"), zap.Bool("grpc_log", true)).Operator()
+		lg := logger.With(zap.String("system", "grpc"),
+			zap.Bool("grpc_log", true),
+		).Operator().WithOptions(zap.AddCallerSkip(2))
 		zgl := zapgrpc.NewLogger(lg)
 		grpclog.SetLoggerV2(zgl)
 	}

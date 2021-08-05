@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/file"
 	"os"
 	"path/filepath"
@@ -21,6 +22,7 @@ type Configuration struct {
 	opts        options
 	parser      *Parser
 	Development bool
+	root        *Configuration
 }
 
 var (
@@ -186,11 +188,6 @@ func (c *Configuration) AllSettings() map[string]interface{} {
 	return c.parser.k.All()
 }
 
-func Slices(path string) []*koanf.Koanf { return global.Slices(path) }
-func (c *Configuration) Slices(path string) []*koanf.Koanf {
-	return c.parser.k.Slices(path)
-}
-
 func Operator() *Parser { return global.Parser() }
 
 // Parser return configuration operator
@@ -211,7 +208,49 @@ func (c Configuration) Sub(path string) *Configuration {
 		opts:        c.opts,
 		parser:      p,
 		Development: c.Development,
+		root:        &c,
 	}
+}
+
+func (c *Configuration) CutFromParser(p *Parser) *Configuration {
+	nf := *c
+	nf.parser = p
+	nf.root = c
+	return &nf
+}
+
+func (c *Configuration) CutFromOperator(kf *koanf.Koanf) *Configuration {
+	nf := *c
+	nf.parser = &Parser{
+		k: kf,
+	}
+	nf.root = c
+	return &nf
+}
+
+func (c *Configuration) SubOperator(path string) []*koanf.Koanf {
+	if path == "" {
+		out := []*koanf.Koanf{}
+		raw := c.parser.k.Raw()
+		for _, val := range raw {
+			v, ok := val.([]interface{})
+			if !ok {
+				continue
+			}
+			for _, s := range v {
+				v, ok := s.(map[string]interface{})
+				if !ok {
+					continue
+				}
+
+				k := koanf.New(KeyDelimiter)
+				k.Load(confmap.Provider(v, ""), nil)
+				out = append(out, k)
+			}
+		}
+		return out
+	}
+	return c.parser.k.Slices(path)
 }
 
 func Join(ps ...string) string {

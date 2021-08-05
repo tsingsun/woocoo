@@ -21,7 +21,7 @@ web:
     addr: 0.0.0.0:33333
   engine:
     handleFuncs:
-    - logger:
+    - accessLog:
     - recovery:
     - auth:
         secret: 12345678

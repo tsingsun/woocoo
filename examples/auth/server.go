@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	jwt "github.com/tsingsun/woocoo/third_party/appleboy/gin-jwt"
 	"github.com/tsingsun/woocoo/web"
+	jwt "github.com/tsingsun/woocoo/web/handler/auth"
 	"log"
 )
 

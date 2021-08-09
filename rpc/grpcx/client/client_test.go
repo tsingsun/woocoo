@@ -1,3 +1,23 @@
+package client_test
+
+import (
+	"bytes"
+	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/rpc/grpcx"
+	"github.com/tsingsun/woocoo/rpc/grpcx/client"
+	_ "github.com/tsingsun/woocoo/rpc/grpcx/registry/etcd3"
+	"github.com/tsingsun/woocoo/test/testdata"
+	"google.golang.org/grpc/connectivity"
+	"testing"
+	"time"
+)
+
+var (
+	cnf = testdata.Config
+)
+
+func TestClient_Dial(t *testing.T) {
+	b := []byte(`
 service:
   server:
     addr: :20000
@@ -31,16 +51,39 @@ service:
         ssl_certificate: ""
         ssl_certificate_key: ""
       endpoints:
-        - 127.0.0.1:2379
+        - localhost:2379
       dial-timeout: 3
       dial-keep-alive-time: 3
   prometheus:
     addr: 0.0.0.0:2222
   client:
-    - insure:
+    - insecure:
     - block:
     - timeout: 5
     - unaryInterceptors:
         - trace:
-
-
+`)
+	p, err := conf.NewParserFromBuffer(bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := cnf.CutFromParser(p)
+	go func() {
+		srv := grpcx.New(grpcx.Configuration(cfg, "service"))
+		if err := srv.Run(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	time.Sleep(1000)
+	cli := client.New(client.Configuration(cfg, "service"))
+	if err != nil {
+		t.Error(err)
+	}
+	conn, err := cli.Dial()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if conn.GetState() != connectivity.Ready {
+		t.Fail()
+	}
+}

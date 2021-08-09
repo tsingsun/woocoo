@@ -18,8 +18,6 @@ const (
 	configPath = "service"
 )
 
-var defaultInterceptor = []grpc.UnaryServerInterceptor{}
-
 type ServerConfig struct {
 	Addr              string              `json:"addr" yaml:"addr"`
 	SSLCertificate    string              `json:"ssl_certificate" yaml:"ssl_certificate"`
@@ -30,16 +28,20 @@ type ServerConfig struct {
 }
 
 type Server struct {
-	exit          chan chan error
-	configuration *conf.Configuration
-	config        *ServerConfig
-	logger        *log.Logger
-	engine        *grpc.Server
-	registry      registry.Registry
-	NodeInfo      *registry.NodeInfo
+	exit             chan chan error
+	configuration    *conf.Configuration
+	configurationKey string
+	config           *ServerConfig
+	logger           *log.Logger
+	engine           *grpc.Server
+	registry         registry.Registry
+	NodeInfo         *registry.NodeInfo
 }
 
 func (s *Server) Apply(cfg *conf.Configuration, path string) {
+	if s.configurationKey == "" && path != "" {
+		s.configurationKey = path
+	}
 	if err := cfg.Sub(path).Parser().UnmarshalByJson("server", s.config); err != nil {
 		panic(err)
 	}
@@ -50,7 +52,7 @@ func (s *Server) Apply(cfg *conf.Configuration, path string) {
 		}
 	}
 	//engine
-	if k := strings.Join([]string{path, "engine"}, conf.KeyDelimiter); cfg.IsSet(k) {
+	if k := strings.Join([]string{path, "server", "engine"}, conf.KeyDelimiter); cfg.IsSet(k) {
 		s.config.grpcOptions = cGrpcServerOptions.Apply(cfg, k)
 	}
 
@@ -65,21 +67,25 @@ func New(opts ...Option) *Server {
 		config: &ServerConfig{
 			Addr: ":9080",
 		},
-		exit: make(chan chan error),
+		configurationKey: configPath,
+		exit:             make(chan chan error),
 	}
 	for _, o := range opts {
 		o(srv)
+	}
+	if srv.configuration != nil && srv.configurationKey != "" {
+		srv.Apply(srv.configuration, srv.configurationKey)
 	}
 	return srv
 }
 
 func Default(opts ...Option) *Server {
-	srv := New(
+	defaultOpts := []Option{
 		Config(),
 		UseLogger(),
-	)
-	srv.ApplyOptions(opts...)
-	srv.Apply(srv.configuration, configPath)
+	}
+	defaultOpts = append(defaultOpts, opts...)
+	srv := New(opts...)
 	return srv
 }
 

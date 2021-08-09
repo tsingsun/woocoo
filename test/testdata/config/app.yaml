@@ -21,9 +21,9 @@ trace:
 
 cache:
   redis:
-#    type: cluster
-#    addrs:
-#      - 127.0.0.1:6379
+    #    type: cluster
+    #    addrs:
+    #      - 127.0.0.1:6379
     type: standalone
     addr: 127.0.0.1:6379
     db: 1

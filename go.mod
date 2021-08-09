@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/alicebob/miniredis/v2 v2.15.1
-	github.com/gin-gonic/gin v1.7.2 // indirect
+	github.com/gin-gonic/gin v1.7.3 // indirect
 	github.com/go-redis/cache/v8 v8.4.1
 	github.com/go-redis/redis/v8 v8.4.4
 	github.com/golang-jwt/jwt v3.2.1+incompatible // indirect

@@ -6,17 +6,17 @@ web:
   engine:
     redirectTrailingSlash: false
     remoteIPHeaders:
-    - X-Forwarded-For
-    - X-Real-XIP
+      - X-Forwarded-For
+      - X-Real-XIP
     handleFuncs:
-    - accessLog:
-    - recovery:
-    - auth:
-        realm: woocoo
-        secret: 12345678
-        privKey: config/privKey.pem
-        pubKey: config/pubKey.pem
-        tenantHeader: Qeelyn-Org-Id
+      - accessLog:
+      - recovery:
+      - auth:
+          realm: woocoo
+          secret: 12345678
+          privKey: config/privKey.pem
+          pubKey: config/pubKey.pem
+          tenantHeader: Qeelyn-Org-Id
   ##以下配置暂时用于 标识出哪些路由为被客制化的
   routerules:
     - path: /

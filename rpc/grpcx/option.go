@@ -21,9 +21,10 @@ func Config(cnfops ...conf.Option) Option {
 	}
 }
 
-func Configuration(configuration *conf.Configuration) Option {
+func Configuration(configuration *conf.Configuration, configurationKey string) Option {
 	return func(s *Server) {
 		s.configuration = configuration
+		s.configurationKey = configurationKey
 	}
 }
 

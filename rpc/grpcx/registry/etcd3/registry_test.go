@@ -1,9 +1,11 @@
 package etcd3
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/tsingsun/woocoo/internal/mock/helloworld"
+	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"github.com/tsingsun/woocoo/test/testdata"
@@ -19,11 +21,34 @@ import (
 var cnf = testdata.Config
 
 func TestRegistry_Apply(t *testing.T) {
-	r, err := NewRegistry(nil)
+	b := []byte(`
+service:
+  server:
+    addr: :20000
+    location: /woocoo/service
+    version: "1.0"
+  registry:
+    schema: etcd
+    ttl: 600
+    etcd:
+      endpoints:
+        - 127.0.0.1:2379
+      tls:
+        ssl_certificate: ""
+        ssl_certificate_key: ""
+      dial-timeout: 3000
+      dial-keep-alive-time: 3000
+`)
+	p, err := conf.NewParserFromBuffer(bytes.NewReader(b))
 	if err != nil {
 		t.Fatal(err)
 	}
-	r.Apply(cnf, "service.server.registry")
+	cfg := cnf.CutFromParser(p)
+	r := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Apply(cfg, "service.registry")
 	if len(r.config.EtcdConfig.Endpoints) == 0 {
 		t.Error("apply error")
 	}
@@ -43,10 +68,11 @@ func TestRegisterResolver(t *testing.T) {
 		Address:         listen,
 		Metadata:        nil,
 	}
-	reg, err := NewRegistry(&Config{
+	reg, err := BuildFromConfig(&Config{
 		EtcdConfig: etcdConfg,
 		TTL:        10 * time.Minute,
 	})
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +122,7 @@ func TestRegisterResolver2(t *testing.T) {
 		DialTimeout: 10 * time.Second,
 	}
 	go func() {
-		srv := grpcx.New(grpcx.Configuration(cnf), grpcx.UseLogger())
+		srv := grpcx.New(grpcx.Configuration(cnf, "service"), grpcx.UseLogger())
 		srv.Apply(cnf, "service")
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		if err := srv.Run(); err != nil {

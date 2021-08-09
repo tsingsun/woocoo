@@ -3,6 +3,7 @@ package registry
 import (
 	"crypto/tls"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/resolver"
 	"path/filepath"
 	"time"
 )
@@ -34,6 +35,7 @@ type Registry interface {
 	Unregister(nodeInfo *NodeInfo) error
 	TTL() time.Duration
 	Close()
+	ResolverBuilder(serviceLocation string) resolver.Builder
 }
 
 type NodeInfo struct {

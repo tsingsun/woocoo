@@ -10,6 +10,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/resolver"
 	"strings"
 	"sync"
 	"time"
@@ -17,15 +18,7 @@ import (
 
 func init() {
 	registry.RegisterDriver(scheme, func() registry.Registry {
-		//r,err:=NewRegistry(nil)
-		//if err !=nil{
-		//	panic(err)
-		//}
-		r := &Registry{
-			register: make(map[string]uint64),
-			leases:   make(map[string]clientv3.LeaseID),
-		}
-		return r
+		return New()
 	})
 }
 
@@ -43,6 +36,14 @@ type Registry struct {
 	leases   map[string]clientv3.LeaseID
 }
 
+func New() *Registry {
+	return &Registry{
+		register: make(map[string]uint64),
+		leases:   make(map[string]clientv3.LeaseID),
+		config:   Config{},
+	}
+}
+
 func (r *Registry) Apply(cfg *conf.Configuration, path string) {
 	fixConfigDuration(cfg, path)
 	if err := cfg.Parser().UnmarshalByJson(path, &r.config); err != nil {
@@ -51,14 +52,18 @@ func (r *Registry) Apply(cfg *conf.Configuration, path string) {
 	if cfg.IsSet("log") {
 		r.config.logger = log.Operator()
 	}
-	if k := conf.Join(path, "tls"); cfg.IsSet(k) {
+	if k := conf.Join(path, "etcd", "tls"); cfg.IsSet(k) {
 		cp := cfg.String(conf.Join(k, "ssl_certificate"))
 		kp := cfg.String(conf.Join(k, "ssl_certificate_key"))
 		if cp != "" && kp != "" {
 			r.config.EtcdConfig.TLS = registry.TLS(cfg.GetBaseDir(), cp, kp)
+		} else {
+			r.config.EtcdConfig.TLS = nil
 		}
+	} else {
+		r.config.EtcdConfig.TLS = nil
 	}
-	err := r.buildInternal()
+	err := r.buildClient()
 	if err != nil {
 		panic(err)
 	}
@@ -68,19 +73,23 @@ func fixConfigDuration(cnf *conf.Configuration, path string) {
 	for _, k := range []string{"ttl"} {
 		if k := strings.Join([]string{path, k}, conf.KeyDelimiter); cnf.IsSet(k) {
 			v := cnf.Duration(k)
-			cnf.Parser().Set(k, v*time.Second)
+			if v < time.Second {
+				cnf.Parser().Set(k, v*time.Second)
+			}
 		}
 	}
 	//etcd config
 	for _, k := range []string{"auto-sync-interval", "dial-timeout", "dial-keep-alive-time", "dial-keep-alive-timeout"} {
 		if k := strings.Join([]string{path, "etcd", k}, conf.KeyDelimiter); cnf.IsSet(k) {
 			v := cnf.Duration(k)
-			cnf.Parser().Set(k, v*time.Second)
+			if v < time.Second {
+				cnf.Parser().Set(k, v*time.Second)
+			}
 		}
 	}
 }
 
-func NewRegistry(config *Config) (*Registry, error) {
+func BuildFromConfig(config *Config) (*Registry, error) {
 	r := &Registry{
 		register: make(map[string]uint64),
 		leases:   make(map[string]clientv3.LeaseID),
@@ -94,13 +103,13 @@ func NewRegistry(config *Config) (*Registry, error) {
 	} else {
 		r.config = *config
 	}
-	if err := r.buildInternal(); err != nil {
+	if err := r.buildClient(); err != nil {
 		return nil, err
 	}
 	return r, nil
 }
 
-func (r *Registry) buildInternal() (err error) {
+func (r *Registry) buildClient() (err error) {
 	if r.config.logger != nil {
 		r.config.EtcdConfig.Logger = r.config.logger
 	}
@@ -246,4 +255,12 @@ func (r *Registry) Close() {
 
 func (r *Registry) TTL() time.Duration {
 	return r.config.TTL
+}
+
+func (r *Registry) ResolverBuilder(serviceLocation string) resolver.Builder {
+	return &etcdResolver{
+		scheme:     scheme,
+		etcdConfig: r.config.EtcdConfig,
+		watchPath:  serviceLocation,
+	}
 }

@@ -19,7 +19,7 @@ type Logger struct {
 	zap *zap.Logger
 }
 
-var global *Logger
+var global, _ = New(zap.NewNop())
 
 func New(zl *zap.Logger) (*Logger, error) {
 	return &Logger{zap: zl}, nil

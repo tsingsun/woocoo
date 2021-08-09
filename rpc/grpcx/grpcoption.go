@@ -14,12 +14,11 @@ import (
 
 var (
 	cGrpcServerOptions = newConfigurableGrpcOptions()
-	slist              = []string{"keepalive"}
 )
 
 func init() {
-	RegisterGrpcServerOptions("keepalive", keepaliveHandler)
-	RegisterGrpcServerOptions("tls", tlsHandler)
+	RegisterGrpcServerOption("keepalive", keepaliveHandler)
+	RegisterGrpcServerOption("tls", tlsHandler)
 	RegisterGrpcUnaryInterceptor("auth", auth.UnaryServerInterceptor)
 	RegisterGrpcUnaryInterceptor("accessLog", logger.UnaryServerInterceptor)
 	RegisterGrpcUnaryInterceptor("recovery", recovery.UnaryServerInterceptor)
@@ -39,7 +38,7 @@ func newConfigurableGrpcOptions() *configurableGrpcServerOptions {
 	}
 }
 
-func RegisterGrpcServerOptions(name string, handler func(cnf *conf.Configuration) grpc.ServerOption) error {
+func RegisterGrpcServerOption(name string, handler func(cnf *conf.Configuration) grpc.ServerOption) error {
 	cGrpcServerOptions.ms[name] = handler
 	return nil
 }
@@ -76,7 +75,7 @@ func tlsHandler(cfg *conf.Configuration) grpc.ServerOption {
 	return nil
 }
 
-func unaryInterceptorHandler(cnf *conf.Configuration) grpc.ServerOption {
+func (c configurableGrpcServerOptions) unaryInterceptorHandler(cnf *conf.Configuration) grpc.ServerOption {
 	var opts []grpc.UnaryServerInterceptor
 	its := cnf.SubOperator("")
 	for _, it := range its {
@@ -85,7 +84,7 @@ func unaryInterceptorHandler(cnf *conf.Configuration) grpc.ServerOption {
 			name = s
 			break
 		}
-		if handler, ok := cGrpcServerOptions.usit[name]; ok {
+		if handler, ok := c.usit[name]; ok {
 			itcfg := cnf.CutFromOperator(it)
 			opts = append(opts, handler(itcfg))
 		}
@@ -93,8 +92,8 @@ func unaryInterceptorHandler(cnf *conf.Configuration) grpc.ServerOption {
 	return grpc.ChainUnaryInterceptor(opts...)
 }
 
-func (c configurableGrpcServerOptions) Apply(cnf *conf.Configuration, path string) (opts []grpc.ServerOption) {
-	hfs := cnf.ParserOperator().Slices(path)
+func (c configurableGrpcServerOptions) Apply(cfg *conf.Configuration, path string) (opts []grpc.ServerOption) {
+	hfs := cfg.ParserOperator().Slices(path)
 	for _, hf := range hfs {
 		var name string
 		for s, _ := range hf.Raw() {
@@ -102,11 +101,11 @@ func (c configurableGrpcServerOptions) Apply(cnf *conf.Configuration, path strin
 			break
 		}
 		if name == "unaryInterceptors" {
-			itcfg := cnf.CutFromOperator(hf)
-			opts = append(opts, unaryInterceptorHandler(itcfg))
+			itcfg := cfg.CutFromOperator(hf)
+			opts = append(opts, c.unaryInterceptorHandler(itcfg))
 		}
-		if handler, ok := cGrpcServerOptions.ms[name]; ok {
-			itcfg := cnf.CutFromOperator(hf)
+		if handler, ok := c.ms[name]; ok {
+			itcfg := cfg.CutFromOperator(hf)
 			if h := handler(itcfg); h != nil {
 				opts = append(opts, h)
 			}

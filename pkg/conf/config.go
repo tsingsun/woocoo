@@ -121,73 +121,6 @@ func (c *Configuration) GetBaseDir() string {
 	return c.opts.basedir
 }
 
-func (c Configuration) Abs(path string) string {
-	if filepath.IsAbs(path) {
-		return path
-	}
-	return filepath.Join(c.GetBaseDir(), path)
-}
-
-func Get(path string) interface{} { return global.Get(path) }
-func (c *Configuration) Get(key string) interface{} {
-	return c.parser.Get(key)
-}
-
-func Bool(path string) bool { return global.Bool(path) }
-func (c *Configuration) Bool(path string) bool {
-	return c.parser.k.Bool(path)
-}
-
-func Float64(path string) float64 { return global.Float64(path) }
-func (c *Configuration) Float64(path string) float64 {
-	return c.parser.k.Float64(path)
-}
-
-func Int(path string) int { return global.Int(path) }
-func (c *Configuration) Int(path string) int {
-	return c.parser.k.Int(path)
-}
-
-func IntSlice(path string) []int { return global.IntSlice(path) }
-func (c *Configuration) IntSlice(path string) []int {
-	return c.parser.k.Ints(path)
-}
-
-func String(path string) string { return global.String(path) }
-func (c *Configuration) String(path string) string {
-	return c.parser.k.String(path)
-}
-
-func StringMap(path string) map[string]string { return global.StringMap(path) }
-func (c *Configuration) StringMap(path string) map[string]string {
-	return c.parser.k.StringMap(path)
-}
-
-func StringSlice(path string) []string { return global.StringSlice(path) }
-func (c *Configuration) StringSlice(path string) []string {
-	return c.parser.k.Strings(path)
-}
-
-func Time(path string, layout string) time.Time { return global.Time(path, layout) }
-func (c *Configuration) Time(path string, layout string) time.Time {
-	return c.parser.k.Time(path, layout)
-}
-
-func Duration(path string) time.Duration { return global.Duration(path) }
-func (c *Configuration) Duration(path string) time.Duration {
-	return c.parser.k.Duration(path)
-}
-
-func IsSet(path string) bool { return global.IsSet(path) }
-func (c *Configuration) IsSet(path string) bool {
-	return c.parser.IsSet(path)
-}
-
-func AllSettings() map[string]interface{} { return global.AllSettings() }
-func (c *Configuration) AllSettings() map[string]interface{} {
-	return c.parser.k.All()
-}
-
 func Operator() *Parser { return global.Parser() }
 
 // Parser return configuration operator
@@ -251,6 +184,77 @@ func (c *Configuration) SubOperator(path string) []*koanf.Koanf {
 		return out
 	}
 	return c.parser.k.Slices(path)
+}
+
+func (c Configuration) Abs(path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(c.GetBaseDir(), path)
+}
+
+func (c *Configuration) Copy() *Configuration {
+	return c.CutFromOperator(c.Parser().k.Copy())
+}
+
+func Get(path string) interface{} { return global.Get(path) }
+func (c *Configuration) Get(key string) interface{} {
+	return c.parser.Get(key)
+}
+
+func Bool(path string) bool { return global.Bool(path) }
+func (c *Configuration) Bool(path string) bool {
+	return c.parser.k.Bool(path)
+}
+
+func Float64(path string) float64 { return global.Float64(path) }
+func (c *Configuration) Float64(path string) float64 {
+	return c.parser.k.Float64(path)
+}
+
+func Int(path string) int { return global.Int(path) }
+func (c *Configuration) Int(path string) int {
+	return c.parser.k.Int(path)
+}
+
+func IntSlice(path string) []int { return global.IntSlice(path) }
+func (c *Configuration) IntSlice(path string) []int {
+	return c.parser.k.Ints(path)
+}
+
+func String(path string) string { return global.String(path) }
+func (c *Configuration) String(path string) string {
+	return c.parser.k.String(path)
+}
+
+func StringMap(path string) map[string]string { return global.StringMap(path) }
+func (c *Configuration) StringMap(path string) map[string]string {
+	return c.parser.k.StringMap(path)
+}
+
+func StringSlice(path string) []string { return global.StringSlice(path) }
+func (c *Configuration) StringSlice(path string) []string {
+	return c.parser.k.Strings(path)
+}
+
+func Time(path string, layout string) time.Time { return global.Time(path, layout) }
+func (c *Configuration) Time(path string, layout string) time.Time {
+	return c.parser.k.Time(path, layout)
+}
+
+func Duration(path string) time.Duration { return global.Duration(path) }
+func (c *Configuration) Duration(path string) time.Duration {
+	return c.parser.k.Duration(path)
+}
+
+func IsSet(path string) bool { return global.IsSet(path) }
+func (c *Configuration) IsSet(path string) bool {
+	return c.parser.IsSet(path)
+}
+
+func AllSettings() map[string]interface{} { return global.AllSettings() }
+func (c *Configuration) AllSettings() map[string]interface{} {
+	return c.parser.k.All()
 }
 
 func Join(ps ...string) string {

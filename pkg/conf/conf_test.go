@@ -1,6 +1,7 @@
 package conf_test
 
 import (
+	"bytes"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"testing"
@@ -35,6 +36,36 @@ func TestNew(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			conf.New()
 		})
+	}
+}
+
+func TestCopy(t *testing.T) {
+	b := []byte(`
+appname: woocoo
+development: true
+log:
+  config:
+    level: debug
+    disableCaller: true
+    disableStacktrace: true
+    encoding: json
+    outputPaths:
+      - stdout
+      - "test.log"
+    errorOutputPaths:
+      - stderr
+`)
+	p, err := conf.NewParserFromBuffer(bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cnf := conf.New()
+	cfg := cnf.CutFromParser(p)
+	copy := cfg.Copy()
+	cfg.Parser().Set("appname", "woocoocopy")
+	cfg.Parser().Set("log.config.level", "info")
+	if copy.Get("appname") == cfg.Get("appname") {
+		t.Fatal()
 	}
 }
 

@@ -45,18 +45,20 @@ func New() *Registry {
 }
 
 func (r *Registry) Apply(cfg *conf.Configuration, path string) {
-	fixConfigDuration(cfg, path)
-	if err := cfg.Parser().UnmarshalByJson(path, &r.config); err != nil {
+	//fixConfigDuration has a set method,so copy it
+	cfgc := cfg.Copy()
+	fixConfigDuration(cfgc, path)
+	if err := cfgc.Parser().UnmarshalByJson(path, &r.config); err != nil {
 		panic(err)
 	}
-	if cfg.IsSet("log") {
+	if cfgc.IsSet("log") {
 		r.config.logger = log.Operator()
 	}
-	if k := conf.Join(path, "etcd", "tls"); cfg.IsSet(k) {
-		cp := cfg.String(conf.Join(k, "ssl_certificate"))
-		kp := cfg.String(conf.Join(k, "ssl_certificate_key"))
+	if k := conf.Join(path, "etcd", "tls"); cfgc.IsSet(k) {
+		cp := cfgc.String(conf.Join(k, "ssl_certificate"))
+		kp := cfgc.String(conf.Join(k, "ssl_certificate_key"))
 		if cp != "" && kp != "" {
-			r.config.EtcdConfig.TLS = registry.TLS(cfg.GetBaseDir(), cp, kp)
+			r.config.EtcdConfig.TLS = registry.TLS(cfgc.GetBaseDir(), cp, kp)
 		} else {
 			r.config.EtcdConfig.TLS = nil
 		}
@@ -73,18 +75,14 @@ func fixConfigDuration(cnf *conf.Configuration, path string) {
 	for _, k := range []string{"ttl"} {
 		if k := strings.Join([]string{path, k}, conf.KeyDelimiter); cnf.IsSet(k) {
 			v := cnf.Duration(k)
-			if v < time.Second {
-				cnf.Parser().Set(k, v*time.Second)
-			}
+			cnf.Parser().Set(k, v*time.Second)
 		}
 	}
 	//etcd config
 	for _, k := range []string{"auto-sync-interval", "dial-timeout", "dial-keep-alive-time", "dial-keep-alive-timeout"} {
 		if k := strings.Join([]string{path, "etcd", k}, conf.KeyDelimiter); cnf.IsSet(k) {
 			v := cnf.Duration(k)
-			if v < time.Second {
-				cnf.Parser().Set(k, v*time.Second)
-			}
+			cnf.Parser().Set(k, v*time.Second)
 		}
 	}
 }

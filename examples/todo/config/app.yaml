@@ -1,0 +1,30 @@
+development: true
+log:
+  config:
+    level: debug
+    disableCaller: true
+    disableStacktrace: true
+    encoding: json
+    outputPaths:
+      - stdout
+      - "logs/test.log"
+    errorOutputPaths:
+      - stderr
+  rotate:
+    maxSize: 1
+    maxage: 1
+    maxbackups:
+    localtime: true
+    compress: false
+web:
+  server:
+    addr: 0.0.0.0:8081
+  engine:
+    handleFuncs:
+      - accessLog:
+          exclude:
+            - IntrospectionQuery
+      - recovery:
+      #    - auth:
+      #        secret: 12345678
+      - graphql:

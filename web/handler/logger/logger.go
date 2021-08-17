@@ -9,8 +9,28 @@ import (
 	"time"
 )
 
+const (
+	InnerPath = "innerPath"
+)
+
+var LogType = zap.String("type", "accessLog")
+
+type options struct {
+	exclude []string
+	logger  *log.Logger
+}
+
+var defaultOptions = &options{
+	exclude: []string{},
+	logger:  log.Global(),
+}
+
 func AccessLogHandler(logger *log.Logger) handler.HandlerApplyFunc {
+	o := &options{}
+	*o = *defaultOptions
+	o.logger = logger
 	return func(cfg *conf.Configuration) gin.HandlerFunc {
+		o.exclude = append(o.exclude, cfg.StringSlice("accessLog.exclude")...)
 		return func(c *gin.Context) {
 			// Start timer
 			start := time.Now()
@@ -18,17 +38,30 @@ func AccessLogHandler(logger *log.Logger) handler.HandlerApplyFunc {
 			raw := c.Request.URL.RawQuery
 			// Process request
 			c.Next()
-
+			shouldLog := true
+			spath, ok := c.Get(InnerPath)
+			if !ok {
+				spath = path
+			}
+			for _, ex := range o.exclude {
+				if spath == ex {
+					shouldLog = false
+				}
+			}
+			if !shouldLog && c.Errors == nil {
+				return
+			}
 			if raw != "" {
 				path = path + "?" + raw
 			}
 			latency := time.Since(start)
-			logger.Info(c.Request.URL.Path,
+			o.logger.Info(c.Request.URL.Path,
+				LogType,
 				zap.String("clientIp", c.ClientIP()),
 				zap.String("method", c.Request.Method),
 				zap.String("path", path),
 				zap.Int("status", c.Writer.Status()),
-				zap.Duration("latency", latency),
+				zap.Int64("latency", latency.Microseconds()),
 				zap.String("userAgent", c.Request.UserAgent()),
 				zap.Int("bodySize", c.Writer.Size()),
 				zap.String("error", c.Errors.ByType(gin.ErrorTypePrivate).String()),

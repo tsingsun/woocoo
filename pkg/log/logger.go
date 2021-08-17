@@ -25,6 +25,10 @@ func New(zl *zap.Logger) (*Logger, error) {
 	return &Logger{zap: zl}, nil
 }
 
+func Global() *Logger {
+	return global
+}
+
 func (l Logger) AsGlobal() {
 	global = &l
 	zap.ReplaceGlobals(l.zap)

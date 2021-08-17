@@ -10,6 +10,8 @@ web:
       - X-Real-XIP
     handleFuncs:
       - accessLog:
+          exclude:
+            - IntrospectionQuery
       - recovery:
       - auth:
           realm: woocoo
@@ -17,6 +19,7 @@ web:
           privKey: config/privKey.pem
           pubKey: config/pubKey.pem
           tenantHeader: Qeelyn-Org-Id
+      -graphql:
   ##以下配置暂时用于 标识出哪些路由为被客制化的
   routerules:
     - path: /

@@ -3,8 +3,8 @@ package log
 import (
 	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/third_party/natefinch/lumberjack"
 	"go.uber.org/zap"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"net/url"
 	"path/filepath"
 )

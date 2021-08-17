@@ -99,15 +99,8 @@ func RegisterRouteRule(path, method string, handlerFunc gin.HandlerFunc) error {
 	return nil
 }
 
-func RegisterHandlerFunc(name string, handlerFunc handler.HandlerApplyFunc) {
-	//if _, ok := registerHandler[name]; ok {
-	//	panic("handlerFunc exists:" + name)
-	//}
-	handler.RegisterHandler[name] = handlerFunc
-}
-
 func registerInternalHandler(router *Router) {
-	RegisterHandlerFunc("accessLog", logger.AccessLogHandler(router.server.logger))
-	RegisterHandlerFunc("recovery", recovery.RecoveryHandler(router.server.logger, true))
-	RegisterHandlerFunc("auth", auth.AuthHandler(router.server.configuration))
+	handler.RegisterHandlerFunc("accessLog", logger.AccessLogHandler(router.server.logger))
+	handler.RegisterHandlerFunc("recovery", recovery.RecoveryHandler(router.server.logger, true))
+	handler.RegisterHandlerFunc("auth", auth.AuthHandler(router.server.configuration))
 }

@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"gopkg.in/natefinch/lumberjack.v2"
+	"github.com/tsingsun/woocoo/third_party/natefinch/lumberjack"
 )
 
 // Example of how to rotate in response to SIGHUP.

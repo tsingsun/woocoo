@@ -52,8 +52,15 @@ func Default(opts ...Option) *Server {
 	return srv
 }
 
+func (s Server) ServerConfig() ServerConfig {
+	return *s.config
+}
 func (s *Server) Router() *Router {
 	return s.router
+}
+
+func (s Server) Logger() *log.Logger {
+	return s.logger
 }
 
 func (s *Server) Apply(cfg *conf.Configuration, path string) {

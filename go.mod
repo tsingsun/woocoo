@@ -23,7 +23,5 @@ require (
 	golang.org/x/tools v0.1.2 // indirect
 	google.golang.org/grpc v1.39.0 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
-	gopkg.in/natefinch/lumberjack.v2 v2.0.0
+	github.com/99designs/gqlgen v0.13.0
 )
-
-replace gopkg.in/natefinch/lumberjack.v2 => ./third_party/natefinch/lumberjack

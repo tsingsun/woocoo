@@ -61,7 +61,7 @@ func AccessLogHandler(logger *log.Logger) handler.HandlerApplyFunc {
 				zap.String("method", c.Request.Method),
 				zap.String("path", path),
 				zap.Int("status", c.Writer.Status()),
-				zap.Int64("latency", latency.Microseconds()),
+				zap.Int64("latency", latency.Milliseconds()),
 				zap.String("userAgent", c.Request.UserAgent()),
 				zap.Int("bodySize", c.Writer.Size()),
 				zap.String("error", c.Errors.ByType(gin.ErrorTypePrivate).String()),

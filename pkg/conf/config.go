@@ -30,7 +30,7 @@ var (
 )
 
 var defaultOptions = options{
-	localPath: filepath.Join(filepath.Dir(os.Args[0]), "config/app.yaml"),
+	localPath: filepath.Join(filepath.Dir(os.Args[0]), "etc/app.yaml"),
 	basedir:   filepath.Dir(os.Args[0]),
 	global:    true,
 }

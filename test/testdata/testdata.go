@@ -9,7 +9,7 @@ import (
 // basedir is the root directory of this package.
 var (
 	basedir           string
-	DefaultConfigFile = "config/app.yaml"
+	DefaultConfigFile = "etc/app.yaml"
 	Config            *conf.Configuration
 )
 

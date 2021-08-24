@@ -21,7 +21,7 @@ service:
     version: "1.0"
   engine:
   - keepalive:
-      time: 3600
+      time: 1h
   - tls:
       ssl_certificate: ""
       ssl_certificate_key: ""

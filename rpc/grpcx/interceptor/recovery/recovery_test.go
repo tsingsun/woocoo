@@ -45,7 +45,7 @@ func TestUnaryServerInterceptor(t *testing.T) {
 			t.Fatalf("failed to serve: %v", err)
 		}
 	}()
-	time.Sleep(1000)
+	time.Sleep(time.Second)
 
 	copts := []grpc.DialOption{}
 	copts = append(copts, grpc.WithBlock(), grpc.WithInsecure())
@@ -59,8 +59,8 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	_, err = client.PingPanic(context.Background(), &testproto.PingRequest{
 		Value: t.Name(),
 	})
-	if err != nil {
-		t.Error(err)
+	if err == nil {
+		t.Error("must error")
 	}
 	gloger.Sync()
 }

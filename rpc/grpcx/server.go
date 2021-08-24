@@ -52,7 +52,7 @@ func (s *Server) Apply(cfg *conf.Configuration, path string) {
 		}
 	}
 	//engine
-	if k := strings.Join([]string{path, "server", "engine"}, conf.KeyDelimiter); cfg.IsSet(k) {
+	if k := strings.Join([]string{path, "engine"}, conf.KeyDelimiter); cfg.IsSet(k) {
 		s.config.grpcOptions = cGrpcServerOptions.Apply(cfg, k)
 	}
 

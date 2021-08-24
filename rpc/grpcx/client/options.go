@@ -46,7 +46,7 @@ func (c configurableGrpcClientOptions) unaryInterceptorHandler(cnf *conf.Configu
 			break
 		}
 		if handler, ok := c.ucit[name]; ok {
-			itcfg := cnf.CutFromOperator(it)
+			itcfg := cnf.CutFromOperator(it.Cut(name))
 			opts = append(opts, handler(itcfg))
 		}
 	}
@@ -66,7 +66,7 @@ func (c configurableGrpcClientOptions) Apply(cfg *conf.Configuration, path strin
 			opts = append(opts, c.unaryInterceptorHandler(itcfg))
 		}
 		if handler, ok := c.do[name]; ok {
-			itcfg := cfg.CutFromOperator(hf)
+			itcfg := cfg.CutFromOperator(hf.Cut(name))
 			if h := handler(itcfg); h != nil {
 				opts = append(opts, h)
 			}

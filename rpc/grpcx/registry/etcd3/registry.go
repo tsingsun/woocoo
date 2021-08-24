@@ -74,15 +74,21 @@ func (r *Registry) Apply(cfg *conf.Configuration, path string) {
 func fixConfigDuration(cnf *conf.Configuration, path string) {
 	for _, k := range []string{"ttl"} {
 		if k := strings.Join([]string{path, k}, conf.KeyDelimiter); cnf.IsSet(k) {
-			v := cnf.Duration(k)
-			cnf.Parser().Set(k, v*time.Second)
+			if v, err := time.ParseDuration(cnf.String(k)); err != nil {
+				panic(err)
+			} else {
+				cnf.Parser().Set(k, v)
+			}
 		}
 	}
 	//etcd config
 	for _, k := range []string{"auto-sync-interval", "dial-timeout", "dial-keep-alive-time", "dial-keep-alive-timeout"} {
 		if k := strings.Join([]string{path, "etcd", k}, conf.KeyDelimiter); cnf.IsSet(k) {
-			v := cnf.Duration(k)
-			cnf.Parser().Set(k, v*time.Second)
+			if v, err := time.ParseDuration(cnf.String(k)); err != nil {
+				panic(err)
+			} else {
+				cnf.Parser().Set(k, v)
+			}
 		}
 	}
 }

@@ -30,7 +30,7 @@ func AccessLogHandler(logger *log.Logger) handler.HandlerApplyFunc {
 	*o = *defaultOptions
 	o.logger = logger
 	return func(cfg *conf.Configuration) gin.HandlerFunc {
-		o.exclude = append(o.exclude, cfg.StringSlice("accessLog.exclude")...)
+		o.exclude = append(o.exclude, cfg.StringSlice("exclude")...)
 		return func(c *gin.Context) {
 			// Start timer
 			start := time.Now()

@@ -58,8 +58,7 @@ func (r *Router) Apply(cfg *conf.Configuration, path string) error {
 			break
 		}
 		if hf, ok := handler.RegisterHandler[name]; ok {
-
-			r.Engine.Use(hf(cfg.CutFromOperator(k)))
+			r.Engine.Use(hf(cfg.CutFromOperator(k.Cut(name))))
 		} else {
 			return errors.New("middleware not found:" + name)
 		}

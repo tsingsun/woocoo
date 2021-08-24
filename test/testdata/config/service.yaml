@@ -5,7 +5,7 @@ service:
     version: "1.0"
     engine:
       - keepalive:
-          time: 3600
+          time: 1h
       - tls:
           ssl_certificate: ""
           ssl_certificate_key: ""
@@ -25,15 +25,15 @@ service:
       - streamInterceptors:
   registry:
     schema: etcd
-    ttl: 600
+    ttl: 600s
     etcd:
       tls:
         ssl_certificate: ""
         ssl_certificate_key: ""
       endpoints:
         - 127.0.0.1:2379
-      dial-timeout: 3
-      dial-keep-alive-time: 3
+      dial-timeout: 3s
+      dial-keep-alive-time: 3s
   prometheus:
     addr: 0.0.0.0:2222
   client:

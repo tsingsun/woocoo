@@ -10,6 +10,9 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"path/filepath"
+	"reflect"
+	"strings"
+	"time"
 )
 
 var (
@@ -50,6 +53,29 @@ func RegisterGrpcUnaryInterceptor(name string, handler func(*conf.Configuration)
 
 func keepaliveHandler(cfg *conf.Configuration) grpc.ServerOption {
 	sp := keepalive.ServerParameters{}
+	spt := reflect.TypeOf(sp)
+	for i := 0; i < spt.NumField(); i++ {
+		f := spt.Field(i)
+		if f.Type == reflect.TypeOf(time.Duration(0)) {
+			k := strings.ToLower(string(f.Name[0])) + f.Name[1:]
+			if cfg.IsSet(k) {
+				if v, err := time.ParseDuration(cfg.String(k)); err != nil {
+					panic(err)
+				} else {
+					cfg.Parser().Set(k, v)
+				}
+			}
+		}
+	}
+	//for _, k := range []string{"time","maxConnectionIdle","maxConnectionAge","maxConnectionAgeGrace","timeout"} {
+	//	if cfg.IsSet(k) {
+	//		if v,err:=time.ParseDuration(cfg.String(k));err!=nil{
+	//			panic(err)
+	//		} else {
+	//			cfg.Parser().Set(k, v)
+	//		}
+	//	}
+	//}
 	if err := cfg.Parser().UnmarshalByJson("", &sp); err != nil {
 		panic(err)
 	}
@@ -85,7 +111,7 @@ func (c configurableGrpcServerOptions) unaryInterceptorHandler(cnf *conf.Configu
 			break
 		}
 		if handler, ok := c.usit[name]; ok {
-			itcfg := cnf.CutFromOperator(it)
+			itcfg := cnf.CutFromOperator(it.Cut(name))
 			opts = append(opts, handler(itcfg))
 		}
 	}
@@ -105,7 +131,7 @@ func (c configurableGrpcServerOptions) Apply(cfg *conf.Configuration, path strin
 			opts = append(opts, c.unaryInterceptorHandler(itcfg))
 		}
 		if handler, ok := c.ms[name]; ok {
-			itcfg := cfg.CutFromOperator(hf)
+			itcfg := cfg.CutFromOperator(hf.Cut(name))
 			if h := handler(itcfg); h != nil {
 				opts = append(opts, h)
 			}

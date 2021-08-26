@@ -31,6 +31,6 @@ cache:
     size: 1000
     ttl: 60
 includeFiles:
-  - config/attach.yaml
-  - config/router.yaml
-  - config/service.yaml
+  - etc/attach.yaml
+  - etc/router.yaml
+  - etc/service.yaml

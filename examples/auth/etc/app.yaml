@@ -7,7 +7,7 @@ log:
     encoding: json
     outputPaths:
       - stdout
-      - "test.log"
+      - "logs/test.log"
     errorOutputPaths:
       - stderr
   rotate:

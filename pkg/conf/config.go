@@ -26,17 +26,22 @@ type Configuration struct {
 }
 
 var (
-	global *Configuration
+	global            *Configuration
+	defaultConfigFile = "etc/app.yaml"
 )
 
 var defaultOptions = options{
-	localPath: filepath.Join(filepath.Dir(os.Args[0]), "etc/app.yaml"),
-	basedir:   filepath.Dir(os.Args[0]),
-	global:    true,
+	global: true,
 }
 
 func init() {
 	global = New()
+	pwd, err := filepath.Abs(os.Args[0])
+	if err != nil {
+		panic(err)
+	}
+	defaultOptions.basedir = filepath.Dir(pwd)
+	defaultOptions.localPath = filepath.Join(defaultOptions.basedir, defaultConfigFile)
 }
 
 // New create an application configuration instance

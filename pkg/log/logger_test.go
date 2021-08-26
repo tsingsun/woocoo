@@ -12,6 +12,7 @@ var (
 )
 
 func init() {
+	cnf.Abs(".")
 	logger.Apply(cnf, "log")
 }
 

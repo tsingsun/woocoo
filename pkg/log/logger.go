@@ -2,6 +2,7 @@ package log
 
 import (
 	"context"
+	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -50,7 +51,7 @@ func (l *Logger) Apply(cfg *conf.Configuration, path string) {
 	config := Config{}
 	zl, err := config.BuildZap(cfg)
 	if err != nil {
-		Panicf("%s apply from configuration file err:%s", "log", err)
+		panic(fmt.Errorf("%s apply from configuration file err:%s", "log", err))
 	}
 
 	l.zap = zl

@@ -35,7 +35,7 @@ func (c *Config) initConfig(cfg *conf.Configuration) error {
 
 	var otps []string
 	for _, path := range c.zapConfig.OutputPaths {
-		u, err := convertPath(path, cfg.GetBaseDir())
+		u, err := convertPath(path, cfg.GetBaseDir(), cfg.IsSet(rotateConfigPath))
 		if err != nil {
 			return err
 		}
@@ -95,7 +95,7 @@ func (c *Config) buildZap(opts ...zap.Option) {
 
 }
 
-func convertPath(path string, base string) (string, error) {
+func convertPath(path string, base string, useRotate bool) (string, error) {
 	u, err := url.Parse(path)
 	if err != nil {
 		return "", fmt.Errorf("can't parse %q as a URL: %v", path, err)
@@ -103,7 +103,9 @@ func convertPath(path string, base string) (string, error) {
 	if path == "stdout" || path == "stderr" || (u.Scheme != "" && u.Scheme != "file") {
 		return path, nil
 	}
-	u.Scheme = rotateSchema
+	if useRotate {
+		u.Scheme = rotateSchema
+	}
 	if !filepath.IsAbs(u.Path) {
 		u.Path = filepath.Join(base, u.Path)
 	}

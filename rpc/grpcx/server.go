@@ -84,8 +84,8 @@ func Default(opts ...Option) *Server {
 		Config(),
 		UseLogger(),
 	}
-	defaultOpts = append(defaultOpts, opts...)
-	srv := New(opts...)
+	mOpts := append(defaultOpts, opts...)
+	srv := New(mOpts...)
 	return srv
 }
 
@@ -112,10 +112,12 @@ func (s *Server) Engine() *grpc.Server {
 	return s.engine
 }
 
-func (s *Server) Stop() error {
-	ch := make(chan error)
-	s.exit <- ch
-	err := <-ch
+func (s *Server) Stop() (err error) {
+	if s.registry != nil {
+		ch := make(chan error)
+		s.exit <- ch
+		err = <-ch
+	}
 	s.engine.GracefulStop()
 	return err
 }
@@ -138,7 +140,7 @@ func getIP() string {
 
 func (s *Server) runAndGracefulStop(lis net.Listener) {
 	go func() {
-		log.Debug("starting grpc server")
+		log.Debug("starting grpc server at", lis.Addr().String())
 		err := s.Engine().Serve(lis)
 		if err != nil {
 			log.Fatalf("could not serve: %v", err)

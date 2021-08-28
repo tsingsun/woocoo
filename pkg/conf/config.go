@@ -70,8 +70,8 @@ func BuildWithOption(opt ...Option) (*Configuration, error) {
 	return cnf, nil
 }
 
-func (c Configuration) asGlobal() {
-	global = &c
+func (c *Configuration) asGlobal() {
+	global = c
 }
 
 func (c *Configuration) Build() *Configuration {

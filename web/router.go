@@ -20,6 +20,7 @@ var registerRule = RuleManager{}
 //you can use AfterRegisterInternalHandler to replace an inline HandlerFunc or add a new
 type Router struct {
 	Engine                       *gin.Engine
+	Groups                       []*gin.RouterGroup
 	server                       *Server
 	hms                          RuleManager
 	AfterRegisterInternalHandler func(*Router)
@@ -46,21 +47,39 @@ func (r *Router) Apply(cfg *conf.Configuration, path string) error {
 	}
 
 	registerInternalHandler(r)
-	//hfs := cfg.Sub(path + conf.KeyDelimiter + "handleFuncs").ParserOperator().MapKeys()
-	hfs := cfg.Sub(path).ParserOperator().Slices("handleFuncs")
+	//rgs := cfg.Sub(path + conf.KeyDelimiter + "handleFuncs").ParserOperator().MapKeys()
+	rgs := cfg.Sub(path).ParserOperator().Slices("routerGroups")
 	if r.AfterRegisterInternalHandler != nil {
 		r.AfterRegisterInternalHandler(r)
 	}
-	for _, k := range hfs {
+	for _, rItem := range rgs {
 		var name string
-		for s := range k.Raw() {
+		for s := range rItem.Raw() {
 			name = s
 			break
 		}
-		if hf, ok := handler.RegisterHandler[name]; ok {
-			r.Engine.Use(hf(cfg.CutFromOperator(k.Cut(name))))
+		var gr *gin.RouterGroup
+		rCfg := rItem.Cut(name)
+		// The sequence allows flexible processing of handlers
+		if name == "default" {
+			gr = &r.Engine.RouterGroup
 		} else {
-			return errors.New("middleware not found:" + name)
+			gr = r.Engine.Group(rCfg.String("basePath"))
+		}
+		r.Groups = append(r.Groups, gr)
+		hfs := rCfg.Slices("handleFuncs")
+		for _, hItem := range hfs {
+			var fname string
+			for s := range hItem.Raw() {
+				fname = s
+				break
+			}
+			if hf, ok := handler.RegisterHandler[fname]; ok {
+				subCfg := cfg.CutFromOperator(hItem.Cut(fname))
+				gr.Use(hf(subCfg))
+			} else {
+				return errors.New("middleware not found:" + fname)
+			}
 		}
 	}
 	return nil
@@ -86,6 +105,15 @@ func (r *Router) RehandleRule() error {
 	return nil
 }
 
+func (r Router) GetGroup(basePath string) *gin.RouterGroup {
+	for _, group := range r.Groups {
+		if group.BasePath() == basePath {
+			return group
+		}
+	}
+	return nil
+}
+
 //RegisterRouteRule Support register a route rule with only one HandlerFunc
 func RegisterRouteRule(path, method string, handlerFunc gin.HandlerFunc) error {
 	var ri = gin.RouteInfo{
@@ -101,5 +129,5 @@ func RegisterRouteRule(path, method string, handlerFunc gin.HandlerFunc) error {
 func registerInternalHandler(router *Router) {
 	handler.RegisterHandlerFunc("accessLog", logger.AccessLogHandler(router.server.logger))
 	handler.RegisterHandlerFunc("recovery", recovery.RecoveryHandler(router.server.logger, true))
-	handler.RegisterHandlerFunc("auth", auth.AuthHandler(router.server.configuration))
+	handler.RegisterHandlerFunc("auth", auth.AuthHandler())
 }

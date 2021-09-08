@@ -3,7 +3,7 @@ package auth
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/jwttool"
 	"github.com/tsingsun/woocoo/web/handler"
@@ -137,6 +137,9 @@ type GinJWTMiddleware struct {
 
 	// CookieSameSite allow use http.SameSite cookie param
 	CookieSameSite http.SameSite
+
+	//exp check
+	DisabledExpiredCheck bool
 }
 
 // MiddlewareInit initialize jwt configs.
@@ -257,20 +260,21 @@ func (mw *GinJWTMiddleware) middlewareImpl(c *gin.Context) {
 		mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, c))
 		return
 	}
+	if !mw.DisabledExpiredCheck {
+		if claims["exp"] == nil {
+			mw.unauthorized(c, http.StatusBadRequest, mw.HTTPStatusMessageFunc(ErrMissingExpField, c))
+			return
+		}
 
-	if claims["exp"] == nil {
-		mw.unauthorized(c, http.StatusBadRequest, mw.HTTPStatusMessageFunc(ErrMissingExpField, c))
-		return
-	}
+		if _, ok := claims["exp"].(float64); !ok {
+			mw.unauthorized(c, http.StatusBadRequest, mw.HTTPStatusMessageFunc(ErrWrongFormatOfExp, c))
+			return
+		}
 
-	if _, ok := claims["exp"].(float64); !ok {
-		mw.unauthorized(c, http.StatusBadRequest, mw.HTTPStatusMessageFunc(ErrWrongFormatOfExp, c))
-		return
-	}
-
-	if int64(claims["exp"].(float64)) < mw.TimeFunc().Unix() {
-		mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(ErrExpiredToken, c))
-		return
+		if int64(claims["exp"].(float64)) < mw.TimeFunc().Unix() {
+			mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(ErrExpiredToken, c))
+			return
+		}
 	}
 
 	c.Set("JWT_PAYLOAD", claims)
@@ -623,14 +627,15 @@ func defaultAuthMiddleware(cfg *conf.Configuration) *GinJWTMiddleware {
 			})
 		},
 	}
+	if err := cfg.Parser().UnmarshalByJson("", ac); err != nil {
+		panic(err)
+	}
+
 	if ac.PrivKeyFile != "" {
 		ac.PrivKeyFile = cfg.Abs(ac.PrivKeyFile)
 	}
 	if ac.PubKeyFile != "" {
 		ac.PubKeyFile = cfg.Abs(ac.PubKeyFile)
-	}
-	if err := cfg.Parser().UnmarshalByJson("", ac); err != nil {
-		panic(err)
 	}
 	ac.Key = []byte(cfg.String("secret"))
 
@@ -646,8 +651,8 @@ func defaultAuthMiddleware(cfg *conf.Configuration) *GinJWTMiddleware {
 
 //AuthHandler jwt Token
 //secret: map to Key
-func AuthHandler(cnf *conf.Configuration) handler.HandlerApplyFunc {
+func AuthHandler() handler.HandlerApplyFunc {
 	return func(cfg *conf.Configuration) gin.HandlerFunc {
-		return defaultAuthMiddleware(cnf).MiddlewareFunc()
+		return defaultAuthMiddleware(cfg).MiddlewareFunc()
 	}
 }

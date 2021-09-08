@@ -21,9 +21,24 @@ func init() {
 	handler.RegisterHandlerFunc("graphql", QraphqlHandler())
 }
 
+type Option struct {
+	QueryPath string
+	DocPath   string
+	Group     string
+}
+
+var defaultOption = &Option{
+	QueryPath: "/query",
+	DocPath:   "/",
+	Group:     "/graphql",
+}
+
 type graphqlContextKey struct{}
 
-func DefaultGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema) *gqlgen.Server {
+func DefaultGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema, opt *Option) *gqlgen.Server {
+	if opt == nil {
+		opt = defaultOption
+	}
 	server := gqlgen.NewDefaultServer(schema)
 	server.AroundResponses(func(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
 		if gctx, err := FromIncomingContext(ctx); err == nil {
@@ -31,13 +46,25 @@ func DefaultGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema) *
 		}
 		return next(ctx)
 	})
-	websrv.Router().Engine.POST("/query", func(c *gin.Context) {
+	var g *gin.RouterGroup
+	if g = websrv.Router().GetGroup(opt.Group); g == nil {
+		g = &websrv.Router().Engine.RouterGroup
+	}
+	g.POST(opt.QueryPath, func(c *gin.Context) {
 		server.ServeHTTP(c.Writer, c.Request)
 	})
-	websrv.Router().Engine.GET("/", func(c *gin.Context) {
-		h := playground.Handler("graphql", "/query")
-		h.ServeHTTP(c.Writer, c.Request)
-	})
+	if websrv.ServerConfig().Development {
+		websrv.Router().Engine.Group("/devtool").
+			GET("/", func(c *gin.Context) {
+				h := playground.Handler("graphql", "/query")
+				h.ServeHTTP(c.Writer, c.Request)
+			})
+	} else {
+		g.GET(opt.DocPath, func(c *gin.Context) {
+			h := playground.Handler("graphql", "/query")
+			h.ServeHTTP(c.Writer, c.Request)
+		})
+	}
 	server.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
 		gctx, e := FromIncomingContext(ctx)
 		if e != nil {

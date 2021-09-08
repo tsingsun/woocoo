@@ -8,20 +8,29 @@ web:
     remoteIPHeaders:
       - X-Forwarded-For
       - X-Real-XIP
-    handleFuncs:
-      - accessLog:
-          exclude:
-            - IntrospectionQuery
-      - recovery:
+    routerGroups:
+      - default:
+          handleFuncs:
+            - accessLog:
+                exclude:
+                  - IntrospectionQuery
+            - recovery:
       - auth:
-          realm: woocoo
-          secret: 12345678
-          privKey: config/privKey.pem
-          pubKey: config/pubKey.pem
-          tenantHeader: Qeelyn-Org-Id
-      - graphql:
+          basePath: "/auth"
+          handleFuncs:
+            - auth:
+                realm: woocoo
+                secret: 12345678
+                privKey: config/privKey.pem
+                pubKey: config/pubKey.pem
+                tenantHeader: Qeelyn-Org-Id
+                disabledExpiredCheck: false
+            - graphql:
   ##以下配置暂时用于 标识出哪些路由为被客制化的
   routerules:
     - path: /
-      handler: "handler path"
+      handler: "GraphQL DevTool"
       method: get
+    - path: /query
+      handler: "GraphQL Query"
+      method: post

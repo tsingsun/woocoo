@@ -3,7 +3,7 @@ package jwttool
 import (
 	"crypto/rsa"
 	"errors"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 	"io/ioutil"
 	"strings"
 	"time"

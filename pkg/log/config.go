@@ -7,6 +7,8 @@ import (
 	"go.uber.org/zap"
 	"net/url"
 	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 const (
@@ -66,7 +68,11 @@ func (c *Config) initConfig(cfg *conf.Configuration) error {
 			if hn := u.Hostname(); hn != "" && hn != "localhost" {
 				return nil, fmt.Errorf("file URLs must leave host empty or use localhost: got %v", u)
 			}
-			l.Filename = u.Path
+			if runtime.GOOS == "windows" {
+				l.Filename = strings.TrimPrefix(u.Path, "/")
+			} else {
+				l.Filename = u.Path
+			}
 			return l, nil
 		})
 		if err != nil {
@@ -103,11 +109,18 @@ func convertPath(path string, base string, useRotate bool) (string, error) {
 	if path == "stdout" || path == "stderr" || (u.Scheme != "" && u.Scheme != "file") {
 		return path, nil
 	}
+	if u.Scheme != "file" {
+		var absPath string
+		if !filepath.IsAbs(u.Path) {
+			absPath = filepath.Join(base, path)
+			if runtime.GOOS == "windows" {
+				absPath = "/" + absPath
+			}
+			u.Path = absPath
+		}
+	}
 	if useRotate {
 		u.Scheme = rotateSchema
-	}
-	if !filepath.IsAbs(u.Path) {
-		u.Path = filepath.Join(base, u.Path)
 	}
 	return u.String(), nil
 }

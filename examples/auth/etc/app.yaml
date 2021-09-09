@@ -20,8 +20,12 @@ web:
   server:
     addr: 0.0.0.0:33333
   engine:
-    handleFuncs:
-    - accessLog:
-    - recovery:
-    - auth:
-        secret: 12345678
+    routerGroups:
+      - default:
+          handleFuncs:
+            - accessLog:
+                exclude:
+                  - IntrospectionQuery
+            - recovery:
+            - auth:
+                secret: 12345678

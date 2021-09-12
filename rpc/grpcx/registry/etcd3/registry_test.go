@@ -36,7 +36,7 @@ service:
       tls:
         ssl_certificate: ""
         ssl_certificate_key: ""
-      dial-timeout: 3000
+      dial-timeout: 3s
       dial-keep-alive-time: 3000
 `)
 	p, err := conf.NewParserFromBuffer(bytes.NewReader(b))

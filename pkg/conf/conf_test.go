@@ -5,6 +5,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"testing"
+	"time"
 )
 
 // test instance package
@@ -50,14 +51,7 @@ development: true
 log:
   config:
     level: debug
-    disableCaller: true
-    disableStacktrace: true
-    encoding: json
-    outputPaths:
-      - stdout
-      - "test.log"
-    errorOutputPaths:
-      - stderr
+duration: 1s
 `)
 	p, err := conf.NewParserFromBuffer(bytes.NewReader(b))
 	if err != nil {
@@ -70,6 +64,49 @@ log:
 	cfg.Parser().Set("log.config.level", "info")
 	if copy.Get("appname") == cfg.Get("appname") {
 		t.Fatal()
+	}
+	if copy.Duration("duration") != time.Second {
+		t.Fatal("duration section copy error")
+	}
+}
+
+func TestUnmarshalByJson(t *testing.T) {
+	type config struct {
+		Level    string
+		Duration time.Duration
+	}
+	type log struct {
+		Config config
+	}
+	type unmarshalConfig struct {
+		Appname  string
+		Log      *log
+		Duration time.Duration
+	}
+	b := []byte(`
+appname: woocoo
+log:
+  config:
+    level: debug
+    duration: 1s
+duration: 1000
+`)
+	p, err := conf.NewParserFromBuffer(bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cnf := conf.New()
+	cfg := cnf.CutFromParser(p)
+	tc := unmarshalConfig{}
+	err = cfg.Parser().UnmarshalByJson("", &tc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tc.Duration != cfg.Duration("duration") {
+		t.Fatal("direct duration error")
+	}
+	if tc.Log.Config.Duration != cfg.Duration("log.config.duration") {
+		t.Fatal("sub struct duration error")
 	}
 }
 

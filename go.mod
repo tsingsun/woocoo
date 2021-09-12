@@ -10,7 +10,7 @@ require (
 	github.com/go-playground/validator/v10 v10.9.0 // indirect
 	github.com/go-redis/cache/v8 v8.4.1
 	github.com/go-redis/redis/v8 v8.4.4
-	github.com/knadh/koanf v1.1.1
+	github.com/knadh/koanf v1.2.3
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/mitchellh/mapstructure v1.4.1

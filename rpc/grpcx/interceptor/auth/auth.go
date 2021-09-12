@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/jwttool"
 	"github.com/tsingsun/woocoo/pkg/user"

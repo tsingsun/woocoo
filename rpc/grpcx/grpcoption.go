@@ -59,23 +59,11 @@ func keepaliveHandler(cfg *conf.Configuration) grpc.ServerOption {
 		if f.Type == reflect.TypeOf(time.Duration(0)) {
 			k := strings.ToLower(string(f.Name[0])) + f.Name[1:]
 			if cfg.IsSet(k) {
-				if v, err := time.ParseDuration(cfg.String(k)); err != nil {
-					panic(err)
-				} else {
-					cfg.Parser().Set(k, v)
-				}
+				cfg.Parser().Set(k, cfg.Duration(k))
 			}
 		}
 	}
-	//for _, k := range []string{"time","maxConnectionIdle","maxConnectionAge","maxConnectionAgeGrace","timeout"} {
-	//	if cfg.IsSet(k) {
-	//		if v,err:=time.ParseDuration(cfg.String(k));err!=nil{
-	//			panic(err)
-	//		} else {
-	//			cfg.Parser().Set(k, v)
-	//		}
-	//	}
-	//}
+
 	if err := cfg.Parser().UnmarshalByJson("", &sp); err != nil {
 		panic(err)
 	}
@@ -106,7 +94,7 @@ func (c configurableGrpcServerOptions) unaryInterceptorHandler(cnf *conf.Configu
 	its := cnf.SubOperator("")
 	for _, it := range its {
 		var name string
-		for s, _ := range it.Raw() {
+		for s := range it.Raw() {
 			name = s
 			break
 		}
@@ -122,7 +110,7 @@ func (c configurableGrpcServerOptions) Apply(cfg *conf.Configuration, path strin
 	hfs := cfg.ParserOperator().Slices(path)
 	for _, hf := range hfs {
 		var name string
-		for s, _ := range hf.Raw() {
+		for s := range hf.Raw() {
 			name = s
 			break
 		}

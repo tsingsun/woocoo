@@ -13,6 +13,8 @@ import (
 	"io"
 	"io/ioutil"
 	"reflect"
+	"strings"
+	"time"
 )
 
 const (
@@ -101,11 +103,51 @@ func (l *Parser) UnmarshalByJson(key string, out interface{}) (err error) {
 	if err != nil {
 		return err
 	}
+	unmarshalField(s, "", out)
 	bts, err := s.k.Marshal(koanfjson.Parser())
 	if err != nil {
 		return err
 	}
 	return json.Unmarshal(bts, out)
+}
+
+//unmarshalField fix UnmarshalByJson when handler time.duration
+func unmarshalField(l *Parser, parent string, out interface{}) {
+	outType := reflect.Indirect(reflect.ValueOf(out))
+	for i := 0; i < outType.NumField(); i++ {
+		f := outType.Field(i)
+		ft := outType.Type().Field(i)
+		fn := ft.Name
+		if !ft.IsExported() {
+			continue
+		}
+		fieldValue := f.Interface()
+		tag := ft.Tag.Get("json")
+		var key string
+		if tag != "" {
+			key = strings.Split(tag, ",")[0]
+		} else {
+			key = strings.ToLower(string(fn[0])) + fn[1:]
+		}
+
+		if parent != "" {
+			key = parent + KeyDelimiter + key
+		}
+		if f.Kind() == reflect.Struct {
+			unmarshalField(l, key, fieldValue)
+		}
+		if f.Kind() == reflect.Ptr {
+			t := reflect.TypeOf(fieldValue).Elem()
+			unmarshalField(l, key, reflect.New(t).Elem().Interface())
+		}
+		if !l.IsSet(key) {
+			continue
+		}
+		switch fieldValue.(type) {
+		case time.Duration:
+			l.Set(key, l.k.Duration(key))
+		}
+	}
 }
 
 // Get can retrieve any value given the key to use.

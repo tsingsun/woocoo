@@ -72,7 +72,7 @@ func (s *Server) Apply(cfg *conf.Configuration, path string) {
 		panic(err)
 	}
 
-	if err = cc.UnmarshalByJson("server", &s.config); err != nil {
+	if err = cc.UnmarshalByJson("server", s.config); err != nil {
 		panic(err)
 	}
 	s.config.Development = cfg.Development

@@ -140,10 +140,10 @@ func getIP() string {
 
 func (s *Server) runAndGracefulStop(lis net.Listener) {
 	go func() {
-		log.Debug("starting grpc server at", lis.Addr().String())
+		log.StdPrintf("start listen on %s", lis.Addr().String())
 		err := s.Engine().Serve(lis)
 		if err != nil {
-			log.Fatalf("could not serve: %v", err)
+			log.StdPrintf("could not serve: %v", err)
 		}
 	}()
 
@@ -157,7 +157,7 @@ func (s *Server) runAndGracefulStop(lis net.Listener) {
 			Address:         lis.Addr().String(),
 		}
 		if err := s.registry.Register(s.NodeInfo); err != nil {
-			log.Fatalf("could not register server: %v", err)
+			log.StdPrintf("could not register server: %v", err)
 		}
 
 		go func() {
@@ -172,13 +172,13 @@ func (s *Server) runAndGracefulStop(lis net.Listener) {
 				select {
 				case <-t.C:
 					if err := s.registry.Register(s.NodeInfo); err != nil {
-						log.Fatalf("could not register server: %v", err)
+						log.StdPrintf("could not register server: %v", err)
 					}
 				case ch = <-s.exit:
 					t.Stop()
 					err := s.registry.Unregister(s.NodeInfo)
 					if err != nil {
-						log.Errorf("registry unregister err: %v", err)
+						log.StdPrintf("registry unregister err: %v", err)
 					}
 					ch <- err
 					return
@@ -196,8 +196,8 @@ func (s *Server) runAndGracefulStop(lis net.Listener) {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Debug("Shutting down server...")
+	log.StdPrintln("Shutting down server...")
 	if err := s.Stop(); err != nil {
-		log.Fatalf("Server forced to runAndClose: %v", err)
+		log.StdPrintf("Server forced to runAndClose: %v", err)
 	}
 }

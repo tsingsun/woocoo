@@ -8,12 +8,12 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/web"
 	"github.com/tsingsun/woocoo/web/handler"
 	"github.com/tsingsun/woocoo/web/handler/logger"
 	"github.com/tsingsun/woocoo/web/handler/recovery"
 	"net/http"
-	"os"
 	"runtime/debug"
 )
 
@@ -73,8 +73,7 @@ func DefaultGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema, o
 		recovery.HandleRecoverError(gctx, err, websrv.Logger(), true)
 		gctx.AbortWithStatus(http.StatusInternalServerError)
 		if websrv.ServerConfig().Development {
-			fmt.Fprintln(os.Stderr, err)
-			fmt.Fprintln(os.Stderr)
+			log.StdPrintln(err)
 			debug.PrintStack()
 		}
 		ue := err.(error)

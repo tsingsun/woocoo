@@ -39,6 +39,7 @@ func New(opts ...Option) *Server {
 	for _, o := range opts {
 		o(srv)
 	}
+	log.PrintLogo()
 	return srv
 }
 
@@ -118,6 +119,7 @@ func (s Server) Run(graceful bool) (err error) {
 func (s Server) runAndGracefulShutdown(srv *http.Server) {
 	runSSL := s.config.SSLCertificate != "" && s.config.SSLCertificateKey != ""
 	go func() {
+		log.StdPrintf("start listening on %s", s.config.Addr)
 		var err error
 		if runSSL {
 			err = srv.ListenAndServeTLS(s.config.SSLCertificate, s.config.SSLCertificateKey)
@@ -125,7 +127,7 @@ func (s Server) runAndGracefulShutdown(srv *http.Server) {
 			err = srv.ListenAndServe()
 		}
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Errorf("listen: %s\n", err)
+			log.StdPrintf("server closed error: %s", err)
 		}
 	}()
 	// Wait for interrupt signal to gracefully runAndClose the server with
@@ -137,14 +139,14 @@ func (s Server) runAndGracefulShutdown(srv *http.Server) {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Info("Shutting down server...")
+	log.StdPrintln("Shutting down server...")
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to runAndClose:", err)
+		log.StdPrintf("Server forced to runAndClose:", err)
 	}
 }
 
@@ -155,9 +157,9 @@ func (s Server) runAndClose(srv *http.Server) {
 	signal.Notify(quit, os.Interrupt)
 	go func() {
 		<-quit
-		log.Info("Shutting down server...")
+		log.StdPrintln("Shutting down server...")
 		if err := srv.Close(); err != nil {
-			log.Fatal("Server Close:", err)
+			log.StdPrintln("Server Close:", err)
 		}
 	}()
 
@@ -167,6 +169,6 @@ func (s Server) runAndClose(srv *http.Server) {
 		err = srv.ListenAndServe()
 	}
 	if err != nil && errors.Is(err, http.ErrServerClosed) {
-		log.Errorf("listen: %s\n", err)
+		log.StdPrintf("listen: %s", err)
 	}
 }

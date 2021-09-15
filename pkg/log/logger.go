@@ -92,6 +92,7 @@ func Operator() *zap.Logger {
 func Debug(args ...interface{}) {
 	global.zap.Sugar().Debug(args...)
 }
+
 func (l *Logger) Debug(msg string, fields ...zap.Field) {
 	l.zap.Debug(msg, fields...)
 }

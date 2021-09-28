@@ -191,6 +191,8 @@ func (c *Configuration) SubOperator(path string) []*koanf.Koanf {
 	return c.parser.k.Slices(path)
 }
 
+// Abs 返回决对路径
+func Abs(path string) string { return global.Abs(path) }
 func (c Configuration) Abs(path string) string {
 	if filepath.IsAbs(path) {
 		return path

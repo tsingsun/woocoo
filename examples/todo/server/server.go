@@ -33,10 +33,10 @@ func main() {
 	); err != nil {
 		log.Fatal("running schema migration", zap.Error(err))
 	}
-	srv := gql.DefaultGraphqlServer(httpSvr, todo.NewSchema(client))
+	srv := gql.DefaultGraphqlServer(httpSvr, todo.NewSchema(client),nil)
 	//srv := handler.NewDefaultServer(todo.NewSchema(client))
 	srv.Use(entgql.Transactioner{TxOpener: client})
-	//if httpSvr.ServerConfig().Development {
+	//if httpSvr.ServerSetting().Development {
 	//	srv.Use(&debug.Tracer{})
 	//}
 

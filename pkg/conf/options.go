@@ -3,6 +3,7 @@ package conf
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 // configuration detail
@@ -22,6 +23,9 @@ type Option func(*options)
 // A s is file path
 func LocalPath(s string) Option {
 	return func(o *options) {
+		if !filepath.IsAbs(s) {
+			s = filepath.Join(defaultOptions.basedir, s)
+		}
 		_, err := os.Stat(s)
 		if err != nil {
 			panic(fmt.Sprintf("local file '%s' is not exists", s))

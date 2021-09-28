@@ -16,7 +16,7 @@ const (
 	configPath = "web"
 )
 
-type ServerConfig struct {
+type ServerSetting struct {
 	Addr              string `json:"addr" yaml:"addr"`
 	SSLCertificate    string `json:"ssl_certificate" yaml:"ssl_certificate"`
 	SSLCertificateKey string `json:"ssl_certificate_key" yaml:"ssl_certificate_key"`
@@ -24,7 +24,7 @@ type ServerConfig struct {
 }
 
 type Server struct {
-	config        *ServerConfig
+	serverSetting *ServerSetting
 	configuration *conf.Configuration
 	router        *Router
 	logger        *log.Logger
@@ -32,7 +32,7 @@ type Server struct {
 
 func New(opts ...Option) *Server {
 	srv := &Server{
-		config: &ServerConfig{
+		serverSetting: &ServerSetting{
 			Addr: ":8080",
 		},
 	}
@@ -53,8 +53,8 @@ func Default(opts ...Option) *Server {
 	return srv
 }
 
-func (s Server) ServerConfig() ServerConfig {
-	return *s.config
+func (s Server) ServerConfig() ServerSetting {
+	return *s.serverSetting
 }
 func (s *Server) Router() *Router {
 	return s.router
@@ -73,10 +73,10 @@ func (s *Server) Apply(cfg *conf.Configuration, path string) {
 		panic(err)
 	}
 
-	if err = cc.UnmarshalByJson("server", s.config); err != nil {
+	if err = cc.UnmarshalByJson("server", s.serverSetting); err != nil {
 		panic(err)
 	}
-	s.config.Development = cfg.Development
+	s.serverSetting.Development = cfg.Development
 
 	//must last apply
 	if s.router == nil {
@@ -88,7 +88,7 @@ func (s *Server) Apply(cfg *conf.Configuration, path string) {
 }
 
 func (s Server) beforeRun() error {
-	if s.config.Addr == "" {
+	if s.serverSetting.Addr == "" {
 		return errors.New("server configuration is not correct: miss listen")
 	}
 	return s.router.RehandleRule()
@@ -105,7 +105,7 @@ func (s Server) Run(graceful bool) (err error) {
 		return err
 	}
 	srv := &http.Server{
-		Addr:    s.config.Addr,
+		Addr:    s.serverSetting.Addr,
 		Handler: s.router.Engine,
 	}
 	if graceful {
@@ -117,22 +117,23 @@ func (s Server) Run(graceful bool) (err error) {
 }
 
 func (s Server) runAndGracefulShutdown(srv *http.Server) {
-	runSSL := s.config.SSLCertificate != "" && s.config.SSLCertificateKey != ""
+	quit := make(chan os.Signal)
+	runSSL := s.serverSetting.SSLCertificate != "" && s.serverSetting.SSLCertificateKey != ""
 	go func() {
-		log.StdPrintf("start listening on %s", s.config.Addr)
+		log.StdPrintf("start listening on %s", s.serverSetting.Addr)
 		var err error
 		if runSSL {
-			err = srv.ListenAndServeTLS(s.config.SSLCertificate, s.config.SSLCertificateKey)
+			err = srv.ListenAndServeTLS(s.serverSetting.SSLCertificate, s.serverSetting.SSLCertificateKey)
 		} else {
 			err = srv.ListenAndServe()
 		}
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.StdPrintf("server closed error: %s", err)
+			log.StdPrintf("listen: %s", err)
 		}
+		close(quit)
 	}()
 	// Wait for interrupt signal to gracefully runAndClose the server with
 	// a timeout of 5 seconds.
-	quit := make(chan os.Signal)
 	// kill (no param) default send syscall.SIGTERM
 	// kill -2 is syscall.SIGINT
 	// kill -9 is syscall.SIGKILL but can't be catch, so don't need add it
@@ -152,7 +153,7 @@ func (s Server) runAndGracefulShutdown(srv *http.Server) {
 
 func (s Server) runAndClose(srv *http.Server) {
 	var err error
-	runSSL := s.config.SSLCertificate != "" && s.config.SSLCertificateKey != ""
+	runSSL := s.serverSetting.SSLCertificate != "" && s.serverSetting.SSLCertificateKey != ""
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
 	go func() {
@@ -164,7 +165,7 @@ func (s Server) runAndClose(srv *http.Server) {
 	}()
 
 	if runSSL {
-		err = srv.ListenAndServeTLS(s.config.SSLCertificate, s.config.SSLCertificateKey)
+		err = srv.ListenAndServeTLS(s.serverSetting.SSLCertificate, s.serverSetting.SSLCertificateKey)
 	} else {
 		err = srv.ListenAndServe()
 	}

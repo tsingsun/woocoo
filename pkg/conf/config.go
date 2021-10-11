@@ -126,7 +126,8 @@ func (c *Configuration) GetBaseDir() string {
 	return c.opts.basedir
 }
 
-func Operator() *Parser { return global.Parser() }
+// Operator return default(global) Configuration instance
+func Operator() *Configuration { return global }
 
 // Parser return configuration operator
 func (c Configuration) Parser() *Parser {
@@ -191,17 +192,17 @@ func (c *Configuration) SubOperator(path string) []*koanf.Koanf {
 	return c.parser.k.Slices(path)
 }
 
-// Abs 返回决对路径
+func (c *Configuration) Copy() *Configuration {
+	return c.CutFromOperator(c.Parser().k.Copy())
+}
+
+// Abs 返回绝对路径
 func Abs(path string) string { return global.Abs(path) }
 func (c Configuration) Abs(path string) string {
 	if filepath.IsAbs(path) {
 		return path
 	}
 	return filepath.Join(c.GetBaseDir(), path)
-}
-
-func (c *Configuration) Copy() *Configuration {
-	return c.CutFromOperator(c.Parser().k.Copy())
 }
 
 func Get(path string) interface{} { return global.Get(path) }

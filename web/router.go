@@ -65,6 +65,7 @@ func (r *Router) Apply(cfg *conf.Configuration, path string) error {
 			gr = &r.Engine.RouterGroup
 		} else {
 			gr = r.Engine.Group(rCfg.String("basePath"))
+			gr.Handlers = gin.HandlersChain{}
 		}
 		r.Groups = append(r.Groups, gr)
 		hfs := rCfg.Slices("handleFuncs")

@@ -127,7 +127,7 @@ func (c *Configuration) GetBaseDir() string {
 }
 
 // Operator return default(global) Configuration instance
-func Operator() *Configuration { return global }
+func Global() *Configuration { return global }
 
 // Parser return configuration operator
 func (c Configuration) Parser() *Parser {

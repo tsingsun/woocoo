@@ -46,9 +46,10 @@ func AccessLogHandler(logger *log.Logger) handler.HandlerApplyFunc {
 			for _, ex := range o.exclude {
 				if spath == ex {
 					shouldLog = false
+					break
 				}
 			}
-			if !shouldLog && c.Errors == nil {
+			if !shouldLog && len(c.Errors) == 0 {
 				return
 			}
 			if raw != "" {

@@ -3,7 +3,7 @@ package auth_test
 import (
 	"context"
 	"crypto/tls"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/user"
 	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/auth"

@@ -14,20 +14,20 @@ type Cache struct {
 	client *cache.Cache
 }
 
-func (c *Cache) Apply(cnf *conf.Configuration, path string) {
+// Apply
+// rCfg is the root configuration
+func (c *Cache) Apply(rCfg *conf.Configuration, path string) {
 	var local *cache.TinyLFU
-	if cnf.IsSet("cache.local") {
-		local = cache.NewTinyLFU(cnf.Int("cache.local.size"), time.Second*time.Duration(cnf.Int("cache.local.ttl")))
+	var err error
+	cnf := rCfg.Sub(path)
+	if cnf.IsSet("local") {
+		local = cache.NewTinyLFU(cnf.Int("local.size"), time.Second*time.Duration(cnf.Int("local.ttl")))
 	}
-	cc, err := cnf.Parser().Sub(path)
-	if err != nil {
-		panic(err)
-	}
-	clientType := cc.Get("type")
+	clientType := cnf.Get("redis.type")
 	switch clientType {
 	case "cluster":
 		opts := &redis.ClusterOptions{}
-		err = cc.UnmarshalByJson("redis", opts)
+		err = cnf.Parser().Unmarshal("redis", opts)
 		cl := redis.NewClusterClient(opts)
 		c.client = cache.New(&cache.Options{
 			Redis:      cl,
@@ -35,23 +35,24 @@ func (c *Cache) Apply(cnf *conf.Configuration, path string) {
 		})
 	case "ring":
 		opts := &redis.RingOptions{}
-		err = cc.UnmarshalByJson("redis", opts)
+		err = cnf.Parser().Unmarshal("redis", opts)
 		cl := redis.NewRing(opts)
 		c.client = cache.New(&cache.Options{
 			Redis:      cl,
 			LocalCache: local,
 		})
 	case "standalone":
+		fallthrough
 	default:
 		opts := &redis.Options{}
-		err = cc.UnmarshalByJson("redis", opts)
+		err = cnf.Parser().Unmarshal("redis", opts)
 		cl := redis.NewClient(opts)
 		c.client = cache.New(&cache.Options{
 			Redis:      cl,
 			LocalCache: local,
 		})
 	}
-	if err = manager.RegisterCache("redis", c); err != nil {
+	if err = manager.RegisterCache(path, c); err != nil {
 		panic(err)
 	}
 }

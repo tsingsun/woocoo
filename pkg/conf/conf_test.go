@@ -70,46 +70,6 @@ duration: 1s
 	}
 }
 
-func TestUnmarshalByJson(t *testing.T) {
-	type config struct {
-		Level    string
-		Duration time.Duration
-	}
-	type log struct {
-		Config config
-	}
-	type unmarshalConfig struct {
-		Appname  string
-		Log      *log
-		Duration time.Duration
-	}
-	b := []byte(`
-appname: woocoo
-log:
-  config:
-    level: debug
-    duration: 1s
-duration: 1000
-`)
-	p, err := conf.NewParserFromBuffer(bytes.NewReader(b))
-	if err != nil {
-		t.Fatal(err)
-	}
-	cnf := conf.New()
-	cfg := cnf.CutFromParser(p)
-	tc := unmarshalConfig{}
-	err = cfg.Parser().UnmarshalByJson("", &tc)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tc.Duration != cfg.Duration("duration") {
-		t.Fatal("direct duration error")
-	}
-	if tc.Log.Config.Duration != cfg.Duration("log.config.duration") {
-		t.Fatal("sub struct duration error")
-	}
-}
-
 //func TestConfig_WatchConfig(t *testing.T) {
 //	endpoint := "127.0.0.1:2379"
 //	path := "/woocoo/test/app.yaml"

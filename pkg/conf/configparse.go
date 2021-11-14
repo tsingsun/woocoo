@@ -1,6 +1,7 @@
 package conf
 
 import (
+	"encoding"
 	"encoding/json"
 	"fmt"
 	"github.com/knadh/koanf"
@@ -73,26 +74,41 @@ func (l *Parser) AllKeys() []string {
 
 // Unmarshal unmarshals the config into a struct.
 // Tags on the fields of the structure must be properly set.
-func (l *Parser) Unmarshal(rawVal interface{}) error {
+func (l *Parser) Unmarshal(key string, rawVal interface{}) (err error) {
+	var s *Parser
+	if key == "" {
+		s = l
+	} else {
+		s, err = l.Sub(key)
+	}
+
 	decoder, err := mapstructure.NewDecoder(decoderConfig(rawVal))
 	if err != nil {
 		return err
 	}
-	return decoder.Decode(l.ToStringMap())
+	return decoder.Decode(s.ToStringMap())
 }
 
 // UnmarshalExact unmarshals the config into a struct, erroring if a field is nonexistent.
-func (l *Parser) UnmarshalExact(intoCfg interface{}) error {
+func (l *Parser) UnmarshalExact(key string, intoCfg interface{}) (err error) {
+	var s *Parser
+	if key == "" {
+		s = l
+	} else {
+		s, err = l.Sub(key)
+	}
+
 	dc := decoderConfig(intoCfg)
 	dc.ErrorUnused = true
 	decoder, err := mapstructure.NewDecoder(dc)
 	if err != nil {
 		return err
 	}
-	return decoder.Decode(l.ToStringMap())
+	return decoder.Decode(s.ToStringMap())
 }
 
-//UnmarshalByJson unmarshals the config named key into a struct, using JSON decode
+// UnmarshalByJson unmarshals the config named key into a struct, using JSON decode
+// Deprecated: use Unmarshal instead,there is same bug
 func (l *Parser) UnmarshalByJson(key string, out interface{}) (err error) {
 	var s *Parser
 	if key == "" {
@@ -202,6 +218,41 @@ func (l Parser) ToBytes(p koanf.Parser) ([]byte, error) {
 	return l.k.Marshal(p)
 }
 
+func textUnmarshalHookFunc() mapstructure.DecodeHookFunc {
+	return func(from reflect.Value, to reflect.Value) (interface{}, error) {
+		if to.CanAddr() {
+			to = to.Addr()
+		}
+
+		// If the destination implements the unmarshaling interface
+		u, ok := to.Interface().(encoding.TextUnmarshaler)
+		if !ok {
+			return from.Interface(), nil
+		}
+
+		// If it is nil and a pointer, create and assign the target value first
+		if to.IsNil() && to.Type().Kind() == reflect.Ptr {
+			to.Set(reflect.New(to.Type().Elem()))
+			u = to.Interface().(encoding.TextUnmarshaler)
+		}
+
+		var text []byte
+		switch v := from.Interface().(type) {
+		case string:
+			text = []byte(v)
+		case []byte:
+			text = v
+		default:
+			return v, nil
+		}
+
+		if err := u.UnmarshalText(text); err != nil {
+			return to.Interface(), err
+		}
+		return to.Interface(), nil
+	}
+}
+
 // decoderConfig returns a default mapstructure.DecoderConfig capable of parsing time.Duration
 // and weakly converting config field values to primitive types.  It also ensures that maps
 // whose values are nil pointer structs resolved to the zero value of the target struct (see
@@ -211,10 +262,11 @@ func decoderConfig(result interface{}) *mapstructure.DecoderConfig {
 	return &mapstructure.DecoderConfig{
 		Result:           result,
 		Metadata:         nil,
-		TagName:          "mapstructure",
+		TagName:          "json",
 		WeaklyTypedInput: true,
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			expandNilStructPointers(),
+			textUnmarshalHookFunc(),
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToSliceHookFunc(","),
 		),

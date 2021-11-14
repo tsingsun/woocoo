@@ -627,7 +627,7 @@ func defaultAuthMiddleware(cfg *conf.Configuration) *GinJWTMiddleware {
 			})
 		},
 	}
-	if err := cfg.Parser().UnmarshalByJson("", ac); err != nil {
+	if err := cfg.Parser().Unmarshal("", ac); err != nil {
 		panic(err)
 	}
 

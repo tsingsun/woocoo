@@ -19,12 +19,12 @@ const (
 )
 
 type ServerConfig struct {
-	Addr              string              `json:"addr" yaml:"addr"`
-	SSLCertificate    string              `json:"ssl_certificate" yaml:"ssl_certificate"`
-	SSLCertificateKey string              `json:"ssl_certificate_key" yaml:"ssl_certificate_key"`
-	Location          string              `json:"location" yaml:"location"`
-	Version           string              `json:"version" yaml:"version"`
-	grpcOptions       []grpc.ServerOption `json:"-" yaml:"-"`
+	Addr              string `json:"addr" yaml:"addr"`
+	SSLCertificate    string `json:"ssl_certificate" yaml:"ssl_certificate"`
+	SSLCertificateKey string `json:"ssl_certificate_key" yaml:"ssl_certificate_key"`
+	Location          string `json:"location" yaml:"location"`
+	Version           string `json:"version" yaml:"version"`
+	grpcOptions       []grpc.ServerOption
 }
 
 type Server struct {
@@ -42,7 +42,7 @@ func (s *Server) Apply(cfg *conf.Configuration, path string) {
 	if s.configurationKey == "" && path != "" {
 		s.configurationKey = path
 	}
-	if err := cfg.Sub(path).Parser().UnmarshalByJson("server", s.config); err != nil {
+	if err := cfg.Sub(path).Parser().Unmarshal("server", s.config); err != nil {
 		panic(err)
 	}
 	if k := strings.Join([]string{path, "registry"}, conf.KeyDelimiter); cfg.IsSet(k) {

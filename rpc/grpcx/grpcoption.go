@@ -10,9 +10,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"path/filepath"
-	"reflect"
-	"strings"
-	"time"
 )
 
 var (
@@ -53,18 +50,7 @@ func RegisterGrpcUnaryInterceptor(name string, handler func(*conf.Configuration)
 
 func keepaliveHandler(cfg *conf.Configuration) grpc.ServerOption {
 	sp := keepalive.ServerParameters{}
-	spt := reflect.TypeOf(sp)
-	for i := 0; i < spt.NumField(); i++ {
-		f := spt.Field(i)
-		if f.Type == reflect.TypeOf(time.Duration(0)) {
-			k := strings.ToLower(string(f.Name[0])) + f.Name[1:]
-			if cfg.IsSet(k) {
-				cfg.Parser().Set(k, cfg.Duration(k))
-			}
-		}
-	}
-
-	if err := cfg.Parser().UnmarshalByJson("", &sp); err != nil {
+	if err := cfg.Parser().Unmarshal("", &sp); err != nil {
 		panic(err)
 	}
 	return grpc.KeepaliveParams(sp)

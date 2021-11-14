@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	cnf = testdata.Config
+	cfg = testdata.Config
 	mr  *miniredis.Miniredis
 )
 
@@ -20,19 +20,44 @@ func initCache(t *testing.T, remote bool) *redis.Cache {
 		if mr, err = miniredis.Run(); err != nil {
 			t.Error(err)
 		}
-		cnf.Parser().Set("cache.redis.addr", mr.Addr())
+		cfg.Parser().Set("cache.redis.addr", mr.Addr())
 	}
 	//single node
-	cache.Apply(cnf, "cache")
+	cache.Apply(cfg, "cache")
 	return cache
 }
 
 func TestCache_Apply(t *testing.T) {
+	b := []byte(`
+standalone:
+  redis:
+    type: standalone
+    addr: 127.0.0.1:6379
+    db: 1
+  local:
+    size: 1000
+    ttl: 60s
+cluster:
+  redis:
+    type: cluster
+    addrs:
+    - 127.0.0.1:6379  
+    db: 1
+  local:
+    size: 1000
+    ttl: 60s
+`)
+	err := cfg.ParserFromBytes(b)
+	if err != nil {
+		panic(err)
+	}
 	cache := &redis.Cache{}
-	cache.Apply(cnf, "cache")
+	cache.Apply(cfg, "standalone")
 	if cache == nil {
 		t.Error("apply cache error")
 	}
+
+	cache.Apply(cfg, "cluster")
 }
 
 func TestCache_Take(t *testing.T) {

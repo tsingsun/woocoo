@@ -27,7 +27,7 @@ type Config struct {
 func (c *Config) initConfig(cfg *conf.Configuration) error {
 	//zap
 	var zc = zap.NewProductionConfig()
-	if err := cfg.Parser().UnmarshalByJson(zapConfigPath, &zc); err != nil {
+	if err := cfg.Parser().Unmarshal(zapConfigPath, &zc); err != nil {
 		return err
 	}
 	if cfg.IsSet("development") {
@@ -47,7 +47,7 @@ func (c *Config) initConfig(cfg *conf.Configuration) error {
 
 	if cfg.IsSet(rotateConfigPath) {
 		l := &lumberjack.Logger{ConcurrentSafe: false}
-		if err := cfg.Parser().UnmarshalByJson(rotateConfigPath, l); err != nil {
+		if err := cfg.Parser().Unmarshal(rotateConfigPath, l); err != nil {
 			return err
 		}
 

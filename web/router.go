@@ -42,7 +42,7 @@ func (r *Router) Apply(cfg *conf.Configuration, path string) error {
 	if r.server == nil {
 		return errors.New("router apply must apply after Server")
 	}
-	if err := cfg.Parser().UnmarshalByJson(path, r.Engine); err != nil {
+	if err := cfg.Parser().Unmarshal(path, r.Engine); err != nil {
 		return err
 	}
 

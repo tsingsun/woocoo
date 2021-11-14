@@ -36,7 +36,7 @@ func New(opts ...Option) *Client {
 }
 
 func (c *Client) Apply(cfg *conf.Configuration, path string) {
-	if err := cfg.Sub(path).Parser().UnmarshalByJson("server", &c.serverConfig); err != nil {
+	if err := cfg.Sub(path).Parser().Unmarshal("server", &c.serverConfig); err != nil {
 		panic(err)
 	}
 	if k := strings.Join([]string{path, "registry"}, conf.KeyDelimiter); cfg.IsSet(k) {

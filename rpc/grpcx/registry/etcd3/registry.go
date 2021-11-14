@@ -48,7 +48,7 @@ func New() *Registry {
 }
 
 func (r *Registry) Apply(cfg *conf.Configuration, path string) {
-	if err := cfg.Parser().UnmarshalByJson(path, &r.config); err != nil {
+	if err := cfg.Parser().Unmarshal(path, &r.config); err != nil {
 		panic(err)
 	}
 	if cfg.IsSet("log") {

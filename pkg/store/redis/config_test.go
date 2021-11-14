@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	cnf, _ = conf.BuildWithOption(conf.LocalPath(testdata.Path("app.yaml")))
+	cnf, _ = conf.BuildWithOption(conf.BaseDir(testdata.BaseDir()), conf.LocalPath(testdata.Path("etc/app.yaml")))
 )
 
 func TestNewConfig(t *testing.T) {
@@ -16,8 +16,8 @@ func TestNewConfig(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	config := redis.ClusterOptions{}
-	err = cc.UnmarshalByJson("redis", &config)
+	config := redis.Options{}
+	err = cc.Unmarshal("redis", &config)
 	if err != nil {
 		t.Error(err)
 	}

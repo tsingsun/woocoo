@@ -11,11 +11,6 @@ var (
 	logger = &log.Logger{}
 )
 
-func init() {
-	cnf.Abs(".")
-	logger.Apply(cnf, "log")
-}
-
 func TestNewWithOption(t *testing.T) {
 	log.Info("get log")
 }

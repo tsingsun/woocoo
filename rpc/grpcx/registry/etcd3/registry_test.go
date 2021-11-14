@@ -29,7 +29,7 @@ service:
     version: "1.0"
   registry:
     schema: etcd
-    ttl: 600
+    ttl: 600s
     etcd:
       endpoints:
         - 127.0.0.1:2379

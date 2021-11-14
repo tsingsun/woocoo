@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/web"
+	_ "github.com/tsingsun/woocoo/web/handler/gql"
 	"testing"
 )
 
@@ -21,7 +22,6 @@ func init() {
 }
 
 func TestServer_Apply(t *testing.T) {
-	t.Log(logo)
 	srv := web.New()
 	srv.Apply(cnf, "web")
 }

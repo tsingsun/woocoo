@@ -73,7 +73,7 @@ func (s *Server) Apply(cfg *conf.Configuration, path string) {
 		panic(err)
 	}
 
-	if err = cc.UnmarshalByJson("server", s.serverSetting); err != nil {
+	if err = cc.Unmarshal("server", s.serverSetting); err != nil {
 		panic(err)
 	}
 	s.serverSetting.Development = cfg.Development
@@ -147,7 +147,7 @@ func (s Server) runAndGracefulShutdown(srv *http.Server) {
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.StdPrintf("Server forced to runAndClose:", err)
+		log.StdPrintf("Server forced to runAndClose: %v", err)
 	}
 }
 

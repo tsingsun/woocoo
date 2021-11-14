@@ -1,6 +1,7 @@
 package conf
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/yaml"
@@ -132,6 +133,15 @@ func Global() *Configuration { return global }
 // Parser return configuration operator
 func (c Configuration) Parser() *Parser {
 	return c.parser
+}
+
+func (c *Configuration) ParserFromBytes(bs []byte) error {
+	p, err := NewParserFromBuffer(bytes.NewReader(bs))
+	if err != nil {
+		return err
+	}
+	c.parser = p
+	return nil
 }
 
 func (c Configuration) ParserOperator() *koanf.Koanf {

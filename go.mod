@@ -6,7 +6,7 @@ require (
 	github.com/99designs/gqlgen v0.14.0
 	github.com/BurntSushi/toml v0.3.1
 	github.com/alicebob/miniredis/v2 v2.15.1
-	github.com/gin-gonic/gin v1.7.4
+	github.com/gin-gonic/gin v1.7.7
 	github.com/go-playground/validator/v10 v10.9.0 // indirect
 	github.com/go-redis/cache/v8 v8.4.1
 	github.com/go-redis/redis/v8 v8.4.4

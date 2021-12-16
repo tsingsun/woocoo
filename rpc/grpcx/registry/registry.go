@@ -29,7 +29,7 @@ func GetRegistry(schema string) Registry {
 	panic("can not find registry:" + schema)
 }
 
-// The registry provides an interface for service discovery
+// Registry provides an interface for service discovery
 type Registry interface {
 	Register(nodeInfo *NodeInfo) error
 	Unregister(nodeInfo *NodeInfo) error

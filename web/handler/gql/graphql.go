@@ -53,18 +53,11 @@ func DefaultGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema, o
 	g.POST(opt.QueryPath, func(c *gin.Context) {
 		server.ServeHTTP(c.Writer, c.Request)
 	})
-	if websrv.ServerConfig().Development {
-		websrv.Router().Engine.Group("/devtool").
-			GET("/", func(c *gin.Context) {
-				h := playground.Handler("graphql", "/query")
-				h.ServeHTTP(c.Writer, c.Request)
-			})
-	} else {
-		g.GET(opt.DocPath, func(c *gin.Context) {
-			h := playground.Handler("graphql", "/query")
-			h.ServeHTTP(c.Writer, c.Request)
-		})
-	}
+	g.GET(opt.DocPath, func(c *gin.Context) {
+		h := playground.Handler("graphql", "/query")
+		h.ServeHTTP(c.Writer, c.Request)
+	})
+
 	server.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
 		gctx, e := FromIncomingContext(ctx)
 		if e != nil {

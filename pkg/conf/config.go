@@ -55,6 +55,17 @@ func New() *Configuration {
 	return cnf
 }
 
+// NewFromBytes create from byte slice
+func NewFromBytes(b []byte) *Configuration {
+	p, err := NewParserFromBuffer(bytes.NewReader(b))
+	if err != nil {
+		panic(err)
+	}
+	cnf := New()
+	cnf.parser = p
+	return cnf
+}
+
 // BuildWithOption create an application configuration instance with options
 func BuildWithOption(opt ...Option) (*Configuration, error) {
 	cnf := New()
@@ -144,11 +155,14 @@ func (c *Configuration) ParserFromBytes(bs []byte) error {
 	return nil
 }
 
-func (c Configuration) ParserOperator() *koanf.Koanf {
+func (c *Configuration) ParserOperator() *koanf.Koanf {
 	return c.parser.k
 }
 
-func (c Configuration) Sub(path string) *Configuration {
+func (c *Configuration) Sub(path string) *Configuration {
+	if path == "" {
+		return c
+	}
 	p, err := c.Parser().Sub(path)
 	if err != nil {
 		return nil
@@ -157,7 +171,7 @@ func (c Configuration) Sub(path string) *Configuration {
 		opts:        c.opts,
 		parser:      p,
 		Development: c.Development,
-		root:        &c,
+		root:        c,
 	}
 }
 

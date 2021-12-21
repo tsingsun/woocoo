@@ -78,12 +78,15 @@ func (mr mapReduce) Result() (interface{}, error) {
 func (mr *mapReduce) Dry() error {
 	source := buildSource(mr.generate)
 	if mr.reducer == nil { //just map func
-		drain(mr.MapResult())
-		return nil
-	} else {
-		_, err := runMapperWithSource(source, mr.mapper, mr.reducer, mr.opts.workers)
-		return err
+		mr.reducer = func(pipe <-chan interface{}, writer Writer, cancel func(error)) {
+			drain(pipe)
+			NotifyDone(writer)
+		}
+		//drain(mr.MapResult())
+		//return nil
 	}
+	_, err := runMapperWithSource(source, mr.mapper, mr.reducer, mr.opts.workers)
+	return err
 }
 
 // MapResult return result, only execute map function

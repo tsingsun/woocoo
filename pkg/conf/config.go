@@ -76,13 +76,13 @@ func BuildWithOption(opt ...Option) (*Configuration, error) {
 		cnf.parser = NewParser()
 	}
 	if cnf.opts.global {
-		cnf.asGlobal()
+		cnf.AsGlobal()
 	}
 	cnf.Build()
 	return cnf, nil
 }
 
-func (c *Configuration) asGlobal() {
+func (c *Configuration) AsGlobal() {
 	global = c
 }
 

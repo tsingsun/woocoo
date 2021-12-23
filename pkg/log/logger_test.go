@@ -11,6 +11,8 @@ var (
 	logger = &log.Logger{}
 )
 
-func TestNewWithOption(t *testing.T) {
+func TestInfo(t *testing.T) {
+	testdata.Config.AsGlobal()
+	log.NewBuiltIn()
 	log.Info("get log")
 }

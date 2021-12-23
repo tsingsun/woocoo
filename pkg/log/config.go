@@ -97,10 +97,6 @@ func (c *Config) BuildZap(cnf *conf.Configuration, opts ...zap.Option) (*zap.Log
 	return zl, err
 }
 
-func (c *Config) buildZap(opts ...zap.Option) {
-
-}
-
 func convertPath(path string, base string, useRotate bool) (string, error) {
 	u, err := url.Parse(path)
 	if err != nil {

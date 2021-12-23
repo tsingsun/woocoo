@@ -43,11 +43,10 @@ func New(opts ...Option) *Server {
 	return srv
 }
 
-func Default(opts ...Option) *Server {
+func NewBuiltIn(opts ...Option) *Server {
 	srv := New(
 		Config(),
 		UseLogger(),
-		UseRedisCache(),
 	)
 	srv.Apply(srv.configuration, configPath)
 	return srv
@@ -56,6 +55,7 @@ func Default(opts ...Option) *Server {
 func (s Server) ServerConfig() ServerSetting {
 	return *s.serverSetting
 }
+
 func (s *Server) Router() *Router {
 	return s.router
 }

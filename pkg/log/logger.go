@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	// opentracing log key is trace.traceid
+	// ContextHeaderName opentracing log key is trace.traceid
 	ContextHeaderName = iota
 	TraceIdKey        = "traceid"
 	SpanIdKey         = "spanid"
@@ -24,6 +24,13 @@ var global, _ = New(zap.NewNop())
 
 func New(zl *zap.Logger) (*Logger, error) {
 	return &Logger{zap: zl}, nil
+}
+
+// NewBuiltIn create a logger by configuration
+func NewBuiltIn() *Logger {
+	logger := &Logger{}
+	logger.Apply(conf.Global(), "log")
+	return logger
 }
 
 func Global() *Logger {

@@ -32,7 +32,7 @@ type User struct {
 }
 
 func main() {
-	httpSvr := web.Default()
+	httpSvr := web.NewBuiltIn()
 	r := httpSvr.Router().Engine
 
 	r.POST("/login", func(c *gin.Context) {

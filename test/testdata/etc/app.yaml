@@ -6,6 +6,8 @@ log:
     disableCaller: true
     disableStacktrace: true
     encoding: json
+    encoderConfig:
+      timeEncoder: iso8601
     outputPaths:
       - stdout
       - "test.log"
@@ -27,9 +29,9 @@ cache:
     type: standalone
     addr: 127.0.0.1:6379
     db: 1
-  local:
-    size: 1000
-    ttl: 60
+    local:
+      size: 1000
+      ttl: 60
 includeFiles:
   - etc/attach.yaml
   - etc/router.yaml

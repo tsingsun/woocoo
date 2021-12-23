@@ -16,6 +16,8 @@ import (
 // Configurable can initial by framework
 type Configurable interface {
 	// Apply initial from config
+	// cfg is the Configuration include the component;
+	// path is the relative path to root,if root is the component,path will be empty
 	Apply(cfg *Configuration, path string)
 }
 
@@ -138,7 +140,7 @@ func (c *Configuration) GetBaseDir() string {
 	return c.opts.basedir
 }
 
-// Operator return default(global) Configuration instance
+// Global return default(global) Configuration instance
 func Global() *Configuration { return global }
 
 // Parser return configuration operator
@@ -218,6 +220,14 @@ func (c *Configuration) SubOperator(path string) []*koanf.Koanf {
 
 func (c *Configuration) Copy() *Configuration {
 	return c.CutFromOperator(c.Parser().k.Copy())
+}
+
+// Root return root configuration if it came from Sub method
+func (c *Configuration) Root() *Configuration {
+	if c.root == nil {
+		return c
+	}
+	return c.root
 }
 
 // Abs 返回绝对路径

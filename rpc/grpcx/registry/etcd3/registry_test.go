@@ -84,7 +84,7 @@ func TestRegisterResolver(t *testing.T) {
 		if err != nil {
 			t.Fatal("listen error:", err)
 		}
-		//srv := grpcx.Default()
+		//srv := grpcx.NewBuiltIn()
 		//helloworld.RegisterGreeterServer(srv.Engine(),&helloworld.Server{})
 		//srv.Run()
 		srv := grpc.NewServer()

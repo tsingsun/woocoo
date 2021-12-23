@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	srv := grpcx.Default()
+	srv := grpcx.NewBuiltIn()
 	if err := srv.Run(); err != nil {
 		panic(err)
 	}

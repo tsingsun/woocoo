@@ -12,9 +12,17 @@ type Client struct {
 	option    interface{}
 }
 
-// NewGhostClient return a Client through application default
-func NewGhostClient() *Client {
+func NewClient() (*Client, error) {
 	v := &Client{}
+	return v, nil
+}
+
+// NewBuiltIn return a Client through application default
+func NewBuiltIn() *Client {
+	v, err := NewClient()
+	if err != nil {
+		panic(err)
+	}
 	v.Apply(conf.Global(), "store.redis")
 	return v
 }

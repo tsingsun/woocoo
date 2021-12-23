@@ -79,7 +79,7 @@ func New(opts ...Option) *Server {
 	return srv
 }
 
-func Default(opts ...Option) *Server {
+func NewBuiltIn(opts ...Option) *Server {
 	defaultOpts := []Option{
 		Config(),
 		UseLogger(),

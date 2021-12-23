@@ -3,9 +3,9 @@ package redis
 import (
 	"context"
 	"github.com/go-redis/cache/v8"
-	"github.com/go-redis/redis/v8"
 	manager "github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	store "github.com/tsingsun/woocoo/pkg/store/redis"
 	"time"
 )
 
@@ -14,47 +14,32 @@ type Cache struct {
 	client *cache.Cache
 }
 
-// Apply
-// rCfg is the root configuration
-func (c *Cache) Apply(rCfg *conf.Configuration, path string) {
-	var local *cache.TinyLFU
-	var err error
-	cnf := rCfg.Sub(path)
-	if cnf.IsSet("local") {
-		local = cache.NewTinyLFU(cnf.Int("local.size"), time.Second*time.Duration(cnf.Int("local.ttl")))
-	}
-	clientType := cnf.Get("redis.type")
-	switch clientType {
-	case "cluster":
-		opts := &redis.ClusterOptions{}
-		err = cnf.Parser().Unmarshal("redis", opts)
-		cl := redis.NewClusterClient(opts)
-		c.client = cache.New(&cache.Options{
-			Redis:      cl,
-			LocalCache: local,
-		})
-	case "ring":
-		opts := &redis.RingOptions{}
-		err = cnf.Parser().Unmarshal("redis", opts)
-		cl := redis.NewRing(opts)
-		c.client = cache.New(&cache.Options{
-			Redis:      cl,
-			LocalCache: local,
-		})
-	case "standalone":
-		fallthrough
-	default:
-		opts := &redis.Options{}
-		err = cnf.Parser().Unmarshal("redis", opts)
-		cl := redis.NewClient(opts)
-		c.client = cache.New(&cache.Options{
-			Redis:      cl,
-			LocalCache: local,
-		})
-	}
-	if err = manager.RegisterCache(path, c); err != nil {
+func NewBuiltIn() *Cache {
+	c := &Cache{}
+	cfg := conf.Global().Sub("cache.redis")
+	c.Apply(cfg, "")
+	if err := manager.RegisterCache("redis", c); err != nil {
 		panic(err)
 	}
+	return c
+}
+
+// Apply conf.configurable
+func (c *Cache) Apply(cfg *conf.Configuration, path string) {
+	cfg = cfg.Sub(path)
+	var local *cache.TinyLFU
+	if cfg.IsSet("local") {
+		local = cache.NewTinyLFU(cfg.Int("local.size"), time.Second*time.Duration(cfg.Int("local.ttl")))
+	}
+	rediscli, err := store.NewClient()
+	if err != nil {
+		panic(err)
+	}
+	rediscli.Apply(cfg, "")
+	c.client = cache.New(&cache.Options{
+		Redis:      rediscli,
+		LocalCache: local,
+	})
 }
 
 func (c *Cache) Get(key string, v interface{}) error {

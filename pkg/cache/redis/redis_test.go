@@ -10,21 +10,13 @@ import (
 
 var (
 	cfg = testdata.Config
-	mr  *miniredis.Miniredis
 )
 
-func initCache(t *testing.T, remote bool) *redis.Cache {
-	var err error
-	cache := &redis.Cache{}
-	if !remote {
-		if mr, err = miniredis.Run(); err != nil {
-			t.Error(err)
-		}
-		cfg.Parser().Set("cache.redis.addr", mr.Addr())
-	}
-	//single node
-	cache.Apply(cfg, "cache")
-	return cache
+func initStandaloneCache(t *testing.T) (*redis.Cache, *miniredis.Miniredis) {
+	mr := miniredis.RunT(t)
+	cfg.Parser().Set("cache.redis.addr", mr.Addr())
+	cache := redis.NewBuiltIn()
+	return cache, mr
 }
 
 func TestCache_Apply(t *testing.T) {
@@ -34,35 +26,35 @@ standalone:
     type: standalone
     addr: 127.0.0.1:6379
     db: 1
-  local:
-    size: 1000
-    ttl: 60s
+    local:
+      size: 1000
+      ttl: 60s
 cluster:
   redis:
     type: cluster
     addrs:
     - 127.0.0.1:6379  
     db: 1
-  local:
-    size: 1000
-    ttl: 60s
+    local:
+      size: 1000
+      ttl: 60s
 `)
 	err := cfg.ParserFromBytes(b)
 	if err != nil {
 		panic(err)
 	}
 	cache := &redis.Cache{}
-	cache.Apply(cfg, "standalone")
+	cache.Apply(cfg, "standalone.redis")
 	if cache == nil {
 		t.Error("apply cache error")
 	}
 
-	cache.Apply(cfg, "cluster")
+	cache.Apply(cfg, "cluster.redis")
 }
 
 func TestCache_Take(t *testing.T) {
+	cache, mr := initStandaloneCache(t)
 	defer mr.Close()
-	cache := initCache(t, false)
 	got := "string"
 	want := "abc"
 	err := cache.Take(&got, "string", time.Minute, func() (interface{}, error) {
@@ -77,7 +69,8 @@ func TestCache_Take(t *testing.T) {
 }
 
 func TestCache_Set(t *testing.T) {
-	cache := initCache(t, true)
+	cache, mr := initStandaloneCache(t)
+	defer mr.Close()
 	got := "string"
 	if err := cache.Set("string", got, time.Hour); err != nil {
 		t.Error(err)

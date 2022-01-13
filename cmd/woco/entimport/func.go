@@ -33,7 +33,9 @@ func schemaType(f gen.Field) string {
 			}
 			builder.WriteString(fmt.Sprintf("%s:\"%s\",", st, v))
 		}
-		builder.WriteString("})")
+		val := builder.String()
+		v := val[0 : len(val)-1]
+		return v + "})"
 	}
 	return builder.String()
 }

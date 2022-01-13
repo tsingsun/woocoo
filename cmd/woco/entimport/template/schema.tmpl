@@ -1,0 +1,60 @@
+{{/* gotype: entgo.io/ent/entc/gen.Type */}}
+package schema
+
+import (
+    "entgo.io/ent"
+    "entgo.io/ent/dialect"
+    "entgo.io/ent/dialect/entsql"
+    "entgo.io/ent/schema"
+    "entgo.io/ent/schema/field"
+)
+
+//{{$.Name}} holds the schema definition for the {{ $.Name }} entity.
+type {{$.Name}} struct {
+    ent.Schema
+}
+
+{{if $.Table -}}
+func ({{$.Name}}) Annotations() []schema.Annotation {
+    return []schema.Annotation{
+        entsql.Annotation{Table: "{{$.Table}}"},
+    }
+}
+{{- end}}
+
+// Fields of the {{$.Name}}
+func ({{$.Name}}) Fields() []ent.Field{
+    return []ent.Field{
+    {{- if $.ID.Column.SchemaType}}
+        {{printf "field.%s(\"%s\")" (pascal $.ID.Type.String) $.ID.Name}}{{schemaType $.ID}},
+    {{- end}}
+    {{- range $f := $.Fields}}
+        {{- $str:=""}}
+        {{- $str = printf "field.%s(\"%s\")" (pascal (fieldTypeName $f)) $f.Name}}
+        {{- if $f.Column.Size}}
+            {{- $str = printf "%s.MaxLen(%d)" $str $f.Column.Size }}
+        {{- end}}
+        {{- if $f.Optional}}
+            {{- $str = printf "%s.Optional()" $str}}
+        {{- end}}
+        {{- if $f.Nillable}}
+            {{- $str = printf "%s.Nillable()" $str}}
+        {{- end}}
+        {{- if $f.Unique}}
+            {{- $str = printf "%s.Unique()" $str}}
+        {{- end}}
+        {{- if $f.Comment}}
+            {{- $str = printf "%s.Comment(\"%s\")" $str (clearComment $f)}}
+        {{- end}}
+        {{- if $f.Column.SchemaType}}
+            {{- $str = printf "%s%s" $str (schemaType $f)}}
+        {{- end}}
+        {{$str}},
+    {{- end}}
+    }
+}
+
+// Edges of the {{$.Name}}.
+func ({{$.Name}}) Edges() []ent.Edge {
+    return nil
+}

@@ -54,7 +54,7 @@ func DefaultGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema, o
 		server.ServeHTTP(c.Writer, c.Request)
 	})
 	g.GET(opt.DocPath, func(c *gin.Context) {
-		h := playground.Handler("graphql", "/query")
+		h := playground.Handler("graphql", opt.Group+opt.QueryPath)
 		h.ServeHTTP(c.Writer, c.Request)
 	})
 

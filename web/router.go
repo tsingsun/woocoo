@@ -27,7 +27,7 @@ type Router struct {
 }
 
 func NewRouter(s *Server) *Router {
-	if s.serverSetting != nil && !s.serverSetting.Development {
+	if !s.serverSetting.Development {
 		gin.SetMode(gin.ReleaseMode)
 		gin.DisableConsoleColor()
 	}

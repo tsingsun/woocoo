@@ -38,76 +38,68 @@ var defaultOptions = options{
 }
 
 func init() {
-	global = New()
 	pwd, err := filepath.Abs(os.Args[0])
 	if err != nil {
 		panic(err)
 	}
 	defaultOptions.basedir = filepath.Dir(pwd)
-	defaultOptions.localPath = filepath.Join(defaultOptions.basedir, defaultConfigFile)
 }
 
 // New create an application configuration instance
-func New() *Configuration {
-	opts := defaultOptions
+func New(opts ...Option) *Configuration {
 	cnf := &Configuration{
-		opts:   opts,
-		parser: NewParser(),
+		opts: defaultOptions,
 	}
+	for _, o := range opts {
+		o(&cnf.opts)
+	}
+
+	if cnf.opts.global {
+		cnf.AsGlobal()
+	}
+
 	return cnf
 }
 
-// NewFromBytes create from byte slice
+// NewFromBytes create from byte slice,return with a parser, But you'd better use Load()
 func NewFromBytes(b []byte) *Configuration {
 	p, err := NewParserFromBuffer(bytes.NewReader(b))
 	if err != nil {
 		panic(err)
 	}
+
 	cnf := New()
 	cnf.parser = p
-	return cnf
-}
 
-// BuildWithOption create an application configuration instance with options
-func BuildWithOption(opt ...Option) (*Configuration, error) {
-	cnf := New()
-	for _, o := range opt {
-		o(&cnf.opts)
-	}
-	if !cnf.opts.global {
-		cnf.parser = NewParser()
-	}
-	if cnf.opts.global {
-		cnf.AsGlobal()
-	}
-	cnf.Build()
-	return cnf, nil
+	return cnf
 }
 
 func (c *Configuration) AsGlobal() {
 	global = c
+	c.opts.global = true
 }
 
-func (c *Configuration) Build() *Configuration {
+func (c *Configuration) Load() *Configuration {
 	if err := c.loadInternal(); err != nil {
-		panic("instance error:" + err.Error())
+		panic("config load error:" + err.Error())
 	}
 	c.Development = c.parser.k.Bool("development")
 	return c
 }
 
 // load configuration,if the RemoteProvider is set,will ignore local configuration
-func (c *Configuration) loadInternal() error {
+func (c *Configuration) loadInternal() (err error) {
 	opts := c.opts
 
-	absPath, err := filepath.Abs(opts.localPath)
-	if err != nil {
-		return err
-	}
-
-	c.parser, err = NewParserFromFile(absPath)
-	if err != nil {
-		return err
+	// if parser is nil, use default local config file
+	if c.parser == nil {
+		if opts.localPath == "" {
+			LocalPath(defaultConfigFile)(&opts)
+		}
+		c.parser, err = NewParserFromFile(opts.localPath)
+		if err != nil {
+			return err
+		}
 	}
 
 	if c.IsSet("includeFiles") {

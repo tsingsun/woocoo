@@ -24,7 +24,7 @@ store:
     driverName: testDriver
     dsn: root:123456@tcp(localhost:3306)
 `
-	cfg := conf.NewFromBytes([]byte(config))
+	cfg := conf.NewFromBytes([]byte(config)).Load()
 	cfg.AsGlobal()
 	type args struct {
 		path string

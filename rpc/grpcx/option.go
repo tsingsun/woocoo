@@ -13,10 +13,7 @@ type Option func(s *Server)
 
 func Config(cnfops ...conf.Option) Option {
 	return func(s *Server) {
-		var err error
-		if s.configuration, err = conf.BuildWithOption(cnfops...); err != nil {
-			panic(err)
-		}
+		s.configuration = conf.New(cnfops...).Load()
 	}
 }
 

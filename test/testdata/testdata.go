@@ -16,11 +16,7 @@ var (
 func init() {
 	_, currentFile, _, _ := runtime.Caller(0)
 	basedir = filepath.Dir(currentFile)
-	var err error
-	Config, err = conf.BuildWithOption(conf.LocalPath(Path(DefaultConfigFile)), conf.BaseDir(basedir))
-	if err != nil {
-		panic(err)
-	}
+	Config = conf.New(conf.LocalPath(Path(DefaultConfigFile)), conf.BaseDir(basedir)).Load()
 }
 
 func BaseDir() string {

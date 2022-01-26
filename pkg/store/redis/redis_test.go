@@ -18,7 +18,7 @@ store:
     addr: 127.0.0.1:6379
     db: 1
 `
-	cfg := conf.NewFromBytes([]byte(b))
+	cfg := conf.NewFromBytes([]byte(b)).Load()
 	t.Run("cluster", func(t *testing.T) {
 		r1 := &Client{}
 		r1.Apply(cfg, "store.redis1")

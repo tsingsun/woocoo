@@ -62,13 +62,13 @@ func New(opts ...Option) *Configuration {
 }
 
 // NewFromBytes create from byte slice,return with a parser, But you'd better use Load()
-func NewFromBytes(b []byte) *Configuration {
+func NewFromBytes(b []byte, opts ...Option) *Configuration {
 	p, err := NewParserFromBuffer(bytes.NewReader(b))
 	if err != nil {
 		panic(err)
 	}
 
-	cnf := New()
+	cnf := New(opts...)
 	cnf.parser = p
 
 	return cnf

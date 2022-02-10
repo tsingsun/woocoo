@@ -11,6 +11,7 @@ require (
 	github.com/go-redis/cache/v8 v8.4.3
 	github.com/go-redis/redis/v8 v8.11.3
 	github.com/golang-jwt/jwt/v4 v4.1.0
+	github.com/google/go-cmp v0.5.6
 	github.com/knadh/koanf v1.2.3
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2

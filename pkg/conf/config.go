@@ -128,6 +128,20 @@ func (c *Configuration) loadInternal() (err error) {
 	return err
 }
 
+// Merge an input config stream,parameter b is YAML stream
+func (c *Configuration) Merge(b []byte) error {
+	p, err := NewParserFromBuffer(bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	err = c.parser.k.Merge(p.k)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetBaseDir return the application dir
 func (c *Configuration) GetBaseDir() string {
 	return c.opts.basedir
 }
@@ -136,7 +150,7 @@ func (c *Configuration) GetBaseDir() string {
 func Global() *Configuration { return global }
 
 // Parser return configuration operator
-func (c Configuration) Parser() *Parser {
+func (c *Configuration) Parser() *Parser {
 	return c.parser
 }
 

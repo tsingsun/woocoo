@@ -28,9 +28,10 @@ func New(zl *zap.Logger) (*Logger, error) {
 
 // NewBuiltIn create a logger by configuration
 func NewBuiltIn() *Logger {
-	logger := &Logger{}
-	logger.Apply(conf.Global(), "log")
-	return logger
+	l := &Logger{}
+	l.Apply(conf.Global(), "log")
+	l.AsGlobal()
+	return l
 }
 
 func Global() *Logger {
@@ -55,14 +56,16 @@ func (l *Logger) Sync() error {
 // Apply implement Configurable interface which can initial from a file used in JSON,YAML
 // Logger init trough Apply method will be set as Global.
 func (l *Logger) Apply(cfg *conf.Configuration, path string) {
-	config := Config{}
-	zl, err := config.BuildZap(cfg)
+	config, err := NewConfig(cfg)
+	if err != nil {
+		panic(fmt.Errorf("%s apply from configuration file err:%s", "log", err))
+	}
+	zl, err := config.BuildZap()
 	if err != nil {
 		panic(fmt.Errorf("%s apply from configuration file err:%s", "log", err))
 	}
 
 	l.zap = zl
-	l.AsGlobal()
 }
 
 func (l *Logger) With(fields ...zapcore.Field) *Logger {

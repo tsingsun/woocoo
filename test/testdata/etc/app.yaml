@@ -1,7 +1,7 @@
 appname: woocoo
 development: true
 log:
-  config:
+  sole:
     level: debug
     disableCaller: true
     disableStacktrace: true

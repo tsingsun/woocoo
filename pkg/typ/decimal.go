@@ -1,4 +1,4 @@
-package decimal
+package typ
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"io"
 )
 
+//Decimal is extended from github.com/shopspring/decimal to support ent ORM
 type Decimal struct {
 	decimal.Decimal
 }
@@ -19,6 +20,7 @@ func (d *Decimal) Scan(value interface{}) error {
 	return d.Decimal.Scan(value)
 }
 
+// MarshalGQL support gengql
 func (d Decimal) MarshalGQL(w io.Writer) {
 	io.WriteString(w, d.String())
 }

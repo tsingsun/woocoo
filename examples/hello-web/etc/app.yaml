@@ -27,7 +27,7 @@ web:
           handleFuncs:
             - otel:
                 traceExporterEndpoint: stdout
-                metricExporterEndpoint: stdout
+                metricExporterEndpoint:
             - accessLog:
                 exclude:
                   - IntrospectionQuery

@@ -13,6 +13,7 @@ OpenTelemetry 是 CNCF 的一个可观测性项目，旨在提供可观测性领
         - default:
             handleFuncs:
             - otel:
-                traceExporterEndpoint: "stdout" or ":4317"
-                metricExporterEndpoint: "stdout" or ":4317"
-    ```
+                # stdout,endpoint地址,当设置为""时,则使用默认的noop
+                traceExporterEndpoint: "stdout" or ":4317" or ""
+                metricExporterEndpoint: "stdout" or ":4317" or ""
+    ```   

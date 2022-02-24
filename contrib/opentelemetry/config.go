@@ -93,6 +93,8 @@ func (c *Config) Apply(cfg *conf.Configuration, path string) {
 		if _, err := NewStdTracer(c, stdouttrace.WithPrettyPrint()); err != nil {
 			log.Fatalf("%s: %v", "failed to create stdout tracer provider", err)
 		}
+	case "":
+		//tracer do not need
 	default:
 		if _, err := NewOtlpTracer(c); err != nil {
 			log.Fatalf("%s: %v", "failed to create otlp tracer provider", err)
@@ -104,6 +106,8 @@ func (c *Config) Apply(cfg *conf.Configuration, path string) {
 		if _, err := NewStdMetric(c); err != nil {
 			log.Fatalf("%s: %v", "failed to create stdout metric provider", err)
 		}
+	case "":
+
 	default:
 		if _, err := NewOtlpMetric(c); err != nil {
 			log.Fatalf("%s: %v", "failed to create otlp metric provider", err)

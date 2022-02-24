@@ -11,6 +11,7 @@ web:
     routerGroups:
       - default:
           handleFuncs:
+            - otel:
             - accessLog:
                 exclude:
                   - IntrospectionQuery

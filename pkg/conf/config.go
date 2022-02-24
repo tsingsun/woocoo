@@ -15,9 +15,11 @@ import (
 
 // Configurable can initial by framework
 type Configurable interface {
-	// Apply initial from config
+	// Apply set up property or field value by configuration
+	//
 	// cfg is the Configuration include the component;
 	// path is the relative path to root,if root is the component,path will be empty
+	// Apply also use for lazy load scene
 	Apply(cfg *Configuration, path string)
 }
 
@@ -186,7 +188,7 @@ func (c *Configuration) Sub(path string) *Configuration {
 func (c *Configuration) CutFromParser(p *Parser) *Configuration {
 	nf := *c
 	nf.parser = p
-	nf.root = c
+	c.passRoot(&nf)
 	return &nf
 }
 
@@ -195,8 +197,16 @@ func (c *Configuration) CutFromOperator(kf *koanf.Koanf) *Configuration {
 	nf.parser = &Parser{
 		k: kf,
 	}
-	nf.root = c
+	c.passRoot(&nf)
 	return &nf
+}
+
+func (c Configuration) passRoot(sub *Configuration) {
+	if c.root != nil {
+		sub.root = c.root
+	} else {
+		sub.root = &c
+	}
 }
 
 func (c *Configuration) SubOperator(path string) []*koanf.Koanf {
@@ -236,9 +246,23 @@ func (c *Configuration) Root() *Configuration {
 	return c.root
 }
 
+// AppName indicates the application's name
+//
+// return the path 'appName' value, no set return empty
+func (c *Configuration) AppName() string {
+	return c.String("appName")
+}
+
+// Version indicates the application's sem version
+//
+// return the path 'version' value, no set return empty
+func (c *Configuration) Version() string {
+	return c.String("version")
+}
+
 // Abs 返回绝对路径
 func Abs(path string) string { return global.Abs(path) }
-func (c Configuration) Abs(path string) string {
+func (c *Configuration) Abs(path string) string {
 	if filepath.IsAbs(path) {
 		return path
 	}

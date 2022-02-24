@@ -5,21 +5,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web/handler"
-	"github.com/tsingsun/woocoo/web/handler/auth"
-	"github.com/tsingsun/woocoo/web/handler/logger"
-	"github.com/tsingsun/woocoo/web/handler/recovery"
 	"reflect"
 	"runtime"
 )
 
-type RuleManager map[string]gin.RouteInfo
-
 var registerRule = RuleManager{}
+
+type RuleManager map[string]gin.RouteInfo
 
 //Router is base on Gin
 //you can use AfterRegisterInternalHandler to replace an inline HandlerFunc or add a new
 type Router struct {
-	Engine                       *gin.Engine
+	*gin.Engine
 	Groups                       []*gin.RouterGroup
 	server                       *Server
 	hms                          RuleManager
@@ -45,9 +42,9 @@ func (r *Router) Apply(cfg *conf.Configuration, path string) error {
 	if err := cfg.Parser().Unmarshal(path, r.Engine); err != nil {
 		return err
 	}
+	// register first
+	handler.RegisterIntegrationHandler()
 
-	registerInternalHandler(r)
-	//rgs := cfg.Sub(path + conf.KeyDelimiter + "handleFuncs").ParserOperator().MapKeys()
 	rgs := cfg.Sub(path).ParserOperator().Slices("routerGroups")
 	if r.AfterRegisterInternalHandler != nil {
 		r.AfterRegisterInternalHandler(r)
@@ -77,7 +74,7 @@ func (r *Router) Apply(cfg *conf.Configuration, path string) error {
 			}
 			if hf, ok := handler.RegisterHandler[fname]; ok {
 				subCfg := cfg.CutFromOperator(hItem.Cut(fname))
-				gr.Use(hf(subCfg))
+				gr.Use(hf.ApplyFunc(subCfg))
 			} else {
 				return errors.New("middleware not found:" + fname)
 			}
@@ -106,7 +103,13 @@ func (r *Router) RehandleRule() error {
 	return nil
 }
 
-func (r Router) GetGroup(basePath string) *gin.RouterGroup {
+// Group return a specified router group by a url format base path.
+//
+// parameter basePath is map to configuration:
+//   routerGroups:
+//     - group:
+//         basePath: "/auth"
+func (r *Router) Group(basePath string) *gin.RouterGroup {
 	for _, group := range r.Groups {
 		if group.BasePath() == basePath {
 			return group
@@ -125,10 +128,4 @@ func RegisterRouteRule(path, method string, handlerFunc gin.HandlerFunc) error {
 	}
 	registerRule[ri.Path] = ri
 	return nil
-}
-
-func registerInternalHandler(router *Router) {
-	handler.RegisterHandlerFunc("accessLog", logger.AccessLogHandler(router.server.logger))
-	handler.RegisterHandlerFunc("recovery", recovery.RecoveryHandler(router.server.logger, true))
-	handler.RegisterHandlerFunc("auth", auth.AuthHandler())
 }

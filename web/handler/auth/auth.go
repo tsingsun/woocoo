@@ -6,7 +6,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/jwttool"
-	"github.com/tsingsun/woocoo/web/handler"
 	"net/http"
 	"strings"
 	"time"
@@ -140,6 +139,49 @@ type GinJWTMiddleware struct {
 
 	//exp check
 	DisabledExpiredCheck bool
+}
+
+func New() *GinJWTMiddleware {
+	ac := &GinJWTMiddleware{
+		JwtParser: jwttool.JwtParser{
+			Realm:       "woocoo",
+			IdentityKey: "sub",
+			TimeFunc:    time.Now,
+		},
+		Unauthorized: func(c *gin.Context, code int, message string) {
+			c.JSON(code, gin.H{
+				"errors": []map[string]interface{}{
+					{
+						"code":    code,
+						"message": message,
+					},
+				},
+			})
+		},
+	}
+	return ac
+}
+
+func (mw *GinJWTMiddleware) Apply(cfg *conf.Configuration, path string) {
+	if err := cfg.Parser().Unmarshal(path, mw); err != nil {
+		panic(err)
+	}
+
+	if mw.PrivKeyFile != "" {
+		mw.PrivKeyFile = cfg.Abs(mw.PrivKeyFile)
+	}
+	if mw.PubKeyFile != "" {
+		mw.PubKeyFile = cfg.Abs(mw.PubKeyFile)
+	}
+	mw.Key = []byte(cfg.String("secret"))
+
+	if IdentityHandler != nil {
+		mw.IdentityHandler = IdentityHandler
+	}
+
+	if err := mw.MiddlewareInit(); err != nil {
+		panic(err)
+	}
 }
 
 // MiddlewareInit initialize jwt configs.
@@ -649,10 +691,10 @@ func defaultAuthMiddleware(cfg *conf.Configuration) *GinJWTMiddleware {
 	return ac
 }
 
-//AuthHandler jwt Token
-//secret: map to Key
-func AuthHandler() handler.HandlerApplyFunc {
-	return func(cfg *conf.Configuration) gin.HandlerFunc {
-		return defaultAuthMiddleware(cfg).MiddlewareFunc()
-	}
+func (mw *GinJWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
+	mw.Apply(cfg, "")
+	return mw.MiddlewareFunc()
+}
+
+func (mw *GinJWTMiddleware) Shutdown() {
 }

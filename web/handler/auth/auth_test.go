@@ -19,5 +19,4 @@ func TestAuthHandler(t *testing.T) {
 			"orgID": c.Request.Header.Get("X-Org-Id"),
 		}
 	}
-	AuthHandler()
 }

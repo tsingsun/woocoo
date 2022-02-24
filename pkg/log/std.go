@@ -1,6 +1,9 @@
 package log
 
-import "log"
+import (
+	"flag"
+	"log"
+)
 
 var logo = `
  ___      _______________________________ 
@@ -19,5 +22,16 @@ func StdPrintf(format string, v ...interface{}) {
 }
 
 func PrintLogo() {
-	StdPrintln(logo)
+	if !isTestRun() {
+		StdPrintln(logo)
+	}
+}
+
+func isTestRun() bool {
+	flag.Parse()
+	t := flag.Lookup("test.v")
+	if t == nil {
+		return false
+	}
+	return t.Value.(flag.Getter).Get().(bool)
 }

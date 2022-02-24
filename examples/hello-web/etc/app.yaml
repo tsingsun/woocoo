@@ -1,3 +1,5 @@
+appName: hello-web
+version: 0.0.1
 development: true
 log:
   sole:
@@ -23,9 +25,10 @@ web:
     routerGroups:
       - default:
           handleFuncs:
+            - otel:
+                traceExporterEndpoint: stdout
+                metricExporterEndpoint: stdout
             - accessLog:
                 exclude:
                   - IntrospectionQuery
             - recovery:
-            - auth:
-                secret: 12345678

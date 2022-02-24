@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"github.com/tsingsun/woocoo/web/handler"
 	"go.uber.org/zap"
 	"net"
 	"net/http"
@@ -15,18 +14,27 @@ import (
 	"time"
 )
 
-func RecoveryHandler(logger *log.Logger, stack bool) handler.HandlerApplyFunc {
-	return func(cfg *conf.Configuration) gin.HandlerFunc {
-		return func(c *gin.Context) {
-			defer func() {
-				if err := recover(); err != nil {
-					HandleRecoverError(c, err, logger, stack)
-					c.AbortWithStatus(http.StatusInternalServerError)
-				}
-			}()
-			c.Next()
-		}
+type Handler struct {
+	stack bool
+}
+
+func New() *Handler {
+	return &Handler{stack: true}
+}
+
+func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			if err := recover(); err != nil {
+				HandleRecoverError(c, err, log.Global(), h.stack)
+				c.AbortWithStatus(http.StatusInternalServerError)
+			}
+		}()
+		c.Next()
 	}
+}
+
+func (h Handler) Shutdown() {
 }
 
 func HandleRecoverError(c *gin.Context, err interface{}, logger *log.Logger, stack bool) {

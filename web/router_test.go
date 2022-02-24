@@ -7,10 +7,6 @@ import (
 	"testing"
 )
 
-func init() {
-	gin.SetMode(gin.ReleaseMode)
-}
-
 type CustomizeRoute struct{}
 
 func (r *CustomizeRoute) InitRule() {

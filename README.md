@@ -8,8 +8,9 @@ WooCoo的定位是一个基于Golang的应用开发框架及工具包,以便开�
 
 本工具包提供下列功能:
 
-- 基本组件配置化,可拆分配置文件.
-- 日志,多日志输出,支持rotate
+- 基本组件配置化,多配置文件支持,方便多环境下的开发配置
+- 日志组件,支持多日志输出,请参见[Logger](docs/logger.md),
+- OpenTelemetry支持,请参见[OpenTelemetry](docs/otel.md)
 - web服务,支持GraphQL
 - grpc服务
 - JWT-based验证

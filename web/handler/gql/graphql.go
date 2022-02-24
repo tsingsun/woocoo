@@ -17,17 +17,21 @@ import (
 	"runtime/debug"
 )
 
+var instance = New()
+
 func init() {
-	handler.RegisterHandlerFunc("graphql", QraphqlHandler())
+	handler.RegisterHandlerFunc("graphql", instance)
 }
 
+// Option handler option
 type Option struct {
 	QueryPath string
 	DocPath   string
-	Group     string
+	// Group must the same as the base path of route group
+	Group string
 }
 
-var defaultOption = &Option{
+var defaultOption = Option{
 	QueryPath: "/query",
 	DocPath:   "/",
 	Group:     "/graphql",
@@ -35,9 +39,34 @@ var defaultOption = &Option{
 
 type graphqlContextKey struct{}
 
-func DefaultGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema, opt *Option) *gqlgen.Server {
+type Handler struct {
+	Option Option
+}
+
+func New() *Handler {
+	return &Handler{
+		Option: defaultOption,
+	}
+}
+
+func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
+	if err := cfg.Parser().Unmarshal("", &h.Option); err != nil {
+		panic(err)
+	}
+	return func(c *gin.Context) {
+		ctx := context.WithValue(c.Request.Context(), graphqlContextKey{}, c)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	}
+}
+
+func (h *Handler) Shutdown() {
+}
+
+// NewGraphqlServer create a graphiql server
+func NewGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema, opt *Option) *gqlgen.Server {
 	if opt == nil {
-		opt = defaultOption
+		opt = &instance.Option
 	}
 	server := gqlgen.NewDefaultServer(schema)
 	server.AroundResponses(func(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
@@ -47,7 +76,7 @@ func DefaultGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema, o
 		return next(ctx)
 	})
 	var g *gin.RouterGroup
-	if g = websrv.Router().GetGroup(opt.Group); g == nil {
+	if g = websrv.Router().Group(opt.Group); g == nil {
 		g = &websrv.Router().Engine.RouterGroup
 	}
 	g.POST(opt.QueryPath, func(c *gin.Context) {
@@ -74,16 +103,6 @@ func DefaultGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema, o
 	})
 
 	return server
-}
-
-func QraphqlHandler() handler.HandlerApplyFunc {
-	return func(handerCfg *conf.Configuration) gin.HandlerFunc {
-		return func(c *gin.Context) {
-			ctx := context.WithValue(c.Request.Context(), graphqlContextKey{}, c)
-			c.Request = c.Request.WithContext(ctx)
-			c.Next()
-		}
-	}
 }
 
 func FromIncomingContext(ctx context.Context) (*gin.Context, error) {

@@ -1,7 +1,6 @@
 package log
 
 import (
-	"bufio"
 	"bytes"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -9,6 +8,7 @@ import (
 	"github.com/tsingsun/woocoo/third_party/natefinch/lumberjack"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -198,14 +198,14 @@ func TestConfig_BuildZap(t *testing.T) {
 						continue
 					}
 					if lf := testdata.Tmp(outputPath); path.IsAbs(lf) {
-						if strings.Index(outputPath, "warn") > 0 || strings.Index(outputPath, "error") > 0 {
-							bs, err := os.ReadFile(lf)
-							if err != nil {
-								t.Error(err)
-							}
-							rd := bufio.NewReader(bytes.NewBuffer(bs))
-							_, _, err = rd.ReadLine()
-							assert.NoError(t, err)
+						bs, err := os.Open(lf)
+						assert.NoError(t, err)
+						lc, err := lineCounter(bs)
+						assert.NoError(t, err)
+						if strings.Index(outputPath, "warn") > 0 {
+							assert.Equal(t, 2, lc)
+						} else if strings.Index(outputPath, "error") > 0 {
+							assert.Equal(t, 1, lc)
 						}
 						assert.NoError(t, os.Remove(lf))
 					}
@@ -213,5 +213,24 @@ func TestConfig_BuildZap(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func lineCounter(r io.Reader) (int, error) {
+	buf := make([]byte, 32*1024)
+	count := 0
+	lineSep := []byte{'\n'}
+
+	for {
+		c, err := r.Read(buf)
+		count += bytes.Count(buf[:c], lineSep)
+
+		switch {
+		case err == io.EOF:
+			return count, nil
+
+		case err != nil:
+			return count, err
+		}
 	}
 }

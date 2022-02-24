@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	_ "github.com/tsingsun/woocoo/contrib/opentelemetry/otelweb"
+	"github.com/tsingsun/woocoo/contrib/opentelemetry/otelweb"
 	"github.com/tsingsun/woocoo/web"
 	jwt "github.com/tsingsun/woocoo/web/handler/auth"
 	"log"
@@ -33,15 +33,11 @@ type User struct {
 }
 
 func main() {
-	httpSvr := web.NewBuiltIn()
+	httpSvr := web.NewBuiltIn(web.RegisterHandler("otel", otelweb.New()))
 	r := httpSvr.Router().Engine
 
 	r.GET("/", func(c *gin.Context) {
 		c.String(200, "hello world")
-	})
-
-	r.POST("/login", func(c *gin.Context) {
-
 	})
 
 	r.NoRoute(func(c *gin.Context) {

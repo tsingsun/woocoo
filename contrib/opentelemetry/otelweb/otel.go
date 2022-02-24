@@ -7,7 +7,6 @@ import (
 	otelwoocoo "github.com/tsingsun/woocoo/contrib/opentelemetry"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"github.com/tsingsun/woocoo/web/handler"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
@@ -23,10 +22,6 @@ const (
 	tracerKey  = "otel-go-contrib-tracer"
 	tracerName = "go.opentelemetry.io/contrib/instrumentation/github.com/tsingsun/web/otelwoocoo"
 )
-
-func init() {
-	handler.RegisterHandlerFunc("otel", New())
-}
 
 type Handler struct {
 	service string

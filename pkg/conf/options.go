@@ -24,7 +24,7 @@ type Option func(*options)
 func LocalPath(s string) Option {
 	return func(o *options) {
 		if !filepath.IsAbs(s) {
-			s = filepath.Join(defaultOptions.basedir, s)
+			s = filepath.Join(o.basedir, s)
 		}
 		_, err := os.Stat(s)
 		if err != nil {

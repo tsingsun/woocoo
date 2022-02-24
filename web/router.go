@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/web/handler"
 	"reflect"
 	"runtime"
 )
@@ -42,8 +41,6 @@ func (r *Router) Apply(cfg *conf.Configuration, path string) error {
 	if err := cfg.Parser().Unmarshal(path, r.Engine); err != nil {
 		return err
 	}
-	// register first
-	handler.RegisterIntegrationHandler()
 
 	rgs := cfg.Sub(path).ParserOperator().Slices("routerGroups")
 	if r.AfterRegisterInternalHandler != nil {
@@ -72,7 +69,7 @@ func (r *Router) Apply(cfg *conf.Configuration, path string) error {
 				fname = s
 				break
 			}
-			if hf, ok := handler.RegisterHandler[fname]; ok {
+			if hf, ok := r.server.handlerManager.GetHandler(fname); ok {
 				subCfg := cfg.CutFromOperator(hItem.Cut(fname))
 				gr.Use(hf.ApplyFunc(subCfg))
 			} else {

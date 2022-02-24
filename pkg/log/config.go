@@ -14,12 +14,13 @@ import (
 )
 
 const (
-	zapConfigPath    = "log.sole"
-	teeConfigPath    = "log.tee"
-	rotateConfigPath = "log.Rotate"
+	zapConfigPath = "sole"
+	teeConfigPath = "tee"
 	// rotate:[//[userinfo@]host][/]path[?query][#fragment]
 	rotateSchema = "Rotate"
 )
+
+var once sync.Once
 
 // Config is logger schema
 // Tee use as zap advance,such as zapcore.NewTee()
@@ -36,21 +37,21 @@ type Config struct {
 // NewConfig return a Config instance
 func NewConfig(cfg *conf.Configuration) (*Config, error) {
 	dzapCfg := zap.NewProductionConfig()
-	dzapCfg.Development = cfg.Development
+	dzapCfg.Development = cfg.Root().Development
 
 	v := &Config{
 		Sole: &dzapCfg,
 		Tee:  make([]zap.Config, len(cfg.SubOperator(teeConfigPath))),
 
-		basedir: cfg.GetBaseDir(),
+		basedir: cfg.Root().GetBaseDir(),
 	}
 	for i := 0; i < len(v.Tee); i++ {
 		v.Tee[i] = zap.NewProductionConfig()
 	}
-	if err := cfg.Parser().Unmarshal("log", &v); err != nil {
+	if err := cfg.Parser().Unmarshal("", &v); err != nil {
 		return nil, err
 	}
-	if cfg.IsSet(rotateConfigPath) {
+	if v.Rotate != nil {
 		v.useRotate = true
 	}
 	if len(v.Tee) != 0 && v.Sole != nil {
@@ -76,7 +77,6 @@ func (c Config) fixZapConfig(zc *zap.Config) error {
 // BuildZap build a zap.Logger by Config
 func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 	if c.useRotate {
-		var once sync.Once
 		once.Do(func() {
 			err := zap.RegisterSink(rotateSchema, func(u *url.URL) (zap.Sink, error) {
 				if u.User != nil {

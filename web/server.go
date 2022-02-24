@@ -28,7 +28,10 @@ type ServerSetting struct {
 type Server struct {
 	// serverSetting is struct server parameter
 	serverSetting ServerSetting
-	router        *Router
+	// middleware manager
+	handlerManager *handler.Manager
+	// hold the gin router
+	router *Router
 	// configuration is application level Configuration
 	configuration *conf.Configuration
 	logger        *log.Logger
@@ -41,7 +44,8 @@ func New(opts ...Option) *Server {
 		serverSetting: ServerSetting{
 			Addr: defaultAddr,
 		},
-		quit: make(chan os.Signal),
+		quit:           make(chan os.Signal),
+		handlerManager: handler.NewManager(),
 	}
 	for _, o := range opts {
 		o(srv)
@@ -110,7 +114,7 @@ func (s *Server) beforeRun() error {
 }
 
 func (s *Server) stop() {
-	handler.Shutdown()
+	s.handlerManager.Shutdown()
 	// ignore,see https://github.com/uber-go/zap/issues/880
 	if err := s.logger.Sync(); err != nil {
 		log.StdPrintln(err)

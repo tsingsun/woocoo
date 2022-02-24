@@ -17,19 +17,34 @@ type Handler interface {
 	Shutdown()
 }
 
-var RegisterHandler = map[string]Handler{}
+type Manager struct {
+	handlers map[string]Handler
+}
+
+func NewManager() *Manager {
+	mgr := &Manager{
+		handlers: make(map[string]Handler),
+	}
+	mgr.registerIntegrationHandler()
+	return mgr
+}
 
 // RegisterHandlerFunc registry a handler middleware
 //
 // you can override exists handler
-func RegisterHandlerFunc(name string, handler Handler) {
-	if _, ok := RegisterHandler[name]; ok {
+func (m *Manager) RegisterHandlerFunc(name string, handler Handler) {
+	if _, ok := m.handlers[name]; ok {
 		log.Infof("handler override:%s", name)
 	}
-	RegisterHandler[name] = handler
+	m.handlers[name] = handler
 }
 
-func Integration() map[string]Handler {
+func (m *Manager) GetHandler(name string) (Handler, bool) {
+	h, ok := m.handlers[name]
+	return h, ok
+}
+
+func integration() map[string]Handler {
 	var handlerMap = map[string]Handler{
 		"recovery":  recovery.New(),
 		"auth":      auth.New(),
@@ -38,15 +53,15 @@ func Integration() map[string]Handler {
 	return handlerMap
 }
 
-func RegisterIntegrationHandler() {
-	for s, applyFunc := range Integration() {
-		RegisterHandlerFunc(s, applyFunc)
+func (m *Manager) registerIntegrationHandler() {
+	for s, applyFunc := range integration() {
+		m.RegisterHandlerFunc(s, applyFunc)
 	}
 }
 
 // Shutdown a handler if handler base on file,net such as need to release resource
-func Shutdown() {
-	for _, handler := range RegisterHandler {
+func (m *Manager) Shutdown() {
+	for _, handler := range m.handlers {
 		handler.Shutdown()
 	}
 }

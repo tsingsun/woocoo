@@ -29,7 +29,7 @@ func New(zl *zap.Logger) (*Logger, error) {
 // NewBuiltIn create a logger by configuration
 func NewBuiltIn() *Logger {
 	l := &Logger{}
-	l.Apply(conf.Global(), "log")
+	l.Apply(conf.Global().Sub("log"), "")
 	l.AsGlobal()
 	return l
 }

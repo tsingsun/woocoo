@@ -3,6 +3,7 @@ package web
 import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
+	"github.com/tsingsun/woocoo/web/handler"
 )
 
 // Option the function to apply configuration option
@@ -22,9 +23,10 @@ func Configuration(cfg *conf.Configuration) Option {
 	}
 }
 
-func Use(configurable conf.Configurable, path string) Option {
+// RegisterHandler inject a handler to server,then can be used in Server.Apply method
+func RegisterHandler(name string, handler handler.Handler) Option {
 	return func(s *Server) {
-		configurable.Apply(s.configuration, path)
+		s.handlerManager.RegisterHandlerFunc(name, handler)
 	}
 }
 

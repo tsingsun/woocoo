@@ -148,6 +148,11 @@ func (c *Configuration) GetBaseDir() string {
 	return c.opts.basedir
 }
 
+// SetBaseDir return the application dir
+func (c *Configuration) SetBaseDir(dir string) {
+	c.opts.basedir = dir
+}
+
 // Global return default(global) Configuration instance
 func Global() *Configuration { return global }
 

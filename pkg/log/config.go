@@ -50,7 +50,10 @@ func NewConfig(cfg *conf.Configuration) (*Config, error) {
 	}
 	if err := cfg.Parser().Unmarshal("", &v); err != nil {
 		return nil, err
+	} else if len(v.Tee) == 0 && v.Sole == nil {
+		return nil, fmt.Errorf("none logger config,plz set up section: sole or tee")
 	}
+
 	if v.Rotate != nil {
 		v.useRotate = true
 	}

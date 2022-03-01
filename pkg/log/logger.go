@@ -15,13 +15,16 @@ const (
 	SpanIdKey         = "spanid"
 )
 
-//Logger integrate the Uber Zap library to use in woocoo
+// Logger integrate the Uber Zap library to use in woocoo
+//
+// if you prefer to golang builtin log style,use log.Info or log.Infof, if zap style,you should use log.Operator().Info()
 type Logger struct {
 	zap *zap.Logger
 }
 
 var global, _ = New(zap.NewNop())
 
+// New return an Instance
 func New(zl *zap.Logger) (*Logger, error) {
 	return &Logger{zap: zl}, nil
 }
@@ -88,13 +91,13 @@ func WithContext(ctx context.Context) *Logger {
 	return global
 }
 
-// get trace id of zap field type
+// TraceIdField get trace id of zap field type
 func TraceIdField(ctx context.Context) zap.Field {
 	val, _ := ctx.Value(TraceIdKey).(string)
 	return zap.String(TraceIdKey, val)
 }
 
-// get the structured logger
+// Operator return the structured logger
 func Operator() *zap.Logger {
 	return global.zap
 }

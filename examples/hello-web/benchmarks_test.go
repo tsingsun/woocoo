@@ -18,7 +18,7 @@ log:
     disableCaller: true
     disableStacktrace: true
     outputPaths: 
-      - "logs/test.log"
+      - "logs/log-bench.log"
     errorOutputPaths:
       - stderr
   rotate:

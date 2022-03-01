@@ -10,18 +10,11 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/web"
-	"github.com/tsingsun/woocoo/web/handler"
 	"github.com/tsingsun/woocoo/web/handler/logger"
 	"github.com/tsingsun/woocoo/web/handler/recovery"
 	"net/http"
 	"runtime/debug"
 )
-
-var instance = New()
-
-func init() {
-	handler.RegisterHandlerFunc("graphql", instance)
-}
 
 // Option handler option
 type Option struct {
@@ -66,7 +59,7 @@ func (h *Handler) Shutdown() {
 // NewGraphqlServer create a graphiql server
 func NewGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema, opt *Option) *gqlgen.Server {
 	if opt == nil {
-		opt = &instance.Option
+		opt = &defaultOption
 	}
 	server := gqlgen.NewDefaultServer(schema)
 	server.AroundResponses(func(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {

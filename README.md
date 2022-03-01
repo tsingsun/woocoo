@@ -1,33 +1,41 @@
 # WooCoo
 
-## WooCoo简介
+[![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
+[![codecov](https://codecov.io/gh/tsingsun/woocoo/branch/master/graph/badge.svg)](https://codecov.io/gh/tsingsun/woocoo)
+[![Go Report Card](https://goreportcard.com/badge/github.com/tsingsun/woocoo)](https://goreportcard.com/report/github.com/tsingsun/woocoo)
+[![Build Status](https://github.com/tsingsun/woocoo/workflows/Run%20Tests/badge.svg?branch=master)](https://github.com/tsingsun/woocoo/actions?query=branch%3Amaster)
+[![Release](https://img.shields.io/github/release/tsingsun/woocoo.svg?style=flat-square)](https://github.com/tsingsun/woocoo/releases)
+[![GoDoc](https://pkg.go.dev/badge/github.com/tsingsun/woocoo?status.svg)](https://pkg.go.dev/github.com/tsingsun/woocoo?tab=doc)
 
-WooCoo的定位是一个基于Golang的应用开发框架及工具包,以便开发者通过本工具来开发各种Api应用或RPC服务.
+English | [🇨🇳中文](README_ZH.md)
 
-本项目更偏向粘合剂作用,核心组件选取开源流程项目,目前实现的功能: 
+## Introduction
 
-本工具包提供下列功能:
+`WooCoo` is an application development framework and toolkit written in GO(Golang). It is easy to develop WebApi applications or RPC services.
 
-- 基本组件配置化,多配置文件支持,方便多环境下的开发配置
-- 日志组件,支持多日志输出,请参见[Logger](docs/logger.md),
-- OpenTelemetry支持,请参见[OpenTelemetry](docs/otel.md)
-- web服务,支持GraphQL
-- grpc服务
-- JWT-based验证
+`WooCoo` mainly plays a role of adhesive, and its core components are from other open source projects. 
+The current features are as follows:
 
-核心组件的选取:
+# Features
+- [x] component configurable,easy to split multi environments
+- [X] logger and rotate support. [Detail](docs/logger.md),
+- [X] OpenTelemetry support. [Detail](docs/otel.md)
+- [X] built-in web router,supports GraphQL.
+- [X] built-in grpc server.
+- [X] JWT-based validation
+- [X] microservice registry and discovery: 
+  - implements: etcd
 
-- 日志: [Uber Zap](http://go.uber.org/zap)
-- Web路由框架: [gin](http://github.com/gin-gonic/gin)
+# Core Components:
 
-微服务相关:
+- Logger: [Uber Zap](http://go.uber.org/zap)
+- Web: [gin](http://github.com/gin-gonic/gin)
 
-- 服务注册与发现: 实现了[etcd](https://github.com/coreos/etcd),留有其他组件扩展的能力
+## others:
 
-## 其他
+contact:
+- QQ: 21997272
 
-联系我: QQ: 21997272
-
-## 致谢
+## Thanks
 
 ![image](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)

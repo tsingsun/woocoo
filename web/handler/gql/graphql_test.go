@@ -22,8 +22,9 @@ web:
                 docPath: "/"
                 group: "/graphql"
 `
+
 	cfg := conf.NewFromBytes([]byte(cfgStr))
-	srv := web.NewBuiltIn(web.Configuration(cfg))
+	srv := web.NewBuiltIn(web.Configuration(cfg), web.RegisterHandler("graphql", New()))
 	NewGraphqlServer(srv, &graphql.ExecutableSchemaMock{
 		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]interface{}) (int, bool) {
 			panic("mock out the Complexity method")

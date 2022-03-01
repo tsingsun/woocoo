@@ -6,7 +6,6 @@ import (
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"google.golang.org/grpc/attributes"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/resolver"
 	"sync"
@@ -48,7 +47,7 @@ func (w *Watcher) GetAllAddresses() []resolver.Address {
 				//as := v.Pairs()
 				ret = append(ret, resolver.Address{
 					Addr:       v.Address,
-					Attributes: attributes.New(v.Pairs()...),
+					Attributes: v.ToAttributes(),
 				})
 			}
 		}
@@ -78,7 +77,7 @@ func (w *Watcher) Watch() chan []resolver.Address {
 						grpclog.Error("Parse node data error:", err)
 						continue
 					}
-					addr := resolver.Address{Addr: nodeData.Address, Attributes: attributes.New(nodeData.Pairs()...)}
+					addr := resolver.Address{Addr: nodeData.Address, Attributes: nodeData.ToAttributes()}
 					if w.addAddr(addr) {
 						out <- w.cloneAddresses(w.addrs)
 					}
@@ -89,7 +88,7 @@ func (w *Watcher) Watch() chan []resolver.Address {
 						grpclog.Error("Parse node data error:", err)
 						continue
 					}
-					addr := resolver.Address{Addr: nodeData.Address, Attributes: attributes.New(nodeData.Pairs()...)}
+					addr := resolver.Address{Addr: nodeData.Address, Attributes: nodeData.ToAttributes()}
 					if w.removeAddr(addr) {
 						out <- w.cloneAddresses(w.addrs)
 					}

@@ -2,6 +2,7 @@ package registry
 
 import (
 	"crypto/tls"
+	"google.golang.org/grpc/attributes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/resolver"
 	"path/filepath"
@@ -46,15 +47,13 @@ type NodeInfo struct {
 	Metadata        metadata.MD
 }
 
-func (n NodeInfo) Pairs() []interface{} {
-	var val []interface{}
+func (n NodeInfo) ToAttributes() *attributes.Attributes {
+	var val *attributes.Attributes
 	if n.Metadata.Len() == 0 {
 		return val
 	}
-	for _, strings := range n.Metadata {
-		for _, s := range strings {
-			val = append(val, s)
-		}
+	for k, strings := range n.Metadata {
+		val.WithValue(k, strings)
 	}
 	return val
 }

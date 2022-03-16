@@ -29,7 +29,7 @@ jobs:
         curl -L https://github.com/coreos/etcd/releases/download/${{ matrix.etcd-version }}/etcd-${{ matrix.etcd-version }}-linux-amd64.tar.gz -o /tmp/etcd-${{ matrix.etcd-version }}-linux-amd64.tar.gz
         mkdir -p /tmp/etcd
         tar xzvf /tmp/etcd-${{ matrix.etcd-version }}-linux-amd64.tar.gz -C /tmp/etcd --strip-components=1
-        export ALLOW_NONE_AUTHENTICATION=yes && /tmp/etcd/etcd --advertise-client-urls https://127.0.0.1:2379 --listen-client-urls https://127.0.0.1:2379 > /dev/null &
+        export ALLOW_NONE_AUTHENTICATION=yes && /tmp/etcd/etcd --advertise-client-urls http://127.0.0.1:2379 --listen-client-urls http://127.0.0.1:2379 > /dev/null &
 
     - name: Test
       run: go test -v ./...

@@ -32,6 +32,6 @@ jobs:
         export ALLOW_NONE_AUTHENTICATION=yes && /tmp/etcd/etcd --advertise-client-urls http://127.0.0.1:2379 --listen-client-urls http://127.0.0.1:2379 > /dev/null &
 
     - name: Run coverage
-      run: go test -v ./... -coverprofile=coverage.txt -covermode=atomic
+      run: go test -v -coverprofile=coverage.txt -covermode=atomic ./...
     - name: Upload coverage to Codecov
-      run: bash <(curl -s https://codecov.io/bash)
+      uses: codecov/codecov-action@v1

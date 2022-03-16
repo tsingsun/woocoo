@@ -87,8 +87,10 @@ func (s *Server) Logger() *log.Logger {
 }
 
 func (s *Server) Apply(cfg *conf.Configuration) {
-	if err := cfg.Parser().Unmarshal("server", &s.serverSetting); err != nil {
-		panic(err)
+	if cfg.IsSet("server") {
+		if err := cfg.Parser().Unmarshal("server", &s.serverSetting); err != nil {
+			panic(err)
+		}
 	}
 	s.serverSetting.Development = cfg.Development
 

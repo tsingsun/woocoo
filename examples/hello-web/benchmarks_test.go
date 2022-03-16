@@ -28,6 +28,8 @@ log:
     localtime: true
     compress: false
 web:
+  server:
+    addr: 0.0.0.0:33333
   engine:
     routerGroups:
       - default:

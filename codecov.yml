@@ -1,9 +1,7 @@
 codecov:
-  token: "ffc84b7b-35bb-4cd1-9c05-7ec86b08641c"
-  disable_default_path_fixes: true
-
-fixes:
-  - "github.com/tsingsun/woocoo/::pkg/"
+  ci:
+    - github.com
+  require_ci_to_pass: true
 
 ignore:
   - "**/*.pb.go"

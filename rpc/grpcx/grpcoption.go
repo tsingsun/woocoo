@@ -17,11 +17,11 @@ var (
 )
 
 func init() {
-	RegisterGrpcServerOption("keepalive", keepaliveHandler)
-	RegisterGrpcServerOption("tls", tlsHandler)
-	RegisterGrpcUnaryInterceptor("auth", auth.UnaryServerInterceptor)
-	RegisterGrpcUnaryInterceptor("accessLog", logger.UnaryServerInterceptor)
-	RegisterGrpcUnaryInterceptor("recovery", recovery.UnaryServerInterceptor)
+	_ = RegisterGrpcServerOption("keepalive", keepaliveHandler)
+	_ = RegisterGrpcServerOption("tls", tlsHandler)
+	_ = RegisterGrpcUnaryInterceptor("auth", auth.UnaryServerInterceptor)
+	_ = RegisterGrpcUnaryInterceptor("accessLog", logger.UnaryServerInterceptor)
+	_ = RegisterGrpcUnaryInterceptor("recovery", recovery.UnaryServerInterceptor)
 }
 
 type configurableGrpcServerOptions struct {
@@ -77,7 +77,10 @@ func tlsHandler(cfg *conf.Configuration) grpc.ServerOption {
 
 func (c configurableGrpcServerOptions) unaryInterceptorHandler(cnf *conf.Configuration) grpc.ServerOption {
 	var opts []grpc.UnaryServerInterceptor
-	its := cnf.SubOperator("")
+	its, err := cnf.SubOperator("")
+	if err != nil {
+		panic(err)
+	}
 	for _, it := range its {
 		var name string
 		for s := range it.Raw() {

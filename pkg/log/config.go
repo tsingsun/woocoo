@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	zapConfigPath = "sole"
 	teeConfigPath = "tee"
 	// rotate:[//[userinfo@]host][/]path[?query][#fragment]
 	rotateSchema = "Rotate"
@@ -39,9 +38,13 @@ func NewConfig(cfg *conf.Configuration) (*Config, error) {
 	dzapCfg := zap.NewProductionConfig()
 	dzapCfg.Development = cfg.Root().Development
 
+	kps, err := cfg.SubOperator(teeConfigPath)
+	if err != nil {
+		panic(err)
+	}
 	v := &Config{
 		//Sole: &dzapCfg,
-		Tee:     make([]zap.Config, len(cfg.SubOperator(teeConfigPath))),
+		Tee:     make([]zap.Config, len(kps)),
 		basedir: cfg.Root().GetBaseDir(),
 	}
 	if len(v.Tee) == 0 {
@@ -51,10 +54,10 @@ func NewConfig(cfg *conf.Configuration) (*Config, error) {
 			v.Tee[i] = zap.NewProductionConfig()
 		}
 	}
-	err := cfg.Unmarshal(&v)
-	if err != nil {
+	if err = cfg.Unmarshal(&v); err != nil {
 		return nil, err
 	}
+
 	if len(v.Tee) == 0 && v.Sole == nil {
 		return nil, fmt.Errorf("none logger config,plz set up section: sole or tee")
 	}

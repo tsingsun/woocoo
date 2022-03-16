@@ -24,17 +24,21 @@ type Configurable interface {
 	Apply(cfg *Configuration)
 }
 
+const (
+	baseDirEnv = "WOOCOO_BASEDIR"
+)
+
+var (
+	global            *Configuration
+	defaultConfigFile = "etc/app.yaml"
+)
+
 type Configuration struct {
 	opts        options
 	parser      *Parser
 	Development bool
 	root        *Configuration
 }
-
-var (
-	global            *Configuration
-	defaultConfigFile = "etc/app.yaml"
-)
 
 var defaultOptions = options{
 	global: true,
@@ -46,6 +50,9 @@ func init() {
 		panic(err)
 	}
 	defaultOptions.basedir = filepath.Dir(pwd)
+	if bs := os.Getenv(baseDirEnv); bs != "" {
+		defaultOptions.basedir = bs
+	}
 }
 
 // New create an application configuration instance
@@ -216,9 +223,8 @@ func (c Configuration) passRoot(sub *Configuration) {
 	}
 }
 
-func (c *Configuration) SubOperator(path string) []*koanf.Koanf {
+func (c *Configuration) SubOperator(path string) (out []*koanf.Koanf, err error) {
 	if path == "" {
-		out := []*koanf.Koanf{}
 		raw := c.parser.k.Raw()
 		for _, val := range raw {
 			v, ok := val.([]interface{})
@@ -232,13 +238,15 @@ func (c *Configuration) SubOperator(path string) []*koanf.Koanf {
 				}
 
 				k := koanf.New(KeyDelimiter)
-				k.Load(confmap.Provider(v, ""), nil)
+				if err = k.Load(confmap.Provider(v, ""), nil); err != nil {
+					return
+				}
 				out = append(out, k)
 			}
 		}
-		return out
+		return
 	}
-	return c.parser.k.Slices(path)
+	return
 }
 
 func (c *Configuration) Copy() *Configuration {

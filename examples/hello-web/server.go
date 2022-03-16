@@ -35,7 +35,6 @@ type User struct {
 func main() {
 	httpSvr := web.NewBuiltIn(web.RegisterHandler("otel", otelweb.New()))
 	r := httpSvr.Router().Engine
-	log.Info("err")
 	r.GET("/", func(c *gin.Context) {
 		c.String(200, "hello world")
 	})

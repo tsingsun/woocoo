@@ -37,10 +37,13 @@ func newConfigurableGrpcDialOptions() *configurableGrpcClientOptions {
 
 func (c configurableGrpcClientOptions) unaryInterceptorHandler(cnf *conf.Configuration) grpc.DialOption {
 	var opts []grpc.UnaryClientInterceptor
-	its := cnf.SubOperator("")
+	its, err := cnf.SubOperator("")
+	if err != nil {
+		panic(err)
+	}
 	for _, it := range its {
 		var name string
-		for s, _ := range it.Raw() {
+		for s := range it.Raw() {
 			name = s
 			break
 		}
@@ -56,7 +59,7 @@ func (c configurableGrpcClientOptions) Apply(client *Client, cfg *conf.Configura
 	hfs := cfg.ParserOperator().Slices(path)
 	for _, hf := range hfs {
 		var name string
-		for s, _ := range hf.Raw() {
+		for s := range hf.Raw() {
 			name = s
 			break
 		}

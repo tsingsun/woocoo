@@ -17,16 +17,15 @@ func Config(cnfops ...conf.Option) Option {
 	}
 }
 
-func Configuration(configuration *conf.Configuration, configurationKey string) Option {
+func Configuration(configuration *conf.Configuration) Option {
 	return func(s *Server) {
 		s.configuration = configuration
-		s.configurationKey = configurationKey
 	}
 }
 
-func Use(configurable conf.Configurable, path string) Option {
+func Use(configurable conf.Configurable) Option {
 	return func(s *Server) {
-		configurable.Apply(s.configuration, path)
+		configurable.Apply(s.configuration)
 	}
 }
 

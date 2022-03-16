@@ -1,7 +1,7 @@
 package grpcx_test
 
 import (
-	"bytes"
+	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"github.com/tsingsun/woocoo/test/testdata"
@@ -39,11 +39,7 @@ service:
         pubKey: config/pubKey.pem
         tenantHeader: Qeelyn-Org-Id
 `)
-	p, err := conf.NewParserFromBuffer(bytes.NewReader(b))
-	if err != nil {
-		t.Fatal(err)
-	}
-	cfg := cnf.CutFromParser(p)
-	s := grpcx.New()
-	s.Apply(cfg, "service")
+	cfg := conf.NewFromBytes(b).Load()
+	s := grpcx.New(grpcx.Configuration(cfg))
+	assert.NotNil(t, s)
 }

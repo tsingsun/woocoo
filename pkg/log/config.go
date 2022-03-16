@@ -40,17 +40,22 @@ func NewConfig(cfg *conf.Configuration) (*Config, error) {
 	dzapCfg.Development = cfg.Root().Development
 
 	v := &Config{
-		Sole: &dzapCfg,
-		Tee:  make([]zap.Config, len(cfg.SubOperator(teeConfigPath))),
-
+		//Sole: &dzapCfg,
+		Tee:     make([]zap.Config, len(cfg.SubOperator(teeConfigPath))),
 		basedir: cfg.Root().GetBaseDir(),
 	}
-	for i := 0; i < len(v.Tee); i++ {
-		v.Tee[i] = zap.NewProductionConfig()
+	if len(v.Tee) == 0 {
+		v.Sole = &dzapCfg
+	} else {
+		for i := 0; i < len(v.Tee); i++ {
+			v.Tee[i] = zap.NewProductionConfig()
+		}
 	}
-	if err := cfg.Parser().Unmarshal("", &v); err != nil {
+	err := cfg.Unmarshal(&v)
+	if err != nil {
 		return nil, err
-	} else if len(v.Tee) == 0 && v.Sole == nil {
+	}
+	if len(v.Tee) == 0 && v.Sole == nil {
 		return nil, fmt.Errorf("none logger config,plz set up section: sole or tee")
 	}
 

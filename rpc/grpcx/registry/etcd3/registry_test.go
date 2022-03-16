@@ -1,9 +1,9 @@
 package etcd3
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/internal/mock/helloworld"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
@@ -39,17 +39,10 @@ service:
       dial-timeout: 3s
       dial-keep-alive-time: 3000
 `)
-	p, err := conf.NewParserFromBuffer(bytes.NewReader(b))
-	if err != nil {
-		t.Fatal(err)
-	}
-	cfg := cnf.CutFromParser(p)
+	cfg := conf.NewFromBytes(b)
 	r := New()
-	if err != nil {
-		t.Fatal(err)
-	}
-	r.Apply(cfg, "service.registry")
-	if len(r.config.EtcdConfig.Endpoints) == 0 {
+	r.Apply(cfg.Sub("service.registry"))
+	if len(r.opts.EtcdConfig.Endpoints) == 0 {
 		t.Error("apply error")
 	}
 }
@@ -68,7 +61,7 @@ func TestRegisterResolver(t *testing.T) {
 		Address:         listen,
 		Metadata:        nil,
 	}
-	reg, err := BuildFromConfig(&Config{
+	reg, err := BuildFromConfig(&Options{
 		EtcdConfig: etcdConfg,
 		TTL:        10 * time.Minute,
 	})
@@ -122,8 +115,8 @@ func TestRegisterResolver2(t *testing.T) {
 		DialTimeout: 10 * time.Second,
 	}
 	go func() {
-		srv := grpcx.New(grpcx.Configuration(cnf, "service"), grpcx.UseLogger())
-		srv.Apply(cnf, "service")
+		srv := grpcx.New(grpcx.Configuration(cnf), grpcx.UseLogger())
+		srv.Apply(cnf.Sub("service"))
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		if err := srv.Run(); err != nil {
 			t.Error(err)
@@ -141,10 +134,7 @@ func TestRegisterResolver2(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 		resp, err := client.SayHello(ctx, &helloworld.HelloRequest{Name: "round robin"})
-		if err != nil {
-			t.Error(err)
-		} else {
-			t.Log(resp.Message)
-		}
+		assert.NoError(t, err)
+		assert.Equal(t, resp.Message, "Hello round robin")
 	}
 }

@@ -15,6 +15,8 @@ const (
 	SpanIdKey         = "spanid"
 )
 
+var _ conf.Configurable = (*Logger)(nil)
+
 // Logger integrate the Uber Zap library to use in woocoo
 //
 // if you prefer to golang builtin log style,use log.Info or log.Infof, if zap style,you should use log.Operator().Info()
@@ -31,10 +33,12 @@ func New(zl *zap.Logger) (*Logger, error) {
 
 // NewBuiltIn create a logger by configuration
 func NewBuiltIn() *Logger {
-	l := &Logger{}
-	l.Apply(conf.Global().Sub("log"), "")
-	l.AsGlobal()
-	return l
+	if conf.Global().IsSet("log") {
+		global.Apply(conf.Global().Sub("log"))
+	} else {
+		StdPrintf("the configuration file does not contain section: log")
+	}
+	return global
 }
 
 func Global() *Logger {
@@ -58,7 +62,7 @@ func (l *Logger) Sync() error {
 
 // Apply implement Configurable interface which can initial from a file used in JSON,YAML
 // Logger init trough Apply method will be set as Global.
-func (l *Logger) Apply(cfg *conf.Configuration, path string) {
+func (l *Logger) Apply(cfg *conf.Configuration) {
 	config, err := NewConfig(cfg)
 	if err != nil {
 		panic(fmt.Errorf("%s apply from configuration file err:%s", "log", err))

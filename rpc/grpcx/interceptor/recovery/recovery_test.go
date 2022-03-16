@@ -26,7 +26,7 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	})
 	clfg := cnf.CutFromParser(p)
 	gloger := log.Logger{}
-	gloger.Apply(cnf, "")
+	gloger.Apply(cnf)
 	go func() {
 		opts := []grpc.ServerOption{
 			// The following grpc.ServerOption adds an interceptor for all unary

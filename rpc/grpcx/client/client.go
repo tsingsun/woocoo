@@ -1,11 +1,13 @@
 package client
 
 import (
+	"context"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
 	"strings"
+	"time"
 )
 
 type ServerConfig struct {
@@ -16,12 +18,14 @@ type ServerConfig struct {
 }
 
 type Client struct {
-	serverConfig     ServerConfig
-	registry         registry.Registry
-	resolverBuilder  resolver.Builder
-	dialOpts         []grpc.DialOption
-	configuration    *conf.Configuration
-	configurationKey string
+	serverConfig    ServerConfig
+	registry        registry.Registry
+	resolverBuilder resolver.Builder
+	dialOpts        []grpc.DialOption
+	configuration   *conf.Configuration
+
+	// for dialcontext
+	timeout time.Duration
 }
 
 func New(opts ...Option) *Client {
@@ -29,32 +33,32 @@ func New(opts ...Option) *Client {
 	for _, o := range opts {
 		o(c)
 	}
-	if c.configuration != nil && c.configurationKey != "" {
-		c.Apply(c.configuration, c.configurationKey)
-	}
+	c.Apply(c.configuration)
 	return c
 }
 
-func (c *Client) Apply(cfg *conf.Configuration, path string) {
-	if err := cfg.Sub(path).Parser().Unmarshal("server", &c.serverConfig); err != nil {
+func (c *Client) Apply(cfg *conf.Configuration) {
+	if err := cfg.Parser().Unmarshal("server", &c.serverConfig); err != nil {
 		panic(err)
 	}
-	if k := strings.Join([]string{path, "registry"}, conf.KeyDelimiter); cfg.IsSet(k) {
-		c.registry = registry.GetRegistry(cfg.String(strings.Join([]string{path, "registry", "schema"}, conf.KeyDelimiter)))
+	if k := strings.Join([]string{"registry"}, conf.KeyDelimiter); cfg.IsSet(k) {
+		c.registry = registry.GetRegistry(cfg.String(strings.Join([]string{"registry", "schema"}, conf.KeyDelimiter)))
 		if ap, ok := c.registry.(conf.Configurable); ok {
-			ap.Apply(cfg, k)
+			ap.Apply(cfg.Sub(k))
 			c.resolverBuilder = c.registry.ResolverBuilder(c.serverConfig.Location)
 			//global
 			resolver.Register(c.resolverBuilder)
 		}
 	}
 	//client
-	if k := strings.Join([]string{path, "client"}, conf.KeyDelimiter); cfg.IsSet(k) {
-		c.dialOpts = append(c.dialOpts, grpcDialOptions.Apply(cfg, k)...)
+	if k := strings.Join([]string{"client"}, conf.KeyDelimiter); cfg.IsSet(k) {
+		c.dialOpts = append(c.dialOpts, grpcDialOptions.Apply(c, cfg, k)...)
 	}
 }
 
 func (c *Client) Dial(opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	c.dialOpts = append(c.dialOpts, opts...)
-	return grpc.Dial(c.resolverBuilder.Scheme()+"://"+c.serverConfig.Location+"/", c.dialOpts...)
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
+	return grpc.DialContext(ctx, c.resolverBuilder.Scheme()+"://"+c.serverConfig.Location+"/", c.dialOpts...)
 }

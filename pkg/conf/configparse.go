@@ -68,17 +68,19 @@ func (l *Parser) AllKeys() []string {
 	return l.k.Keys()
 }
 
-// Unmarshal unmarshals the config into a struct.
+// Unmarshal specified path config into a struct.
 // Tags on the fields of the structure must be properly set.
-func (l *Parser) Unmarshal(key string, rawVal interface{}) (err error) {
+func (l *Parser) Unmarshal(key string, dst interface{}) (err error) {
 	var s *Parser
 	if key == "" {
 		s = l
 	} else {
-		s, err = l.Sub(key)
+		if s, err = l.Sub(key); err != nil {
+			return
+		}
 	}
 
-	decoder, err := mapstructure.NewDecoder(decoderConfig(rawVal))
+	decoder, err := mapstructure.NewDecoder(decoderConfig(dst))
 	if err != nil {
 		return err
 	}
@@ -91,7 +93,9 @@ func (l *Parser) UnmarshalExact(key string, intoCfg interface{}) (err error) {
 	if key == "" {
 		s = l
 	} else {
-		s, err = l.Sub(key)
+		if s, err = l.Sub(key); err != nil {
+			return
+		}
 	}
 
 	dc := decoderConfig(intoCfg)
@@ -131,11 +135,10 @@ func (l *Parser) MergeStringMap(cfg map[string]interface{}) error {
 }
 
 // Sub returns new Parser instance representing a sub-config of this instance.
-// It returns an error is the sub-config is not a map (use Get()) and an empty Parser if
-// none exists.
+// It returns an error is the sub-config is not a map (use Get()) or if none exists.
 func (l *Parser) Sub(key string) (*Parser, error) {
 	if !l.IsSet(key) {
-		return NewParser(), nil
+		return nil, fmt.Errorf("key not exists:%s", key)
 	}
 
 	subParser := NewParser()

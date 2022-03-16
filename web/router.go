@@ -34,15 +34,15 @@ func NewRouter(s *Server) *Router {
 	}
 }
 
-func (r *Router) Apply(cfg *conf.Configuration, path string) error {
+func (r *Router) Apply(cfg *conf.Configuration) error {
 	if r.server == nil {
 		return errors.New("router apply must apply after Server")
 	}
-	if err := cfg.Parser().Unmarshal(path, r.Engine); err != nil {
+	if err := cfg.Unmarshal(r.Engine); err != nil {
 		return err
 	}
 
-	rgs := cfg.Sub(path).ParserOperator().Slices("routerGroups")
+	rgs := cfg.ParserOperator().Slices("routerGroups")
 	if r.AfterRegisterInternalHandler != nil {
 		r.AfterRegisterInternalHandler(r)
 	}

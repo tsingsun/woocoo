@@ -43,7 +43,7 @@ func New() *Handler {
 }
 
 func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	if err := cfg.Parser().Unmarshal("", &h.Option); err != nil {
+	if err := cfg.Unmarshal(&h.Option); err != nil {
 		panic(err)
 	}
 	return func(c *gin.Context) {

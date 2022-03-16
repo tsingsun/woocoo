@@ -23,7 +23,7 @@ func NewBuiltIn() *Client {
 	if err != nil {
 		panic(err)
 	}
-	v.Apply(conf.Global(), "store.redis")
+	v.Apply(conf.Global().Sub("store.redis"))
 	return v
 }
 
@@ -34,21 +34,20 @@ func (c *Client) Close() error {
 	return c.closeFunc()
 }
 
-func (c *Client) Apply(cfg *conf.Configuration, path string) {
+func (c *Client) Apply(cfg *conf.Configuration) {
 	var err error
-	cnf := cfg.Sub(path)
-	c.ClientType = cnf.String("type")
+	c.ClientType = cfg.String("type")
 	switch c.ClientType {
 	case "cluster":
 		opts := &redis.ClusterOptions{}
-		err = cnf.Parser().Unmarshal("", opts)
+		err = cfg.Unmarshal(opts)
 		cl := redis.NewClusterClient(opts)
 		c.closeFunc = cl.Close
 		c.option = opts
 		c.Cmdable = cl
 	case "ring":
 		opts := &redis.RingOptions{}
-		err = cnf.Parser().Unmarshal("", opts)
+		err = cfg.Unmarshal(opts)
 		cl := redis.NewRing(opts)
 		c.closeFunc = cl.Close
 		c.option = opts
@@ -57,7 +56,7 @@ func (c *Client) Apply(cfg *conf.Configuration, path string) {
 		fallthrough
 	default:
 		opts := &redis.Options{}
-		err = cnf.Parser().Unmarshal("", opts)
+		err = cfg.Unmarshal(opts)
 		cl := redis.NewClient(opts)
 		c.closeFunc = cl.Close
 		c.option = opts

@@ -57,7 +57,7 @@ func New() (*contextLogger, error) {
 }
 
 func (c *contextLogger) Apply(cfg *conf.Configuration) {
-	if err := cfg.Parser().Unmarshal("", c); err != nil {
+	if err := cfg.Unmarshal(c); err != nil {
 		panic(err)
 	}
 }

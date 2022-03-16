@@ -21,11 +21,11 @@ store:
 	cfg := conf.NewFromBytes([]byte(b)).Load()
 	t.Run("cluster", func(t *testing.T) {
 		r1 := &Client{}
-		r1.Apply(cfg, "store.redis1")
+		r1.Apply(cfg.Sub("store.redis1"))
 	})
 	t.Run("standalone", func(t *testing.T) {
 		r1 := &Client{}
-		r1.Apply(cfg, "store.redis2")
+		r1.Apply(cfg.Sub("store.redis2"))
 
 		if o, ok := r1.option.(*redis.Options); !ok {
 			t.Errorf("option mismatch,want:redis.option,but got:%v", o)

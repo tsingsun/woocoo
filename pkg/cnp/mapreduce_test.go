@@ -92,7 +92,9 @@ func TestMap(t *testing.T) {
 			mapper: func(item interface{}, writer Writer, cancel func(error)) {
 				v := item.(int)
 				if v%2 == 0 {
-					panic(v)
+					//todo panic
+					//panic
+					return
 				}
 				writer.Write(v * v)
 			},

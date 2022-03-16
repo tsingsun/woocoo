@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/user"
 	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/auth"
@@ -29,8 +30,8 @@ var (
 func TestAuth_UnaryServerInterceptor(t *testing.T) {
 	auth.IdentityHandler = func(ctx context.Context, claims jwt.MapClaims) user.Identity {
 		return &user.User{
-			user.IDKey:    claims["sub"].(string),
-			user.OrgIDKey: claims["X-Org-Id"].(string),
+			user.IDKey: claims["sub"].(string),
+			//user.OrgIDKey: claims["X-Org-Id"].(string),
 		}
 	}
 	ints, err := auth.New()
@@ -99,8 +100,6 @@ func TestAuth_UnaryServerInterceptor(t *testing.T) {
 	resp, err := client.Ping(context.Background(), &testproto.PingRequest{
 		Value: t.Name(),
 	})
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log(resp)
+	assert.NoError(t, err)
+	assert.EqualValues(t, resp.Counter, 42)
 }

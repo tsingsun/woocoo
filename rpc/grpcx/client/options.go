@@ -15,10 +15,9 @@ func init() {
 
 type Option func(client *Client)
 
-func Configuration(configuration *conf.Configuration, configurationKey string) Option {
+func Configuration(configuration *conf.Configuration) Option {
 	return func(c *Client) {
 		c.configuration = configuration
-		c.configurationKey = configurationKey
 	}
 }
 
@@ -53,13 +52,18 @@ func (c configurableGrpcClientOptions) unaryInterceptorHandler(cnf *conf.Configu
 	return grpc.WithChainUnaryInterceptor(opts...)
 }
 
-func (c configurableGrpcClientOptions) Apply(cfg *conf.Configuration, path string) (opts []grpc.DialOption) {
+func (c configurableGrpcClientOptions) Apply(client *Client, cfg *conf.Configuration, path string) (opts []grpc.DialOption) {
 	hfs := cfg.ParserOperator().Slices(path)
 	for _, hf := range hfs {
 		var name string
 		for s, _ := range hf.Raw() {
 			name = s
 			break
+		}
+		// WithTimeout is deprecated,so handle it independently
+		if name == "timeout" {
+			client.timeout = hf.Duration(name)
+			continue
 		}
 		if name == "unaryInterceptors" {
 			itcfg := cfg.CutFromOperator(hf)

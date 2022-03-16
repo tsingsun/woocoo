@@ -17,10 +17,11 @@ import (
 type Configurable interface {
 	// Apply set up property or field value by configuration
 	//
-	// cfg is the Configuration include the component;
+	// cfg is the Configuration of the component and it's sub configuration of root
 	// path is the relative path to root,if root is the component,path will be empty
 	// Apply also use for lazy load scene
-	Apply(cfg *Configuration, path string)
+	// notice: if any error in apply process,use panic to expose error,and stop application.
+	Apply(cfg *Configuration)
 }
 
 type Configuration struct {
@@ -76,9 +77,10 @@ func NewFromBytes(b []byte, opts ...Option) *Configuration {
 	return cnf
 }
 
-func (c *Configuration) AsGlobal() {
+func (c *Configuration) AsGlobal() *Configuration {
 	global = c
 	c.opts.global = true
+	return c
 }
 
 func (c *Configuration) Load() *Configuration {
@@ -180,7 +182,7 @@ func (c *Configuration) Sub(path string) *Configuration {
 	}
 	p, err := c.Parser().Sub(path)
 	if err != nil {
-		return nil
+		panic(err)
 	}
 	return &Configuration{
 		opts:        c.opts,
@@ -253,7 +255,7 @@ func (c *Configuration) Root() *Configuration {
 
 // AppName indicates the application's name
 //
-// return the path 'appName' value, no set return empty
+// return the path 'appName' value if exists
 func (c *Configuration) AppName() string {
 	return c.String("appName")
 }
@@ -263,6 +265,13 @@ func (c *Configuration) AppName() string {
 // return the path 'version' value, no set return empty
 func (c *Configuration) Version() string {
 	return c.String("version")
+}
+
+// Unmarshal map data of config into a struct.
+//
+// Tags on the fields of the structure must be properly set.
+func (c *Configuration) Unmarshal(dst interface{}) (err error) {
+	return c.parser.Unmarshal("", dst)
 }
 
 // Abs 返回绝对路径

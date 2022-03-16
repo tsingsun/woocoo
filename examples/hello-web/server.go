@@ -3,9 +3,9 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/contrib/opentelemetry/otelweb"
+	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/web"
 	jwt "github.com/tsingsun/woocoo/web/handler/auth"
-	"log"
 )
 
 type login struct {
@@ -35,7 +35,7 @@ type User struct {
 func main() {
 	httpSvr := web.NewBuiltIn(web.RegisterHandler("otel", otelweb.New()))
 	r := httpSvr.Router().Engine
-
+	log.Info("err")
 	r.GET("/", func(c *gin.Context) {
 		c.String(200, "hello world")
 	})

@@ -163,7 +163,7 @@ func New() *GinJWTMiddleware {
 }
 
 func (mw *GinJWTMiddleware) Apply(cfg *conf.Configuration, path string) {
-	if err := cfg.Parser().Unmarshal(path, mw); err != nil {
+	if err := cfg.Sub(path).Unmarshal(mw); err != nil {
 		panic(err)
 	}
 
@@ -669,7 +669,7 @@ func defaultAuthMiddleware(cfg *conf.Configuration) *GinJWTMiddleware {
 			})
 		},
 	}
-	if err := cfg.Parser().Unmarshal("", ac); err != nil {
+	if err := cfg.Unmarshal(ac); err != nil {
 		panic(err)
 	}
 

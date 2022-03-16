@@ -69,7 +69,7 @@ func NewBuiltIn(opts ...Option) *Server {
 		UseLogger()(srv)
 	}
 
-	srv.Apply(srv.configuration, configPath)
+	srv.Apply(srv.configuration.Sub(configPath))
 	return srv
 }
 
@@ -86,21 +86,13 @@ func (s *Server) Logger() *log.Logger {
 	return s.logger
 }
 
-func (s *Server) Apply(cfg *conf.Configuration, path string) {
-	if s.configuration == nil {
-		s.configuration = cfg
-	}
-	cc, err := cfg.Parser().Sub(path)
-	if err != nil {
-		panic(err)
-	}
-
-	if err = cc.Unmarshal("server", &s.serverSetting); err != nil {
+func (s *Server) Apply(cfg *conf.Configuration) {
+	if err := cfg.Parser().Unmarshal("server", &s.serverSetting); err != nil {
 		panic(err)
 	}
 	s.serverSetting.Development = cfg.Development
 
-	if err = s.router.Apply(cfg.Sub(path), "engine"); err != nil {
+	if err := s.router.Apply(cfg.Sub("engine")); err != nil {
 		panic(err)
 	}
 }

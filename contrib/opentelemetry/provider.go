@@ -23,6 +23,7 @@ import (
 	"time"
 )
 
+// NewStdTracer return a stdout tracer provider and an error if any
 func NewStdTracer(c *Config, opts ...stdouttrace.Option) (*sdktrace.TracerProvider, error) {
 	exporter, err := stdouttrace.New(opts...)
 	if err != nil {
@@ -40,6 +41,7 @@ func NewStdTracer(c *Config, opts ...stdouttrace.Option) (*sdktrace.TracerProvid
 	return tp, nil
 }
 
+// NewStdMetric return a stdout metric provider and an error if any
 func NewStdMetric(c *Config) (metric.MeterProvider, error) {
 	exporter, err := stdoutmetric.New(stdoutmetric.WithPrettyPrint())
 	if err != nil {

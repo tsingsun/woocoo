@@ -38,7 +38,7 @@ log:
     compress: false
 `
 	cfg := conf.NewFromBytes([]byte(cfgStr)).Load()
-	got, err := NewConfig(cfg)
+	got, err := NewConfig(cfg.Sub("log"))
 	if err != nil {
 		t.Error(err)
 	}
@@ -100,13 +100,12 @@ log:
     compress: false
 `
 	cfg := conf.NewFromBytes([]byte(cfgStr)).Load()
-	got, err := NewConfig(cfg)
+	got, err := NewConfig(cfg.Sub("log"))
 	if err != nil {
 		t.Error(err)
 	}
-	if len(got.Tee) == 0 {
-		t.Error("tee error")
-	}
+	assert.Len(t, got.Tee, 2)
+	assert.Nil(t, got.Sole)
 	for i, te := range got.Tee {
 		if i == 0 {
 			assert.Equal(t, zap.NewAtomicLevelAt(zapcore.DebugLevel).Level(), te.Level.Level())

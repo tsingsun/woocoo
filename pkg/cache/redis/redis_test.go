@@ -2,7 +2,9 @@ package redis_test
 
 import (
 	"github.com/alicebob/miniredis/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/cache/redis"
+	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"testing"
 	"time"
@@ -13,8 +15,24 @@ var (
 )
 
 func initStandaloneCache(t *testing.T) (*redis.Cache, *miniredis.Miniredis) {
+	cfgstr := `
+cache:
+  redis:
+    driverName: 
+    #    type: cluster
+    #    addrs:
+    #      - 127.0.0.1:6379
+    type: standalone
+    addr: 127.0.0.1:6379
+    db: 1
+    local:
+      size: 1000
+      ttl: 60
+`
+	cfg := conf.NewFromBytes([]byte(cfgstr)).Load()
 	mr := miniredis.RunT(t)
 	cfg.Parser().Set("cache.redis.addr", mr.Addr())
+	cfg.Parser().Set("cache.redis.driverName", mr.Addr())
 	cache := redis.NewBuiltIn()
 	return cache, mr
 }
@@ -44,12 +62,12 @@ cluster:
 		panic(err)
 	}
 	cache := &redis.Cache{}
-	cache.Apply(cfg, "standalone.redis")
+	cache.Apply(cfg.Sub("standalone.redis"))
 	if cache == nil {
 		t.Error("apply cache error")
 	}
 
-	cache.Apply(cfg, "cluster.redis")
+	cache.Apply(cfg.Sub("cluster.redis"))
 }
 
 func TestCache_Take(t *testing.T) {
@@ -60,9 +78,7 @@ func TestCache_Take(t *testing.T) {
 	err := cache.Take(&got, "string", time.Minute, func() (interface{}, error) {
 		return want, nil
 	})
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	if got != want {
 		t.Errorf("got %v,but want %v", got, want)
 	}

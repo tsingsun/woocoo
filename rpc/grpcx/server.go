@@ -28,7 +28,8 @@ type ServerConfig struct {
 }
 
 type Server struct {
-	exit             chan chan error
+	exit chan chan error
+	// configuration is the root Configuration
 	configuration    *conf.Configuration
 	configurationKey string
 	config           *ServerConfig
@@ -38,28 +39,20 @@ type Server struct {
 	NodeInfo         *registry.NodeInfo
 }
 
-func (s *Server) Apply(cfg *conf.Configuration, path string) {
-	if s.configurationKey == "" && path != "" {
-		s.configurationKey = path
-	}
-	if err := cfg.Sub(path).Parser().Unmarshal("server", s.config); err != nil {
+func (s *Server) Apply(cfg *conf.Configuration) {
+	if err := cfg.Parser().Unmarshal("server", s.config); err != nil {
 		panic(err)
 	}
-	if k := strings.Join([]string{path, "registry"}, conf.KeyDelimiter); cfg.IsSet(k) {
-		s.registry = registry.GetRegistry(cfg.String(strings.Join([]string{path, "registry", "schema"}, conf.KeyDelimiter)))
+	if k := strings.Join([]string{"registry"}, conf.KeyDelimiter); cfg.IsSet(k) {
+		s.registry = registry.GetRegistry(cfg.String(strings.Join([]string{"registry", "schema"}, conf.KeyDelimiter)))
 		if ap, ok := s.registry.(conf.Configurable); ok {
-			ap.Apply(cfg, k)
+			ap.Apply(cfg.Sub(k))
 		}
 	}
 	//engine
-	if k := strings.Join([]string{path, "engine"}, conf.KeyDelimiter); cfg.IsSet(k) {
+	if k := strings.Join([]string{"engine"}, conf.KeyDelimiter); cfg.IsSet(k) {
 		s.config.grpcOptions = cGrpcServerOptions.Apply(cfg, k)
 	}
-
-}
-
-func (s *Server) applyGrpcConfiguration(cnf *conf.Configuration, path string) {
-
 }
 
 func New(opts ...Option) *Server {
@@ -67,15 +60,12 @@ func New(opts ...Option) *Server {
 		config: &ServerConfig{
 			Addr: ":9080",
 		},
-		configurationKey: configPath,
-		exit:             make(chan chan error),
+		exit: make(chan chan error),
 	}
 	for _, o := range opts {
 		o(srv)
 	}
-	if srv.configuration != nil && srv.configurationKey != "" {
-		srv.Apply(srv.configuration, srv.configurationKey)
-	}
+	srv.Apply(srv.configuration.Sub(configPath))
 	return srv
 }
 

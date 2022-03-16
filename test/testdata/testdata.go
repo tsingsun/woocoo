@@ -17,6 +17,7 @@ func init() {
 	_, currentFile, _, _ := runtime.Caller(0)
 	basedir = filepath.Dir(currentFile)
 	Config = conf.New(conf.LocalPath(Path(DefaultConfigFile)), conf.BaseDir(basedir)).Load()
+	Config.AsGlobal()
 }
 
 func BaseDir() string {

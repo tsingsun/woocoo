@@ -13,6 +13,7 @@ import (
 func TestDefaultGraphqlServer(t *testing.T) {
 	var cfgStr = `
 web:
+  server:
   engine:
     routerGroups:
       - default:

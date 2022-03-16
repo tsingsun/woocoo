@@ -17,16 +17,19 @@ type Cache struct {
 func NewBuiltIn() *Cache {
 	c := &Cache{}
 	cfg := conf.Global().Sub("cache.redis")
-	c.Apply(cfg, "")
-	if err := manager.RegisterCache("redis", c); err != nil {
+	c.Apply(cfg)
+	var driverName = "redis"
+	if cfg.IsSet("driverName") {
+		driverName = cfg.String("driverName")
+	}
+	if err := manager.RegisterCache(driverName, c); err != nil {
 		panic(err)
 	}
 	return c
 }
 
 // Apply conf.configurable
-func (c *Cache) Apply(cfg *conf.Configuration, path string) {
-	cfg = cfg.Sub(path)
+func (c *Cache) Apply(cfg *conf.Configuration) {
 	var local *cache.TinyLFU
 	if cfg.IsSet("local") {
 		local = cache.NewTinyLFU(cfg.Int("local.size"), time.Second*time.Duration(cfg.Int("local.ttl")))
@@ -35,7 +38,7 @@ func (c *Cache) Apply(cfg *conf.Configuration, path string) {
 	if err != nil {
 		panic(err)
 	}
-	rediscli.Apply(cfg, "")
+	rediscli.Apply(cfg)
 	c.client = cache.New(&cache.Options{
 		Redis:      rediscli,
 		LocalCache: local,

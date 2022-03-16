@@ -72,7 +72,7 @@ func NewConfig(name string, opts ...Option) *Config {
 	return cfg
 }
 
-// Apply implement conf.Configuration interface
+// Apply implement conf.Configurable interface
 //
 // if ServiceName and ServiceVersion and ServiceNameSpace is set in cfg, they will override before
 func (c *Config) Apply(cfg *conf.Configuration, path string) {
@@ -82,11 +82,13 @@ func (c *Config) Apply(cfg *conf.Configuration, path string) {
 		c.Resource = getDefaultResource(c)
 	}
 
-	if err := cfg.Parser().Unmarshal("", &c); err != nil {
-		log.Warn(err)
+	if err := cfg.Unmarshal(&c); err != nil {
+		panic(err)
 	}
 	c.parseEnvKeys()
-	c.mergeResource()
+	if err := c.mergeResource(); err != nil {
+		panic(err)
+	}
 	// trace
 	switch c.TraceExporterEndpoint {
 	case "stdout":

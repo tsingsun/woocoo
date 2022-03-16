@@ -14,7 +14,7 @@ type options struct {
 }
 
 func (o *options) Apply(cfg *conf.Configuration) {
-	if err := cfg.Parser().Unmarshal("", o); err != nil {
+	if err := cfg.Unmarshal(o); err != nil {
 		panic(err)
 	}
 }

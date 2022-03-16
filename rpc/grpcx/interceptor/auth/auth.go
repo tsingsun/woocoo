@@ -61,7 +61,7 @@ func New() (*Auth, error) {
 }
 
 func (a *Auth) Apply(cfg *conf.Configuration) {
-	if err := cfg.Parser().Unmarshal("", a); err != nil {
+	if err := cfg.Unmarshal(a); err != nil {
 		panic(err)
 	}
 	if a.PrivKeyFile != "" {

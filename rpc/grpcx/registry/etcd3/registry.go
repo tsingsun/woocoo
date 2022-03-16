@@ -9,7 +9,6 @@ import (
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/resolver"
 	"strings"
 	"sync"
@@ -25,15 +24,14 @@ func init() {
 	}
 }
 
-type Config struct {
+type Options struct {
 	EtcdConfig clientv3.Config `json:"etcd" yaml:"etcd"`
 	TTL        time.Duration   `json:"ttl" yaml:"ttl"`
-	logger     *zap.Logger
 }
 
 type Registry struct {
 	sync.RWMutex
-	config   Config
+	opts     Options
 	client   *clientv3.Client
 	register map[string]uint64
 	leases   map[string]clientv3.LeaseID
@@ -43,27 +41,24 @@ func New() *Registry {
 	return &Registry{
 		register: make(map[string]uint64),
 		leases:   make(map[string]clientv3.LeaseID),
-		config:   Config{},
+		opts:     Options{},
 	}
 }
 
-func (r *Registry) Apply(cfg *conf.Configuration, path string) {
-	if err := cfg.Parser().Unmarshal(path, &r.config); err != nil {
+func (r *Registry) Apply(cfg *conf.Configuration) {
+	if err := cfg.Unmarshal(&r.opts); err != nil {
 		panic(err)
 	}
-	if cfg.IsSet("log") {
-		r.config.logger = log.Operator()
-	}
-	if k := conf.Join(path, "etcd", "tls"); cfg.IsSet(k) {
+	if k := conf.Join("etcd", "tls"); cfg.IsSet(k) {
 		cp := cfg.String(conf.Join(k, "ssl_certificate"))
 		kp := cfg.String(conf.Join(k, "ssl_certificate_key"))
 		if cp != "" && kp != "" {
-			r.config.EtcdConfig.TLS = registry.TLS(cfg.GetBaseDir(), cp, kp)
+			r.opts.EtcdConfig.TLS = registry.TLS(cfg.Root().GetBaseDir(), cp, kp)
 		} else {
-			r.config.EtcdConfig.TLS = nil
+			r.opts.EtcdConfig.TLS = nil
 		}
 	} else {
-		r.config.EtcdConfig.TLS = nil
+		r.opts.EtcdConfig.TLS = nil
 	}
 	err := r.buildClient()
 	if err != nil {
@@ -71,19 +66,19 @@ func (r *Registry) Apply(cfg *conf.Configuration, path string) {
 	}
 }
 
-func BuildFromConfig(config *Config) (*Registry, error) {
+func BuildFromConfig(config *Options) (*Registry, error) {
 	r := &Registry{
 		register: make(map[string]uint64),
 		leases:   make(map[string]clientv3.LeaseID),
 	}
 	if config == nil {
-		r.config = Config{
+		r.opts = Options{
 			EtcdConfig: clientv3.Config{
 				DialTimeout: 5 * time.Second,
 			},
 		}
 	} else {
-		r.config = *config
+		r.opts = *config
 	}
 	if err := r.buildClient(); err != nil {
 		return nil, err
@@ -92,10 +87,8 @@ func BuildFromConfig(config *Config) (*Registry, error) {
 }
 
 func (r *Registry) buildClient() (err error) {
-	if r.config.logger != nil {
-		r.config.EtcdConfig.Logger = r.config.logger
-	}
-	r.client, err = clientv3.New(r.config.EtcdConfig)
+	r.opts.EtcdConfig.Logger = log.Global().Operator()
+	r.client, err = clientv3.New(r.opts.EtcdConfig)
 	return err
 }
 
@@ -112,7 +105,7 @@ func (r *Registry) Register(node *registry.NodeInfo) error {
 	r.RUnlock()
 	key := nodePath(node.ServiceLocation, node.ID)
 	if !ok {
-		ctx, cancle := context.WithTimeout(context.Background(), r.config.EtcdConfig.DialTimeout)
+		ctx, cancle := context.WithTimeout(context.Background(), r.opts.EtcdConfig.DialTimeout)
 		defer cancle()
 		// look for the existing key
 		rsp, err := r.client.Get(ctx, key, clientv3.WithSerializable())
@@ -173,13 +166,13 @@ func (r *Registry) Register(node *registry.NodeInfo) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), r.config.EtcdConfig.DialTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), r.opts.EtcdConfig.DialTimeout)
 	defer cancel()
 
 	var lgr *clientv3.LeaseGrantResponse
-	if r.config.TTL.Seconds() > 0 {
+	if r.opts.TTL.Seconds() > 0 {
 		// get a lease used to expire keys since we have a ttl
-		lgr, err = r.client.Grant(ctx, int64(r.config.TTL.Seconds()))
+		lgr, err = r.client.Grant(ctx, int64(r.opts.TTL.Seconds()))
 		if err != nil {
 			return err
 		}
@@ -221,7 +214,7 @@ func (r *Registry) Unregister(node *registry.NodeInfo) error {
 	delete(r.leases, node.ServiceLocation+node.ID)
 	r.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), r.config.EtcdConfig.DialTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), r.opts.EtcdConfig.DialTimeout)
 	defer cancel()
 
 	_, err := r.client.Delete(ctx, nodePath(node.ServiceLocation, node.ID))
@@ -236,13 +229,13 @@ func (r *Registry) Close() {
 }
 
 func (r *Registry) TTL() time.Duration {
-	return r.config.TTL
+	return r.opts.TTL
 }
 
 func (r *Registry) ResolverBuilder(serviceLocation string) resolver.Builder {
 	return &etcdResolver{
 		scheme:     scheme,
-		etcdConfig: r.config.EtcdConfig,
+		etcdConfig: r.opts.EtcdConfig,
 		watchPath:  serviceLocation,
 	}
 }

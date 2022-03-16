@@ -50,7 +50,7 @@ func RegisterGrpcUnaryInterceptor(name string, handler func(*conf.Configuration)
 
 func keepaliveHandler(cfg *conf.Configuration) grpc.ServerOption {
 	sp := keepalive.ServerParameters{}
-	if err := cfg.Parser().Unmarshal("", &sp); err != nil {
+	if err := cfg.Unmarshal(&sp); err != nil {
 		panic(err)
 	}
 	return grpc.KeepaliveParams(sp)

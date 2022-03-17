@@ -1,7 +1,6 @@
 package testdata
 
 import (
-	"github.com/tsingsun/woocoo/pkg/conf"
 	"path/filepath"
 	"runtime"
 )
@@ -10,14 +9,18 @@ import (
 var (
 	basedir           string
 	DefaultConfigFile = "etc/app.yaml"
-	Config            *conf.Configuration
+	//Config            *conf.Configuration
 )
 
 func init() {
 	_, currentFile, _, _ := runtime.Caller(0)
 	basedir = filepath.Dir(currentFile)
-	Config = conf.New(conf.LocalPath(Path(DefaultConfigFile)), conf.BaseDir(basedir)).Load()
-	Config.AsGlobal()
+	//Config = conf.New(conf.LocalPath(Path(DefaultConfigFile)), conf.BaseDir(basedir)).Load()
+	//Config.AsGlobal()
+}
+
+func TestConfigFile() string {
+	return Path(DefaultConfigFile)
 }
 
 func BaseDir() string {

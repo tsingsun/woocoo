@@ -4,12 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
-	"github.com/tsingsun/woocoo/test/testdata"
 	"testing"
-)
-
-var (
-	cnf = testdata.Config
 )
 
 func TestServer_Apply(t *testing.T) {

@@ -21,7 +21,8 @@ const (
 
 // NewParser creates a new empty Parser instance.
 func NewParser() *Parser {
-	return &Parser{k: koanf.New(KeyDelimiter)}
+	k := koanf.NewWithConf(koanf.Conf{Delim: KeyDelimiter, StrictMerge: false})
+	return &Parser{k: k}
 }
 
 // NewParserFromFile creates a new Parser by reading the given file.

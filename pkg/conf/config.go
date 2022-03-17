@@ -100,14 +100,12 @@ func (c *Configuration) Load() *Configuration {
 
 // load configuration,if the RemoteProvider is set,will ignore local configuration
 func (c *Configuration) loadInternal() (err error) {
-	opts := c.opts
-
 	// if parser is nil, use default local config file
 	if c.parser == nil {
-		if opts.localPath == "" {
-			LocalPath(defaultConfigFile)(&opts)
+		if c.opts.localPath == "" {
+			LocalPath(defaultConfigFile)(&c.opts)
 		}
-		c.parser, err = NewParserFromFile(opts.localPath)
+		c.parser, err = NewParserFromFile(c.opts.localPath)
 		if err != nil {
 			return err
 		}
@@ -119,19 +117,22 @@ func (c *Configuration) loadInternal() (err error) {
 				if _, err := os.Stat(v); err != nil {
 					panic(fmt.Errorf("config file no exists:%s,cause by:%s", v, err))
 				} else {
-					opts.includeFiles = append(opts.includeFiles, v)
+					c.opts.includeFiles = append(c.opts.includeFiles, v)
 				}
 			} else {
 				path := filepath.Join(c.opts.basedir, v)
 				if _, err := os.Stat(path); err != nil {
 					panic(fmt.Errorf("config file no exists:%s,cause by:%s", path, err))
 				} else {
-					opts.includeFiles = append(opts.includeFiles, path)
+					c.opts.includeFiles = append(c.opts.includeFiles, path)
 				}
 			}
 		}
 	}
-	for _, attach := range opts.includeFiles {
+	// make sure the "include files" in attach files is not working
+	copyifs := make([]string, len(c.opts.includeFiles))
+	copy(copyifs, c.opts.includeFiles)
+	for _, attach := range copyifs {
 		if err = c.parser.k.Load(file.Provider(attach), yaml.Parser()); err != nil {
 			return err
 		}

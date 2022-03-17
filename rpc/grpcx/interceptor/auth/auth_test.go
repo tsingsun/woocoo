@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	cnf            = testdata.Config
+	cnf            = conf.New(conf.LocalPath(testdata.TestConfigFile()), conf.BaseDir(testdata.BaseDir())).Load()
 	addr           = "localhost:50051"
 	hs256BadHeader = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkxMjJ9.JcRoPW5fA44i7vuGyXGXKHuAfZYly_uFGs5FznyPJBc"
 	hs256OkToken   = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE3MTYyMzkwMjJ9.kiW0BWa5S93F401V0N5wPZkuJS5L2cxzGZDTeDnne2I"
@@ -63,10 +63,12 @@ func TestAuth_UnaryServerInterceptor(t *testing.T) {
 		testproto.RegisterTestServiceServer(s, &test.TestPingService{})
 		lis, err := net.Listen("tcp", addr)
 		if err != nil {
-			t.Fatalf("failed to listen: %v", err)
+			t.Errorf("failed to listen: %v", err)
+			return
 		}
 		if err := s.Serve(lis); err != nil {
-			t.Fatalf("failed to serve: %v", err)
+			t.Errorf("failed to serve: %v", err)
+			return
 		}
 	}()
 	time.Sleep(2000)

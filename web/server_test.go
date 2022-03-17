@@ -4,21 +4,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/web"
 	_ "github.com/tsingsun/woocoo/web/handler/gql"
 	"net/http/httptest"
 	"testing"
 )
-
-var cnf = testdata.Config
-
-var logo = `
- ___      _______________________________ 
-__ | /| / /  __ \  __ \  ___/  __ \  __ \
-__ |/ |/ // /_/ / /_/ / /__ / /_/ / /_/ /
-____/|__/ \____/\____/\___/ \____/\____/ 
-`
 
 func init() {
 	gin.SetMode(gin.ReleaseMode)

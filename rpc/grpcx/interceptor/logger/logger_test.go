@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	cnf  = testdata.Config
+	cnf  = conf.New(conf.LocalPath(testdata.TestConfigFile()), conf.BaseDir(testdata.BaseDir())).Load()
 	addr = "localhost:50052"
 )
 
@@ -49,10 +49,12 @@ func TestUnaryServerInterceptor(t *testing.T) {
 		testproto.RegisterTestServiceServer(s, &test.TestPingService{})
 		lis, err := net.Listen("tcp", addr)
 		if err != nil {
-			t.Fatalf("failed to listen: %v", err)
+			t.Errorf("failed to listen: %v", err)
+			return
 		}
 		if err := s.Serve(lis); err != nil {
-			t.Fatalf("failed to serve: %v", err)
+			t.Errorf("failed to serve: %v", err)
+			return
 		}
 	}()
 	time.Sleep(1000)

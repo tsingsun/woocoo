@@ -1,18 +1,17 @@
-package log_test
+package log
 
 import (
-	"github.com/tsingsun/woocoo/pkg/log"
+	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"testing"
 )
 
 var (
-	cnf    = testdata.Config
-	logger = &log.Logger{}
+	cnf = conf.New(conf.LocalPath(testdata.TestConfigFile()), conf.BaseDir(testdata.BaseDir())).Load()
 )
 
 func TestInfo(t *testing.T) {
-	testdata.Config.AsGlobal()
-	log.NewBuiltIn()
-	log.Info("get log")
+	cnf.AsGlobal()
+	NewBuiltIn()
+	Info("get log")
 }

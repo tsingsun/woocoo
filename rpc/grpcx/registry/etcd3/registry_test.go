@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-var cnf = testdata.Config
+var cnf = conf.New(conf.LocalPath(testdata.TestConfigFile()), conf.BaseDir(testdata.BaseDir())).Load()
 
 func TestRegistry_Apply(t *testing.T) {
 	b := []byte(`
@@ -75,7 +75,8 @@ func TestRegisterResolver(t *testing.T) {
 	go func() {
 		l, err := net.Listen("tcp", listen)
 		if err != nil {
-			t.Fatal("listen error:", err)
+			t.Error("listen error:", err)
+			return
 		}
 		//srv := grpcx.NewBuiltIn()
 		//helloworld.RegisterGreeterServer(srv.Engine(),&helloworld.Server{})
@@ -83,7 +84,8 @@ func TestRegisterResolver(t *testing.T) {
 		srv := grpc.NewServer()
 		helloworld.RegisterGreeterServer(srv, &helloworld.Server{})
 		if err := srv.Serve(l); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 	}()
 	RegisterResolver(etcdConfg, sn)

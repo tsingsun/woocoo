@@ -2,6 +2,7 @@ package recovery_test
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/logger"
@@ -16,7 +17,7 @@ import (
 )
 
 var (
-	cnf  = testdata.Config
+	cnf  = conf.New(conf.LocalPath(testdata.TestConfigFile()), conf.BaseDir(testdata.BaseDir())).Load()
 	addr = "localhost:50053"
 )
 
@@ -39,10 +40,12 @@ func TestUnaryServerInterceptor(t *testing.T) {
 		testproto.RegisterTestServiceServer(s, &test.TestPingService{})
 		lis, err := net.Listen("tcp", addr)
 		if err != nil {
-			t.Fatalf("failed to listen: %v", err)
+			t.Errorf("failed to listen: %v", err)
+			return
 		}
 		if err := s.Serve(lis); err != nil {
-			t.Fatalf("failed to serve: %v", err)
+			t.Errorf("failed to serve: %v", err)
+			return
 		}
 	}()
 	time.Sleep(time.Second)
@@ -62,5 +65,5 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	if err == nil {
 		t.Error("must error")
 	}
-	gloger.Sync()
+	assert.NoError(t, gloger.Sync())
 }

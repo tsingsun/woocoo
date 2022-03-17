@@ -5,14 +5,9 @@ import (
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"github.com/tsingsun/woocoo/rpc/grpcx/client"
 	_ "github.com/tsingsun/woocoo/rpc/grpcx/registry/etcd3"
-	"github.com/tsingsun/woocoo/test/testdata"
 	"google.golang.org/grpc/connectivity"
 	"testing"
 	"time"
-)
-
-var (
-	cnf = testdata.Config
 )
 
 func TestClient_Dial(t *testing.T) {

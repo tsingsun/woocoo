@@ -80,7 +80,7 @@ func TestClient_DialNaming(t *testing.T) {
 	b := []byte(`
 service:
   server:
-    addr: :20000
+    addr: :20001
     location: /woocoo/service
     version: "1.0"
     engine:

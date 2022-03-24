@@ -33,7 +33,7 @@ store:
 		args    args
 		wantErr bool
 	}{
-		{name: "testDriver", args: args{configuration: cfg}, wantErr: false},
+		{name: "testDriver", args: args{configuration: cfg.Sub("store.testDriver")}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

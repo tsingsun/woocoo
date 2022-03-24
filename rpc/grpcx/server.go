@@ -160,7 +160,7 @@ func getIP() string {
 	panic("Unable to determine local IP address (non loopback). Exiting.")
 }
 
-// Run builtin serve
+// Run is a sample way to start the grpc server with graceful stop
 func (s *Server) Run() error {
 	defer s.Stop()
 	ch := make(chan error)

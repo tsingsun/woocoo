@@ -6,6 +6,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/resolver"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -56,6 +57,14 @@ func (n NodeInfo) ToAttributes() *attributes.Attributes {
 		val.WithValue(k, strings)
 	}
 	return val
+}
+
+func (n NodeInfo) BuildKey() string {
+	return nodePath(n.ServiceLocation, n.ServiceVersion, n.ID)
+}
+
+func nodePath(location, version, id string) string {
+	return strings.Join([]string{location, version, id}, "/")
 }
 
 func TLS(basedir, ssl_certificate, ssl_certificate_key string) *tls.Config {

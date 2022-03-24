@@ -10,7 +10,6 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc/resolver"
-	"strings"
 	"sync"
 	"time"
 )
@@ -92,18 +91,11 @@ func (r *Registry) buildClient() (err error) {
 	return err
 }
 
-func nodePath(servicePath, id string) string {
-	//name := strings.Replace(servicePath, "/", "-", -1)
-	//v := strings.Replace(version, "/", "-", -1)
-	//nid := strings.Replace(id, "/", "-", -1)
-	return strings.Join([]string{servicePath, id}, "/")
-}
-
 func (r *Registry) Register(node *registry.NodeInfo) error {
 	r.RLock()
 	leaseID, ok := r.leases[node.ServiceLocation+node.ID]
 	r.RUnlock()
-	key := nodePath(node.ServiceLocation, node.ID)
+	key := node.BuildKey()
 	if !ok {
 		ctx, cancle := context.WithTimeout(context.Background(), r.opts.EtcdConfig.DialTimeout)
 		defer cancle()
@@ -217,7 +209,7 @@ func (r *Registry) Unregister(node *registry.NodeInfo) error {
 	ctx, cancel := context.WithTimeout(context.Background(), r.opts.EtcdConfig.DialTimeout)
 	defer cancel()
 
-	_, err := r.client.Delete(ctx, nodePath(node.ServiceLocation, node.ID))
+	_, err := r.client.Delete(ctx, node.BuildKey())
 	if err != nil {
 		return err
 	}

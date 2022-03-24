@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"github.com/tsingsun/woocoo/rpc/grpcx/client"
@@ -14,29 +15,12 @@ func TestClient_DialRegistry(t *testing.T) {
 	b := []byte(`
 service:
   server:
-    addr: :20000
+    addr: :20005
     location: /woocoo/service
     version: "1.0"
     engine:
       - keepalive:
           time: 3600s
-      - tls:
-          ssl_certificate: ""
-          ssl_certificate_key: ""
-      - unaryInterceptors:
-          - trace:
-          - accessLog:
-              timestampFormat: "2006-01-02 15:04:05"
-          - recovery:
-          - prometheus:
-          - auth:
-              signingAlgorithm: HS256
-              realm: woocoo
-              secret: 123456
-              privKey: config/privKey.pem
-              pubKey: config/pubKey.pem
-              tenantHeader: Qeelyn-Org-Id
-      - streamInterceptors:
   registry:
     schema: etcd
     ttl: 600s
@@ -48,8 +32,6 @@ service:
         - localhost:2379
       dial-timeout: 3s
       dial-keep-alive-time: 1h
-  prometheus:
-    addr: 0.0.0.0:2222
   client:
     - insecure:
     - block:
@@ -58,8 +40,8 @@ service:
         - trace:
 `)
 	cfg := conf.NewFromBytes(b)
+	srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("service")))
 	go func() {
-		srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("service")))
 		if err := srv.Run(); err != nil {
 			t.Error(err)
 			return
@@ -67,13 +49,9 @@ service:
 	}()
 	time.Sleep(2000)
 	cli := client.New(client.Configuration(cfg.Sub("service")))
-	conn, err := cli.Dial()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if conn.GetState() != connectivity.Ready {
-		t.Fail()
-	}
+	_, err := cli.Dial()
+	assert.NoError(t, err)
+	srv.Stop()
 }
 
 func TestClient_DialNaming(t *testing.T) {

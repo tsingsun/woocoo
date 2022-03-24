@@ -6,18 +6,19 @@ import (
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/resolver"
 	"sync"
 )
 
 type Watcher struct {
-	key    string
-	client *clientv3.Client
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
-	addrs  []resolver.Address
+	key     string
+	client  *clientv3.Client
+	ctx     context.Context
+	cancel  context.CancelFunc
+	addrMap map[string]resolver.Address
+	wg      sync.WaitGroup
 }
 
 func (w *Watcher) Close() {
@@ -27,32 +28,34 @@ func (w *Watcher) Close() {
 func newWatcher(key string, cli *clientv3.Client) *Watcher {
 	ctx, cancel := context.WithCancel(context.Background())
 	w := &Watcher{
-		key:    key,
-		client: cli,
-		ctx:    ctx,
-		cancel: cancel,
+		key:     key,
+		client:  cli,
+		ctx:     ctx,
+		cancel:  cancel,
+		addrMap: map[string]resolver.Address{},
 	}
 	return w
 }
 
-func (w *Watcher) GetAllAddresses() []resolver.Address {
-	ret := []resolver.Address{}
-
+func (w *Watcher) GetAllAddresses() (ret []resolver.Address) {
 	resp, err := w.client.Get(w.ctx, w.key, clientv3.WithPrefix())
-	if err == nil {
-		addrs := extractAddrs(resp)
-		if len(addrs) > 0 {
-			for _, addr := range addrs {
-				v := addr
-				//as := v.Pairs()
-				ret = append(ret, resolver.Address{
-					Addr:       v.Address,
-					Attributes: v.ToAttributes(),
-				})
+	if err != nil {
+		logger.Error("GetAllAddresses error", zap.Error(err))
+		return
+	}
+	nodeInfos := extractAddrs(resp)
+	if len(nodeInfos) > 0 {
+		for _, node := range nodeInfos {
+			addr := resolver.Address{
+				Addr:       node.Address,
+				Attributes: node.ToAttributes(),
 			}
+			w.addrMap[node.BuildKey()] = addr
+			//as := v.Pairs()
+			ret = append(ret, addr)
 		}
 	}
-	return ret
+	return
 }
 
 func (w *Watcher) Watch() chan []resolver.Address {
@@ -63,35 +66,38 @@ func (w *Watcher) Watch() chan []resolver.Address {
 			close(out)
 			w.wg.Done()
 		}()
-		w.addrs = w.GetAllAddresses()
-		out <- w.cloneAddresses(w.addrs)
+		w.GetAllAddresses()
+		out <- w.cloneAddresses(w.getAddrs())
 
 		rch := w.client.Watch(w.ctx, w.key, clientv3.WithPrefix())
 		for wresp := range rch {
 			for _, ev := range wresp.Events {
 				switch ev.Type {
 				case mvccpb.PUT:
-					nodeData := registry.NodeInfo{}
-					err := json.Unmarshal([]byte(ev.Kv.Value), &nodeData)
+					node := registry.NodeInfo{}
+					err := json.Unmarshal([]byte(ev.Kv.Value), &node)
 					if err != nil {
-						grpclog.Error("Parse node data error:", err)
+						logger.Error("Parse node data error:", zap.Error(err))
 						continue
 					}
-					addr := resolver.Address{Addr: nodeData.Address, Attributes: nodeData.ToAttributes()}
-					if w.addAddr(addr) {
-						out <- w.cloneAddresses(w.addrs)
+					if w.addNode(node) {
+						out <- w.cloneAddresses(w.getAddrs())
 					}
 				case mvccpb.DELETE:
-					nodeData := registry.NodeInfo{}
-					err := json.Unmarshal([]byte(ev.Kv.Value), &nodeData)
-					if err != nil {
-						grpclog.Error("Parse node data error:", err)
-						continue
+					node := registry.NodeInfo{}
+					if ev.Kv.Value == nil {
+						w.removeAddress(string(ev.Kv.Key))
+					} else {
+						err := json.Unmarshal([]byte(ev.Kv.Value), &node)
+						if err != nil {
+							logger.Error("Parse node data error:", zap.Error(err))
+							continue
+						}
+						if w.removeNode(node) {
+							out <- w.cloneAddresses(w.getAddrs())
+						}
 					}
-					addr := resolver.Address{Addr: nodeData.Address, Attributes: nodeData.ToAttributes()}
-					if w.removeAddr(addr) {
-						out <- w.cloneAddresses(w.addrs)
-					}
+					out <- w.cloneAddresses(w.getAddrs())
 				}
 			}
 		}
@@ -100,7 +106,7 @@ func (w *Watcher) Watch() chan []resolver.Address {
 }
 
 func extractAddrs(resp *clientv3.GetResponse) []registry.NodeInfo {
-	addrs := []registry.NodeInfo{}
+	var addrs []registry.NodeInfo
 
 	if resp == nil || resp.Kvs == nil {
 		return addrs
@@ -128,22 +134,25 @@ func (w *Watcher) cloneAddresses(in []resolver.Address) []resolver.Address {
 	return out
 }
 
-func (w *Watcher) addAddr(addr resolver.Address) bool {
-	for _, v := range w.addrs {
-		if addr.Addr == v.Addr {
-			return false
-		}
-	}
-	w.addrs = append(w.addrs, addr)
+func (w *Watcher) addNode(node registry.NodeInfo) bool {
+	addr := resolver.Address{Addr: node.Address, Attributes: node.ToAttributes()}
+	w.addrMap[node.BuildKey()] = addr
 	return true
 }
 
-func (w *Watcher) removeAddr(addr resolver.Address) bool {
-	for i, v := range w.addrs {
-		if addr.Addr == v.Addr {
-			w.addrs = append(w.addrs[:i], w.addrs[i+1:]...)
-			return true
-		}
+func (w *Watcher) removeNode(node registry.NodeInfo) bool {
+	delete(w.addrMap, node.BuildKey())
+	return true
+}
+
+func (w *Watcher) removeAddress(key string) bool {
+	delete(w.addrMap, key)
+	return true
+}
+
+func (w *Watcher) getAddrs() (addrs []resolver.Address) {
+	for _, address := range w.addrMap {
+		addrs = append(addrs, address)
 	}
-	return false
+	return
 }

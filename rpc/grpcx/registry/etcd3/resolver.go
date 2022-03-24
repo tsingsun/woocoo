@@ -1,6 +1,8 @@
 package etcd3
 
 import (
+	"fmt"
+	"github.com/tsingsun/woocoo/pkg/log"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc/resolver"
 	"strings"
@@ -8,6 +10,10 @@ import (
 )
 
 const scheme = "etcd"
+
+var (
+	logger = log.Component("etcdRegistry")
+)
 
 type etcdResolver struct {
 	scheme     string
@@ -47,6 +53,9 @@ func (r *etcdResolver) start() {
 		out := r.watcher.Watch()
 		for addr := range out {
 			r.cc.UpdateState(resolver.State{Addresses: addr})
+			if len(addr) == 0 {
+				logger.Error(fmt.Sprintf("resolver got zero addresses:%s", r.watchPath))
+			}
 		}
 	}()
 }

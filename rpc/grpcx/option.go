@@ -9,39 +9,28 @@ import (
 	"google.golang.org/grpc/grpclog"
 )
 
-type Option func(s *Server)
+type Option func(s *serverOptions)
 
-func Config(cnfops ...conf.Option) Option {
-	return func(s *Server) {
-		s.configuration = conf.New(cnfops...).Load()
-	}
-}
-
-func Configuration(configuration *conf.Configuration) Option {
-	return func(s *Server) {
-		s.configuration = configuration
-	}
-}
-
-func Use(configurable conf.Configurable) Option {
-	return func(s *Server) {
-		configurable.Apply(s.configuration)
+func WithConfiguration(cfg *conf.Configuration) Option {
+	return func(s *serverOptions) {
+		s.configuration = cfg
 	}
 }
 
 func UseLogger() Option {
-	return func(s *Server) {
-		s.logger = log.NewBuiltIn()
-		lg := s.logger.With(zap.String("system", "grpc"),
+	return func(s *serverOptions) {
+		l := log.Global()
+		lg := l.With(zap.String("system", "grpc"),
 			zap.Bool("grpc_log", true),
 		).Operator().WithOptions(zap.AddCallerSkip(2))
+		s.logger = l
 		zgl := zapgrpc.NewLogger(lg)
 		grpclog.SetLoggerV2(zgl)
 	}
 }
 
 func WithGrpcOption(opts ...grpc.ServerOption) Option {
-	return func(s *Server) {
-		s.config.grpcOptions = append(s.config.grpcOptions, opts...)
+	return func(s *serverOptions) {
+		s.grpcOptions = append(s.grpcOptions, opts...)
 	}
 }

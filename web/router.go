@@ -17,25 +17,25 @@ type RuleManager map[string]gin.RouteInfo
 type Router struct {
 	*gin.Engine
 	Groups                       []*gin.RouterGroup
-	server                       *Server
+	serverOptions                *serverOptions
 	hms                          RuleManager
 	AfterRegisterInternalHandler func(*Router)
 }
 
-func NewRouter(s *Server) *Router {
-	if !s.serverSetting.Development {
+func NewRouter(options *serverOptions) *Router {
+	if !options.Development {
 		gin.SetMode(gin.ReleaseMode)
 		gin.DisableConsoleColor()
 	}
 	return &Router{
-		Engine: gin.New(),
-		server: s,
-		hms:    RuleManager{},
+		Engine:        gin.New(),
+		serverOptions: options,
+		hms:           RuleManager{},
 	}
 }
 
 func (r *Router) Apply(cfg *conf.Configuration) error {
-	if r.server == nil {
+	if r.serverOptions == nil {
 		return errors.New("router apply must apply after Server")
 	}
 	if err := cfg.Unmarshal(r.Engine); err != nil {
@@ -69,7 +69,7 @@ func (r *Router) Apply(cfg *conf.Configuration) error {
 				fname = s
 				break
 			}
-			if hf, ok := r.server.handlerManager.GetHandler(fname); ok {
+			if hf, ok := r.serverOptions.handlerManager.GetHandler(fname); ok {
 				subCfg := cfg.CutFromOperator(hItem.Cut(fname))
 				gr.Use(hf.ApplyFunc(subCfg))
 			} else {

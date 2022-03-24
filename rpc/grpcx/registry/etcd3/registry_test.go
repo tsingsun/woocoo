@@ -117,8 +117,7 @@ func TestRegisterResolver2(t *testing.T) {
 		DialTimeout: 10 * time.Second,
 	}
 	go func() {
-		srv := grpcx.New(grpcx.Configuration(cnf), grpcx.UseLogger())
-		srv.Apply(cnf.Sub("service"))
+		srv := grpcx.New(grpcx.WithConfiguration(cnf.Sub("grpc")), grpcx.UseLogger())
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		if err := srv.Run(); err != nil {
 			t.Error(err)

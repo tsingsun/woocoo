@@ -1,13 +1,12 @@
-package sql
+package sqlx
 
 import (
 	"database/sql"
 	"github.com/tsingsun/woocoo/pkg/conf"
 )
 
-// NewBuiltInDB return a sql.DB from conf
-func NewBuiltInDB(path string) *sql.DB {
-	cfg := conf.Global().Sub(conf.Join("store", path))
+// NewSqlDB return a sql.DB from conf
+func NewSqlDB(cfg *conf.Configuration) *sql.DB {
 	db, err := sql.Open(cfg.String("driverName"), cfg.String("dsn"))
 	if err != nil {
 		panic(err)

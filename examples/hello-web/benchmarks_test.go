@@ -3,6 +3,7 @@ package main_test
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/web"
 	"net/http"
 	"path/filepath"
@@ -41,14 +42,14 @@ web:
 	basedir := filepath.Dir(currentFile)
 	cfg := conf.NewFromBytes([]byte(cfgstr))
 	cfg.SetBaseDir(basedir)
-	httpSvr := web.NewBuiltIn(web.Configuration(cfg))
+	httpSvr := web.New(web.Configuration(cfg.Sub("web")))
 	router := httpSvr.Router().Engine
 	router.GET("/", func(c *gin.Context) {
 		c.String(200, "hello world")
 	})
 
 	runRequest(B, router, "GET", "/")
-	httpSvr.Logger().Sync()
+	log.Global().Sync()
 }
 
 type mockWriter struct {

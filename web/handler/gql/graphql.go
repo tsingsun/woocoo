@@ -87,7 +87,7 @@ func NewGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema, opt *
 		}
 		recovery.HandleRecoverError(gctx, err, websrv.Logger(), true)
 		gctx.AbortWithStatus(http.StatusInternalServerError)
-		if websrv.ServerSetting().Development {
+		if websrv.ServerOptions().Development {
 			log.StdPrintln(err)
 			debug.PrintStack()
 		}

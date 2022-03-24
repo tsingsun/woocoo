@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestClient_Dial(t *testing.T) {
+func TestClient_DialRegistry(t *testing.T) {
 	b := []byte(`
 service:
   server:
@@ -59,12 +59,53 @@ service:
 `)
 	cfg := conf.NewFromBytes(b)
 	go func() {
-		srv := grpcx.New(grpcx.Configuration(cfg))
+		srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("service")))
 		if err := srv.Run(); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 	}()
 	time.Sleep(2000)
+	cli := client.New(client.Configuration(cfg.Sub("service")))
+	conn, err := cli.Dial()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if conn.GetState() != connectivity.Ready {
+		t.Fail()
+	}
+}
+
+func TestClient_DialNaming(t *testing.T) {
+	b := []byte(`
+service:
+  server:
+    addr: :20000
+    location: /woocoo/service
+    version: "1.0"
+    engine:
+      - unaryInterceptors:
+          - trace:
+          - accessLog:
+              timestampFormat: "2006-01-02 15:04:05"
+          - recovery:
+      - streamInterceptors:
+  client:
+    - insecure:
+    - block:
+    - timeout: 5s
+    - unaryInterceptors:
+        - trace:
+`)
+	cfg := conf.NewFromBytes(b)
+	go func() {
+		srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("service")))
+		if err := srv.Run(); err != nil {
+			t.Error(err)
+			return
+		}
+	}()
+	time.Sleep(time.Second)
 	cli := client.New(client.Configuration(cfg.Sub("service")))
 	conn, err := cli.Dial()
 	if err != nil {

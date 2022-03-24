@@ -2,7 +2,6 @@ package recovery_test
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/logger"
@@ -65,5 +64,5 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	if err == nil {
 		t.Error("must error")
 	}
-	assert.NoError(t, gloger.Sync())
+	gloger.Sync()
 }

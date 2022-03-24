@@ -164,7 +164,13 @@ func (c *Configuration) SetBaseDir(dir string) {
 }
 
 // Global return default(global) Configuration instance
-func Global() *Configuration { return global }
+func Global() *Configuration {
+	if global == nil || global.parser == nil {
+		global = New().Load()
+		//panic("global configuration has not initialed.")
+	}
+	return global
+}
 
 // Parser return configuration operator
 func (c *Configuration) Parser() *Parser {

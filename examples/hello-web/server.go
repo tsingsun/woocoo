@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/contrib/opentelemetry/otelweb"
+	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/web"
 	jwt "github.com/tsingsun/woocoo/web/handler/auth"
@@ -33,7 +34,12 @@ type User struct {
 }
 
 func main() {
-	httpSvr := web.NewBuiltIn(web.RegisterHandler("otel", otelweb.New()))
+	cfg := conf.New().Load()
+	log.NewBuiltIn()
+	httpSvr := web.New(web.Configuration(cfg.Sub("web")),
+		web.RegisterHandler("otel", otelweb.New()),
+		web.GracefulStop(),
+	)
 	r := httpSvr.Router().Engine
 	r.GET("/", func(c *gin.Context) {
 		c.String(200, "hello world")
@@ -42,9 +48,8 @@ func main() {
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(404, gin.H{"code": "PAGE_NOT_FOUND", "message": "Page not found"})
 	})
-
-	if err := httpSvr.Run(false); err != nil {
-		log.Fatal(err)
+	log.Info("helloworld")
+	if err := httpSvr.Run(); err != nil {
+		log.Error(err)
 	}
-
 }

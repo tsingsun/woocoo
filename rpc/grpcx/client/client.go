@@ -46,8 +46,9 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 		if ap, ok := c.registry.(conf.Configurable); ok {
 			ap.Apply(cfg.Sub(k))
 			c.resolverBuilder = c.registry.ResolverBuilder(c.serverConfig.Location)
+			c.dialOpts = append(c.dialOpts, grpc.WithResolvers(c.resolverBuilder))
 			//global
-			resolver.Register(c.resolverBuilder)
+			//resolver.Register(c.resolverBuilder)
 		}
 	}
 	//client
@@ -56,9 +57,16 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 	}
 }
 
+func (c *Client) target() string {
+	if c.resolverBuilder != nil {
+		return c.resolverBuilder.Scheme() + "://" + c.serverConfig.Location + "/"
+	}
+	return c.serverConfig.Addr
+}
+
 func (c *Client) Dial(opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	c.dialOpts = append(c.dialOpts, opts...)
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
-	return grpc.DialContext(ctx, c.resolverBuilder.Scheme()+"://"+c.serverConfig.Location+"/", c.dialOpts...)
+	return grpc.DialContext(ctx, c.target(), c.dialOpts...)
 }

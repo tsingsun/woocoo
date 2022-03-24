@@ -1,4 +1,4 @@
-service:
+grpc:
   server:
     addr: :20000
     location: /woocoo/service

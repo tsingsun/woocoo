@@ -37,7 +37,7 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 func (h Handler) Shutdown() {
 }
 
-func HandleRecoverError(c *gin.Context, err interface{}, logger *log.Logger, stack bool) {
+func HandleRecoverError(c *gin.Context, err interface{}, logger log.ComponentLogger, stack bool) {
 	// Check for a broken connection, as it is not really a
 	// condition that warrants a panic stack trace.
 	var brokenPipe bool

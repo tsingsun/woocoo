@@ -11,11 +11,17 @@ import (
 const (
 	// ContextHeaderName opentracing log key is trace.traceid
 	ContextHeaderName = iota
-	TraceIdKey        = "traceid"
-	SpanIdKey         = "spanid"
 )
 
-var _ conf.Configurable = (*Logger)(nil)
+var (
+	global      *Logger
+	globalApply bool // indicate if use BuiltIn()
+	components  = map[string]*component{}
+)
+
+func init() {
+	global = New(zap.NewNop())
+}
 
 // Logger integrate the Uber Zap library to use in woocoo
 //
@@ -24,25 +30,37 @@ type Logger struct {
 	zap *zap.Logger
 }
 
-var global, _ = New(zap.NewNop())
-
-// New return an Instance
-func New(zl *zap.Logger) (*Logger, error) {
-	return &Logger{zap: zl}, nil
+// New create an Instance from zap
+func New(zl *zap.Logger) *Logger {
+	return &Logger{zap: zl}
 }
 
-// NewBuiltIn create a logger by configuration
+// NewBuiltIn create a logger by configuration,path key is "log"
 func NewBuiltIn() *Logger {
-	if conf.Global().IsSet("log") {
-		global.Apply(conf.Global().Sub("log"))
+	if globalApply {
+		return global
+	}
+	pkey := "log"
+	if conf.Global().IsSet(pkey) {
+		global.Apply(conf.Global().Sub(pkey))
 	} else {
 		StdPrintf("the configuration file does not contain section: log")
 	}
+	globalApply = true
 	return global
 }
 
 func Global() *Logger {
 	return global
+}
+
+func Component(name string) ComponentLogger {
+	if cData, ok := components[name]; ok {
+		return cData
+	}
+	c := &component{name}
+	components[name] = c
+	return c
 }
 
 func (l Logger) AsGlobal() {
@@ -65,11 +83,11 @@ func (l *Logger) Sync() error {
 func (l *Logger) Apply(cfg *conf.Configuration) {
 	config, err := NewConfig(cfg)
 	if err != nil {
-		panic(fmt.Errorf("%s apply from configuration file err:%s", "log", err))
+		panic(fmt.Errorf("apply log configuration err:%w", err))
 	}
 	zl, err := config.BuildZap()
 	if err != nil {
-		panic(fmt.Errorf("%s apply from configuration file err:%s", "log", err))
+		panic(fmt.Errorf("apply log configuration err:%w", err))
 	}
 
 	l.zap = zl
@@ -77,6 +95,34 @@ func (l *Logger) Apply(cfg *conf.Configuration) {
 
 func (l *Logger) With(fields ...zapcore.Field) *Logger {
 	return &Logger{zap: l.zap.With(fields...)}
+}
+
+func (l *Logger) Debug(msg string, fields ...zap.Field) {
+	l.zap.Debug(msg, fields...)
+}
+
+func (l *Logger) Info(msg string, fields ...zap.Field) {
+	l.zap.Info(msg, fields...)
+}
+
+func (l *Logger) Warn(msg string, fields ...zap.Field) {
+	l.zap.Warn(msg, fields...)
+}
+
+func (l *Logger) Error(msg string, fields ...zap.Field) {
+	l.zap.Error(msg, fields...)
+}
+
+func (l *Logger) DPanic(msg string, fields ...zap.Field) {
+	l.zap.DPanic(msg, fields...)
+}
+
+func (l *Logger) Panic(msg string, fields ...zap.Field) {
+	l.zap.Panic(msg, fields...)
+}
+
+func (l *Logger) Fatal(msg string, fields ...zap.Field) {
+	l.zap.Fatal(msg, fields...)
 }
 
 // NewContext creates a new context the given contextual fields
@@ -95,12 +141,6 @@ func WithContext(ctx context.Context) *Logger {
 	return global
 }
 
-// TraceIdField get trace id of zap field type
-func TraceIdField(ctx context.Context) zap.Field {
-	val, _ := ctx.Value(TraceIdKey).(string)
-	return zap.String(TraceIdKey, val)
-}
-
 // Operator return the structured logger
 func Operator() *zap.Logger {
 	return global.zap
@@ -110,56 +150,28 @@ func Debug(args ...interface{}) {
 	global.zap.Sugar().Debug(args...)
 }
 
-func (l *Logger) Debug(msg string, fields ...zap.Field) {
-	l.zap.Debug(msg, fields...)
-}
-
 func Info(args ...interface{}) {
 	global.zap.Sugar().Info(args...)
-}
-
-func (l *Logger) Info(msg string, fields ...zap.Field) {
-	l.zap.Info(msg, fields...)
 }
 
 func Warn(args ...interface{}) {
 	global.zap.Sugar().Warn(args...)
 }
 
-func (l *Logger) Warn(msg string, fields ...zap.Field) {
-	l.zap.Warn(msg, fields...)
-}
-
 func Error(args ...interface{}) {
 	global.zap.Sugar().Error(args...)
-}
-
-func (l *Logger) Error(msg string, fields ...zap.Field) {
-	l.zap.Error(msg, fields...)
 }
 
 func DPanic(args ...interface{}) {
 	global.zap.Sugar().DPanic(args...)
 }
 
-func (l *Logger) DPanic(msg string, fields ...zap.Field) {
-	l.zap.DPanic(msg, fields...)
-}
-
 func Panic(args ...interface{}) {
 	global.zap.Sugar().Panic(args...)
 }
 
-func (l *Logger) Panic(msg string, fields ...zap.Field) {
-	l.zap.Panic(msg, fields...)
-}
-
 func Fatal(args ...interface{}) {
 	global.zap.Sugar().Fatal(args...)
-}
-
-func (l *Logger) Fatal(msg string, fields ...zap.Field) {
-	l.zap.Fatal(msg, fields...)
 }
 
 // Debugf uses fmt.Sprintf to log a templated message.
@@ -189,4 +201,8 @@ func Panicf(template string, args ...interface{}) {
 
 func Fatalf(template string, args ...interface{}) {
 	global.zap.Sugar().Fatalf(template, args...)
+}
+
+func Sync() error {
+	return global.zap.Sync()
 }

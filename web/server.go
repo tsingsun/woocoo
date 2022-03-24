@@ -3,9 +3,11 @@ package web
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/web/handler"
+	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,185 +16,168 @@ import (
 )
 
 const (
-	configPath  = "web"
 	defaultAddr = ":8080"
 )
 
-type ServerSetting struct {
+type serverOptions struct {
 	Addr              string `json:"addr" yaml:"addr"`
 	SSLCertificate    string `json:"ssl_certificate" yaml:"ssl_certificate"`
 	SSLCertificateKey string `json:"ssl_certificate_key" yaml:"ssl_certificate_key"`
 	Development       bool
+	configuration     *conf.Configuration //not root configuration
+	logger            log.ComponentLogger
+	handlerManager    *handler.Manager // middleware manager
+	graceful          bool             //run with grace full shutdown
 }
 
 type Server struct {
-	// serverSetting is struct server parameter
-	serverSetting ServerSetting
-	// middleware manager
-	handlerManager *handler.Manager
+	// opts is struct server parameter
+	opts serverOptions
 	// hold the gin router
 	router *Router
-	// configuration is application level Configuration
-	configuration *conf.Configuration
-	logger        *log.Logger
-
-	quit chan os.Signal
+	// low level
+	httpSrv *http.Server
 }
 
+// New create a web server
 func New(opts ...Option) *Server {
-	srv := &Server{
-		serverSetting: ServerSetting{
-			Addr: defaultAddr,
+	s := &Server{
+		opts: serverOptions{
+			Addr:           defaultAddr,
+			logger:         log.Component("web"),
+			handlerManager: handler.NewManager(),
 		},
-		quit:           make(chan os.Signal),
-		handlerManager: handler.NewManager(),
 	}
 	for _, o := range opts {
-		o(srv)
+		o(&s.opts)
 	}
-
-	log.PrintLogo()
-	if srv.router == nil {
-		srv.router = NewRouter(srv)
+	if s.router == nil {
+		s.router = NewRouter(&s.opts)
 	}
-
-	return srv
+	if s.opts.configuration != nil {
+		s.Apply(s.opts.configuration)
+	}
+	s.httpSrv = &http.Server{
+		Addr:    s.opts.Addr,
+		Handler: s.router.Engine,
+	}
+	return s
 }
 
-func NewBuiltIn(opts ...Option) *Server {
-	srv := New(opts...)
-	// Config must first check
-	if srv.configuration == nil {
-		Config()(srv)
-	}
-	if srv.logger == nil {
-		UseLogger()(srv)
-	}
-
-	srv.Apply(srv.configuration.Sub(configPath))
-	return srv
-}
-
-// ServerSetting return a setting used by web server
-func (s *Server) ServerSetting() ServerSetting {
-	return s.serverSetting
+// ServerOptions return a setting used by web server
+func (s *Server) ServerOptions() serverOptions {
+	return s.opts
 }
 
 func (s *Server) Router() *Router {
 	return s.router
 }
 
-func (s *Server) Logger() *log.Logger {
-	return s.logger
+func (s *Server) Logger() log.ComponentLogger {
+	return s.opts.logger
 }
 
 func (s *Server) Apply(cfg *conf.Configuration) {
 	if cfg.IsSet("server") {
-		if err := cfg.Parser().Unmarshal("server", &s.serverSetting); err != nil {
+		if err := cfg.Parser().Unmarshal("server", &s.opts); err != nil {
 			panic(err)
 		}
 	}
-	s.serverSetting.Development = cfg.Development
-
-	if err := s.router.Apply(cfg.Sub("engine")); err != nil {
-		panic(err)
+	s.opts.Development = cfg.Development
+	if cfg.IsSet("engine") {
+		if err := s.router.Apply(cfg.Sub("engine")); err != nil {
+			panic(err)
+		}
 	}
 }
 
 func (s *Server) beforeRun() error {
-	if s.serverSetting.Addr == "" {
-		return errors.New("server configuration is not correct: miss listen")
+	if s.opts.Addr == "" {
+		return fmt.Errorf("web server configuration is not correct: miss listen")
 	}
 	return s.router.RehandleRule()
 
 }
 
-func (s *Server) stop() {
-	s.handlerManager.Shutdown()
-	// ignore,see https://github.com/uber-go/zap/issues/880
-	if err := s.logger.Sync(); err != nil {
+// Stop http server and clear resource
+func (s *Server) Stop() error {
+	err := s.httpServerStop()
+	if err != nil {
+		s.Logger().Error("web Server close err", zap.Error(err))
+	}
+	if hm := s.opts.handlerManager; hm != nil {
+		hm.Shutdown()
+	}
+	// ignore error handling,see https://github.com/uber-go/zap/issues/880
+	if err := log.Sync(); err != nil {
 		log.StdPrintln(err)
-	}
-}
-
-// ForceQuit the http server.
-func (s *Server) ForceQuit() {
-	close(s.quit)
-}
-
-// Run Starts Http Server
-func (s *Server) Run(graceful bool) (err error) {
-	defer s.stop()
-	if err = s.beforeRun(); err != nil {
-		return err
-	}
-	srv := &http.Server{
-		Addr:    s.serverSetting.Addr,
-		Handler: s.router.Engine,
-	}
-	if graceful {
-		s.runAndGracefulShutdown(srv)
-	} else {
-		s.runAndClose(srv)
 	}
 	return nil
 }
 
-func (s *Server) runAndGracefulShutdown(srv *http.Server) {
-	runSSL := s.serverSetting.SSLCertificate != "" && s.serverSetting.SSLCertificateKey != ""
+// ListenAndServe Starts Http Server
+//
+// return
+//		http.ErrServerClosed or other error
+func (s *Server) ListenAndServe() (err error) {
+	if err = s.beforeRun(); err != nil {
+		return
+	}
+	runSSL := s.opts.SSLCertificate != "" && s.opts.SSLCertificateKey != ""
+	if runSSL {
+		err = s.httpSrv.ListenAndServeTLS(s.opts.SSLCertificate, s.opts.SSLCertificateKey)
+	} else {
+		err = s.httpSrv.ListenAndServe()
+	}
+	return
+}
+
+// Run builtin run the server.
+//
+// you can process whole yourself
+func (s *Server) Run() error {
+	defer s.Stop()
+	ch := make(chan error)
 	go func() {
-		var err error
-		log.StdPrintf("start listening on %s", s.serverSetting.Addr)
-		if runSSL {
-			err = srv.ListenAndServeTLS(s.serverSetting.SSLCertificate, s.serverSetting.SSLCertificateKey)
-		} else {
-			err = srv.ListenAndServe()
+		log.StdPrintf("web server is starting:%s", s.opts.Addr)
+		err := s.ListenAndServe()
+		switch {
+		case errors.Is(err, http.ErrServerClosed):
+			ch <- nil
+		case err != nil:
+			ch <- err
 		}
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.StdPrintf("listen: %s", err)
-		}
-		close(s.quit)
 	}()
 	// Wait for interrupt signal to gracefully runAndClose the server with
 	// a timeout of 5 seconds.
 	// kill (no param) default send syscall.SIGTERM
 	// kill -2 is syscall.SIGINT
 	// kill -9 is syscall.SIGKILL but can't be catch, so don't need add it
-	signal.Notify(s.quit, syscall.SIGINT, syscall.SIGTERM)
-	<-s.quit
+	quit := make(chan os.Signal)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	select {
+	case <-quit:
+		log.StdPrintln("web server shutdown.")
+	case err := <-ch:
+		return err
+	}
+	return nil
+}
 
-	log.StdPrintln("Shutting down server...")
+func (s *Server) httpServerStop() error {
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
-		log.StdPrintf("Server forced to runAndClose: %v", err)
-	}
-}
-
-func (s *Server) runAndClose(srv *http.Server) {
-	runSSL := s.serverSetting.SSLCertificate != "" && s.serverSetting.SSLCertificateKey != ""
-
-	go func() {
-		var err error
-		log.StdPrintf("start listening on %s", s.serverSetting.Addr)
-		if runSSL {
-			err = srv.ListenAndServeTLS(s.serverSetting.SSLCertificate, s.serverSetting.SSLCertificateKey)
-		} else {
-			err = srv.ListenAndServe()
+	if s.opts.graceful {
+		if err := s.httpSrv.Shutdown(ctx); err != nil {
+			s.Logger().Error("Server forced to runAndClose", zap.Error(err))
 		}
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.StdPrintf("listen: %s", err)
+	} else {
+		if err := s.httpSrv.Close(); err != nil {
+			s.Logger().Error("Server forced to runAndClose", zap.Error(err))
 		}
-		close(s.quit)
-	}()
-
-	signal.Notify(s.quit, syscall.SIGINT, syscall.SIGTERM)
-	<-s.quit
-	log.StdPrintln("Shutting down server...")
-	if err := srv.Close(); err != nil {
-		log.StdPrintln("Server Close:", err)
 	}
+	return nil
 }

@@ -1,10 +1,10 @@
-package sql_test
+package sqlx_test
 
 import (
 	native "database/sql"
 	"database/sql/driver"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/pkg/store/sql"
+	"github.com/tsingsun/woocoo/pkg/store/sqlx"
 	"testing"
 )
 
@@ -25,20 +25,19 @@ store:
     dsn: root:123456@tcp(localhost:3306)
 `
 	cfg := conf.NewFromBytes([]byte(config)).Load()
-	cfg.AsGlobal()
 	type args struct {
-		path string
+		configuration *conf.Configuration
 	}
 	tests := []struct {
 		name    string
 		args    args
 		wantErr bool
 	}{
-		{name: "testDriver", args: args{path: "testDriver"}, wantErr: false},
+		{name: "testDriver", args: args{configuration: cfg}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sql.NewBuiltInDB(tt.args.path)
+			sqlx.NewSqlDB(tt.args.configuration)
 		})
 	}
 }

@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-func TestServer_Apply(t *testing.T) {
+func TestNew(t *testing.T) {
 	b := []byte(`
-service:
+grpc:
   server:
     addr: :20000
     location: /woocoo/service
@@ -35,6 +35,6 @@ service:
         tenantHeader: Qeelyn-Org-Id
 `)
 	cfg := conf.NewFromBytes(b).Load()
-	s := grpcx.New(grpcx.Configuration(cfg))
+	s := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
 	assert.NotNil(t, s)
 }

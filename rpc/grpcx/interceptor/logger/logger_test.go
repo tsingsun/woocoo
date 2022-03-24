@@ -2,6 +2,7 @@ package logger_test
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/logger"
@@ -36,7 +37,7 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	})
 	clfg := cnf.CutFromParser(p)
 	gloger := log.Logger{}
-	gloger.Apply(cnf)
+	assert.NotPanics(t, func() { gloger.Apply(cnf) })
 	go func() {
 		opts := []grpc.ServerOption{
 			// The following grpc.ServerOption adds an interceptor for all unary

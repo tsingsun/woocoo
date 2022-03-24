@@ -9,7 +9,7 @@ log:
       - stdout
     errorOutputPaths:
       - stderr
-service:
+grpc:
   server:
     listen: "20000"
     location: /woocoo/service

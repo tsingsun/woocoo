@@ -21,7 +21,7 @@ The current features are as follows:
 - [X] logger and rotate support. [Detail](docs/logger.md),
 - [X] OpenTelemetry support. [Detail](docs/otel.md)
 - [X] built-in web router,supports GraphQL.
-- [X] built-in grpc server.
+- [X] built-in grpc server and easy to use grpc client.
 - [X] JWT-based validation
 - [X] microservice registry and discovery: 
   - implements: etcd

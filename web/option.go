@@ -33,6 +33,6 @@ func RegisterHandler(name string, handler handler.Handler) Option {
 // GracefulStop indicate use gracefull stop
 func GracefulStop() Option {
 	return func(s *serverOptions) {
-		s.graceful = true
+		s.gracefulStop = true
 	}
 }

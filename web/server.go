@@ -27,7 +27,7 @@ type serverOptions struct {
 	configuration     *conf.Configuration //not root configuration
 	logger            log.ComponentLogger
 	handlerManager    *handler.Manager // middleware manager
-	graceful          bool             //run with grace full shutdown
+	gracefulStop      bool             //run with grace full shutdown
 }
 
 type Server struct {
@@ -170,7 +170,7 @@ func (s *Server) httpServerStop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if s.opts.graceful {
+	if s.opts.gracefulStop {
 		if err := s.httpSrv.Shutdown(ctx); err != nil {
 			s.Logger().Error("Server forced to runAndClose", zap.Error(err))
 		}

@@ -25,6 +25,7 @@ type serverOptions struct {
 	// configuration is the grpc service Configuration
 	configuration *conf.Configuration
 	logger        log.ComponentLogger
+	gracefulStop  bool
 }
 
 type Server struct {
@@ -140,7 +141,11 @@ func (s *Server) Stop() (err error) {
 		s.exit <- ch
 		err = <-ch
 	}
-	s.engine.GracefulStop()
+	if s.opts.gracefulStop {
+		s.engine.GracefulStop()
+	} else {
+		s.engine.Stop()
+	}
 	return err
 }
 
@@ -160,7 +165,7 @@ func getIP() string {
 	panic("Unable to determine local IP address (non loopback). Exiting.")
 }
 
-// Run is a sample way to start the grpc server with graceful stop
+// Run is a sample way to start the grpc server with gracefulStop stop
 func (s *Server) Run() error {
 	defer s.Stop()
 	ch := make(chan error)

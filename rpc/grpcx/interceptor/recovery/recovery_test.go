@@ -24,7 +24,7 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	p := conf.NewParserFromStringMap(map[string]interface{}{
 		"TimestampFormat": "2006-01-02 15:04:05",
 	})
-	clfg := cnf.CutFromParser(p)
+	clfg := conf.NewFromParse(p)
 	gloger := log.Logger{}
 	gloger.Apply(cnf)
 	go func() {

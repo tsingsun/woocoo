@@ -68,5 +68,6 @@ func (c *Client) Dial(opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	c.dialOpts = append(c.dialOpts, opts...)
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
+
 	return grpc.DialContext(ctx, c.target(), c.dialOpts...)
 }

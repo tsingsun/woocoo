@@ -53,9 +53,3 @@ func IncludeFiles(paths ...string) Option {
 		}
 	}
 }
-
-func IsGlobal(isGlobal bool) Option {
-	return func(o *options) {
-		o.global = isGlobal
-	}
-}

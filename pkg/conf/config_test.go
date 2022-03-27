@@ -1,7 +1,6 @@
 package conf
 
 import (
-	"bytes"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"testing"
@@ -46,12 +45,7 @@ log:
     level: debug
 duration: 1s
 `)
-	p, err := NewParserFromBuffer(bytes.NewReader(b))
-	if err != nil {
-		t.Fatal(err)
-	}
-	cnf := New()
-	cfg := cnf.CutFromParser(p)
+	cfg := NewFromBytes(b)
 	copyCfg := cfg.Copy()
 	cfg.Parser().Set("appname", "woocoocopy")
 	cfg.Parser().Set("log.config.level", "info")

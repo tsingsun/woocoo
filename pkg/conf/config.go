@@ -29,16 +29,23 @@ const (
 )
 
 var (
-	global            *Configuration
+	global            AppConfiguration
 	defaultConfigFile = "etc/app.yaml"
 )
 
-type Configuration struct {
-	opts        options
-	parser      *Parser
-	Development bool
-	root        *Configuration
-}
+type (
+	// Configuration hold settings of the component.
+	Configuration struct {
+		opts        options
+		parser      *Parser
+		Development bool
+		root        *Configuration
+	}
+	// AppConfiguration is the application level configuration,include all of component's configurations
+	AppConfiguration struct {
+		*Configuration
+	}
+)
 
 var defaultOptions = options{
 	global: true,
@@ -77,15 +84,17 @@ func NewFromBytes(b []byte, opts ...Option) *Configuration {
 	if err != nil {
 		panic(err)
 	}
+	return NewFromParse(p, opts...)
+}
 
+func NewFromParse(parser *Parser, opts ...Option) *Configuration {
 	cnf := New(opts...)
-	cnf.parser = p
-
+	cnf.parser = parser
 	return cnf
 }
 
 func (c *Configuration) AsGlobal() *Configuration {
-	global = c
+	global.Configuration = c
 	c.opts.global = true
 	return c
 }
@@ -164,12 +173,12 @@ func (c *Configuration) SetBaseDir(dir string) {
 }
 
 // Global return default(global) Configuration instance
-func Global() *Configuration {
-	if global == nil || global.parser == nil {
-		global = New().Load()
+func Global() *AppConfiguration {
+	if global.Configuration == nil || global.parser == nil {
+		global.Configuration = New().Load()
 		//panic("global configuration has not initialed.")
 	}
-	return global
+	return &global
 }
 
 // Parser return configuration operator

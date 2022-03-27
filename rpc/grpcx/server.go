@@ -172,9 +172,7 @@ func (s *Server) Run() error {
 	go func() {
 		log.StdPrintf("%s start grpc server on %s", s.opts.Location, s.opts.Addr)
 		err := s.ListenAndServe()
-		if err != nil {
-			ch <- err
-		}
+		ch <- err
 	}()
 
 	// Wait for interrupt signal to gracefully runAndClose the server with

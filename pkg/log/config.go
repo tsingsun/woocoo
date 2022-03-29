@@ -3,9 +3,9 @@ package log
 import (
 	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/third_party/natefinch/lumberjack"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"net/url"
 	"path/filepath"
 	"runtime"
@@ -25,33 +25,42 @@ var once sync.Once
 // Tee use as zap advance,such as zapcore.NewTee()
 // Sole use as one zap logger core
 type Config struct {
-	Tee    []zap.Config       `json:"tee" yaml:"tee"`
-	Sole   *zap.Config        `json:"sole" yaml:"sole"`
-	Rotate *lumberjack.Logger `json:"rotate" yaml:"rotate"`
+	Tee    []zap.Config `json:"tee" yaml:"tee"`
+	Sole   *zap.Config  `json:"sole" yaml:"sole"`
+	Rotate *rotate      `json:"rotate" yaml:"rotate"`
 
 	useRotate bool
 	basedir   string
 }
 
+type rotate struct {
+	lumberjack.Logger `json:",squash" yaml:",squash"`
+}
+
+// Sync implement zap.Sink interface
+//
+// need nothing to do, see https://github.com/natefinch/lumberjack/pull/47
+func (r *rotate) Sync() error {
+	return nil
+}
+
 // NewConfig return a Config instance
 func NewConfig(cfg *conf.Configuration) (*Config, error) {
-	dzapCfg := zap.NewProductionConfig()
-	dzapCfg.Development = cfg.Root().Development
-
 	kps, err := cfg.SubOperator(teeConfigPath)
 	if err != nil {
 		panic(err)
 	}
 	v := &Config{
-		//Sole: &dzapCfg,
 		Tee:     make([]zap.Config, len(kps)),
 		basedir: cfg.Root().GetBaseDir(),
 	}
+	dzapCfg := defaultZapConfig(cfg)
+
 	if len(v.Tee) == 0 {
 		v.Sole = &dzapCfg
 	} else {
 		for i := 0; i < len(v.Tee); i++ {
-			v.Tee[i] = zap.NewProductionConfig()
+			v.Tee[i] = defaultZapConfig(cfg)
 		}
 	}
 	if err = cfg.Unmarshal(&v); err != nil {
@@ -70,6 +79,14 @@ func NewConfig(cfg *conf.Configuration) (*Config, error) {
 		v.Sole = nil
 	}
 	return v, nil
+}
+
+func defaultZapConfig(cfg *conf.Configuration) zap.Config {
+	dzapCfg := zap.NewProductionConfig()
+	//change default encode time format
+	dzapCfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	dzapCfg.Development = cfg.Root().Development
+	return dzapCfg
 }
 
 func (c Config) fixZapConfig(zc *zap.Config) error {
@@ -144,14 +161,15 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 	return
 }
 
-func (c Config) newRotateWriter() *lumberjack.Logger {
-	return &lumberjack.Logger{
-		MaxSize:        c.Rotate.MaxSize,
-		MaxAge:         c.Rotate.MaxAge,
-		MaxBackups:     c.Rotate.MaxBackups,
-		LocalTime:      c.Rotate.LocalTime,
-		Compress:       c.Rotate.Compress,
-		ConcurrentSafe: false,
+func (c Config) newRotateWriter() *rotate {
+	return &rotate{
+		Logger: lumberjack.Logger{
+			MaxSize:    c.Rotate.MaxSize,
+			MaxAge:     c.Rotate.MaxAge,
+			MaxBackups: c.Rotate.MaxBackups,
+			LocalTime:  c.Rotate.LocalTime,
+			Compress:   c.Rotate.Compress,
+		},
 	}
 }
 

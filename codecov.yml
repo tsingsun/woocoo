@@ -7,3 +7,4 @@ ignore:
   - "**/*.pb.go"
   - "**/*.pb.gw.go"
   - "test/**/*"
+  - "third_party/"

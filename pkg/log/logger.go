@@ -85,7 +85,7 @@ func (l *Logger) Apply(cfg *conf.Configuration) {
 	if err != nil {
 		panic(fmt.Errorf("apply log configuration err:%w", err))
 	}
-	zl, err := config.BuildZap()
+	zl, err := config.BuildZap(zap.AddCallerSkip(1))
 	if err != nil {
 		panic(fmt.Errorf("apply log configuration err:%w", err))
 	}

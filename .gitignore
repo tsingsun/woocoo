@@ -12,3 +12,5 @@
 *.out
 .idea
 .run
+
+test/tmp/

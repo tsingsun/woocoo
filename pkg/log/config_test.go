@@ -2,12 +2,13 @@ package log
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
-	"github.com/tsingsun/woocoo/third_party/natefinch/lumberjack"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"os"
 	"path"
@@ -44,12 +45,14 @@ log:
 	}
 	want := &Config{
 		useRotate: true,
-		Rotate: &lumberjack.Logger{
-			MaxSize:    1,
-			MaxAge:     1,
-			MaxBackups: 1,
-			LocalTime:  true,
-			Compress:   false,
+		Rotate: &rotate{
+			lumberjack.Logger{
+				MaxSize:    1,
+				MaxAge:     1,
+				MaxBackups: 1,
+				LocalTime:  true,
+				Compress:   false,
+			},
 		},
 	}
 	zc := zap.NewProductionConfig()
@@ -62,12 +65,10 @@ log:
 	}
 	zc.OutputPaths = []string{"stdout"}
 	want.Sole = &zc
-	if got.Sole.Development != true ||
-		got.Sole.Level.Level() != want.Sole.Level.Level() ||
-		got.Sole.Encoding != want.Sole.Encoding {
-		t.Error("")
-	}
-
+	assert.True(t, got.Sole.Development)
+	assert.EqualValues(t, got.Sole.Level.Level(), want.Sole.Level.Level())
+	assert.EqualValues(t, got.Sole.Encoding, want.Sole.Encoding)
+	assert.EqualValues(t, got.Rotate, want.Rotate)
 }
 
 func TestNewConfigTee(t *testing.T) {
@@ -119,7 +120,7 @@ func TestConfig_BuildZap(t *testing.T) {
 	type fields struct {
 		Tee       []zap.Config
 		Single    *zap.Config
-		Rotate    *lumberjack.Logger
+		Rotate    *rotate
 		useRotate bool
 		basedir   string
 	}
@@ -152,13 +153,14 @@ func TestConfig_BuildZap(t *testing.T) {
 					},
 				},
 				Single: nil,
-				Rotate: &lumberjack.Logger{
-					MaxSize:        1,
-					MaxAge:         1,
-					MaxBackups:     1,
-					LocalTime:      true,
-					Compress:       false,
-					ConcurrentSafe: false,
+				Rotate: &rotate{
+					lumberjack.Logger{
+						MaxSize:    1,
+						MaxAge:     1,
+						MaxBackups: 1,
+						LocalTime:  true,
+						Compress:   false,
+					},
 				},
 				useRotate: true,
 				basedir:   testdata.Tmp(""),
@@ -189,7 +191,7 @@ func TestConfig_BuildZap(t *testing.T) {
 			gotZl.Debug(tt.name, field)
 			gotZl.Info(tt.name, field)
 			gotZl.Warn(tt.name, field)
-			gotZl.Error(tt.name, field)
+			gotZl.Error(tt.name, field, zap.Error(fmt.Errorf("error")))
 			gotZl.Sync()
 			for _, tee := range tt.fields.Tee {
 				for _, outputPath := range tee.OutputPaths {
@@ -206,7 +208,7 @@ func TestConfig_BuildZap(t *testing.T) {
 						} else if strings.Index(outputPath, "error") > 0 {
 							assert.Equal(t, 1, lc)
 						}
-						assert.NoError(t, os.Remove(lf))
+						//assert.NoError(t, os.Remove(lf))
 					}
 				}
 			}

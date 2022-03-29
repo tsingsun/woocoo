@@ -15,7 +15,7 @@ log:
     disableStacktrace: true
     encoding: json
     encoderConfig:
-      timeEncoder: iso8601
+      timeEncoder: iso8601 # 默认值
     outputPaths:
       - stdout
       - "test.log"

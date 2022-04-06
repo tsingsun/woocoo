@@ -1,8 +1,11 @@
 package log
 
 import (
+	"fmt"
+	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
+	"go.uber.org/zap"
 	"testing"
 )
 
@@ -33,4 +36,28 @@ func TestLogger_With(t *testing.T) {
 			l.Info("test")
 		})
 	}
+}
+
+func TestLogger_TextEncode(t *testing.T) {
+	var cfgStr = `
+development: true
+log:
+  disableTimestamp: false
+  disableErrorVerbose: false
+  sole:
+    level: debug
+    disableCaller: false
+    disableStacktrace: false
+    encoding: text
+`
+	cfg := conf.NewFromBytes([]byte(cfgStr)).Load()
+	got, err := NewConfig(cfg.Sub("log"))
+	assert.NoError(t, err)
+	zl, err := got.BuildZap()
+	assert.NoError(t, err)
+	logger := New(zl)
+	logger.Info("info")
+	logger.Error("error msg", zap.Error(fmt.Errorf("error")))
+	logger.Info("info for scalar", zap.String("string", "it's a string"), zap.Int("int", 1), zap.Int64("int64", 1), zap.Duration("duration", 1))
+	logger.Info("info for object", zap.Any("object", testdata.TestStruct()))
 }

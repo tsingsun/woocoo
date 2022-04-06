@@ -23,6 +23,23 @@ func TestConfigFile() string {
 	return Path(DefaultConfigFile)
 }
 
+func TestStruct() interface{} {
+	type test struct {
+		String string
+		Bool   bool
+		Int    int
+		Float  float64
+		Array  []string
+	}
+	return &test{
+		String: "string",
+		Bool:   true,
+		Int:    1,
+		Float:  1.1,
+		Array:  []string{"a", "b"},
+	}
+}
+
 func BaseDir() string {
 	return basedir
 }

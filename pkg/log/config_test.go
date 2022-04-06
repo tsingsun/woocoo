@@ -16,7 +16,7 @@ import (
 	"testing"
 )
 
-func TestNewConfigSingle(t *testing.T) {
+func TestNewConfigSolo(t *testing.T) {
 	var cfgStr = `
 development: true
 log:
@@ -215,6 +215,28 @@ func TestConfig_BuildZap(t *testing.T) {
 
 		})
 	}
+}
+
+func TestTextEncode(t *testing.T) {
+	var cfgStr = `
+development: true
+log:
+  disableTimestamp: true
+  disableErrorVerbose: true
+  sole:
+    level: debug
+    disableCaller: true
+    disableStacktrace: true
+    encoding: text
+`
+	cfg := conf.NewFromBytes([]byte(cfgStr)).Load()
+	got, err := NewConfig(cfg.Sub("log"))
+	if err != nil {
+		t.Error(err)
+	}
+	assert.True(t, got.DisableTimestamp)
+	assert.True(t, got.DisableErrorVerbose)
+	assert.Equal(t, "text", got.Sole.Encoding)
 }
 
 func lineCounter(r io.Reader) (int, error) {

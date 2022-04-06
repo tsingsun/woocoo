@@ -117,8 +117,12 @@ func (l *Parser) Get(key string) interface{} {
 func (l *Parser) Set(key string, value interface{}) {
 	// koanf doesn't offer a direct setting mechanism so merging is required.
 	merged := koanf.New(KeyDelimiter)
-	merged.Load(confmap.Provider(map[string]interface{}{key: value}, KeyDelimiter), nil)
-	l.k.Merge(merged)
+	if err := merged.Load(confmap.Provider(map[string]interface{}{key: value}, KeyDelimiter), nil); err != nil {
+		panic(err)
+	}
+	if err := l.k.Merge(merged); err != nil {
+		panic(err)
+	}
 }
 
 // IsSet checks to see if the key has been set in any of the data locations.
@@ -131,7 +135,9 @@ func (l *Parser) IsSet(key string) bool {
 // Note that the given map may be modified.
 func (l *Parser) MergeStringMap(cfg map[string]interface{}) error {
 	toMerge := koanf.New(KeyDelimiter)
-	toMerge.Load(confmap.Provider(cfg, KeyDelimiter), nil)
+	if err := toMerge.Load(confmap.Provider(cfg, KeyDelimiter), nil); err != nil {
+		return err
+	}
 	return l.k.Merge(toMerge)
 }
 

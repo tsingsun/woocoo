@@ -8,12 +8,14 @@
 
 ```yaml
 log:
+  disableTimestamp: false # encoder text 时,是否显示时间戳
+  disableErrorVerbose: false # encoder text 时,是否显示错误详情
   # 单日志组件,不需要复杂日志记录时一般采用sole
   sole:
     level: debug
     disableCaller: true
     disableStacktrace: true
-    encoding: json
+    encoding: json #json console text 三种格式
     encoderConfig:
       timeEncoder: iso8601 # 默认值
     outputPaths:

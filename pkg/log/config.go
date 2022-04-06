@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -25,9 +26,17 @@ var once sync.Once
 // Tee use as zap advance,such as zapcore.NewTee()
 // Sole use as one zap logger core
 type Config struct {
-	Tee    []zap.Config `json:"tee" yaml:"tee"`
-	Sole   *zap.Config  `json:"sole" yaml:"sole"`
-	Rotate *rotate      `json:"rotate" yaml:"rotate"`
+	// Tee is for initial zap multi core
+	Tee []zap.Config `json:"tee" yaml:"tee"`
+	// sole is for one zap core
+	Sole *zap.Config `json:"sole" yaml:"sole"`
+	// Rotate is for log rotate
+	Rotate *rotate `json:"rotate" yaml:"rotate"`
+	// Disable automatic timestamps in output if use textEncoder
+	DisableTimestamp bool `json:"disableTimestamp" yaml:"disableTimestamp"`
+	// DisableErrorVerbose stops annotating logs with the full verbose error
+	// message.
+	DisableErrorVerbose bool `json:"disableErrorVerbose" yaml:"disableErrorVerbose"`
 
 	useRotate bool
 	basedir   string
@@ -69,22 +78,32 @@ func NewConfig(cfg *conf.Configuration) (*Config, error) {
 
 	if len(v.Tee) == 0 && v.Sole == nil {
 		return nil, fmt.Errorf("none logger config,plz set up section: sole or tee")
-	}
-
-	if v.Rotate != nil {
-		v.useRotate = true
-	}
-	if len(v.Tee) != 0 && v.Sole != nil {
+	} else if len(v.Tee) != 0 && v.Sole != nil {
 		StdPrintln("single logger config is ineffective if using tee logger")
 		v.Sole = nil
 	}
+	if v.Rotate != nil {
+		v.useRotate = true
+	}
 	return v, nil
+}
+
+// DefaultTimeEncoder serializes time.Time to a human-readable formatted string
+func DefaultTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+	s := t.Format("2006/01/02 15:04:05.000 -07:00")
+	if e, ok := enc.(*textEncoder); ok {
+		for _, c := range []byte(s) {
+			e.buf.AppendByte(c)
+		}
+		return
+	}
+	enc.AppendString(s)
 }
 
 func defaultZapConfig(cfg *conf.Configuration) zap.Config {
 	dzapCfg := zap.NewProductionConfig()
 	//change default encode time format
-	dzapCfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	dzapCfg.EncoderConfig.EncodeTime = DefaultTimeEncoder
 	dzapCfg.Development = cfg.Root().Development
 	return dzapCfg
 }
@@ -104,8 +123,19 @@ func (c Config) fixZapConfig(zc *zap.Config) error {
 
 // BuildZap build a zap.Logger by Config
 func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
+	once.Do(func() {
+		encoder := NewTextEncoder(c)
+		// text encode
+		err = zap.RegisterEncoder("text", func(zapcore.EncoderConfig) (zapcore.Encoder, error) {
+			return encoder, nil
+		})
+		if err != nil {
+			panic(err)
+		}
+	})
 	if c.useRotate {
 		once.Do(func() {
+			//sink
 			err := zap.RegisterSink(rotateSchema, func(u *url.URL) (zap.Sink, error) {
 				if u.User != nil {
 					return nil, fmt.Errorf("user and password not allowed with file URLs: got %v", u)

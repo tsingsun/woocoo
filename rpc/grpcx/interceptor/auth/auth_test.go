@@ -15,17 +15,26 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
+	"google.golang.org/grpc/grpclog"
+	"io/ioutil"
 	"net"
+	"os"
 	"testing"
 	"time"
 )
 
 var (
-	cnf            = conf.New(conf.LocalPath(testdata.TestConfigFile()), conf.BaseDir(testdata.BaseDir())).Load()
-	addr           = "localhost:50051"
-	hs256BadHeader = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkxMjJ9.JcRoPW5fA44i7vuGyXGXKHuAfZYly_uFGs5FznyPJBc"
-	hs256OkToken   = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE3MTYyMzkwMjJ9.kiW0BWa5S93F401V0N5wPZkuJS5L2cxzGZDTeDnne2I"
+	addr = "127.0.0.1:50051"
+	//hs256BadHeader = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkxMjJ9.JcRoPW5fA44i7vuGyXGXKHuAfZYly_uFGs5FznyPJBc"
+	hs256OkToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE3MTYyMzkwMjJ9.kiW0BWa5S93F401V0N5wPZkuJS5L2cxzGZDTeDnne2I"
 )
+
+var log grpclog.LoggerV2
+
+func init() {
+	log = grpclog.NewLoggerV2(os.Stdout, ioutil.Discard, ioutil.Discard)
+	grpclog.SetLoggerV2(log)
+}
 
 func TestAuth_UnaryServerInterceptor(t *testing.T) {
 	auth.IdentityHandler = func(ctx context.Context, claims jwt.MapClaims) user.Identity {
@@ -41,16 +50,14 @@ func TestAuth_UnaryServerInterceptor(t *testing.T) {
 		"secret":           "123456",
 		"TenantHeader":     "wc",
 	})
-	acfg := cnf.CutFromParser(p)
+	acfg := conf.NewFromParse(p)
 	ints.Apply(acfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	go func() {
-		cert, err := tls.LoadX509KeyPair(testdata.Path("x509/server_cert.pem"), testdata.Path("x509/server_key.pem"))
-		if err != nil {
-			t.Errorf("failed to load key pair: %s", err)
-		}
+		cert, err := tls.LoadX509KeyPair(testdata.Path("x509/test.pem"), testdata.Path("x509/test.key"))
+		assert.NoError(t, err)
 		opts := []grpc.ServerOption{
 			// The following grpc.ServerOption adds an interceptor for all unary
 			// RPCs. To configure an interceptor for streaming RPCs, see:
@@ -62,20 +69,15 @@ func TestAuth_UnaryServerInterceptor(t *testing.T) {
 		s := grpc.NewServer(opts...)
 		testproto.RegisterTestServiceServer(s, &test.TestPingService{})
 		lis, err := net.Listen("tcp", addr)
-		if err != nil {
-			t.Errorf("failed to listen: %v", err)
-			return
-		}
+		assert.NoError(t, err)
 		if err := s.Serve(lis); err != nil {
-			t.Errorf("failed to serve: %v", err)
+			t.Error(err)
 			return
 		}
 	}()
-	time.Sleep(2000)
-	ccreds, err := credentials.NewClientTLSFromFile(testdata.Path("x509/ca_cert.pem"), "x.test.example.com")
-	if err != nil {
-		t.Fatalf("failed to load credentials: %v", err)
-	}
+	time.Sleep(time.Second)
+	ccreds, err := credentials.NewClientTLSFromFile(testdata.Path("x509/test.pem"), "*.woocoo.com")
+	assert.NoError(t, err)
 	fetchToken := &oauth2.Token{
 		AccessToken: hs256OkToken,
 	}
@@ -92,10 +94,10 @@ func TestAuth_UnaryServerInterceptor(t *testing.T) {
 		grpc.WithTransportCredentials(ccreds),
 	}
 	copts = append(copts, grpc.WithBlock())
-	conn, err := grpc.Dial(addr, copts...)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	conn, err := grpc.DialContext(ctx, addr, copts...)
+	assert.NoError(t, err)
 	client := testproto.NewTestServiceClient(conn)
 	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	//defer cancel()

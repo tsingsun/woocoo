@@ -91,6 +91,7 @@ type textEncoder struct {
 
 // NewTextEncoder creates a fast, low-allocation Text encoder. The encoder
 // appropriately escapes all field keys and values.
+// log format see https://github.com/tikv/rfcs/blob/master/text/0018-unified-log-format.md#log-fields-section
 func NewTextEncoder(cfg *Config) zapcore.Encoder {
 	cc := zapcore.EncoderConfig{
 		// Keys can be anything except the empty string.

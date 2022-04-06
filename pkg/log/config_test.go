@@ -208,7 +208,7 @@ func TestConfig_BuildZap(t *testing.T) {
 						} else if strings.Index(outputPath, "error") > 0 {
 							assert.Equal(t, 1, lc)
 						}
-						//assert.NoError(t, os.Remove(lf))
+						assert.NoError(t, os.Remove(lf))
 					}
 				}
 			}

@@ -18,13 +18,13 @@ jobs:
       - name: Run linters
         uses: golangci/golangci-lint-action@v2.5.2
         with:
-          version: v1.44.0
+          version: v1.45.2
 
   build:
     runs-on: ubuntu-latest
     services:
       etcd:
-        image: quay.io/coreos/etcd:v3.4.3
+        image: bitnami/etcd:3.4
         ports:
           - "2379:2379"
           - "2380:2380"
@@ -36,7 +36,7 @@ jobs:
       matrix:
         go: ['1.17', '1.18']
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - uses: actions/setup-go@v2
       with:

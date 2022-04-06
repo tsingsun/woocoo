@@ -124,6 +124,7 @@ func (c Config) fixZapConfig(zc *zap.Config) error {
 // BuildZap build a zap.Logger by Config
 func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 	once.Do(func() {
+		// register encoder
 		encoder := NewTextEncoder(c)
 		// text encode
 		err = zap.RegisterEncoder("text", func(zapcore.EncoderConfig) (zapcore.Encoder, error) {
@@ -132,10 +133,9 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 		if err != nil {
 			panic(err)
 		}
-	})
-	if c.useRotate {
-		once.Do(func() {
-			//sink
+
+		//RegisterSink
+		if c.useRotate {
 			err := zap.RegisterSink(rotateSchema, func(u *url.URL) (zap.Sink, error) {
 				if u.User != nil {
 					return nil, fmt.Errorf("user and password not allowed with file URLs: got %v", u)
@@ -164,8 +164,8 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 			if err != nil {
 				panic(err)
 			}
-		})
-	}
+		}
+	})
 
 	if c.Sole != nil {
 		if err = c.fixZapConfig(c.Sole); err != nil {

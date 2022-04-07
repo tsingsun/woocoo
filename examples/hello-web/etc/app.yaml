@@ -2,16 +2,16 @@ appName: hello-web
 version: 0.0.1
 development: true
 log:
-  sole:
-    level: debug
-    disableCaller: true
-    disableStacktrace: true
-    encoding: json
-    outputPaths:
-      - stdout
-      - "logs/test.log"
-    errorOutputPaths:
-      - stderr
+  core:
+    - level: debug
+      disableCaller: true
+      disableStacktrace: true
+      encoding: json
+      outputPaths:
+        - stdout
+        - "logs/test.log"
+      errorOutputPaths:
+        - stderr
   rotate:
     maxSize: 1
     maxage: 1

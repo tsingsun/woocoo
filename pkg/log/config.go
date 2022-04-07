@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	teeConfigPath = "tee"
+	zapConfigPath = "core"
 	// rotate:[//[userinfo@]host][/]path[?query][#fragment]
 	rotateSchema = "Rotate"
 )
@@ -23,13 +23,11 @@ const (
 var once sync.Once
 
 // Config is logger schema
-// Tee use as zap advance,such as zapcore.NewTee()
+// ZapConfigs use as zap advance,such as zapcore.NewTee()
 // Sole use as one zap logger core
 type Config struct {
-	// Tee is for initial zap multi core
-	Tee []zap.Config `json:"tee" yaml:"tee"`
-	// sole is for one zap core
-	Sole *zap.Config `json:"sole" yaml:"sole"`
+	// ZapConfigs is for initial zap multi core
+	ZapConfigs []zap.Config `json:"core" yaml:"core"`
 	// Rotate is for log rotate
 	Rotate *rotate `json:"rotate" yaml:"rotate"`
 	// Disable automatic timestamps in output if use textEncoder
@@ -55,33 +53,25 @@ func (r *rotate) Sync() error {
 
 // NewConfig return a Config instance
 func NewConfig(cfg *conf.Configuration) (*Config, error) {
-	kps, err := cfg.SubOperator(teeConfigPath)
+	kps, err := cfg.SubOperator(zapConfigPath)
 	if err != nil {
 		panic(err)
 	}
+	if len(kps) == 0 {
+		return nil, fmt.Errorf("none logger config,plz set up section: core")
+	}
 	v := &Config{
-		Tee:     make([]zap.Config, len(kps)),
-		basedir: cfg.Root().GetBaseDir(),
+		ZapConfigs: make([]zap.Config, len(kps)),
+		basedir:    cfg.Root().GetBaseDir(),
 	}
-	dzapCfg := defaultZapConfig(cfg)
+	for i := 0; i < len(v.ZapConfigs); i++ {
+		v.ZapConfigs[i] = defaultZapConfig(cfg)
+	}
 
-	if len(v.Tee) == 0 {
-		v.Sole = &dzapCfg
-	} else {
-		for i := 0; i < len(v.Tee); i++ {
-			v.Tee[i] = defaultZapConfig(cfg)
-		}
-	}
 	if err = cfg.Unmarshal(&v); err != nil {
 		return nil, err
 	}
 
-	if len(v.Tee) == 0 && v.Sole == nil {
-		return nil, fmt.Errorf("none logger config,plz set up section: sole or tee")
-	} else if len(v.Tee) != 0 && v.Sole != nil {
-		StdPrintln("single logger config is ineffective if using tee logger")
-		v.Sole = nil
-	}
 	if v.Rotate != nil {
 		v.useRotate = true
 	}
@@ -167,16 +157,8 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 		}
 	})
 
-	if c.Sole != nil {
-		if err = c.fixZapConfig(c.Sole); err != nil {
-			return
-		}
-		zl, err = c.Sole.Build(opts...)
-		return
-	}
-
 	var cores []zapcore.Core
-	for _, zc := range c.Tee {
+	for _, zc := range c.ZapConfigs {
 		if err = c.fixZapConfig(&zc); err != nil {
 			return
 		}
@@ -186,8 +168,11 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 		}
 		cores = append(cores, tmpzl.Core())
 	}
-	cr := zapcore.NewTee(cores...)
-	zl = zap.New(cr)
+	if len(cores) == 1 {
+		zl = zap.New(cores[0])
+	} else {
+		zl = zap.New(zapcore.NewTee(cores...))
+	}
 	return
 }
 

@@ -1,14 +1,14 @@
 development: true
 log:
-  sole:
-    level: debug
-    disableCaller: true
-    disableStacktrace: true
-    encoding: json
-    outputPaths:
-      - stdout
-    errorOutputPaths:
-      - stderr
+  core:
+    - level: debug
+      disableCaller: true
+      disableStacktrace: true
+      encoding: json
+      outputPaths:
+        - stdout
+      errorOutputPaths:
+        - stderr
 grpc:
   server:
     listen: "20000"

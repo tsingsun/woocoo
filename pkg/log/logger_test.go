@@ -43,11 +43,11 @@ development: true
 log:
   disableTimestamp: false
   disableErrorVerbose: false
-  sole:
-    level: debug
-    disableCaller: false
-    disableStacktrace: false
-    encoding: text
+  core:
+    - level: debug
+      disableCaller: false
+      disableStacktrace: false
+      encoding: text
 `
 	cfg := conf.NewFromBytes([]byte(cfgStr)).Load()
 	got, err := NewConfig(cfg.Sub("log"))

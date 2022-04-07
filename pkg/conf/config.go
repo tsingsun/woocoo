@@ -239,28 +239,29 @@ func (c Configuration) passRoot(sub *Configuration) {
 	}
 }
 
+//SubOperator return the slice operator of the Configuration which is only contains slice path
 func (c *Configuration) SubOperator(path string) (out []*koanf.Koanf, err error) {
-	if path == "" {
-		raw := c.parser.k.Raw()
-		for _, val := range raw {
-			v, ok := val.([]interface{})
+	raw := c.parser.k.Raw()
+	for k, v := range raw {
+		if path != "" && k != path {
+			continue
+		}
+		v, ok := v.([]interface{})
+		if !ok {
+			continue
+		}
+		for _, s := range v {
+			mp, ok := s.(map[string]interface{})
 			if !ok {
 				continue
 			}
-			for _, s := range v {
-				v, ok := s.(map[string]interface{})
-				if !ok {
-					continue
-				}
 
-				k := koanf.New(KeyDelimiter)
-				if err = k.Load(confmap.Provider(v, ""), nil); err != nil {
-					return
-				}
-				out = append(out, k)
+			kf := koanf.New(KeyDelimiter)
+			if err = kf.Load(confmap.Provider(mp, ""), nil); err != nil {
+				return
 			}
+			out = append(out, kf)
 		}
-		return
 	}
 	return
 }
@@ -296,6 +297,15 @@ func (c *Configuration) Version() string {
 // Tags on the fields of the structure must be properly set.
 func (c *Configuration) Unmarshal(dst interface{}) (err error) {
 	return c.parser.Unmarshal("", dst)
+}
+
+func (c *Configuration) IsSlice(path string) bool {
+	if !c.IsSet(path) {
+		return false
+	}
+	v := c.Get(path)
+	_, ok := v.([]interface{})
+	return ok
 }
 
 // Abs 返回绝对路径
@@ -357,16 +367,21 @@ func (c *Configuration) Duration(path string) time.Duration {
 	return c.parser.k.Duration(path)
 }
 
+//IsSet check if the key is set
 func IsSet(path string) bool { return global.IsSet(path) }
+
+//IsSet check if the key is set
 func (c *Configuration) IsSet(path string) bool {
 	return c.parser.IsSet(path)
 }
 
+// AllSettings return all settings
 func AllSettings() map[string]interface{} { return global.AllSettings() }
 func (c *Configuration) AllSettings() map[string]interface{} {
 	return c.parser.k.All()
 }
 
+// Join join paths
 func Join(ps ...string) string {
 	return strings.Join(ps, KeyDelimiter)
 }

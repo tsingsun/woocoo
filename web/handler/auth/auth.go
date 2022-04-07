@@ -651,46 +651,6 @@ func GetToken(c *gin.Context) string {
 	return token.(string)
 }
 
-func defaultAuthMiddleware(cfg *conf.Configuration) *GinJWTMiddleware {
-	ac := &GinJWTMiddleware{
-		JwtParser: jwttool.JwtParser{
-			Realm:       "woocoo",
-			IdentityKey: "sub",
-			TimeFunc:    time.Now,
-		},
-		Unauthorized: func(c *gin.Context, code int, message string) {
-			c.JSON(code, gin.H{
-				"errors": []map[string]interface{}{
-					{
-						"code":    code,
-						"message": message,
-					},
-				},
-			})
-		},
-	}
-	if err := cfg.Unmarshal(ac); err != nil {
-		panic(err)
-	}
-
-	if ac.PrivKeyFile != "" {
-		ac.PrivKeyFile = cfg.Abs(ac.PrivKeyFile)
-	}
-	if ac.PubKeyFile != "" {
-		ac.PubKeyFile = cfg.Abs(ac.PubKeyFile)
-	}
-	ac.Key = []byte(cfg.String("secret"))
-
-	if IdentityHandler != nil {
-		ac.IdentityHandler = IdentityHandler
-	}
-
-	if err := ac.MiddlewareInit(); err != nil {
-		panic(err)
-	}
-	return ac
-}
-
 func (mw *GinJWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	mw.Apply(cfg, "")
 	return mw.MiddlewareFunc()

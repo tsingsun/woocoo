@@ -20,17 +20,17 @@ func TestNewConfigSolo(t *testing.T) {
 	var cfgStr = `
 development: true
 log:
-  sole:
-    level: debug
-    disableCaller: true
-    disableStacktrace: true
-    encoding: json
-    encoderConfig:
-      timeEncoder: iso8601
-    outputPaths:
-      - stdout
-    errorOutputPaths:
-      - stderr
+  core:
+    - level: debug
+      disableCaller: true
+      disableStacktrace: true
+      encoding: json
+      encoderConfig:
+        timeEncoder: iso8601
+      outputPaths:
+        - stdout
+      errorOutputPaths:
+        - stderr
   rotate:
     maxSize: 1
     maxage: 1
@@ -44,7 +44,8 @@ log:
 		t.Error(err)
 	}
 	want := &Config{
-		useRotate: true,
+		useRotate:  true,
+		ZapConfigs: make([]zap.Config, 1),
 		Rotate: &rotate{
 			lumberjack.Logger{
 				MaxSize:    1,
@@ -64,10 +65,10 @@ log:
 		t.Error(err)
 	}
 	zc.OutputPaths = []string{"stdout"}
-	want.Sole = &zc
-	assert.True(t, got.Sole.Development)
-	assert.EqualValues(t, got.Sole.Level.Level(), want.Sole.Level.Level())
-	assert.EqualValues(t, got.Sole.Encoding, want.Sole.Encoding)
+	want.ZapConfigs[0] = zc
+	assert.True(t, got.ZapConfigs[0].Development)
+	assert.EqualValues(t, got.ZapConfigs[0].Level.Level(), want.ZapConfigs[0].Level.Level())
+	assert.EqualValues(t, got.ZapConfigs[0].Encoding, want.ZapConfigs[0].Encoding)
 	assert.EqualValues(t, got.Rotate, want.Rotate)
 }
 
@@ -75,7 +76,7 @@ func TestNewConfigTee(t *testing.T) {
 	var cfgStr = `
 development: true
 log:
-  tee:
+  core:
     - level: debug 
       disableCaller: true
       disableStacktrace: true
@@ -105,9 +106,8 @@ log:
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Len(t, got.Tee, 2)
-	assert.Nil(t, got.Sole)
-	for i, te := range got.Tee {
+	assert.Len(t, got.ZapConfigs, 2)
+	for i, te := range got.ZapConfigs {
 		if i == 0 {
 			assert.Equal(t, zap.NewAtomicLevelAt(zapcore.DebugLevel).Level(), te.Level.Level())
 		} else if i == 1 {
@@ -173,11 +173,10 @@ func TestConfig_BuildZap(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Config{
-				Tee:       tt.fields.Tee,
-				Sole:      tt.fields.Single,
-				Rotate:    tt.fields.Rotate,
-				useRotate: tt.fields.useRotate,
-				basedir:   tt.fields.basedir,
+				ZapConfigs: tt.fields.Tee,
+				Rotate:     tt.fields.Rotate,
+				useRotate:  tt.fields.useRotate,
+				basedir:    tt.fields.basedir,
 			}
 			gotZl, err := c.BuildZap(tt.args.opts...)
 			if (err != nil) != tt.wantErr {
@@ -223,11 +222,11 @@ development: true
 log:
   disableTimestamp: true
   disableErrorVerbose: true
-  sole:
-    level: debug
-    disableCaller: true
-    disableStacktrace: true
-    encoding: text
+  core:
+    - level: debug
+      disableCaller: true
+      disableStacktrace: true
+      encoding: text
 `
 	cfg := conf.NewFromBytes([]byte(cfgStr)).Load()
 	got, err := NewConfig(cfg.Sub("log"))
@@ -236,7 +235,7 @@ log:
 	}
 	assert.True(t, got.DisableTimestamp)
 	assert.True(t, got.DisableErrorVerbose)
-	assert.Equal(t, "text", got.Sole.Encoding)
+	assert.Equal(t, "text", got.ZapConfigs[0].Encoding)
 }
 
 func lineCounter(r io.Reader) (int, error) {

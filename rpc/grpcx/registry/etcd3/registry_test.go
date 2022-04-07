@@ -12,7 +12,6 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer/roundrobin"
-	"log"
 	"net"
 	"sync"
 	"testing"
@@ -118,7 +117,7 @@ func TestRegistryGrpcx(t *testing.T) {
 	go func() {
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		if err := srv.Run(); err != nil {
-			t.Error(err)
+			assert.NoError(t, err)
 		}
 	}()
 	cfg2 := cnf.Sub("grpc")
@@ -128,16 +127,13 @@ func TestRegistryGrpcx(t *testing.T) {
 	go func() {
 		helloworld.RegisterGreeterServer(srv2.Engine(), &helloworld.Server{})
 		if err := srv2.Run(); err != nil {
-			t.Error(err)
+			assert.NoError(t, err)
 		}
 	}()
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 3)
 	RegisterResolver(etcdConfg, sn)
 	c, err := grpc.Dial("etcd:///", grpc.WithInsecure(), grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
-	if err != nil {
-		log.Printf("grpc dial: %s", err)
-		return
-	}
+	assert.NoError(t, err)
 	defer c.Close()
 	client := helloworld.NewGreeterClient(c)
 	for i := 0; i < 5; i++ {

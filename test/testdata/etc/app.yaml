@@ -2,18 +2,18 @@ appName: woocoo
 version: 0.0.1
 development: true
 log:
-  sole:
-    level: debug
-    disableCaller: true
-    disableStacktrace: true
-    encoding: json
-    encoderConfig:
-      timeEncoder: iso8601
-    outputPaths:
-      - stdout
-      - "test.log"
-    errorOutputPaths:
-      - stderr
+  core:
+    - level: debug
+      disableCaller: true
+      disableStacktrace: true
+      encoding: json
+      encoderConfig:
+        timeEncoder: iso8601
+      outputPaths:
+        - stdout
+        - "test.log"
+      errorOutputPaths:
+        - stderr
   rotate:
     maxSize: 1
     maxage: 1

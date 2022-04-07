@@ -11,20 +11,31 @@ log:
   disableTimestamp: false # encoder text 时,是否显示时间戳
   disableErrorVerbose: false # encoder text 时,是否显示错误详情
   # 单日志组件,不需要复杂日志记录时一般采用sole
-  sole:
-    level: debug
-    disableCaller: true
-    disableStacktrace: true
-    encoding: json #json console text 三种格式
-    encoderConfig:
-      timeEncoder: iso8601 # 默认值
-    outputPaths:
-      - stdout
-      - "test.log"
-    errorOutputPaths:
-      - stderr
-  # 需要做日志拆分采用tee配置.
-  tee:
+  core:
+    - level: debug
+      disableCaller: true
+      disableStacktrace: true
+      encoding: json #json console text 三种格式
+      encoderConfig:
+        timeEncoder: iso8601 # 默认值
+      outputPaths:
+        - stdout
+        - "test.log"
+      errorOutputPaths:
+        - stderr
+  # 采用文件流时,轮转配置可方便管理与跟踪日志,可选配置
+  rotate:
+    maxSize: 1
+    maxage: 1
+    maxbackups: 1
+    localtime: true
+    compress: false
+```
+## mulit-logger
+
+```yaml
+  # 日志组件,需要复杂日志记录时一般采用multi
+  core:
     - level: debug 
       disableCaller: true
       disableStacktrace: true
@@ -42,14 +53,6 @@ log:
         - "test.log"
       errorOutputPaths:
         - stderr
-  # 采用文件流时,轮转配置可方便管理与跟踪日志,可选配置
-  rotate:
-    maxSize: 1
-    maxage: 1
-    maxbackups: 1
-    localtime: true
-    compress: false
 ```
-## sole && tee
 
 内置配置基于Zap的Config对象

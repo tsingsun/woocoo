@@ -73,8 +73,12 @@ func (c configurableGrpcClientOptions) Apply(client *Client, cfg *conf.Configura
 			opts = append(opts, c.unaryInterceptorHandler(itcfg))
 		}
 		if handler, ok := c.do[name]; ok {
-			itcfg := cfg.CutFromOperator(hf.Cut(name))
-			if h := handler(itcfg); h != nil {
+			subhf := hf.Cut(name)
+			// if subhf is empty,pass the original config
+			if len(subhf.Keys()) == 0 {
+				subhf = hf
+			}
+			if h := handler(cfg.CutFromOperator(subhf)); h != nil {
 				opts = append(opts, h)
 			}
 		}
@@ -97,4 +101,7 @@ func RegisterStreamClientInterceptor(name string, f func(configuration *conf.Con
 func registerInternal() {
 	RegisterDialOption("insecure", func(configuration *conf.Configuration) grpc.DialOption { return grpc.WithInsecure() })
 	RegisterDialOption("block", func(configuration *conf.Configuration) grpc.DialOption { return grpc.WithBlock() })
+	RegisterDialOption("defaultServiceConfig", func(configuration *conf.Configuration) grpc.DialOption {
+		return grpc.WithDefaultServiceConfig(configuration.String("defaultServiceConfig"))
+	})
 }

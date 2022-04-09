@@ -26,8 +26,8 @@ jobs:
       etcd:
         image: bitnami/etcd:3.4
         ports:
-          - "2379:2379"
-          - "2380:2380"
+          - "12379:2379"
+          - "12380:2380"
         env:
           ALLOW_NONE_AUTHENTICATION: yes
           ETCD_ADVERTISE_CLIENT_URLS: "http://127.0.0.1:2379"

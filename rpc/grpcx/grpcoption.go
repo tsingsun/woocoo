@@ -108,8 +108,12 @@ func (c configurableGrpcServerOptions) Apply(cfg *conf.Configuration, path strin
 			opts = append(opts, c.unaryInterceptorHandler(itcfg))
 		}
 		if handler, ok := c.ms[name]; ok {
-			itcfg := cfg.CutFromOperator(hf.Cut(name))
-			if h := handler(itcfg); h != nil {
+			subhf := hf.Cut(name)
+			// if subhf is empty,pass the original config
+			if len(subhf.Keys()) == 0 {
+				subhf = hf
+			}
+			if h := handler(cfg.CutFromOperator(subhf)); h != nil {
 				opts = append(opts, h)
 			}
 		}

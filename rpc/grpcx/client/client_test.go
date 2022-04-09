@@ -1,10 +1,10 @@
-package client_test
+package client
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/tsingsun/woocoo/internal/mock/helloworld"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
-	"github.com/tsingsun/woocoo/rpc/grpcx/client"
 	_ "github.com/tsingsun/woocoo/rpc/grpcx/registry/etcd3"
 	"google.golang.org/grpc/connectivity"
 	"testing"
@@ -16,28 +16,34 @@ func TestClient_DialRegistry(t *testing.T) {
 service:
   server:
     addr: :20005
-    location: /woocoo/service
+    namespace: woocoo
     version: "1.0"
     engine:
       - keepalive:
           time: 3600s
   registry:
-    schema: etcd
+    scheme: etcd
     ttl: 600s
     etcd:
       tls:
         ssl_certificate: ""
         ssl_certificate_key: ""
       endpoints:
-        - localhost:2379
+        - localhost:12379
       dial-timeout: 3s
       dial-keep-alive-time: 1h
   client:
-    - insecure:
-    - block:
-    - timeout: 5s
-    - unaryInterceptors:
-        - trace:
+    target:
+      namespace: woocoo
+      serviceName: helloworld.Greeter
+      metadata: 
+        version: "1.0"
+    grpcDialOption:
+      - insecure:
+      - block:
+      - timeout: 5s
+      - unaryInterceptors:
+          - trace:
 `)
 	cfg := conf.NewFromBytes(b)
 	srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("service")))
@@ -48,18 +54,21 @@ service:
 		}
 	}()
 	time.Sleep(2000)
-	cli := client.New(client.Configuration(cfg.Sub("service")))
-	_, err := cli.Dial()
-	assert.NoError(t, err)
+	cli := New(Configuration(cfg.Sub("service")))
+	assert.Equal(t, cli.dialOpts.Namespace, "woocoo")
+	assert.Equal(t, cli.dialOpts.ServiceName, "helloworld.Greeter")
+	assert.EqualValues(t, cli.dialOpts.Metadata, map[string]string{"version": "1.0"})
+	_, err := cli.Dial("")
+	assert.Error(t, err)
 	srv.Stop()
 }
 
 func TestClient_DialNaming(t *testing.T) {
 	b := []byte(`
-service:
+grpc:
   server:
     addr: :20001
-    location: /woocoo/service
+    namespace: woocoo
     version: "1.0"
     engine:
       - unaryInterceptors:
@@ -69,26 +78,35 @@ service:
           - recovery:
       - streamInterceptors:
   client:
-    - insecure:
-    - block:
-    - timeout: 5s
-    - unaryInterceptors:
-        - trace:
+    target:
+      namespace: woocoo
+      serviceName: helloworld.Greeter
+      metadata: 
+        version: "1.0"
+        dst_location: amoy
+        src_tag: tag1
+        headerPrefix: "head1,head2"
+    grpcDialOption:
+      - insecure:
+      - block:
+      - timeout: 5s
+      - defaultServiceConfig: '{ "loadBalancingConfig": [{"round_robin": {}}] }'
+      - unaryInterceptors:
+          - trace:
 `)
 	cfg := conf.NewFromBytes(b)
 	go func() {
-		srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("service")))
+		srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
+		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		if err := srv.Run(); err != nil {
 			t.Error(err)
 			return
 		}
 	}()
 	time.Sleep(time.Second)
-	cli := client.New(client.Configuration(cfg.Sub("service")))
-	conn, err := cli.Dial()
-	if err != nil {
-		t.Fatal(err)
-	}
+	cli := New(Configuration(cfg.Sub("grpc")))
+	conn, err := cli.Dial(cfg.String("grpc.server.addr"))
+	assert.NoError(t, err)
 	if conn.GetState() != connectivity.Ready {
 		t.Fail()
 	}

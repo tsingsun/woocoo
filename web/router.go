@@ -70,8 +70,12 @@ func (r *Router) Apply(cfg *conf.Configuration) error {
 				break
 			}
 			if hf, ok := r.serverOptions.handlerManager.GetHandler(fname); ok {
-				subCfg := cfg.CutFromOperator(hItem.Cut(fname))
-				gr.Use(hf.ApplyFunc(subCfg))
+				subhf := hItem.Cut(fname)
+				// if subhf is empty,pass the original config
+				if len(subhf.Keys()) == 0 {
+					subhf = hItem
+				}
+				gr.Use(hf.ApplyFunc(cfg.CutFromOperator(subhf)))
 			} else {
 				return errors.New("middleware not found:" + fname)
 			}

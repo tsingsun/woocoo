@@ -6,7 +6,6 @@ import (
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/logger"
 	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/recovery"
-	"github.com/tsingsun/woocoo/test"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/test/testproto"
 	"google.golang.org/grpc"
@@ -36,7 +35,7 @@ func TestUnaryServerInterceptor(t *testing.T) {
 		}
 
 		s := grpc.NewServer(opts...)
-		testproto.RegisterTestServiceServer(s, &test.TestPingService{})
+		testproto.RegisterTestServiceServer(s, &testproto.TestPingService{})
 		lis, err := net.Listen("tcp", addr)
 		if err != nil {
 			t.Errorf("failed to listen: %v", err)

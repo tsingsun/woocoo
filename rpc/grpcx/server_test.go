@@ -14,6 +14,9 @@ grpc:
     addr: :20000
     location: /woocoo/service
     version: "1.0"
+    registryMeta:
+      key1: value1
+      key2: value2
   engine:
   - keepalive:
       time: 1h

@@ -2,10 +2,12 @@ package client
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/resolver"
 	"strings"
 	"time"
 )
@@ -13,19 +15,20 @@ import (
 type ServerConfig struct {
 	Addr           string `json:"addr" yaml:"addr"`
 	SSLCertificate string `json:"ssl_certificate" yaml:"ssl_certificate"`
-	Location       string `json:"location" yaml:"location"`
+	Namespace      string `json:"namespace" yaml:"namespace"`
 	Version        string `json:"version" yaml:"version"`
 }
 
 type Client struct {
-	serverConfig    ServerConfig
-	registry        registry.Registry
-	resolverBuilder resolver.Builder
-	dialOpts        []grpc.DialOption
-	configuration   *conf.Configuration
+	dialOpts      registry.DialOptions
+	serverConfig  ServerConfig
+	registry      registry.Registry
+	configuration *conf.Configuration
 
 	// for dialcontext
 	timeout time.Duration
+	// registry scheme
+	scheme string
 }
 
 func New(opts ...Option) *Client {
@@ -42,32 +45,55 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 		panic(err)
 	}
 	if k := strings.Join([]string{"registry"}, conf.KeyDelimiter); cfg.IsSet(k) {
-		c.registry = registry.GetRegistry(cfg.String(strings.Join([]string{"registry", "schema"}, conf.KeyDelimiter)))
-		if ap, ok := c.registry.(conf.Configurable); ok {
-			ap.Apply(cfg.Sub(k))
-			c.resolverBuilder = c.registry.ResolverBuilder(c.serverConfig.Location)
-			c.dialOpts = append(c.dialOpts, grpc.WithResolvers(c.resolverBuilder))
-			//global
-			//resolver.Register(c.resolverBuilder)
+		c.scheme = cfg.String(strings.Join([]string{"registry", "scheme"}, conf.KeyDelimiter))
+		c.registry = registry.GetRegistry(c.scheme)
+		//resolver.Register(c.registry.ResolverBuilder(cfg.Sub(k)))
+		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, grpc.WithResolvers(c.registry.ResolverBuilder(cfg.Sub(k))))
+	}
+	//service info
+	if k := strings.Join([]string{"client", "target"}, conf.KeyDelimiter); cfg.IsSet(k) {
+		if err := cfg.Sub(k).Unmarshal(&c.dialOpts); err != nil {
+			panic(err)
 		}
 	}
-	//client
-	if k := strings.Join([]string{"client"}, conf.KeyDelimiter); cfg.IsSet(k) {
-		c.dialOpts = append(c.dialOpts, grpcDialOptions.Apply(c, cfg, k)...)
+	//grpc dial options
+	if k := strings.Join([]string{"client", "grpcDialOption"}, conf.KeyDelimiter); cfg.IsSet(k) {
+		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, grpcDialOptions.Apply(c, cfg, k)...)
 	}
 }
 
-func (c *Client) target() string {
-	if c.resolverBuilder != nil {
-		return c.resolverBuilder.Scheme() + "://" + c.serverConfig.Location + "/"
+func (c *Client) targetPrefix() string {
+	if c.scheme == "" {
+		return ""
 	}
-	return c.serverConfig.Addr
+	return c.scheme + "://"
 }
 
-func (c *Client) Dial(opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	c.dialOpts = append(c.dialOpts, opts...)
+// Dial creates a gRPC client connection with the given target,and covert to DialContext if client.timeout > 0
+func (c *Client) Dial(target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	if c.timeout == 0 {
+		return c.DialContext(context.Background(), target, opts...)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
+	return c.DialContext(ctx, target, opts...)
+}
 
-	return grpc.DialContext(ctx, c.target(), c.dialOpts...)
+// DialContext creates a gRPC client connection with the given target.
+//
+// The target will be parsed as a URL.your resolver must parse the target.
+func (c *Client) DialContext(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	if target == "" {
+		target = c.targetPrefix() + c.dialOpts.ServiceName
+	} else if !strings.HasPrefix(target, c.targetPrefix()) {
+		return grpc.DialContext(ctx, target, append(c.dialOpts.GRPCDialOptions, opts...)...)
+	}
+	//attach service info
+	jsonstr, err := json.Marshal(c.dialOpts)
+	if err != nil {
+		return nil, fmt.Errorf("marshal dial options error:%v", err)
+	}
+	endpoint := base64.URLEncoding.EncodeToString(jsonstr)
+	target = fmt.Sprintf("%s?%s=%s", target, registry.OptionKey, endpoint)
+	return grpc.DialContext(ctx, target, append(c.dialOpts.GRPCDialOptions, opts...)...)
 }

@@ -23,7 +23,6 @@ func UseLogger() Option {
 		lg := l.With(zap.String("system", "grpc"),
 			zap.Bool("grpc_log", true),
 		).Operator().WithOptions(zap.AddCallerSkip(2))
-		s.logger = l
 		zgl := zapgrpc.NewLogger(lg)
 		grpclog.SetLoggerV2(zgl)
 	}

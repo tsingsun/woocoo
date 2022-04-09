@@ -3,13 +3,12 @@ package grpcx
 import (
 	"errors"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -17,24 +16,32 @@ import (
 
 type serverOptions struct {
 	Addr              string `json:"addr" yaml:"addr"`
+	UseIPv6           bool   `json:"ipv6" yaml:"ipv6"`
 	SSLCertificate    string `json:"ssl_certificate" yaml:"ssl_certificate"`
 	SSLCertificateKey string `json:"ssl_certificate_key" yaml:"ssl_certificate_key"`
-	Location          string `json:"location" yaml:"location"`
-	Version           string `json:"version" yaml:"version"`
-	grpcOptions       []grpc.ServerOption
+	// Namespace is the registry service prefix,when grpc register service,it will use namespace+service as service name
+	// so the Registry use the prefix to watch all services in grpc server
+	Namespace string `json:"namespace" yaml:"namespace"`
+	// Version is the grpc server version,default is Application Version which is set in the Application level config file
+	Version string `json:"version" yaml:"version"`
+	//RegistryMeta is the metadata for the registry service
+	RegistryMeta map[string]string `json:"registryMeta" yaml:"registryMeta"`
+
+	grpcOptions []grpc.ServerOption
 	// configuration is the grpc service Configuration
 	configuration *conf.Configuration
-	logger        log.ComponentLogger
 	gracefulStop  bool
 }
 
+// Server is the grpcx server
 type Server struct {
 	opts   serverOptions
 	engine *grpc.Server
 	exit   chan chan error
 
 	registry registry.Registry
-	NodeInfo *registry.NodeInfo
+	//ServiceInfos is for service discovery,it converts from grpc service info
+	ServiceInfos []*registry.ServiceInfo
 }
 
 func (s *Server) Apply(cfg *conf.Configuration) {
@@ -42,7 +49,7 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 		panic(err)
 	}
 	if k := strings.Join([]string{"registry"}, conf.KeyDelimiter); cfg.IsSet(k) {
-		s.registry = registry.GetRegistry(cfg.String(strings.Join([]string{"registry", "schema"}, conf.KeyDelimiter)))
+		s.registry = registry.GetRegistry(cfg.String(strings.Join([]string{"registry", "scheme"}, conf.KeyDelimiter)))
 		if ap, ok := s.registry.(conf.Configurable); ok {
 			ap.Apply(cfg.Sub(k))
 		}
@@ -56,8 +63,8 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 func New(opts ...Option) *Server {
 	s := &Server{
 		opts: serverOptions{
-			Addr:   ":9080",
-			logger: log.Component("grpc"),
+			Addr:         ":9080",
+			RegistryMeta: map[string]string{},
 		},
 		exit: make(chan chan error),
 	}
@@ -65,6 +72,7 @@ func New(opts ...Option) *Server {
 		o(&s.opts)
 	}
 	if s.opts.configuration != nil {
+		s.opts.Version = s.opts.configuration.Root().Version()
 		s.Apply(s.opts.configuration)
 	}
 	s.engine = grpc.NewServer(s.opts.grpcOptions...)
@@ -86,14 +94,23 @@ func (s *Server) ListenAndServe() error {
 	if s.registry != nil {
 		port := lis.Addr().(*net.TCPAddr).Port
 
-		s.NodeInfo = &registry.NodeInfo{
-			ID:              getIP() + "-" + strconv.Itoa(port),
-			ServiceLocation: s.opts.Location,
-			ServiceVersion:  s.opts.Version,
-			Address:         lis.Addr().String(),
+		for name := range s.engine.GetServiceInfo() {
+			nd := &registry.ServiceInfo{
+				Name:      name,
+				Host:      conf.GetIP(s.opts.UseIPv6),
+				Port:      port,
+				Namespace: s.opts.Namespace,
+				Version:   s.opts.Version,
+				Metadata:  s.opts.RegistryMeta,
+				Protocol:  lis.Addr().Network(),
+			}
+			s.ServiceInfos = append(s.ServiceInfos, nd)
 		}
-		if err := s.registry.Register(s.NodeInfo); err != nil {
-			log.StdPrintf("could not register server: %v", err)
+		for _, serviceInfo := range s.ServiceInfos {
+			if err := s.registry.Register(serviceInfo); err != nil {
+				s.deregisterServices()
+				return err
+			}
 		}
 
 		go func() {
@@ -107,15 +124,17 @@ func (s *Server) ListenAndServe() error {
 			for {
 				select {
 				case <-t.C:
-					if err := s.registry.Register(s.NodeInfo); err != nil {
-						log.StdPrintf("could not register server: %v", err)
+					for _, serviceInfo := range s.ServiceInfos {
+						go func(info *registry.ServiceInfo) {
+							if err := s.registry.Register(info); err != nil {
+								grpclog.Errorf("grpcx: failed to register %s:%d to service %s(%s) at ttl: %v",
+									info.Host, info.Port, info.Name, info.Namespace, err)
+							}
+						}(serviceInfo)
 					}
 				case ch = <-s.exit:
 					t.Stop()
-					err := s.registry.Unregister(s.NodeInfo)
-					if err != nil {
-						log.StdPrintf("registry unregister err: %v", err)
-					}
+					s.deregisterServices()
 					ch <- err
 					return
 				}
@@ -129,6 +148,15 @@ func (s *Server) ListenAndServe() error {
 		err = nil
 	}
 	return err
+}
+
+func (s *Server) deregisterServices() {
+	for _, info := range s.ServiceInfos {
+		if err := s.registry.Unregister(info); err != nil {
+			grpclog.Errorf("grpcx: failed to register %s:%d to service %s(%s) at ttl: %v",
+				info.Host, info.Port, info.Name, info.Namespace, err)
+		}
+	}
 }
 
 func (s *Server) Engine() *grpc.Server {
@@ -149,28 +177,12 @@ func (s *Server) Stop() (err error) {
 	return err
 }
 
-func getIP() string {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return "error"
-	}
-	for _, address := range addrs {
-		// check the address type and if it is not a loopback the display it
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String()
-			}
-		}
-	}
-	panic("Unable to determine local IP address (non loopback). Exiting.")
-}
-
 // Run is a sample way to start the grpc server with gracefulStop stop
 func (s *Server) Run() error {
 	defer s.Stop()
 	ch := make(chan error)
 	go func() {
-		log.StdPrintf("%s start grpc server on %s", s.opts.Location, s.opts.Addr)
+		grpclog.Info("%s start grpc server on %s", s.opts.Namespace, s.opts.Addr)
 		err := s.ListenAndServe()
 		ch <- err
 	}()
@@ -184,7 +196,7 @@ func (s *Server) Run() error {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case <-quit:
-		log.StdPrintln("grpc server shutdown.")
+		grpclog.Info("grpc server shutdown.")
 		return nil
 	case err := <-ch:
 		return err

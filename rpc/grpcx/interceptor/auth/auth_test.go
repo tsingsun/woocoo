@@ -8,7 +8,6 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/user"
 	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/auth"
-	"github.com/tsingsun/woocoo/test"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/test/testproto"
 	"golang.org/x/oauth2"
@@ -67,7 +66,7 @@ func TestAuth_UnaryServerInterceptor(t *testing.T) {
 			grpc.Creds(credentials.NewServerTLSFromCert(&cert)),
 		}
 		s := grpc.NewServer(opts...)
-		testproto.RegisterTestServiceServer(s, &test.TestPingService{})
+		testproto.RegisterTestServiceServer(s, &testproto.TestPingService{})
 		lis, err := net.Listen("tcp", addr)
 		assert.NoError(t, err)
 		if err := s.Serve(lis); err != nil {

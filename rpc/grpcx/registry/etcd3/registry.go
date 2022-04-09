@@ -15,12 +15,7 @@ import (
 )
 
 func init() {
-	err := registry.RegisterDriver(scheme, func() registry.Registry {
-		return New()
-	})
-	if err != nil {
-		panic(err)
-	}
+	registry.RegisterDriver(scheme, New())
 }
 
 type Options struct {
@@ -91,9 +86,9 @@ func (r *Registry) buildClient() (err error) {
 	return err
 }
 
-func (r *Registry) Register(node *registry.NodeInfo) error {
+func (r *Registry) Register(node *registry.ServiceInfo) error {
 	r.RLock()
-	leaseID, ok := r.leases[node.ServiceLocation+node.ID]
+	leaseID, ok := r.leases[node.BuildKey()]
 	r.RUnlock()
 	key := node.BuildKey()
 	if !ok {
@@ -110,7 +105,7 @@ func (r *Registry) Register(node *registry.NodeInfo) error {
 				leaseID = clientv3.LeaseID(kv.Lease)
 
 				// decode the existing node
-				var oldNode = new(registry.NodeInfo)
+				var oldNode = new(registry.ServiceInfo)
 				err := json.Unmarshal(kv.Value, oldNode)
 				if oldNode == nil {
 					continue
@@ -124,8 +119,8 @@ func (r *Registry) Register(node *registry.NodeInfo) error {
 
 				// save the info
 				r.Lock()
-				r.leases[node.ServiceLocation+node.ID] = leaseID
-				r.register[node.ServiceLocation+node.ID] = h
+				r.leases[node.BuildKey()] = leaseID
+				r.register[node.BuildKey()] = h
 				r.Unlock()
 
 				break
@@ -150,7 +145,7 @@ func (r *Registry) Register(node *registry.NodeInfo) error {
 	}
 	// get existing hash for the service node
 	r.Lock()
-	oldh, ok := r.register[node.ServiceLocation+node.ID]
+	oldh, ok := r.register[node.BuildKey()]
 	r.Unlock()
 
 	// the service is unchanged, skip registering
@@ -187,23 +182,23 @@ func (r *Registry) Register(node *registry.NodeInfo) error {
 
 	r.Lock()
 	// save our hash of the service
-	r.register[node.ServiceLocation+node.ID] = h
+	r.register[node.BuildKey()] = h
 	// save our leaseID of the service
 	if lgr != nil {
-		r.leases[node.ServiceLocation+node.ID] = lgr.ID
+		r.leases[node.BuildKey()] = lgr.ID
 	}
 	r.Unlock()
 
 	return nil
 }
 
-// UnRegister remove service from etcd
-func (r *Registry) Unregister(node *registry.NodeInfo) error {
+// Unregister remove service from etcd
+func (r *Registry) Unregister(node *registry.ServiceInfo) error {
 	r.Lock()
 	// delete our hash of the service
-	delete(r.register, node.ServiceLocation+node.ID)
+	delete(r.register, node.BuildKey())
 	// delete our lease of the service
-	delete(r.leases, node.ServiceLocation+node.ID)
+	delete(r.leases, node.BuildKey())
 	r.Unlock()
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.opts.EtcdConfig.DialTimeout)
@@ -224,10 +219,8 @@ func (r *Registry) TTL() time.Duration {
 	return r.opts.TTL
 }
 
-func (r *Registry) ResolverBuilder(serviceLocation string) resolver.Builder {
-	return &etcdResolver{
-		scheme:     scheme,
+func (r *Registry) ResolverBuilder(config *conf.Configuration) resolver.Builder {
+	return &etcdBuilder{
 		etcdConfig: r.opts.EtcdConfig,
-		watchPath:  serviceLocation,
 	}
 }

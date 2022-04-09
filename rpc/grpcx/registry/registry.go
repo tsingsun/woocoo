@@ -2,69 +2,123 @@ package registry
 
 import (
 	"crypto/tls"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"github.com/tsingsun/woocoo/pkg/conf"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/attributes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/resolver"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
 
-type registryNewFunc func() Registry
+const OptionKey = "options"
 
 var (
-	registryManager map[string]registryNewFunc = make(map[string]registryNewFunc)
+	registryManager = make(map[string]Registry)
 )
 
-func RegisterDriver(schema string, newFunc registryNewFunc) error {
-	if _, ok := registryManager[schema]; ok {
-		panic("registry storage type has exists:" + schema)
-	}
-	registryManager[schema] = newFunc
-	return nil
+// RegisterDriver register a new Registry could be: conf.Configurable,and will be lazy loaded in server.Apply function
+func RegisterDriver(scheme string, reg Registry) {
+	registryManager[scheme] = reg
 }
 
-func GetRegistry(schema string) Registry {
-	if f, ok := registryManager[schema]; ok {
-		return f()
+// DialOption is the options for client dial when using registry resolver.
+type DialOption interface {
+	apply(options *DialOptions)
+}
+
+// DialOptions is the options for client dial when using registry resolver.
+type DialOptions struct {
+	GRPCDialOptions []grpc.DialOption `json:"-" yaml:"-"`
+	Namespace       string            `json:"namespace" yaml:"namespace"`
+	ServiceName     string            `json:"serviceName" yaml:"serviceName"`
+	Metadata        map[string]string `json:"metadata" yaml:"metadata"`
+}
+
+func TargetToOptions(target resolver.Target) (*DialOptions, error) {
+	options := &DialOptions{}
+	if len(target.URL.RawQuery) > 0 {
+		var optionsStr string
+		values := target.URL.Query()
+		if len(values) > 0 {
+			optionValues := values[OptionKey]
+			if len(optionValues) > 0 {
+				optionsStr = optionValues[0]
+			}
+		}
+		if len(optionsStr) > 0 {
+			value, err := base64.URLEncoding.DecodeString(optionsStr)
+			if nil != err {
+				return nil, fmt.Errorf(
+					"fail to decode endpoint %s, options %s: %v", target.URL.Path, optionsStr, err)
+			}
+			if err = json.Unmarshal(value, options); nil != err {
+				return nil, fmt.Errorf("fail to unmarshal options %s: %v", string(value), err)
+			}
+		}
+	} else {
+		options.Namespace = target.URL.Host
+		options.ServiceName = target.Endpoint
 	}
-	panic("can not find registry:" + schema)
+	return options, nil
+}
+
+func GetRegistry(scheme string) Registry {
+	if f, ok := registryManager[scheme]; ok {
+		return f
+	}
+	panic("can not find registry:" + scheme)
 }
 
 // Registry provides an interface for service discovery
 type Registry interface {
-	Register(nodeInfo *NodeInfo) error
-	Unregister(nodeInfo *NodeInfo) error
+	// Register a service node
+	Register(serviceInfo *ServiceInfo) error
+	// Unregister a service node
+	Unregister(serviceInfo *ServiceInfo) error
+	// TTL returns the time to live of the service node, if it is not available, return 0.
+	// every tick will call Register function to refresh.
 	TTL() time.Duration
 	Close()
-	ResolverBuilder(serviceLocation string) resolver.Builder
+	// ResolverBuilder returns a resolver.Builder.
+	ResolverBuilder(config *conf.Configuration) resolver.Builder
 }
 
-type NodeInfo struct {
-	ID              string `json:"id" yaml:"id"`
-	ServiceLocation string
-	ServiceVersion  string
-	Address         string
-	Metadata        metadata.MD
+// ServiceInfo is the service information
+type ServiceInfo struct {
+	Name      string            `json:"name" yaml:"name"`
+	Namespace string            `json:"namespace" yaml:"namespace"`
+	Version   string            `json:"version" yaml:"version"`
+	Host      string            `json:"host" yaml:"host"`
+	Port      int               `json:"port" yaml:"port"`
+	Protocol  string            `json:"protocol" yaml:"protocol"`
+	Metadata  map[string]string `json:"metadata" yaml:"metadata"`
 }
 
-func (n NodeInfo) ToAttributes() *attributes.Attributes {
+func (si ServiceInfo) ToAttributes() *attributes.Attributes {
 	var val *attributes.Attributes
-	if n.Metadata.Len() == 0 {
-		return val
-	}
-	for k, strings := range n.Metadata {
-		val.WithValue(k, strings)
+	for k, v := range si.Metadata {
+		val.WithValue(k, v)
 	}
 	return val
 }
 
-func (n NodeInfo) BuildKey() string {
-	return nodePath(n.ServiceLocation, n.ServiceVersion, n.ID)
+// Address is the address of the service,example: host:port,ip:port
+func (si ServiceInfo) Address() string {
+	return si.Host + ":" + strconv.Itoa(si.Port)
 }
 
-func nodePath(location, version, id string) string {
-	return strings.Join([]string{location, version, id}, "/")
+func (si ServiceInfo) BuildKey() string {
+	return nodePath(si.Namespace, si.Name, si.Version, si.Address())
+}
+
+// return service instance key
+func nodePath(namespace, name, version, addr string) string {
+	return strings.Join([]string{namespace, name, version, addr}, "/")
 }
 
 func TLS(basedir, ssl_certificate, ssl_certificate_key string) *tls.Config {

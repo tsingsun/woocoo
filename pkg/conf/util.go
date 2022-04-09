@@ -1,36 +1,22 @@
 package conf
 
-import (
-	"net/url"
-	"path/filepath"
-)
+import "net"
 
-// ConvertRefFileDSN if dsn use relative path,covert to abs path by a specified dir(use app run dir usually)
-func ConvertRefFileDSN(base, dsn string) (*url.URL, error) {
-	uri, err := url.Parse(dsn)
+//GetIP returns the first non-loopback address
+func GetIP(useIPv6 bool) string {
+	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return nil, err
+		return "error"
 	}
-	if uri.Opaque != "" {
-		if !filepath.IsAbs(uri.Opaque) {
-			uri.Opaque = filepath.Join(base, uri.Opaque)
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback the display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if useIPv6 && ipnet.IP.To16() != nil {
+				return ipnet.IP.To16().String()
+			} else if ipnet.IP.To4() != nil {
+				return ipnet.IP.To4().String()
+			}
 		}
 	}
-	if uri.Path != "" {
-		if !filepath.IsAbs(uri.Path) {
-			uri.Path = filepath.Join(base, uri.Path)
-		}
-	}
-	return uri, nil
-}
-
-// GetPathFromFileUrl get path of file dsn
-func GetPathFromFileUrl(fileUrl *url.URL) string {
-	if fileUrl.Path != "" {
-		return fileUrl.Path
-	}
-	if fileUrl.Opaque != "" {
-		return fileUrl.Opaque
-	}
-	return ""
+	panic("Unable to determine local IP address (non loopback). Exiting.")
 }

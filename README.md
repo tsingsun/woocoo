@@ -24,7 +24,8 @@ The current features are as follows:
 - [X] built-in grpc server and easy to use grpc client.
 - [X] JWT-based validation
 - [X] microservice registry and discovery: 
-  - implements: etcd
+  - etcdv3: register and discovery services 
+  - [Polaris](https://github.com/polarismesh/polaris): service discovery and governance
 
 # Core Components:
 

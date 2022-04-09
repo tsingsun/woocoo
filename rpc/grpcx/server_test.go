@@ -12,7 +12,7 @@ func TestNew(t *testing.T) {
 grpc:
   server:
     addr: :20000
-    location: /woocoo/service
+    namespace: /woocoo/service
     version: "1.0"
     registryMeta:
       key1: value1

@@ -151,7 +151,7 @@ grpc:
 	}
 	{
 		srv.Stop()
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 2)
 		resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.Message, "Hello round robin")

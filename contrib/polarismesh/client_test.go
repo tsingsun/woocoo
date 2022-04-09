@@ -151,7 +151,7 @@ grpc:
 	}
 	{
 		srv.Stop()
-		//time.Sleep(time.Second)
+		time.Sleep(time.Second * 5)
 		resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.Message, "Hello round robin")
@@ -159,9 +159,9 @@ grpc:
 	{
 		srv2.Stop()
 		//sleep let unregistry work,the latency 500 work fine, below will failure
-		//time.Sleep(time.Second)
 		resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
 		assert.Nil(t, resp)
 		assert.Error(t, err)
+		//time.Sleep(time.Second)
 	}
 }

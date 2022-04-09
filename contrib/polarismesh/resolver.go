@@ -46,7 +46,7 @@ func (rb *resolverBuilder) Build(target resolver.Target, cc resolver.ClientConn,
 	}
 	d.wg.Add(1)
 	go d.watcher()
-	d.ResolveNow(resolver.ResolveNowOptions{})
+	d.resolveNow()
 	return d, nil
 }
 
@@ -66,8 +66,13 @@ type polarisNamingResolver struct {
 	balanceOnce        sync.Once
 }
 
-// ResolveNow The method is called by the gRPC framework to resolve the target name
-func (pr *polarisNamingResolver) ResolveNow(opt resolver.ResolveNowOptions) { // 立即resolve，重新查询服务信息
+// ResolveNow The method is called by the gRPC framework to resolve the target name immediately.
+//
+// attention: this method trigger too high frequency to cause polaris server hung. so do not anything until you know what you are doing.
+func (pr *polarisNamingResolver) ResolveNow(opt resolver.ResolveNowOptions) {
+}
+
+func (pr *polarisNamingResolver) resolveNow() {
 	select {
 	case pr.rn <- struct{}{}:
 	default:

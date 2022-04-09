@@ -12,14 +12,14 @@ on:
       - 'docs/**'
       - 'readme*.md'
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run linters
-        uses: golangci/golangci-lint-action@v2.5.2
-        with:
-          version: v1.45.2
+#  lint:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v3
+#      - name: Run linters
+#        uses: golangci/golangci-lint-action@v2.5.2
+#        with:
+#          version: v1.45.2
 
   build:
     runs-on: ubuntu-latest

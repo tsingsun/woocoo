@@ -9,7 +9,7 @@ require (
 	github.com/knadh/koanf v1.2.3
 	github.com/polarismesh/polaris-go v1.0.1
 	github.com/stretchr/testify v1.7.0
-	github.com/tsingsun/woocoo v0.0.3-0.20220407045912-03f688c89c02
+	github.com/tsingsun/woocoo v0.0.3-0.20220409132434-e1634953091a
 	google.golang.org/grpc v1.44.0
 )
 

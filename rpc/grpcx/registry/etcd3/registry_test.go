@@ -35,7 +35,7 @@ grpc:
     ttl: 600s
     etcd:
       endpoints:
-        - 127.0.0.1:12379
+        - 127.0.0.1:2379
       tls:
         ssl_certificate: ""
         ssl_certificate_key: ""
@@ -72,7 +72,7 @@ func TestRegistryMultiService(t *testing.T) {
 	}()
 	time.Sleep(time.Second * 3)
 	RegisterResolver(etcdConfg)
-	c, err := grpc.Dial("etcd:///", grpc.WithInsecure(), grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
+	c, err := grpc.Dial(fmt.Sprintf("etcd://%s/", sn), grpc.WithInsecure(), grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
 	defer c.Close()
 	hlClient := helloworld.NewGreeterClient(c)
 	tsClient := testproto.NewTestServiceClient(c)

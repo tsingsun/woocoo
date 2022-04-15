@@ -34,9 +34,15 @@ func LocalPath(s string) Option {
 	}
 }
 
+// BaseDir init base directory usually is the directory which application executable file is in
+// s can be a absolute path or relative path
 func BaseDir(s string) Option {
 	return func(o *options) {
-		o.basedir = s
+		var err error
+		o.basedir, err = filepath.Abs(s)
+		if err != nil {
+			panic(fmt.Sprintf("base dir '%s' is not exists", s))
+		}
 	}
 }
 

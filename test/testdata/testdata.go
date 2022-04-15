@@ -10,7 +10,7 @@ var (
 	basedir           string
 	DefaultConfigFile = "etc/app.yaml"
 	//Config            *conf.Configuration
-	EtcdAddr = "localhost:12379"
+	EtcdAddr = "localhost:2379"
 )
 
 func init() {

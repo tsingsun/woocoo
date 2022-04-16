@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/99designs/gqlgen v0.16.0
-	github.com/alicebob/miniredis/v2 v2.17.0
+	github.com/alicebob/miniredis/v2 v2.20.0
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-playground/assert/v2 v2.0.1
 	github.com/go-playground/validator/v10 v10.9.0 // indirect

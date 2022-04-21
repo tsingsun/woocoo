@@ -32,6 +32,10 @@ func New() *Handler {
 	return &Handler{}
 }
 
+func (h *Handler) Name() string {
+	return "otel"
+}
+
 func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	h.Config = otelwoocoo.NewConfig(cfg.Root().AppName())
 	h.Config.Apply(cfg, "")

@@ -37,7 +37,7 @@ func main() {
 	cfg := conf.New().Load()
 	log.NewBuiltIn()
 	httpSvr := web.New(web.Configuration(cfg.Sub("web")),
-		web.RegisterHandler("otel", otelweb.New()),
+		web.RegisterHandler(otelweb.New()),
 		web.GracefulStop(),
 	)
 	r := httpSvr.Router().Engine

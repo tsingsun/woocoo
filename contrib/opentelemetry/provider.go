@@ -2,7 +2,6 @@ package opentelemetry
 
 import (
 	"context"
-	"go.opentelemetry.io/contrib/instrumentation/host"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -66,10 +65,10 @@ func initMetric(c *Config, exporter export.Exporter) (metric.MeterProvider, erro
 		return nil, err
 	}
 
-	// host indicator
-	if err := host.Start(host.WithMeterProvider(cont)); err != nil {
-		return nil, err
-	}
+	//// host indicator
+	//if err := host.Start(host.WithMeterProvider(cont)); err != nil {
+	//	return nil, err
+	//}
 
 	// Golang runtime
 	err := runtime.Start(runtime.WithMeterProvider(cont), runtime.WithMinimumReadMemStatsInterval(time.Second))

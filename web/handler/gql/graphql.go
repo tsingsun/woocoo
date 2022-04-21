@@ -16,36 +16,47 @@ import (
 	"runtime/debug"
 )
 
-// Option handler option
-type Option struct {
+const (
+	graphqlHandlerName = "graphql"
+)
+
+// Options handler option
+type Options struct {
 	QueryPath string
 	DocPath   string
 	// Group must the same as the base path of route group
-	Group string
+	Group     string
+	SubDomain string
 }
 
-var defaultOption = Option{
+var defaultOptions = Options{
 	QueryPath: "/query",
 	DocPath:   "/",
-	Group:     "/graphql",
+	Group:     "/graphql", // must the same as the base path of route group
 }
 
 type graphqlContextKey struct{}
 
+// Handler for graphql
 type Handler struct {
-	Option Option
+	// store multiple graphql options,gql-servers can be in different group
+	opts []Options
 }
 
 func New() *Handler {
-	return &Handler{
-		Option: defaultOption,
-	}
+	return &Handler{}
+}
+
+func (h *Handler) Name() string {
+	return graphqlHandlerName
 }
 
 func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	if err := cfg.Unmarshal(&h.Option); err != nil {
+	opt := defaultOptions
+	if err := cfg.Unmarshal(&opt); err != nil {
 		panic(err)
 	}
+	h.opts = append(h.opts, opt)
 	return func(c *gin.Context) {
 		ctx := context.WithValue(c.Request.Context(), graphqlContextKey{}, c)
 		c.Request = c.Request.WithContext(ctx)
@@ -56,11 +67,28 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 func (h *Handler) Shutdown() {
 }
 
-// NewGraphqlServer create a graphiql server
-func NewGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema, opt *Option) *gqlgen.Server {
-	if opt == nil {
-		opt = &defaultOption
+// RegisterSchema is builder for initializing graphql schemas,initialize order is based on the router group order
+func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss []*gqlgen.Server, err error) {
+	h, ok := websrv.HandlerManager().GetHandler(graphqlHandlerName)
+	if !ok {
+		return nil, fmt.Errorf("handler %s not found", graphqlHandlerName)
 	}
+	for i, schema := range schemas {
+		if schema == nil {
+			continue
+		}
+		opt := h.(*Handler).opts[i]
+		var rg *gin.RouterGroup
+		if rg = websrv.Router().Group(opt.Group); rg == nil {
+			rg = &websrv.Router().Engine.RouterGroup
+		}
+		ss = append(ss, newGraphqlServer(rg, schema, &opt))
+	}
+	return
+}
+
+// newGraphqlServer create a graphiql server
+func newGraphqlServer(routerGroup *gin.RouterGroup, schema graphql.ExecutableSchema, opt *Options) *gqlgen.Server {
 	server := gqlgen.NewDefaultServer(schema)
 	server.AroundResponses(func(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
 		if gctx, err := FromIncomingContext(ctx); err == nil {
@@ -68,15 +96,13 @@ func NewGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema, opt *
 		}
 		return next(ctx)
 	})
-	var g *gin.RouterGroup
-	if g = websrv.Router().Group(opt.Group); g == nil {
-		g = &websrv.Router().Engine.RouterGroup
-	}
-	g.POST(opt.QueryPath, func(c *gin.Context) {
+
+	routerGroup.POST(opt.QueryPath, func(c *gin.Context) {
 		server.ServeHTTP(c.Writer, c.Request)
 	})
-	g.GET(opt.DocPath, func(c *gin.Context) {
-		h := playground.Handler("graphql", opt.Group+opt.QueryPath)
+	routerGroup.GET(opt.DocPath, func(c *gin.Context) {
+		// set endpoint to graphql-playground used in playground UI
+		h := playground.Handler("graphql", opt.SubDomain+opt.Group+opt.QueryPath)
 		h.ServeHTTP(c.Writer, c.Request)
 	})
 
@@ -85,9 +111,9 @@ func NewGraphqlServer(websrv *web.Server, schema graphql.ExecutableSchema, opt *
 		if e != nil {
 			return e
 		}
-		recovery.HandleRecoverError(gctx, err, websrv.Logger(), true)
+		recovery.HandleRecoverError(gctx, err, log.Component(log.WebComponentName), true)
 		gctx.AbortWithStatus(http.StatusInternalServerError)
-		if websrv.ServerOptions().Development {
+		if conf.Global().Development {
 			log.StdPrintln(err)
 			debug.PrintStack()
 		}

@@ -14,12 +14,20 @@ import (
 	"time"
 )
 
+const (
+	RecoveryHandlerName = "recovery"
+)
+
 type Handler struct {
 	stack bool
 }
 
 func New() *Handler {
 	return &Handler{stack: true}
+}
+
+func (h *Handler) Name() string {
+	return RecoveryHandlerName
 }
 
 func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {

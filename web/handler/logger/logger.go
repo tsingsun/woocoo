@@ -11,26 +11,36 @@ import (
 )
 
 const (
-	InnerPath = "innerPath"
+	InnerPath         = "innerPath"
+	LoggerHandlerName = "accessLog"
 )
 
 var (
-	LogType = zap.String("type", "accessLog")
-	logger  = log.Component("webAccess")
+	logger = log.Component("webAccess")
 )
 
-type Handler struct {
-	exclude     []string
-	requestBody bool // whether log request body
-}
+type (
+	options struct {
+		exclude     []string
+		requestBody bool // whether log request body
+	}
+	Handler struct{}
+)
 
+// New a new Handler,it is for handler registry
 func New() *Handler {
 	return &Handler{}
 }
 
+func (h *Handler) Name() string {
+	return LoggerHandlerName
+}
+
+// ApplyFunc build a gin.HandlerFunc for AccessLog middleware
 func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	h.exclude = append(h.exclude, cfg.StringSlice("exclude")...)
-	h.requestBody = cfg.Bool("requestBody")
+	opts := options{}
+	opts.exclude = append(opts.exclude, cfg.StringSlice("exclude")...)
+	opts.requestBody = cfg.Bool("requestBody")
 
 	return func(c *gin.Context) {
 		// Start timer
@@ -39,7 +49,7 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		raw := c.Request.URL.RawQuery
 		//body
 		var bodyBytes []byte
-		if h.requestBody {
+		if opts.requestBody {
 			if c.Request.Body != nil {
 				bodyBytes, _ = ioutil.ReadAll(c.Request.Body)
 			}
@@ -52,7 +62,7 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		if !ok {
 			spath = path
 		}
-		for _, ex := range h.exclude {
+		for _, ex := range opts.exclude {
 			if spath == ex {
 				shouldLog = false
 				break
@@ -66,17 +76,16 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		}
 		latency := time.Since(start)
 		fields := []zap.Field{
-			LogType,
 			zap.String("clientIp", c.ClientIP()),
 			zap.String("method", c.Request.Method),
 			zap.String("path", path),
 			zap.Int("status", c.Writer.Status()),
 			zap.Duration("latency", latency),
-			zap.String("userAgent", c.Request.UserAgent()),
 			zap.Int("bodySize", c.Writer.Size()),
 			zap.String("error", c.Errors.ByType(gin.ErrorTypePrivate).String()),
+			zap.String("userAgent", c.Request.UserAgent()),
 		}
-		if h.requestBody {
+		if opts.requestBody {
 			fields = append(fields, zap.ByteString("body", bodyBytes))
 		}
 		logger.Info(c.Request.URL.Path,
@@ -85,5 +94,6 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	}
 }
 
+// Shutdown does nothing for logger
 func (h *Handler) Shutdown() {
 }

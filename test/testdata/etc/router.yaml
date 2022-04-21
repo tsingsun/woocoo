@@ -27,7 +27,14 @@ web:
                 pubKey: config/pubKey.pem
                 tenantHeader: Qeelyn-Org-Id
                 disabledExpiredCheck: false
-            - graphql:
+      - graphql:
+          basePath: "/graphql"
+            handleFuncs:
+              - graphql
+                  queryPath: "/query"
+                  docPath: "/"
+                  group: "graphql"
+                  subDomain: ""
   ##以下配置暂时用于 标识出哪些路由为被客制化的
   routerules:
     - path: /

@@ -20,10 +20,9 @@ const (
 )
 
 type serverOptions struct {
-	Addr              string `json:"addr" yaml:"addr"`
-	SSLCertificate    string `json:"ssl_certificate" yaml:"ssl_certificate"`
-	SSLCertificateKey string `json:"ssl_certificate_key" yaml:"ssl_certificate_key"`
-	Development       bool
+	Addr              string              `json:"addr" yaml:"addr"`
+	SSLCertificate    string              `json:"ssl_certificate" yaml:"ssl_certificate"`
+	SSLCertificateKey string              `json:"ssl_certificate_key" yaml:"ssl_certificate_key"`
 	configuration     *conf.Configuration //not root configuration
 	logger            log.ComponentLogger
 	handlerManager    *handler.Manager // middleware manager
@@ -44,7 +43,7 @@ func New(opts ...Option) *Server {
 	s := &Server{
 		opts: serverOptions{
 			Addr:           defaultAddr,
-			logger:         log.Component("web"),
+			logger:         log.Component(log.WebComponentName),
 			handlerManager: handler.NewManager(),
 		},
 	}
@@ -69,12 +68,13 @@ func (s *Server) ServerOptions() serverOptions {
 	return s.opts
 }
 
-func (s *Server) Router() *Router {
-	return s.router
+// HandlerManager return server's handler manager,it's convenient to process handler
+func (s *Server) HandlerManager() *handler.Manager {
+	return s.opts.handlerManager
 }
 
-func (s *Server) Logger() log.ComponentLogger {
-	return s.opts.logger
+func (s *Server) Router() *Router {
+	return s.router
 }
 
 func (s *Server) Apply(cfg *conf.Configuration) {
@@ -83,7 +83,6 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 			panic(err)
 		}
 	}
-	s.opts.Development = cfg.Development
 	if cfg.IsSet("engine") {
 		if err := s.router.Apply(cfg.Sub("engine")); err != nil {
 			panic(err)
@@ -103,7 +102,7 @@ func (s *Server) beforeRun() error {
 func (s *Server) Stop() error {
 	err := s.httpServerStop()
 	if err != nil {
-		s.Logger().Error("web Server close err", zap.Error(err))
+		s.opts.logger.Error("web Server close err", zap.Error(err))
 	}
 	if hm := s.opts.handlerManager; hm != nil {
 		hm.Shutdown()
@@ -172,11 +171,11 @@ func (s *Server) httpServerStop() error {
 
 	if s.opts.gracefulStop {
 		if err := s.httpSrv.Shutdown(ctx); err != nil {
-			s.Logger().Error("Server forced to runAndClose", zap.Error(err))
+			s.opts.logger.Error("Server forced to runAndClose", zap.Error(err))
 		}
 	} else {
 		if err := s.httpSrv.Close(); err != nil {
-			s.Logger().Error("Server forced to runAndClose", zap.Error(err))
+			s.opts.logger.Error("Server forced to runAndClose", zap.Error(err))
 		}
 	}
 	return nil

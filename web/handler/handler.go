@@ -11,6 +11,8 @@ import (
 
 // Handler is a instance to build a gin middleware for web application.
 type Handler interface {
+	// Name returns the name of the handler.
+	Name() string
 	// ApplyFunc return a gin's handler function by a configuration
 	ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc
 	// Shutdown the handler,usually call in server quit. some base on file,network may need release the resource
@@ -46,9 +48,9 @@ func (m *Manager) GetHandler(name string) (Handler, bool) {
 
 func integration() map[string]Handler {
 	var handlerMap = map[string]Handler{
-		"recovery":  recovery.New(),
-		"auth":      auth.New(),
-		"accessLog": logger.New(),
+		recovery.RecoveryHandlerName: recovery.New(),
+		auth.AuthHandlerName:         auth.New(),
+		logger.LoggerHandlerName:     logger.New(),
 	}
 	return handlerMap
 }

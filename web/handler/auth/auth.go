@@ -11,6 +11,10 @@ import (
 	"time"
 )
 
+const (
+	AuthHandlerName = "auth"
+)
+
 var (
 	// ErrMissingSecretKey indicates Secret key is required
 	ErrMissingSecretKey = errors.New("secret key is required")
@@ -649,6 +653,10 @@ func GetToken(c *gin.Context) string {
 	}
 
 	return token.(string)
+}
+
+func (mw *GinJWTMiddleware) Name() string {
+	return AuthHandlerName
 }
 
 func (mw *GinJWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {

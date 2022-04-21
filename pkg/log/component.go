@@ -4,6 +4,10 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	WebComponentName = "web"
+)
+
 // ComponentLogger is sample and base using for component
 type ComponentLogger interface {
 	Debug(msg string, fields ...zap.Field)

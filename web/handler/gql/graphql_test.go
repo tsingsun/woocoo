@@ -3,7 +3,7 @@ package gql
 import (
 	"context"
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/go-playground/assert/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web"
 	"github.com/vektah/gqlparser/v2/ast"
@@ -13,7 +13,7 @@ import (
 )
 
 // TODO
-func TestDefaultGraphqlServer(t *testing.T) {
+func TestRegistrySchema(t *testing.T) {
 	var cfgStr = `
 web:
   server:
@@ -24,12 +24,16 @@ web:
             - graphql:
                 queryPath: "/query"
                 docPath: "/"
-                group: "/graphql"
+                group: "/"
+      - graphql:
+          basePath: "/graphql"
+          handleFuncs:
+            - graphql:
 `
 
 	cfg := conf.NewFromBytes([]byte(cfgStr))
-	srv := web.New(web.Configuration(cfg.Sub("web")), web.RegisterHandler("graphql", New()))
-	gqlsrv := NewGraphqlServer(srv, &graphql.ExecutableSchemaMock{
+	srv := web.New(web.Configuration(cfg.Sub("web")), web.RegisterHandler(New()))
+	gqlsrvList, err := RegisterSchema(srv, &graphql.ExecutableSchemaMock{
 		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]interface{}) (int, bool) {
 			panic("mock out the Complexity method")
 		},
@@ -40,11 +44,34 @@ web:
 			//panic("mock out the Schema method")
 			return nil
 		},
-	}, nil)
-
+	}, &graphql.ExecutableSchemaMock{
+		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]interface{}) (int, bool) {
+			panic("mock out the Complexity method")
+		},
+		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {
+			panic("mock out the Exec method")
+		},
+		SchemaFunc: func() *ast.Schema {
+			//panic("mock out the Schema method")
+			return nil
+		},
+	})
+	assert.NoError(t, err)
+	if !assert.Len(t, gqlsrvList, 2) {
+		return
+	}
+	g1 := gqlsrvList[0]
 	r := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 
-	gqlsrv.ServeHTTP(w, r)
+	g1.ServeHTTP(w, r)
 	assert.Equal(t, http.StatusOK, w.Code)
+
+	g2 := gqlsrvList[0]
+	r = httptest.NewRequest("GET", "/graphql", nil)
+	w = httptest.NewRecorder()
+
+	g2.ServeHTTP(w, r)
+	assert.Equal(t, http.StatusOK, w.Code)
+
 }

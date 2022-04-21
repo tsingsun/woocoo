@@ -24,9 +24,9 @@ func Configuration(cfg *conf.Configuration) Option {
 }
 
 // RegisterHandler inject a handler to server,then can be used in Server.Apply method
-func RegisterHandler(name string, handler handler.Handler) Option {
+func RegisterHandler(handler handler.Handler) Option {
 	return func(s *serverOptions) {
-		s.handlerManager.RegisterHandlerFunc(name, handler)
+		s.handlerManager.RegisterHandlerFunc(handler.Name(), handler)
 	}
 }
 

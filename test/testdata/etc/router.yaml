@@ -29,12 +29,12 @@ web:
                 disabledExpiredCheck: false
       - graphql:
           basePath: "/graphql"
-            handleFuncs:
-              - graphql
-                  queryPath: "/query"
-                  docPath: "/"
-                  group: "graphql"
-                  subDomain: ""
+          handleFuncs:
+            - graphql:
+                queryPath: "/query"
+                docPath: "/"
+                group: "graphql"
+                subDomain: ""
   ##以下配置暂时用于 标识出哪些路由为被客制化的
   routerules:
     - path: /

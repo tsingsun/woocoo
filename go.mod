@@ -3,10 +3,9 @@ module github.com/tsingsun/woocoo
 go 1.17
 
 require (
-	github.com/99designs/gqlgen v0.17.2
+	github.com/99designs/gqlgen v0.17.3
 	github.com/alicebob/miniredis/v2 v2.20.0
 	github.com/gin-gonic/gin v1.7.7
-	github.com/go-playground/assert/v2 v2.0.1
 	github.com/go-playground/validator/v10 v10.9.0 // indirect
 	github.com/go-redis/cache/v8 v8.4.4-0.20211002053735-6382f515292d
 	github.com/go-redis/redis/v8 v8.11.5
@@ -17,7 +16,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/pelletier/go-toml v1.9.3 // indirect
 	github.com/stretchr/testify v1.7.1
-	github.com/vektah/gqlparser/v2 v2.4.1
+	github.com/vektah/gqlparser/v2 v2.4.2
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.3
 	go.etcd.io/etcd/client/v3 v3.5.3

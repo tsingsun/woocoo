@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - 'docs/**'
       - 'readme*.md'
+      - 'contrib/**'
   pull_request:
     branches: [ master ]
     paths-ignore:

@@ -25,7 +25,7 @@ func ({{$.Name}}) Annotations() []schema.Annotation {
 // Fields of the {{$.Name}}
 func ({{$.Name}}) Fields() []ent.Field{
     return []ent.Field{
-    {{- if $.ID.Column.SchemaType}}
+    {{- if $.ID}}
         {{printf "field.%s(\"%s\")" (pascal $.ID.Type.String) $.ID.Name}}{{schemaType $.ID}},
     {{- end}}
     {{- range $f := $.Fields}}
@@ -48,6 +48,10 @@ func ({{$.Name}}) Fields() []ent.Field{
         {{- end}}
         {{- if $f.Column.SchemaType}}
             {{- $str = printf "%s%s" $str (schemaType $f)}}
+        {{- end}}
+        {{- $order := entgqlOrderField $f }}
+        {{- if $order }}
+            {{- $str = printf "%s.Annotations(entgql.OrderField(\"%s\"))" $str $f.Name}}
         {{- end}}
         {{$str}},
     {{- end}}

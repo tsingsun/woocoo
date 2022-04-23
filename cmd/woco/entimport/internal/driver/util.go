@@ -76,8 +76,8 @@ func setEdgeField(e *gen.Edge, opts options, childNode *gen.Type) {
 }
 
 func upsertRelation(nodeA *gen.Type, nodeB *gen.Type, opts options) {
-	tableA := tableName(nodeA.Name)
-	tableB := tableName(nodeB.Name)
+	tableA := TableName(nodeA.Name)
+	tableB := TableName(nodeB.Name)
 	opts.refName = tableB
 	fromA := entEdge(tableA, nodeA.Name, nodeB, from, opts)
 	toB := entEdge(tableB, nodeB.Name, nodeA, to, opts)
@@ -119,4 +119,12 @@ func isJoinTable(table *schema.Table) bool {
 		}
 	}
 	return true
+}
+
+func TypeName(tableName string) string {
+	return inflect.Camelize(inflect.Singularize(tableName))
+}
+
+func TableName(typeName string) string {
+	return inflect.Underscore(inflect.Pluralize(typeName))
 }

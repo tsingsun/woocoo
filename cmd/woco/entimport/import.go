@@ -18,9 +18,10 @@ var (
 	//go:embed template/*
 	templates embed.FS
 	SchemaTpl = parseT("template/schema.tmpl")
+	GqlTpl    = parseT("template/graphql.tmpl")
 )
 
-func generateSchema(dialect, dsn, output string, tables []string) error {
+func generateSchema(dialect, dsn, output string, tables []string, gengql bool) error {
 	ctx := context.Background()
 	i, err := NewImport(dialect, driver.WithDSN(dsn), driver.WithTables(tables))
 	if err != nil {
@@ -34,7 +35,11 @@ func generateSchema(dialect, dsn, output string, tables []string) error {
 	if err = WriteSchema(SchemaTpl, schema, output); err != nil {
 		return fmt.Errorf("entimport: schema writing failed - %v", err)
 	}
-
+	if gengql {
+		if err = WriteGql(GqlTpl, schema, output); err != nil {
+			return fmt.Errorf("entimport: graphql writing failed - %v", err)
+		}
+	}
 	return nil
 }
 
@@ -68,6 +73,11 @@ func NewImport(dialectName string, opts ...driver.ImportOption) (SchemaImporter,
 		//if err != nil {
 		//	return nil, err
 		//}
+	case "clickhouse":
+		si, err = driver.NewClickhouse(opts...)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("entimport: unsupported dialect %q", dialectName)
 	}
@@ -99,6 +109,27 @@ func WriteSchema(template *gen.Template, types []*gen.Type, output string) error
 			return fmt.Errorf("executing template %s: %w", name, err)
 		}
 		newFileTarget := filepath.Join(output, strings.ToLower(name+".go"))
+		if err := os.WriteFile(newFileTarget, b.Bytes(), 0644); err != nil {
+			return fmt.Errorf("writing file %s: %w", newFileTarget, err)
+		}
+	}
+	return nil
+}
+
+func WriteGql(template *gen.Template, types []*gen.Type, output string) error {
+	if err := createDir(output); err != nil {
+		return fmt.Errorf("create dir %s: %w", output, err)
+	}
+	for _, typ := range types {
+		name := typ.Name
+		if err := gen.ValidSchemaName(typ.Name); err != nil {
+			return fmt.Errorf("init schema %s: %w", typ.Name, err)
+		}
+		b := bytes.NewBuffer(nil)
+		if err := template.ExecuteTemplate(b, "graphql.tmpl", typ); err != nil {
+			return fmt.Errorf("executing template %s: %w", name, err)
+		}
+		newFileTarget := filepath.Join(output, strings.ToLower(name+".graphql"))
 		if err := os.WriteFile(newFileTarget, b.Bytes(), 0644); err != nil {
 			return fmt.Errorf("writing file %s: %w", newFileTarget, err)
 		}

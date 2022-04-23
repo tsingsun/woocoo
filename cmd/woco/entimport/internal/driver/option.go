@@ -21,7 +21,7 @@ func WithSchemaPath(path string) ImportOption {
 // WithTables limits the schema import to a set of given tables (by all tables are imported)
 func WithTables(tables []string) ImportOption {
 	return func(i *ImportOptions) {
-		i.tables = tables
+		i.Tables = tables
 	}
 }
 
@@ -33,7 +33,7 @@ func WithCaseInt(isCase bool) ImportOption {
 
 type ImportOptions struct {
 	dsn        string
-	tables     []string
+	Tables     []string
 	schemaPath string
 	caseInt    bool //default is true, int8,32,64 --> Int
 }

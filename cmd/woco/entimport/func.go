@@ -5,14 +5,16 @@ import (
 	"entgo.io/ent/entc/gen"
 	"entgo.io/ent/schema/field"
 	"fmt"
+	"github.com/tsingsun/woocoo/cmd/woco/entimport/internal/driver"
 	"strings"
 	"text/template"
 )
 
 var Funcs = template.FuncMap{
-	"schemaType":    schemaType,
-	"fieldTypeName": fieldTypeName,
-	"clearComment":  clearComment,
+	"schemaType":       schemaType,
+	"fieldTypeName":    fieldTypeName,
+	"clearComment":     clearComment,
+	"entgqlOrderField": entgqlOrderField,
 }
 
 func schemaType(f gen.Field) string {
@@ -57,4 +59,14 @@ func clearComment(f gen.Field) string {
 	v := strings.ReplaceAll(c, "\\r", "")
 	v = strings.ReplaceAll(v, "\\n", "")
 	return v
+}
+
+func entgqlOrderField(f *gen.Field) bool {
+	for _, i := range f.Annotations {
+		_, ok := i.(*driver.GqlOrderField)
+		if ok {
+			return true
+		}
+	}
+	return false
 }

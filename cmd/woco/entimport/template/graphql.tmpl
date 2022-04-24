@@ -38,6 +38,9 @@ type {{$.Name}}Connection {
 
 # These enums are matched the entgql annotations in the ent/schema.
 enum {{$.Name}}OrderField {
+{{- if $.ID}}
+    {{$.ID.Name}}
+{{- end}}
 {{- range $f:=$.Fields}}
     {{- $order := entgqlOrderField $f }}
     {{- if $order }}

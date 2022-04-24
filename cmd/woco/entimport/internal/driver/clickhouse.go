@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/column"
+	"github.com/google/uuid"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const (
@@ -36,6 +36,34 @@ type Clickhouse struct {
 
 type ckDriver struct {
 	schema.ExecQuerier
+}
+
+// NewClickhouse creates a new Clickhouse driver.
+func NewClickhouse(opts ImportOptions) (*Clickhouse, error) {
+	copts, err := clickhouse.ParseDSN(opts.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("entimport: failed to parse DSN for clickhouse connection: %w", err)
+	}
+	db, err := sql.Open("clickhouse", opts.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("entimport: error while trying to open db inspection client %w", err)
+	}
+	drv, err := OpenCK(db)
+	if err != nil {
+		return nil, fmt.Errorf("entimport: error while trying to open db inspection client %w", err)
+	}
+	ab := AtlasBase{
+		Options:   opts,
+		Inspector: drv,
+		resolverDsn: func(dsn string) (db string, err error) {
+			return copts.Auth.Database, nil
+		},
+	}
+	dr := &Clickhouse{
+		AtlasBase: ab,
+	}
+	dr.AtlasBase.resolverField = dr.resolverField
+	return dr, nil
 }
 
 func (ck *ckDriver) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {
@@ -226,6 +254,11 @@ func (ck *ckDriver) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		return err
 	}
 	c.Type.Type = ct
+	if defaultExpression.Valid && defaultExpression.String != "" {
+		c.Default = &schema.RawExpr{
+			X: defaultExpression.String,
+		}
+	}
 	if comment.Valid && comment.String != "" {
 		c.Attrs = append(c.Attrs, &schema.Comment{
 			Text: comment.String,
@@ -342,46 +375,12 @@ func ParseType(raw string) (schema.Type, error) {
 		tt := &schema.StringType{
 			T: string(ckt.Type()),
 		}
-
 		return tt, nil
 	default:
 		return &schema.UnsupportedType{
 			T: string(ckType.Type()),
 		}, nil
 	}
-}
-
-func NewClickhouse(opts ...ImportOption) (*Clickhouse, error) {
-	i := &ImportOptions{
-		caseInt: true,
-	}
-	for _, apply := range opts {
-		apply(i)
-	}
-	copts, err := clickhouse.ParseDSN(i.dsn)
-	if err != nil {
-		return nil, fmt.Errorf("entimport: failed to parse dsn for clickhouse connection: %w", err)
-	}
-	db, err := sql.Open("clickhouse", i.dsn)
-	if err != nil {
-		return nil, fmt.Errorf("entimport: error while trying to open db inspection client %w", err)
-	}
-	drv, err := OpenCK(db)
-	if err != nil {
-		return nil, fmt.Errorf("entimport: error while trying to open db inspection client %w", err)
-	}
-	ab := AtlasBase{
-		Options:   *i,
-		Inspector: drv,
-		resolverDsn: func(dsn string) (db string, err error) {
-			return copts.Auth.Database, nil
-		},
-	}
-	dr := &Clickhouse{
-		AtlasBase: ab,
-	}
-	dr.AtlasBase.resolverField = dr.resolverField
-	return dr, nil
 }
 
 func OpenCK(db schema.ExecQuerier) (*ckDriver, error) {
@@ -411,17 +410,18 @@ func (ck *Clickhouse) resolverField(column *schema.Column) (f *load.Field, err e
 	case *schema.FloatType:
 		fd.Info = field.Float(name).Descriptor().Info
 	case *schema.IntegerType:
-		if ck.Options.caseInt {
-			fd.Info = field.Int(name).Descriptor().Info
-		} else {
-			fd.Info = ck.convertInteger(typ, name)
-		}
+		fd.Info = ck.convertInteger(typ, name)
 	case *schema.JSONType:
 		fd.Info = field.JSON(name, json.RawMessage{}).Descriptor().Info
 	case *schema.StringType:
-		em := field.String(name).MaxLen(column.Type.Type.(*schema.StringType).Size)
-		fd.Info = em.Descriptor().Info
-		fd.Size = em.Descriptor().Size
+		switch typ.T {
+		case "UUID":
+			fd.Info = field.UUID(name, uuid.UUID{}).Descriptor().Info
+		default:
+			em := field.String(name).MaxLen(column.Type.Type.(*schema.StringType).Size)
+			fd.Info = em.Descriptor().Info
+			fd.Size = em.Descriptor().Size
+		}
 	case *schema.TimeType:
 		fd.Info = field.Time(name).Descriptor().Info
 	default:
@@ -432,45 +432,43 @@ func (ck *Clickhouse) resolverField(column *schema.Column) (f *load.Field, err e
 }
 
 func (ck *Clickhouse) convertInteger(typ *schema.IntegerType, name string) (f *field.TypeInfo) {
+	if ck.Options.CaseInt {
+		f = field.Int(name).Descriptor().Info
+		return f
+	}
 	if typ.Unsigned {
 		switch typ.T {
-		case mTinyInt:
+		case string((&column.UInt8{}).Type()):
 			f = field.Uint8(name).Descriptor().Info
-		case mSmallInt:
+		case string((&column.UInt16{}).Type()):
 			f = field.Uint16(name).Descriptor().Info
-		case mMediumInt:
+		case string((&column.UInt32{}).Type()):
 			f = field.Uint32(name).Descriptor().Info
-		case mInt:
-			f = field.Uint32(name).Descriptor().Info
-		case mBigInt:
+		case string((&column.UInt64{}).Type()):
 			f = field.Uint64(name).Descriptor().Info
 		}
 		return f
 	}
 	switch typ.T {
-	case mTinyInt:
+	case string((&column.Int8{}).Type()):
 		f = field.Int8(name).Descriptor().Info
-	case mSmallInt:
+	case string((&column.Int16{}).Type()):
 		f = field.Int16(name).Descriptor().Info
-	case mMediumInt:
+	case string((&column.Int32{}).Type()):
 		f = field.Int32(name).Descriptor().Info
-	case mInt:
+	case string((&column.Int64{}).Type()):
 		f = field.Int32(name).Descriptor().Info
-	case mBigInt:
-		// Int64 is not used on purpose.
-		f = field.Int(name).Descriptor().Info
 	}
 	return f
 }
 
 func (ck *Clickhouse) applyColumnAttributes(f *field.Descriptor, col *schema.Column) {
-	f.Optional = col.Type.Null
 	switch dt := col.Default.(type) {
 	case *schema.Literal:
 		f.Default = dt.V
 	case *schema.RawExpr:
-		if dt.X == "current_timestamp()" {
-			f.Default = time.Now
+		if dt.X == "generateUUIDv4()" {
+			f.Default = FuncTag + "uuid.New"
 		}
 	}
 	for _, attr := range col.Attrs {

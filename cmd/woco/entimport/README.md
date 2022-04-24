@@ -15,11 +15,12 @@ woco entimport --dialect mysql --dsn root:pass@tcp(localhost:3306)/test?parseTim
 - tables: 指定特定表导出,使用`,`分隔 或者 多`--tables`方式
 - o: 输出位置
 - q: 生成relay graphql文件,位置同-o参数.
+- i: 是否使用field.Int()映射各int类型字段,如int8,int16等等
 
 ## 生成说明
 
+- Nillable or Optional: 如果具有默认值可空,则生成Optional,如果无默认值的可空则两个都生成
 - varchar(45)--> field.String().MaxLen(45)
-- int(x): 默认统一生成field.Int().SchemaType(注1),注1,会生成实际的字段类型
 - graphql: 数据库字段同名,排序自动根据索引键产生
 
 ## TODO

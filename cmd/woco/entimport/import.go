@@ -21,22 +21,22 @@ var (
 	GqlTpl    = parseT("template/graphql.tmpl")
 )
 
-func generateSchema(dialect, dsn, output string, tables []string, gengql bool) error {
+func generateSchema(opts driver.ImportOptions) error {
 	ctx := context.Background()
-	i, err := NewImport(dialect, driver.WithDSN(dsn), driver.WithTables(tables))
+	i, err := NewImport(opts)
 	if err != nil {
-		return fmt.Errorf("entimport: create importer (%s) failed - %v", dialect, err)
+		return fmt.Errorf("entimport: create importer (%s) failed - %v", opts.Dialect, err)
 	}
 	schema, err := i.SchemaInspect(ctx)
 	if err != nil {
 		return fmt.Errorf("entimport: schema import failed - %v", err)
 	}
 
-	if err = WriteSchema(SchemaTpl, schema, output); err != nil {
+	if err = WriteSchema(SchemaTpl, schema, opts); err != nil {
 		return fmt.Errorf("entimport: schema writing failed - %v", err)
 	}
-	if gengql {
-		if err = WriteGql(GqlTpl, schema, output); err != nil {
+	if opts.GenGraphql {
+		if err = WriteGql(GqlTpl, schema, opts.SchemaPath); err != nil {
 			return fmt.Errorf("entimport: graphql writing failed - %v", err)
 		}
 	}
@@ -57,14 +57,14 @@ type SchemaImporter interface {
 }
 
 // NewImport - calls the relevant data source importer based on a given dialect.
-func NewImport(dialectName string, opts ...driver.ImportOption) (SchemaImporter, error) {
+func NewImport(opts driver.ImportOptions) (SchemaImporter, error) {
 	var (
 		si  SchemaImporter
 		err error
 	)
-	switch dialectName {
+	switch opts.Dialect {
 	case dialect.MySQL:
-		si, err = driver.NewMySQL(opts...)
+		si, err = driver.NewMySQL(opts)
 		if err != nil {
 			return nil, err
 		}
@@ -74,12 +74,12 @@ func NewImport(dialectName string, opts ...driver.ImportOption) (SchemaImporter,
 		//	return nil, err
 		//}
 	case "clickhouse":
-		si, err = driver.NewClickhouse(opts...)
+		si, err = driver.NewClickhouse(opts)
 		if err != nil {
 			return nil, err
 		}
 	default:
-		return nil, fmt.Errorf("entimport: unsupported dialect %q", dialectName)
+		return nil, fmt.Errorf("entimport: unsupported dialect %q", opts.Dialect)
 	}
 	return si, err
 }
@@ -95,11 +95,13 @@ func createDir(target string) error {
 	return nil
 }
 
-func WriteSchema(template *gen.Template, types []*gen.Type, output string) error {
-	if err := createDir(output); err != nil {
-		return fmt.Errorf("create dir %s: %w", output, err)
+func WriteSchema(template *gen.Template, types []*gen.Type, opts driver.ImportOptions) error {
+	if err := createDir(opts.SchemaPath); err != nil {
+		return fmt.Errorf("create dir %s: %w", opts.SchemaPath, err)
 	}
 	for _, typ := range types {
+		typ.Annotations["proto"] = opts.GenProtoField
+		typ.Annotations["gql"] = opts.GenGraphql
 		name := typ.Name
 		if err := gen.ValidSchemaName(typ.Name); err != nil {
 			return fmt.Errorf("init schema %s: %w", typ.Name, err)
@@ -108,7 +110,7 @@ func WriteSchema(template *gen.Template, types []*gen.Type, output string) error
 		if err := template.ExecuteTemplate(b, "schema.tmpl", typ); err != nil {
 			return fmt.Errorf("executing template %s: %w", name, err)
 		}
-		newFileTarget := filepath.Join(output, strings.ToLower(name+".go"))
+		newFileTarget := filepath.Join(opts.SchemaPath, strings.ToLower(name+".go"))
 		if err := os.WriteFile(newFileTarget, b.Bytes(), 0644); err != nil {
 			return fmt.Errorf("writing file %s: %w", newFileTarget, err)
 		}

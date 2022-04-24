@@ -10,6 +10,8 @@ import (
 const (
 	to edgeDir = iota
 	from
+
+	FuncTag = "func:"
 )
 
 type (

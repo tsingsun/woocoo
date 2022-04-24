@@ -18,6 +18,7 @@ func (g GqlOrderField) Name() string {
 	return g.name
 }
 
+// AtlasBase is the base struct witch can be used by Atlas
 type AtlasBase struct {
 	schema.Inspector
 
@@ -32,8 +33,8 @@ func (ab *AtlasBase) SchemaInspect(ctx context.Context) ([]*gen.Type, error) {
 	inspectOptions := &schema.InspectOptions{
 		Tables: ab.Options.Tables,
 	}
-	// dsn example: root:pass@tcp(localhost:3308)/test?parseTime=True
-	dbName, err := ab.resolverDsn(ab.Options.dsn)
+	// DSN example: root:pass@tcp(localhost:3308)/test?parseTime=True
+	dbName, err := ab.resolverDsn(ab.Options.DSN)
 	if err != nil {
 		return nil, err
 	}
@@ -107,6 +108,9 @@ func (ab AtlasBase) TableToGenType(table *schema.Table) (*gen.Type, error) {
 			continue
 		}
 		fld, err := ab.resolverField(column)
+		if column.Type.Null && column.Default == nil {
+			fld.Nillable = true
+		}
 		fld.Position = &load.Position{Index: i}
 		if err != nil {
 			return nil, err

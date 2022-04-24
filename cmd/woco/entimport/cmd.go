@@ -1,6 +1,7 @@
 package entimport
 
 import (
+	"github.com/tsingsun/woocoo/cmd/woco/entimport/internal/driver"
 	"github.com/urfave/cli/v2"
 	"strings"
 )
@@ -18,7 +19,16 @@ var EntImportCmd = &cli.Command{
 		} else {
 			tables = c.StringSlice("tables")
 		}
-		return generateSchema(c.String("dialect"), c.String("dsn"), c.String("output"), tables, c.Bool("gql"))
+		opts := driver.ImportOptions{
+			Dialect:       c.String("dialect"),
+			DSN:           c.String("dsn"),
+			SchemaPath:    c.String("output"),
+			Tables:        tables,
+			GenGraphql:    c.Bool("gql"),
+			GenProtoField: c.Bool("protobuf"),
+			CaseInt:       c.Bool("UseInt"),
+		}
+		return generateSchema(opts)
 	},
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -47,6 +57,18 @@ var EntImportCmd = &cli.Command{
 			Aliases: []string{"g"},
 			Value:   false,
 			Usage:   "generate graphql file",
+		},
+		&cli.BoolFlag{
+			Name:    "protobuf",
+			Aliases: []string{"p"},
+			Value:   false,
+			Usage:   "generate protobuf file",
+		},
+		&cli.BoolFlag{
+			Name:    "UseInt",
+			Aliases: []string{"i"},
+			Value:   true,
+			Usage:   "universal int type",
 		},
 	},
 }

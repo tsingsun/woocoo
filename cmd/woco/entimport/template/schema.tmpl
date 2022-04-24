@@ -7,13 +7,8 @@ import (
     "entgo.io/ent/dialect/entsql"
     "entgo.io/ent/schema"
     "entgo.io/ent/schema/field"
-
-{{- range $f:=$.Fields}}
-    {{- $order := entgqlOrderField $f }}
-    {{- if $order }}
+{{- if index $.Annotations "gql"}}
     "entgo.io/contrib/entgql"
-        {{- break}}
-    {{- end}}
 {{- end}}
 )
 
@@ -33,12 +28,12 @@ func ({{$.Name}}) Annotations() []schema.Annotation {
 // Fields of the {{$.Name}}
 func ({{$.Name}}) Fields() []ent.Field{
     return []ent.Field{
-    {{- if $.ID}}
-        {{printf "field.%s(\"%s\")" (pascal $.ID.Type.String) $.ID.Name}}{{schemaType $.ID}},
-    {{- end}}
-    {{- range $f := $.Fields}}
+    {{- if $f:=$.ID}}
         {{- $str:=""}}
-        {{- $str = printf "field.%s(\"%s\")" (pascal (fieldTypeName $f)) $f.Name}}
+        {{- $str = printf "field.%s(%s)" (pascal (fieldTypeName $f)) (fieldParameters $f)}}
+        {{- if $f.Default}}
+            {{- $str = printf "%s.Default(%s)" $str (defaultValue $f)}}
+        {{- end}}
         {{- if $f.Column.Size}}
             {{- $str = printf "%s.MaxLen(%d)" $str $f.Column.Size }}
         {{- end}}
@@ -60,6 +55,44 @@ func ({{$.Name}}) Fields() []ent.Field{
         {{- $order := entgqlOrderField $f }}
         {{- if $order }}
             {{- $str = printf "%s.Annotations(entgql.OrderField(\"%s\"))" $str $f.Name}}
+        {{- end}}
+        {{- if index $.Annotations "proto"}}
+            {{- $str = printf "%s.Annotations(entgql.Field(%d))" $str 1}}
+        {{- end}}
+        {{$str}},
+    {{- end}}
+    {{- $keys:= 1}}
+    {{- range $f := $.Fields}}
+        {{- $str:=""}}
+        {{- $str = printf "field.%s(%s)" (pascal (fieldTypeName $f)) (fieldParameters $f)}}
+        {{- if $f.Default}}
+            {{- $str = printf "%s.Default(%s)" $str (defaultValue $f)}}
+        {{- end}}
+        {{- if $f.Column.Size}}
+            {{- $str = printf "%s.MaxLen(%d)" $str $f.Column.Size }}
+        {{- end}}
+        {{- if $f.Optional}}
+            {{- $str = printf "%s.Optional()" $str}}
+        {{- end}}
+        {{- if $f.Nillable}}
+            {{- $str = printf "%s.Nillable()" $str}}
+        {{- end}}
+        {{- if $f.Unique}}
+            {{- $str = printf "%s.Unique()" $str}}
+        {{- end}}
+        {{- if $f.Comment}}
+            {{- $str = printf "%s.Comment(\"%s\")" $str (clearComment $f)}}
+        {{- end}}
+        {{- if $f.Column.SchemaType}}
+            {{- $str = printf "%s%s" $str (schemaType $f)}}
+        {{- end}}
+        {{- $order := entgqlOrderField $f }}
+        {{- if $order }}
+            {{- $str = printf "%s.Annotations(entgql.OrderField(\"%s\"))" $str $f.Name}}
+        {{- end}}
+        {{- if index $.Annotations "proto"}}
+            {{- $keys = inc $keys}}
+            {{- $str = printf "%s.Annotations(entproto.Field(%d))" $str $keys}}
         {{- end}}
         {{$str}},
     {{- end}}

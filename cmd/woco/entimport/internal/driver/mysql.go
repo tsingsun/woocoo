@@ -12,7 +12,6 @@ import (
 	"fmt"
 	mysqldriver "github.com/go-sql-driver/mysql"
 	"strings"
-	"time"
 )
 
 const (
@@ -30,14 +29,8 @@ type MySQL struct {
 }
 
 // NewMySQL - create an import structure for MySQL.
-func NewMySQL(opts ...ImportOption) (*MySQL, error) {
-	i := &ImportOptions{
-		caseInt: true,
-	}
-	for _, apply := range opts {
-		apply(i)
-	}
-	db, err := sql.Open(dialect.MySQL, i.dsn)
+func NewMySQL(opts ImportOptions) (*MySQL, error) {
+	db, err := sql.Open(dialect.MySQL, opts.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("entimport: failed to open db connection: %w", err)
 	}
@@ -46,7 +39,7 @@ func NewMySQL(opts ...ImportOption) (*MySQL, error) {
 		return nil, fmt.Errorf("entimport: error while trying to open db inspection client %w", err)
 	}
 	ab := AtlasBase{
-		Options:   *i,
+		Options:   opts,
 		Inspector: drv,
 		resolverDsn: func(dsn string) (db string, err error) {
 			cfg, err := mysqldriver.ParseDSN(dsn)
@@ -79,7 +72,7 @@ func (m *MySQL) resolverField(column *schema.Column) (f *load.Field, err error) 
 	case *schema.FloatType:
 		fd.Info = m.convertFloat(typ, name)
 	case *schema.IntegerType:
-		if m.Options.caseInt {
+		if m.Options.CaseInt {
 			fd.Info = field.Int(name).Descriptor().Info
 			//resolverField.Int is big int
 			if typ.T != mBigInt {
@@ -153,8 +146,8 @@ func (m *MySQL) applyColumnAttributes(f *field.Descriptor, col *schema.Column) {
 	case *schema.Literal:
 		f.Default = dt.V
 	case *schema.RawExpr:
-		if dt.X == "current_timestamp()" {
-			f.Default = time.Now
+		if strings.ToLower(dt.X) == "current_timestamp()" || strings.ToLower(dt.X) == "current_timestamp" {
+			f.Default = FuncTag + "time.Now"
 		}
 	}
 	for _, attr := range col.Attrs {

@@ -7,6 +7,14 @@ import (
     "entgo.io/ent/dialect/entsql"
     "entgo.io/ent/schema"
     "entgo.io/ent/schema/field"
+
+{{- range $f:=$.Fields}}
+    {{- $order := entgqlOrderField $f }}
+    {{- if $order }}
+    "entgo.io/contrib/entgql"
+        {{- break}}
+    {{- end}}
+{{- end}}
 )
 
 //{{$.Name}} holds the schema definition for the {{ $.Name }} entity.

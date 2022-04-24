@@ -7,11 +7,14 @@ on:
       - 'docs/**'
       - 'readme*.md'
       - 'contrib/**'
+      - 'cmd/**'
   pull_request:
     branches: [ master ]
     paths-ignore:
       - 'docs/**'
       - 'readme*.md'
+      - 'contrib/**'
+      - 'cmd/**'
 jobs:
 #  lint:
 #    runs-on: ubuntu-latest

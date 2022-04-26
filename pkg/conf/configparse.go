@@ -10,7 +10,6 @@ import (
 	"github.com/knadh/koanf/providers/rawbytes"
 	"github.com/mitchellh/mapstructure"
 	"io"
-	"io/ioutil"
 	"reflect"
 )
 
@@ -37,7 +36,7 @@ func NewParserFromFile(fileName string) (*Parser, error) {
 
 // NewParserFromBuffer creates a new Parser by reading the given yaml buffer.
 func NewParserFromBuffer(buf io.Reader) (*Parser, error) {
-	content, err := ioutil.ReadAll(buf)
+	content, err := io.ReadAll(buf)
 	if err != nil {
 		return nil, err
 	}
@@ -72,20 +71,18 @@ func (l *Parser) AllKeys() []string {
 // Unmarshal specified path config into a struct.
 // Tags on the fields of the structure must be properly set.
 func (l *Parser) Unmarshal(key string, dst interface{}) (err error) {
-	var s *Parser
+	var input interface{}
 	if key == "" {
-		s = l
+		input = l.ToStringMap()
 	} else {
-		if s, err = l.Sub(key); err != nil {
-			return
-		}
+		input = l.Get(key)
 	}
 
 	decoder, err := mapstructure.NewDecoder(decoderConfig(dst))
 	if err != nil {
 		return err
 	}
-	return decoder.Decode(s.ToStringMap())
+	return decoder.Decode(input)
 }
 
 // UnmarshalExact unmarshals the config into a struct, erroring if a field is nonexistent.
@@ -150,6 +147,12 @@ func (l *Parser) Sub(key string) (*Parser, error) {
 
 	subParser := NewParser()
 	subParser.k = l.k.Cut(key)
+
+	if len(subParser.ToStringMap()) == 0 {
+		if l.Get(key) != nil {
+			return nil, fmt.Errorf("key is not a map")
+		}
+	}
 
 	return subParser, nil
 }

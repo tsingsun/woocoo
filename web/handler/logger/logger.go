@@ -6,7 +6,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
-	"io/ioutil"
+	"io"
 	"time"
 )
 
@@ -51,9 +51,9 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		var bodyBytes []byte
 		if opts.requestBody {
 			if c.Request.Body != nil {
-				bodyBytes, _ = ioutil.ReadAll(c.Request.Body)
+				bodyBytes, _ = io.ReadAll(c.Request.Body)
 			}
-			c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+			c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		}
 		// Process request
 		c.Next()

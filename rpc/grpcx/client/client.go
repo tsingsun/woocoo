@@ -14,7 +14,7 @@ import (
 
 type ServerConfig struct {
 	Addr           string `json:"addr" yaml:"addr"`
-	SSLCertificate string `json:"ssl_certificate" yaml:"ssl_certificate"`
+	SSLCertificate string `json:"sslCertificate" yaml:"sslCertificate"`
 	Namespace      string `json:"namespace" yaml:"namespace"`
 	Version        string `json:"version" yaml:"version"`
 }

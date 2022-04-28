@@ -293,7 +293,7 @@ func (ck *ckDriver) addColumn(s *schema.Schema, rows *sql.Rows) error {
 
 func baseType(raw string) string {
 	rr := ""
-	switch start, end := strings.Index(raw, "("), strings.LastIndex(string(raw), ")"); {
+	switch start, end := strings.Index(raw, "("), strings.LastIndex(raw, ")"); {
 	case len(raw) == 0, start <= 0, end <= 0, end < start:
 		rr = raw
 	default:

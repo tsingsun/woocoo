@@ -15,7 +15,7 @@ log:
       errorOutputPaths:
         - stderr
   rotate:
-    maxSize: 1
+    maxsize: 1
     maxage: 1
     maxbackups: 1
     localtime: true

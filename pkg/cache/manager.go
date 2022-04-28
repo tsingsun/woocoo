@@ -38,7 +38,7 @@ func RegisterCache(name string, cache Cache) error {
 	return nil
 }
 
-// GetCache return a Cache driver,if has multi Cache Driver
+// GetCache return a Cache driver,if it has multi Cache Driver
 func GetCache(driver string) Cache {
 	return _manager.drivers[driver]
 }

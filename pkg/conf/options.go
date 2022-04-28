@@ -35,7 +35,7 @@ func LocalPath(s string) Option {
 }
 
 // BaseDir init base directory usually is the directory which application executable file is in
-// s can be a absolute path or relative path
+// s can be an absolute path or relative path
 func BaseDir(s string) Option {
 	return func(o *options) {
 		var err error

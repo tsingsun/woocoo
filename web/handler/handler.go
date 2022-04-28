@@ -9,7 +9,7 @@ import (
 	"github.com/tsingsun/woocoo/web/handler/recovery"
 )
 
-// Handler is a instance to build a gin middleware for web application.
+// Handler is an instance to build a gin middleware for web application.
 type Handler interface {
 	// Name returns the name of the handler.
 	Name() string

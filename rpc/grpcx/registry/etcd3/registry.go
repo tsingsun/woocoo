@@ -44,8 +44,8 @@ func (r *Registry) Apply(cfg *conf.Configuration) {
 		panic(err)
 	}
 	if k := conf.Join("etcd", "tls"); cfg.IsSet(k) {
-		cp := cfg.String(conf.Join(k, "ssl_certificate"))
-		kp := cfg.String(conf.Join(k, "ssl_certificate_key"))
+		cp := cfg.String(conf.Join(k, "sslCertificate"))
+		kp := cfg.String(conf.Join(k, "sslCertificateKey"))
 		if cp != "" && kp != "" {
 			r.opts.EtcdConfig.TLS = registry.TLS(cfg.Root().GetBaseDir(), cp, kp)
 		} else {

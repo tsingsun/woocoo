@@ -59,7 +59,7 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	}()
 	time.Sleep(1000)
 
-	copts := []grpc.DialOption{}
+	var copts []grpc.DialOption
 	copts = append(copts, grpc.WithBlock(), grpc.WithInsecure())
 	conn, err := grpc.Dial(addr, copts...)
 	if err != nil {

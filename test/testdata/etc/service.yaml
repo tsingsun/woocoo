@@ -7,8 +7,8 @@ grpc:
       - keepalive:
           time: 1h
       - tls:
-          ssl_certificate: ""
-          ssl_certificate_key: ""
+          sslCertificate: ""
+          sslCertificateKey: ""
       - unaryInterceptors:
           - trace:
           - accessLog:
@@ -28,8 +28,8 @@ grpc:
     ttl: 600s
     etcd:
       tls:
-        ssl_certificate: ""
-        ssl_certificate_key: ""
+        sslCertificate: ""
+        sslCertificateKey: ""
       endpoints:
         - 127.0.0.1:2379
       dial-timeout: 3s

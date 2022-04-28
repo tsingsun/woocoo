@@ -15,7 +15,7 @@ const (
 
 var (
 	global      *Logger
-	globalApply bool // indicate if use BuiltIn()
+	globalApply bool // indicate if you use BuiltIn()
 	components  = map[string]*component{}
 )
 

@@ -37,8 +37,8 @@ grpc:
       endpoints:
         - 127.0.0.1:2379
       tls:
-        ssl_certificate: ""
-        ssl_certificate_key: ""
+        sslCertificate: ""
+        sslCertificateKey: ""
       dial-timeout: 3s
       dial-keep-alive-time: 1h
 `)

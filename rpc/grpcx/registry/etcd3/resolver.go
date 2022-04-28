@@ -138,7 +138,7 @@ func (w *etcdResolver) watchChan() chan []resolver.Address {
 				switch ev.Type {
 				case mvccpb.PUT:
 					node := registry.ServiceInfo{}
-					err := json.Unmarshal([]byte(ev.Kv.Value), &node)
+					err := json.Unmarshal(ev.Kv.Value, &node)
 					if err != nil {
 						grpclog.Errorf("Parse node data error:%v", err)
 						continue
@@ -151,7 +151,7 @@ func (w *etcdResolver) watchChan() chan []resolver.Address {
 					if ev.Kv.Value == nil {
 						w.removeAddress(string(ev.Kv.Key))
 					} else {
-						err := json.Unmarshal([]byte(ev.Kv.Value), &node)
+						err := json.Unmarshal(ev.Kv.Value, &node)
 						if err != nil {
 							grpclog.Errorf("Parse node data error:%v", err)
 							continue

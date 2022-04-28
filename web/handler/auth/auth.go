@@ -37,7 +37,7 @@ var (
 	// ErrExpiredToken indicates JWT token has expired. Can't refresh.
 	ErrExpiredToken = errors.New("token is expired")
 
-	// ErrEmptyAuthHeader can be thrown if authing with a HTTP header, the auth header needs to be set
+	// ErrEmptyAuthHeader can be thrown if authing with an HTTP header, the auth header needs to be set
 	ErrEmptyAuthHeader = errors.New("auth header is empty")
 
 	// ErrMissingExpField missing exp field in token
@@ -88,7 +88,7 @@ type GinJWTMiddleware struct {
 	Authorizator func(data interface{}, c *gin.Context) bool
 
 	// Callback function that will be called during login.
-	// Using this function it is possible to add additional payload data to the webtoken.
+	// Using this function it is possible to add additional payload data to the web token.
 	// The data is then made available during requests via c.Get("JWT_PAYLOAD").
 	// Note that the payload is not encrypted.
 	// The attributes mentioned on jwt.io can't be used as keys for the map.

@@ -121,14 +121,14 @@ func nodePath(namespace, name, version, addr string) string {
 	return strings.Join([]string{namespace, name, version, addr}, "/")
 }
 
-func TLS(basedir, ssl_certificate, ssl_certificate_key string) *tls.Config {
-	if !filepath.IsAbs(ssl_certificate) {
-		ssl_certificate = filepath.Join(basedir, ssl_certificate)
+func TLS(basedir, sslCertificate, sslCertificateKey string) *tls.Config {
+	if !filepath.IsAbs(sslCertificate) {
+		sslCertificate = filepath.Join(basedir, sslCertificate)
 	}
-	if !filepath.IsAbs(ssl_certificate_key) {
-		ssl_certificate_key = filepath.Join(basedir, ssl_certificate_key)
+	if !filepath.IsAbs(sslCertificateKey) {
+		sslCertificateKey = filepath.Join(basedir, sslCertificateKey)
 	}
-	cer, err := tls.LoadX509KeyPair(ssl_certificate, ssl_certificate_key)
+	cer, err := tls.LoadX509KeyPair(sslCertificate, sslCertificateKey)
 	if err != nil {
 		panic(err)
 	}

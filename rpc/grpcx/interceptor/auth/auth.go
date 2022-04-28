@@ -17,11 +17,11 @@ import (
 var (
 	errMissingMetadata = status.Errorf(codes.InvalidArgument, "missing metadata")
 	errInvalidToken    = status.Errorf(codes.Unauthenticated, "invalid token")
-	// ErrEmptyAuthHeader can be thrown if authing with a HTTP header, the auth header needs to be set
+	// ErrEmptyAuthHeader can be thrown if authing with an HTTP header, the auth header needs to be set
 	errEmptyAuthHeader = status.Errorf(codes.InvalidArgument, "auth header is empty")
 	// ErrInvalidAuthHeader indicates auth header is invalid, could for example have the wrong Realm name
 	errInvalidAuthHeader = status.Errorf(codes.InvalidArgument, "auth header is invalid")
-	//IdentityHandler provide an access for customize user handler
+	//IdentityHandler provide access for customize user handler
 	IdentityHandler func(ctx context.Context, claims jwt.MapClaims) user.Identity
 )
 

@@ -21,8 +21,8 @@ grpc:
   - keepalive:
       time: 1h
   - tls:
-      ssl_certificate: ""
-      ssl_certificate_key: ""
+      sslCertificate: ""
+      sslCertificateKey: ""
   - unaryInterceptors:
     - trace:
     - accessLog:

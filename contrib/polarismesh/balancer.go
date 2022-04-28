@@ -145,7 +145,7 @@ func (p *polarisNamingBalancer) UpdateClientConnState(state balancer.ClientConnS
 	p.rwMutex.Lock()
 	defer p.rwMutex.Unlock()
 	for a, sc := range p.subConns {
-		// a was removed by resolver.
+		// "a" was removed by resolver.
 		if _, ok := addrsSet[a]; !ok {
 			p.cc.RemoveSubConn(sc)
 			delete(p.subConns, a)

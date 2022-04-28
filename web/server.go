@@ -21,8 +21,8 @@ const (
 
 type serverOptions struct {
 	Addr              string              `json:"addr" yaml:"addr"`
-	SSLCertificate    string              `json:"ssl_certificate" yaml:"ssl_certificate"`
-	SSLCertificateKey string              `json:"ssl_certificate_key" yaml:"ssl_certificate_key"`
+	SSLCertificate    string              `json:"sslCertificate" yaml:"sslCertificate"`
+	SSLCertificateKey string              `json:"sslCertificateKey" yaml:"sslCertificateKey"`
 	configuration     *conf.Configuration //not root configuration
 	logger            log.ComponentLogger
 	handlerManager    *handler.Manager // middleware manager
@@ -151,7 +151,7 @@ func (s *Server) Run() error {
 	// a timeout of 5 seconds.
 	// kill (no param) default send syscall.SIGTERM
 	// kill -2 is syscall.SIGINT
-	// kill -9 is syscall.SIGKILL but can't be catch, so don't need add it
+	// kill -9 is syscall.SIGKILL but can't be caught, so don't need add it
 	quit := make(chan os.Signal)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	select {

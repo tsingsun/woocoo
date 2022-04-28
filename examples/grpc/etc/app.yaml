@@ -25,8 +25,8 @@ grpc:
     schema: etcd
     ttl: 60s
     tls:
-      ssl_certificate: ""
-      ssl_certificate_key: ""
+      sslCertificate: ""
+      sslCertificateKey: ""
     etcd:
       endpoints:
         - :2379

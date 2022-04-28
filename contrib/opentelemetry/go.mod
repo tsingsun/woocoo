@@ -7,7 +7,7 @@ replace github.com/tsingsun/woocoo => ../../
 require (
 	github.com/gin-gonic/gin v1.7.7
 	github.com/stretchr/testify v1.7.1
-	github.com/tsingsun/woocoo v0.0.0-20220210143705-59f91b259d55
+	github.com/tsingsun/woocoo v0.0.3-0.20220421021641-182e96847d10
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.29.0
 	go.opentelemetry.io/contrib/propagators v0.22.0
 	go.opentelemetry.io/otel v1.4.1

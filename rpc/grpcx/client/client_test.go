@@ -26,8 +26,8 @@ service:
     ttl: 600s
     etcd:
       tls:
-        ssl_certificate: ""
-        ssl_certificate_key: ""
+        sslCertificate: ""
+        sslCertificateKey: ""
       endpoints:
         - localhost:12379
       dial-timeout: 3s

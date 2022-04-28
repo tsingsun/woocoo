@@ -1,8 +1,8 @@
 web:
   server:
     addr: 0.0.0.0:33333
-    ssl_certificate: ""
-    ssl_certificate_key: ""
+    sslCertificate: ""
+    sslCertificateKey: ""
   engine:
     redirectTrailingSlash: false
     remoteIPHeaders:

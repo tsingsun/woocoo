@@ -104,7 +104,7 @@ func (r *Router) RehandleRule() error {
 	return nil
 }
 
-// Group return a specified router group by a url format base path.
+// Group return a specified router group by an url format base path.
 //
 // parameter basePath is map to configuration:
 //   routerGroups:

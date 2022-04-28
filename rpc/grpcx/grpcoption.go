@@ -57,16 +57,16 @@ func keepaliveHandler(cfg *conf.Configuration) grpc.ServerOption {
 }
 
 func tlsHandler(cfg *conf.Configuration) grpc.ServerOption {
-	ssl_certificate := cfg.String("ssl_certificate")
-	ssl_certificate_key := cfg.String("ssl_certificate_key")
-	if ssl_certificate != "" && ssl_certificate_key != "" {
-		if !filepath.IsAbs(ssl_certificate) {
-			ssl_certificate = filepath.Join(cfg.GetBaseDir(), ssl_certificate)
+	sslCertificate := cfg.String("sslCertificate")
+	sslCertificateKey := cfg.String("sslCertificateKey")
+	if sslCertificate != "" && sslCertificateKey != "" {
+		if !filepath.IsAbs(sslCertificate) {
+			sslCertificate = filepath.Join(cfg.GetBaseDir(), sslCertificate)
 		}
-		if !filepath.IsAbs(ssl_certificate_key) {
-			ssl_certificate_key = filepath.Join(cfg.GetBaseDir(), ssl_certificate_key)
+		if !filepath.IsAbs(sslCertificateKey) {
+			sslCertificateKey = filepath.Join(cfg.GetBaseDir(), sslCertificateKey)
 		}
-		cert, err := tls.LoadX509KeyPair(ssl_certificate, ssl_certificate_key)
+		cert, err := tls.LoadX509KeyPair(sslCertificate, sslCertificateKey)
 		if err != nil {
 			panic(err)
 		}

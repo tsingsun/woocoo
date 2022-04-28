@@ -247,7 +247,7 @@ func (enc *textEncoder) AppendByteString(val []byte) {
 func (enc *textEncoder) AppendComplex128(val complex128) {
 	enc.addElementSeparator()
 	// Cast to a platform-independent, fixed-size type.
-	r, i := float64(real(val)), float64(imag(val))
+	r, i := float64(real(val)), imag(val)
 	enc.buf.AppendFloat(r, 64)
 	enc.buf.AppendByte('+')
 	enc.buf.AppendFloat(i, 64)
@@ -364,7 +364,7 @@ func (enc *textEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (
 		cur := final.buf.Len()
 		final.EncodeLevel(ent.Level, final)
 		if cur == final.buf.Len() {
-			// User-supplied EncodeLevel was a no-op. Fall back to strings to keep
+			// User-supplied EncodeLevel was a no-op. Fall back to string to keep
 			// output JSON valid.
 			final.AppendString(ent.Level.String())
 		}
@@ -384,7 +384,7 @@ func (enc *textEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (
 
 		nameEncoder(ent.LoggerName, final)
 		if cur == final.buf.Len() {
-			// User-supplied EncodeName was a no-op. Fall back to strings to
+			// User-supplied EncodeName was a no-op. Fall back to string to
 			// keep output JSON valid.
 			final.AppendString(ent.LoggerName)
 		}
@@ -395,7 +395,7 @@ func (enc *textEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (
 		cur := final.buf.Len()
 		final.EncodeCaller(ent.Caller, final)
 		if cur == final.buf.Len() {
-			// User-supplied EncodeCaller was a no-op. Fall back to strings to
+			// User-supplied EncodeCaller was a no-op. Fall back to string to
 			// keep output JSON valid.
 			final.AppendString(ent.Caller.String())
 		}

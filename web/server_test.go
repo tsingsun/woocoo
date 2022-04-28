@@ -33,8 +33,8 @@ func TestServer_Apply(t *testing.T) {
 web:
   server:
     addr: 0.0.0.0:33333
-    ssl_certificate: ""
-    ssl_certificate_key: ""
+    sslCertificate: ""
+    sslCertificateKey: ""
   engine:
     redirectTrailingSlash: false
     remoteIPHeaders:
@@ -83,8 +83,8 @@ func TestServer_Run(t *testing.T) {
 web:
   server:
     addr: 0.0.0.0:33333
-    ssl_certificate: ""
-    ssl_certificate_key: ""
+    sslCertificate: ""
+    sslCertificateKey: ""
 `
 	cnf := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
 	type fields struct {

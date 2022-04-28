@@ -18,7 +18,7 @@ require (
 	github.com/stretchr/testify v1.7.1
 	github.com/vektah/gqlparser/v2 v2.4.2
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
-	go.etcd.io/etcd/api/v3 v3.5.3
+	go.etcd.io/etcd/api/v3 v3.5.4
 	go.etcd.io/etcd/client/v3 v3.5.3
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect

@@ -46,9 +46,16 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 	}
 	if k := strings.Join([]string{"registry"}, conf.KeyDelimiter); cfg.IsSet(k) {
 		c.scheme = cfg.String(strings.Join([]string{"registry", "scheme"}, conf.KeyDelimiter))
-		c.registry = registry.GetRegistry(c.scheme)
+		drv, ok := registry.GetRegistry(c.scheme)
+		if !ok {
+			panic(fmt.Errorf("registry driver not found"))
+		}
 		//resolver.Register(c.registry.ResolverBuilder(cfg.Sub(k)))
-		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, grpc.WithResolvers(c.registry.ResolverBuilder(cfg.Sub(k))))
+		rb, err := drv.ResolverBuilder(cfg.Sub(k))
+		if err != nil {
+			panic(err)
+		}
+		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, grpc.WithResolvers(rb))
 	}
 	//service info
 	if k := strings.Join([]string{"client", "target"}, conf.KeyDelimiter); cfg.IsSet(k) {

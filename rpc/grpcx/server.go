@@ -2,6 +2,7 @@ package grpcx
 
 import (
 	"errors"
+	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"google.golang.org/grpc"
@@ -45,13 +46,17 @@ type Server struct {
 }
 
 func (s *Server) Apply(cfg *conf.Configuration) {
-	if err := cfg.Parser().Unmarshal("server", &s.opts); err != nil {
+	err := cfg.Parser().Unmarshal("server", &s.opts)
+	if err != nil {
 		panic(err)
 	}
 	if k := strings.Join([]string{"registry"}, conf.KeyDelimiter); cfg.IsSet(k) {
-		s.registry = registry.GetRegistry(cfg.String(strings.Join([]string{"registry", "scheme"}, conf.KeyDelimiter)))
-		if ap, ok := s.registry.(conf.Configurable); ok {
-			ap.Apply(cfg.Sub(k))
+		drv, ok := registry.GetRegistry(cfg.String(strings.Join([]string{"registry", "scheme"}, conf.KeyDelimiter)))
+		if !ok {
+			panic(fmt.Errorf("registry driver not found"))
+		}
+		if s.registry, err = drv.CreateRegistry(cfg.Sub(k)); err != nil {
+			panic(err)
 		}
 	}
 	//engine

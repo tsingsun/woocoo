@@ -16,7 +16,7 @@ import (
 const scheme = "polaris"
 
 func init() {
-	registry.RegisterDriver(scheme, New())
+	registry.RegisterDriver(scheme, Driver{})
 	balancer.Register(&balancerBuilder{})
 }
 
@@ -25,9 +25,13 @@ var (
 )
 
 type (
+	Driver struct {
+	}
+
 	Options struct {
 		TTL time.Duration `json:"ttl" yaml:"ttl"`
 	}
+
 	RegisterContext struct {
 		providerAPI      api.ProviderAPI
 		registerRequests []*api.InstanceRegisterRequest
@@ -40,6 +44,32 @@ type (
 		registerContext *RegisterContext
 	}
 )
+
+func (drv Driver) CreateRegistry(config *conf.Configuration) (registry.Registry, error) {
+	r := New()
+	r.Apply(config)
+	return r, nil
+}
+
+func (r *Registry) ResolverBuilder(config *conf.Configuration) resolver.Builder {
+	rb := &resolverBuilder{
+		configuration: config,
+	}
+	once.Do(func() {
+		balancer.Register(&balancerBuilder{})
+	})
+	return rb
+}
+
+func (drv Driver) ResolverBuilder(config *conf.Configuration) (resolver.Builder, error) {
+	rb := &resolverBuilder{
+		configuration: config,
+	}
+	once.Do(func() {
+		balancer.Register(&balancerBuilder{})
+	})
+	return rb, nil
+}
 
 func (r *Registry) Register(serviceInfo *registry.ServiceInfo) error {
 	registerRequest := &api.InstanceRegisterRequest{}
@@ -86,16 +116,6 @@ func (r *Registry) TTL() time.Duration {
 
 func (r *Registry) Close() {
 	r.registerContext.cancel()
-}
-
-func (r *Registry) ResolverBuilder(config *conf.Configuration) resolver.Builder {
-	rb := &resolverBuilder{
-		configuration: config,
-	}
-	once.Do(func() {
-		balancer.Register(&balancerBuilder{})
-	})
-	return rb
 }
 
 func New() *Registry {

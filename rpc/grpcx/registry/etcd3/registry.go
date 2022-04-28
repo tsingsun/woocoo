@@ -15,7 +15,27 @@ import (
 )
 
 func init() {
-	registry.RegisterDriver(scheme, New())
+	registry.RegisterDriver(scheme, Driver{})
+}
+
+// Driver is an etcd3 registry driver.
+type Driver struct {
+}
+
+func (drv Driver) CreateRegistry(config *conf.Configuration) (registry.Registry, error) {
+	r := New()
+	r.Apply(config)
+	return r, nil
+}
+
+func (drv Driver) ResolverBuilder(config *conf.Configuration) (resolver.Builder, error) {
+	var opts Options
+	if err := config.Unmarshal(&opts); err != nil {
+		return nil, err
+	}
+	return &etcdBuilder{
+		etcdConfig: opts.EtcdConfig,
+	}, nil
 }
 
 type Options struct {
@@ -217,10 +237,4 @@ func (r *Registry) Close() {
 
 func (r *Registry) TTL() time.Duration {
 	return r.opts.TTL
-}
-
-func (r *Registry) ResolverBuilder(config *conf.Configuration) resolver.Builder {
-	return &etcdBuilder{
-		etcdConfig: r.opts.EtcdConfig,
-	}
 }

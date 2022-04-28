@@ -52,6 +52,11 @@ grpc:
 
 func TestRegistryMultiService(t *testing.T) {
 	sn := "/woocoo/multi"
+	cfg := testcnf.Sub("grpc")
+	cfg.Parser().Set("server.namespace", sn)
+	// Don't UseLogger to avoid grpclog.SetLoggerV2 caused data race
+	srv := grpcx.New(grpcx.WithConfiguration(cfg))
+
 	etcdConfg := clientv3.Config{
 		Endpoints:   []string{testdata.EtcdAddr},
 		DialTimeout: 10 * time.Second,
@@ -60,9 +65,6 @@ func TestRegistryMultiService(t *testing.T) {
 	assert.NoError(t, err)
 	etcdCli.Delete(context.Background(), sn, clientv3.WithPrefix())
 
-	cfg := testcnf.Sub("grpc")
-	cfg.Parser().Set("server.namespace", sn)
-	srv := grpcx.New(grpcx.WithConfiguration(cfg), grpcx.UseLogger())
 	go func() {
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		testproto.RegisterTestServiceServer(srv.Engine(), &testproto.TestPingService{})
@@ -117,7 +119,7 @@ func TestRegisterResolver(t *testing.T) {
 			Port:      port,
 			Metadata:  nil,
 		}
-		err = reg.Register(service)
+		err := reg.Register(service)
 		assert.NoError(t, err)
 		l, err := net.Listen("tcp", string(service.Host)+":"+strconv.Itoa(service.Port))
 		assert.NoError(t, err)
@@ -162,7 +164,7 @@ func TestRegistryGrpcx(t *testing.T) {
 	cfg := testcnf.Sub("grpc")
 	cfg.Parser().Set("server.namespace", sn)
 	cfg.Parser().Set("server.addr", ":20002")
-	srv := grpcx.New(grpcx.WithConfiguration(cfg), grpcx.UseLogger())
+	srv := grpcx.New(grpcx.WithConfiguration(cfg))
 	go func() {
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		if err := srv.Run(); err != nil {
@@ -172,7 +174,7 @@ func TestRegistryGrpcx(t *testing.T) {
 	cfg2 := testcnf.Sub("grpc")
 	cfg2.Parser().Set("server.namespace", sn)
 	cfg2.Parser().Set("server.addr", ":20003")
-	srv2 := grpcx.New(grpcx.WithConfiguration(cfg2), grpcx.UseLogger())
+	srv2 := grpcx.New(grpcx.WithConfiguration(cfg2))
 	go func() {
 		helloworld.RegisterGreeterServer(srv2.Engine(), &helloworld.Server{})
 		if err := srv2.Run(); err != nil {

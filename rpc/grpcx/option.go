@@ -7,7 +7,10 @@ import (
 	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"sync"
 )
+
+var once sync.Once
 
 type Option func(s *serverOptions)
 
@@ -17,6 +20,7 @@ func WithConfiguration(cfg *conf.Configuration) Option {
 	}
 }
 
+// UseLogger use global logger and set grpc logger with woocoo logger
 func UseLogger() Option {
 	return func(s *serverOptions) {
 		l := log.Global()
@@ -24,7 +28,9 @@ func UseLogger() Option {
 			zap.Bool("grpc_log", true),
 		).Operator().WithOptions(zap.AddCallerSkip(2))
 		zgl := zapgrpc.NewLogger(lg)
-		grpclog.SetLoggerV2(zgl)
+		once.Do(func() {
+			grpclog.SetLoggerV2(zgl)
+		})
 	}
 }
 

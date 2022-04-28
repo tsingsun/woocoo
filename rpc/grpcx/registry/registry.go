@@ -18,12 +18,38 @@ import (
 const OptionKey = "options"
 
 var (
-	registryManager = make(map[string]Registry)
+	driverManager = make(map[string]Driver)
 )
 
+// Driver is the registry driver interface
+type Driver interface {
+	// CreateRegistry create a registry which for server side
+	CreateRegistry(config *conf.Configuration) (Registry, error)
+	// ResolverBuilder returns a resolver.Builder for client side
+	ResolverBuilder(config *conf.Configuration) (resolver.Builder, error)
+}
+
+// Registry provides an interface for service discovery
+type Registry interface {
+	// Register a service node
+	Register(serviceInfo *ServiceInfo) error
+	// Unregister a service node
+	Unregister(serviceInfo *ServiceInfo) error
+	// TTL returns the time to live of the service node, if it is not available, return 0.
+	// every tick will call Register function to refresh.
+	TTL() time.Duration
+	Close()
+}
+
 // RegisterDriver register a new Registry could be: conf.Configurable,and will be lazy loaded in server.Apply function
-func RegisterDriver(scheme string, reg Registry) {
-	registryManager[scheme] = reg
+func RegisterDriver(scheme string, drv Driver) {
+	driverManager[scheme] = drv
+}
+
+//GetRegistry get a registry by scheme
+func GetRegistry(scheme string) (Driver, bool) {
+	f, ok := driverManager[scheme]
+	return f, ok
 }
 
 // DialOption is the options for client dial when using registry resolver.
@@ -65,27 +91,6 @@ func TargetToOptions(target resolver.Target) (*DialOptions, error) {
 		options.ServiceName = target.Endpoint
 	}
 	return options, nil
-}
-
-func GetRegistry(scheme string) Registry {
-	if f, ok := registryManager[scheme]; ok {
-		return f
-	}
-	panic("can not find registry:" + scheme)
-}
-
-// Registry provides an interface for service discovery
-type Registry interface {
-	// Register a service node
-	Register(serviceInfo *ServiceInfo) error
-	// Unregister a service node
-	Unregister(serviceInfo *ServiceInfo) error
-	// TTL returns the time to live of the service node, if it is not available, return 0.
-	// every tick will call Register function to refresh.
-	TTL() time.Duration
-	Close()
-	// ResolverBuilder returns a resolver.Builder.
-	ResolverBuilder(config *conf.Configuration) resolver.Builder
 }
 
 // ServiceInfo is the service information

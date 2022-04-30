@@ -84,12 +84,6 @@ func New(opts ...Option) *Server {
 	return s
 }
 
-func (s *Server) applyOptions(opts ...Option) {
-	for _, o := range opts {
-		o(&s.opts)
-	}
-}
-
 func (s *Server) ListenAndServe() error {
 	lis, err := net.Listen("tcp", s.opts.Addr)
 	if err != nil {
@@ -197,7 +191,7 @@ func (s *Server) Run() error {
 	// kill (no param) default send syscall.SIGTERM
 	// kill -2 is syscall.SIGINT
 	// kill -9 is syscall.SIGKILL but can't be caught, so don't need add it
-	quit := make(chan os.Signal)
+	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case <-quit:

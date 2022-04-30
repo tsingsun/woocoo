@@ -1,0 +1,38 @@
+run:
+  go: '1.17'
+  timeout: 3m
+
+linters-settings:
+  errcheck:
+    ignore: fmt:.*,Read|Write|Close|Exec,io:Copy
+  dupl:
+    threshold: 100
+  funlen:
+    lines: 115
+    statements: 115
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    - errcheck
+    - funlen
+    - gocritic
+    - gofmt
+    - goheader
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unused
+    - varcheck
+    - whitespace

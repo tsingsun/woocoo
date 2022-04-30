@@ -5,7 +5,7 @@ import (
 	"log"
 )
 
-// server is used to implement helloworld.GreeterServer.
+// Server is used to implement helloworld.GreeterServer.
 type Server struct {
 	UnimplementedGreeterServer
 	count int

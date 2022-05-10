@@ -2,7 +2,7 @@ appName: woocoo
 version: 0.0.1
 development: true
 log:
-  core:
+  cores:
     - level: debug
       disableCaller: true
       disableStacktrace: true

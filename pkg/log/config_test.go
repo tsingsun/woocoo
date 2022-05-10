@@ -20,7 +20,7 @@ func TestNewConfigSolo(t *testing.T) {
 	var cfgStr = `
 development: true
 log:
-  core:
+  cores:
     - level: debug
       disableCaller: true
       disableStacktrace: true
@@ -76,7 +76,7 @@ func TestNewConfigTee(t *testing.T) {
 	var cfgStr = `
 development: true
 log:
-  core:
+  cores:
     - level: debug 
       disableCaller: true
       disableStacktrace: true
@@ -222,7 +222,7 @@ development: true
 log:
   disableTimestamp: true
   disableErrorVerbose: true
-  core:
+  cores:
     - level: debug
       disableCaller: true
       disableStacktrace: true

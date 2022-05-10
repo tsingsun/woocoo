@@ -43,7 +43,7 @@ development: true
 log:
   disableTimestamp: false
   disableErrorVerbose: false
-  core:
+  cores:
     - level: debug
       disableCaller: false
       disableStacktrace: false

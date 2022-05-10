@@ -75,7 +75,7 @@ func NewConfig(name string, opts ...Option) *Config {
 // Apply implement conf.Configurable interface
 //
 // if ServiceName and ServiceVersion and ServiceNameSpace is set in cfg, they will override before
-func (c *Config) Apply(cfg *conf.Configuration, path string) {
+func (c *Config) Apply(cfg *conf.Configuration) {
 	c.ServiceName = cfg.Root().AppName()
 	c.ServiceVersion = cfg.Root().Version()
 	if c.Resource == nil {

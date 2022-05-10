@@ -19,19 +19,19 @@ const (
 	defaultAddr = ":8080"
 )
 
-type serverOptions struct {
+type ServerOptions struct {
 	Addr              string              `json:"addr" yaml:"addr"`
 	SSLCertificate    string              `json:"sslCertificate" yaml:"sslCertificate"`
 	SSLCertificateKey string              `json:"sslCertificateKey" yaml:"sslCertificateKey"`
-	configuration     *conf.Configuration //not root configuration
+	configuration     *conf.Configuration // not root configuration
 	logger            log.ComponentLogger
 	handlerManager    *handler.Manager // middleware manager
-	gracefulStop      bool             //run with grace full shutdown
+	gracefulStop      bool             // run with grace full shutdown
 }
 
 type Server struct {
 	// opts is struct server parameter
-	opts serverOptions
+	opts ServerOptions
 	// hold the gin router
 	router *Router
 	// low level
@@ -41,7 +41,7 @@ type Server struct {
 // New create a web server
 func New(opts ...Option) *Server {
 	s := &Server{
-		opts: serverOptions{
+		opts: ServerOptions{
 			Addr:           defaultAddr,
 			logger:         log.Component(log.WebComponentName),
 			handlerManager: handler.NewManager(),
@@ -64,7 +64,7 @@ func New(opts ...Option) *Server {
 }
 
 // ServerOptions return a setting used by web server
-func (s *Server) ServerOptions() serverOptions {
+func (s *Server) ServerOptions() ServerOptions {
 	return s.opts
 }
 
@@ -94,8 +94,7 @@ func (s *Server) beforeRun() error {
 	if s.opts.Addr == "" {
 		return fmt.Errorf("web server configuration is not correct: miss listen")
 	}
-	return s.router.RehandleRule()
-
+	return nil
 }
 
 // Stop http server and clear resource
@@ -108,9 +107,7 @@ func (s *Server) Stop() error {
 		hm.Shutdown()
 	}
 	// ignore error handling,see https://github.com/uber-go/zap/issues/880
-	if err := log.Sync(); err != nil {
-		log.StdPrintln(err)
-	}
+	log.Sync() //nolint:errcheck
 	return nil
 }
 
@@ -135,7 +132,7 @@ func (s *Server) ListenAndServe() (err error) {
 //
 // you can process whole yourself
 func (s *Server) Run() error {
-	defer s.Stop()
+	defer s.Stop() //nolint:errcheck
 	ch := make(chan error)
 	go func() {
 		log.StdPrintf("web server is starting:%s", s.opts.Addr)

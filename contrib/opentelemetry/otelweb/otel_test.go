@@ -16,15 +16,12 @@ import (
 	b3prop "go.opentelemetry.io/contrib/propagators/b3"
 )
 
-func init() {
-	gin.SetMode(gin.ReleaseMode) // silence annoying log msgs
-}
-
 func TestOtelHandler(t *testing.T) {
 	var cfgStr = `
 appName: test
 otel:
-  tracerProvider: stdout
+  traceExporterEndpoint: stdout
+  metricExporterEndpoint: stdout
 `
 	rcfg := conf.NewFromBytes([]byte(cfgStr))
 	hcfg := rcfg.Sub("otel")

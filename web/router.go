@@ -2,36 +2,38 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"reflect"
-	"runtime"
 )
 
-var registerRule = RuleManager{}
+// RouterGroup is a wrapper for echo.Group.
+// echo.Group is too sample and does not support search.
+type RouterGroup struct {
+	Group    *gin.RouterGroup
+	basePath string
+	Router   *Router
+}
 
-type RuleManager map[string]gin.RouteInfo
-
-//Router is base on Gin
-//you can use AfterRegisterInternalHandler to replace an inline HandlerFunc or add a new
+// Router is base on Gin
+// you can use AfterRegisterInternalHandler to replace an inline HandlerFunc or add a new
 type Router struct {
 	*gin.Engine
-	Groups                       []*gin.RouterGroup
-	serverOptions                *serverOptions
-	hms                          RuleManager
+	//*gin.Engine
+	Groups                       []*RouterGroup
+	serverOptions                *ServerOptions
 	AfterRegisterInternalHandler func(*Router)
 }
 
-func NewRouter(options *serverOptions) *Router {
-	if options.configuration != nil && options.configuration.Development {
-		gin.SetMode(gin.ReleaseMode)
-		gin.DisableConsoleColor()
-	}
-	return &Router{
+func NewRouter(options *ServerOptions) *Router {
+	gin.SetMode(gin.ReleaseMode)
+	gin.DisableConsoleColor()
+
+	r := &Router{
 		Engine:        gin.New(),
 		serverOptions: options,
-		hms:           RuleManager{},
 	}
+	return r
 }
 
 func (r *Router) Apply(cfg *conf.Configuration) error {
@@ -49,84 +51,63 @@ func (r *Router) Apply(cfg *conf.Configuration) error {
 	for _, rItem := range rgs {
 		var name string
 		for s := range rItem.Raw() {
-			name = s
+			name = s // key is the router group name
 			break
 		}
-		var gr *gin.RouterGroup
+
 		rCfg := rItem.Cut(name)
-		// The sequence allows flexible processing of handlers
-		if name == "default" {
-			gr = &r.Engine.RouterGroup
-		} else {
-			gr = r.Engine.Group(rCfg.String("basePath"))
-			gr.Handlers = gin.HandlersChain{}
-		}
-		r.Groups = append(r.Groups, gr)
-		hfs := rCfg.Slices("handleFuncs")
+		hfs := rCfg.Slices("middlewares")
+
+		var mdl []gin.HandlerFunc
 		for _, hItem := range hfs {
 			var fname string
 			for s := range hItem.Raw() {
 				fname = s
 				break
 			}
-			if hf, ok := r.serverOptions.handlerManager.GetHandler(fname); ok {
+			if hf, ok := r.serverOptions.handlerManager.Get(fname); ok {
 				subhf := hItem.Cut(fname)
 				// if subhf is empty,pass the original config
 				if len(subhf.Keys()) == 0 {
 					subhf = hItem
 				}
-				gr.Use(hf.ApplyFunc(cfg.CutFromOperator(subhf)))
+				mdl = append(mdl, hf.ApplyFunc(cfg.CutFromOperator(subhf)))
 			} else {
 				return errors.New("middleware not found:" + fname)
 			}
 		}
-	}
-	return nil
-}
-
-//Collect convert RoutesInfo into map,
-//Note: Gin.Engine.Routes() return the last rule for each rule
-func (r *Router) Collect() RuleManager {
-	rs := r.Engine.Routes()
-	for _, info := range rs {
-		if _, ok := r.hms[info.Handler]; !ok {
-			r.hms[info.Path] = info
+		var gr RouterGroup
+		// The sequence allows flexible processing of handlers
+		gr.basePath = rCfg.String("basePath")
+		if name == "default" {
+			gr.Router = r
+			r.Engine.Use(mdl...)
+		} else {
+			if gr.basePath == "" {
+				return fmt.Errorf("router group: %s must have a basePath", name)
+			}
+			gr.Group = r.Engine.Group(gr.basePath)
+			// clear handlers,let group use self config
+			gr.Group.Handlers = gin.HandlersChain{}
+			gr.Router = r
+			gr.Group.Use(mdl...)
 		}
-	}
-	return r.hms
-}
-
-//RehandleRule use for adding customize route rules into Router
-func (r *Router) RehandleRule() error {
-	for _, ruleInfo := range registerRule {
-		r.Engine.Handle(ruleInfo.Method, ruleInfo.Path, ruleInfo.HandlerFunc)
+		r.Groups = append(r.Groups, &gr)
 	}
 	return nil
 }
 
-// Group return a specified router group by an url format base path.
+// FindGroup return a specified router group by an url format base path.
 //
 // parameter basePath is map to configuration:
 //   routerGroups:
 //     - group:
 //         basePath: "/auth"
-func (r *Router) Group(basePath string) *gin.RouterGroup {
+func (r *Router) FindGroup(basePath string) *RouterGroup {
 	for _, group := range r.Groups {
-		if group.BasePath() == basePath {
+		if group.basePath == basePath {
 			return group
 		}
 	}
-	return nil
-}
-
-//RegisterRouteRule Support register a route rule with only one HandlerFunc
-func RegisterRouteRule(path, method string, handlerFunc gin.HandlerFunc) error {
-	var ri = gin.RouteInfo{
-		Path:        path,
-		Method:      method,
-		HandlerFunc: handlerFunc,
-		Handler:     runtime.FuncForPC(reflect.ValueOf(handlerFunc).Pointer()).Name(),
-	}
-	registerRule[ri.Path] = ri
 	return nil
 }

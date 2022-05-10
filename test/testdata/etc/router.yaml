@@ -10,7 +10,7 @@ web:
       - X-Real-XIP
     routerGroups:
       - default:
-          handleFuncs:
+          middlewares:
             - otel:
             - accessLog:
                 requestBody: true
@@ -19,27 +19,16 @@ web:
             - recovery:
       - auth:
           basePath: "/auth"
-          handleFuncs:
+          middlewares:
             - auth:
-                realm: woocoo
-                secret: 12345678
-                privKey: config/privKey.pem
-                pubKey: config/pubKey.pem
-                tenantHeader: Qeelyn-Org-Id
-                disabledExpiredCheck: false
+                signingKey: secret
+                # use pem format
+                # signingKey: "file:///./jwt_public_key.pem"
       - graphql:
           basePath: "/graphql"
-          handleFuncs:
+          middlewares:
             - graphql:
                 queryPath: "/query"
                 docPath: "/"
                 group: "graphql"
                 subDomain: ""
-  ##以下配置暂时用于 标识出哪些路由为被客制化的
-  routerules:
-    - path: /
-      handler: "GraphQL DevTool"
-      method: get
-    - path: /query
-      handler: "GraphQL Query"
-      method: post

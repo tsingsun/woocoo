@@ -1,11 +1,11 @@
-package logger_test
+package interceptor_test
 
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/logger"
+	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/test/testproto"
 	"go.uber.org/zap"
@@ -22,8 +22,8 @@ var (
 
 func applog() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-		if lctx, ok := logger.FromIncomingContext(ctx); ok {
-			newctx := logger.AppendToContext(ctx, lctx, zap.String("logger_test", "test"))
+		if lctx, ok := interceptor.LoggerFromIncomingContext(ctx); ok {
+			newctx := interceptor.AppendLoggerToContext(ctx, lctx, zap.String("logger_test", "test"))
 			return handler(newctx, req)
 		}
 		return handler(ctx, req)
@@ -42,7 +42,7 @@ func TestUnaryServerInterceptor(t *testing.T) {
 			// The following grpc.ServerOption adds an interceptor for all unary
 			// RPCs. To configure an interceptor for streaming RPCs, see:
 			// https://godoc.org/google.golang.org/grpc#StreamInterceptor
-			grpc.ChainUnaryInterceptor(logger.UnaryServerInterceptor(clfg), applog()),
+			grpc.ChainUnaryInterceptor(interceptor.LoggerUnaryServerInterceptor(clfg), applog()),
 		}
 
 		s := grpc.NewServer(opts...)

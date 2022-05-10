@@ -9,11 +9,13 @@ replace (
 
 require (
 	github.com/gin-gonic/gin v1.7.7
-	github.com/tsingsun/woocoo v0.0.0-20220210143705-59f91b259d55
+	github.com/tsingsun/woocoo v0.0.3-0.20220421021641-182e96847d10
 	github.com/tsingsun/woocoo/contrib/opentelemetry v0.0.0-00010101000000-000000000000
 )
 
 require (
+	github.com/99designs/gqlgen v0.17.3 // indirect
+	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
@@ -24,7 +26,9 @@ require (
 	github.com/go-playground/validator/v10 v10.9.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/knadh/koanf v1.4.1 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
@@ -35,6 +39,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/ugorji/go/codec v1.2.6 // indirect
+	github.com/vektah/gqlparser/v2 v2.4.2 // indirect
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.29.0 // indirect
 	go.opentelemetry.io/otel v1.4.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.4.1 // indirect

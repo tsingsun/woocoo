@@ -1,37 +1,41 @@
-package recovery_test
+package interceptor
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/logger"
-	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor/recovery"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/test/testproto"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 	"net"
 	"testing"
 	"time"
 )
 
-var (
-	cnf  = conf.New(conf.LocalPath(testdata.TestConfigFile()), conf.BaseDir(testdata.BaseDir())).Load()
-	addr = "localhost:50053"
-)
-
-func TestUnaryServerInterceptor(t *testing.T) {
+func TestRecoveryUnaryServerInterceptorUnary(t *testing.T) {
+	cnf := conf.New(conf.BaseDir(testdata.BaseDir())).Load()
+	addr := "localhost:50053"
 	p := conf.NewParserFromStringMap(map[string]interface{}{
 		"TimestampFormat": "2006-01-02 15:04:05",
 	})
+	zl, err := zap.NewProduction()
+	assert.NoError(t, err)
 	clfg := conf.NewFromParse(p)
-	gloger := log.Logger{}
+	gloger := log.New(zl)
+	gloger.AsGlobal()
 	gloger.Apply(cnf.Sub("log"))
+	zgl := zapgrpc.NewLogger(gloger.Operator())
+	grpclog.SetLoggerV2(zgl)
 	go func() {
 		opts := []grpc.ServerOption{
 			// The following grpc.ServerOption adds an interceptor for all unary
 			// RPCs. To configure an interceptor for streaming RPCs, see:
 			// https://godoc.org/google.golang.org/grpc#StreamInterceptor
-			grpc.ChainUnaryInterceptor(logger.UnaryServerInterceptor(clfg), recovery.UnaryServerInterceptor(cnf)),
+			grpc.ChainUnaryInterceptor(LoggerUnaryServerInterceptor(clfg), RecoveryUnaryServerInterceptor(cnf)),
 		}
 
 		s := grpc.NewServer(opts...)
@@ -63,5 +67,4 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	if err == nil {
 		t.Error("must error")
 	}
-	gloger.Sync()
 }

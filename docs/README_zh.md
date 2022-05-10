@@ -4,27 +4,22 @@
 
 ## WooCoo简介
 
-WooCoo的定位是一个基于Golang的应用开发框架及工具包,以便开发者通过本工具来开发各种Api应用或RPC服务.
+WooCoo的定位是一个基于Golang的应用开发框架及工具包,以便开发者通过本工具来开发Web或RPC应用.
 
-本项目更偏向粘合剂作用,核心组件选取开源流程项目,目前实现的功能:
+本项目的主要目标: 一次编写长久有效.
 
-本工具包提供下列功能:
+本项目更偏向粘合剂作用,核心组件选取主流的开源项目,支持也是长长久久. 
 
-- 基本组件配置化,多配置文件支持,方便多环境下的开发配置
+实现的功能:
+
+- 配置化,基本组件支持配置使用.
 - 日志组件,支持多日志输出,请参见[Logger](docs/logger.md),
 - OpenTelemetry支持,请参见[OpenTelemetry](docs/otel.md)
-- web服务,支持GraphQL
-- grpc服务
-- JWT-based验证
-
-核心组件的选取:
-
-- 日志: [Uber Zap](http://go.uber.org/zap)
-- Web路由框架: [gin](http://github.com/gin-gonic/gin)
-
-微服务相关:
-
-- 服务注册与发现: 实现了[etcd](https://github.com/coreos/etcd),留有其他组件扩展的能力
+- web应用开发支持,方便开发REST,GraphQL接口型应用,集成了常用的中间件.
+- grpc服务以及针对grpc client便利性支持
+- 微服务的注册现发现:
+  - etcdv3: 基于etcd的注册及发现
+  - Polaris: 
 
 ## 其他
 

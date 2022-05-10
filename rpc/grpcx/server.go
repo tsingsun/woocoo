@@ -25,7 +25,7 @@ type serverOptions struct {
 	Namespace string `json:"namespace" yaml:"namespace"`
 	// Version is the grpc server version,default is Application Version which is set in the Application level config file
 	Version string `json:"version" yaml:"version"`
-	//RegistryMeta is the metadata for the registry service
+	// RegistryMeta is the metadata for the registry service
 	RegistryMeta map[string]string `json:"registryMeta" yaml:"registryMeta"`
 
 	grpcOptions []grpc.ServerOption
@@ -41,7 +41,7 @@ type Server struct {
 	exit   chan chan error
 
 	registry registry.Registry
-	//ServiceInfos is for service discovery,it converts from grpc service info
+	// ServiceInfos is for service discovery,it converts from grpc service info
 	ServiceInfos []*registry.ServiceInfo
 }
 
@@ -59,7 +59,7 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 			panic(err)
 		}
 	}
-	//engine
+	// engine
 	if k := strings.Join([]string{"engine"}, conf.KeyDelimiter); cfg.IsSet(k) {
 		s.opts.grpcOptions = cGrpcServerOptions.Apply(cfg, k)
 	}
@@ -89,7 +89,7 @@ func (s *Server) ListenAndServe() error {
 	if err != nil {
 		return err
 	}
-	//registry run
+	// registry run
 	if s.registry != nil {
 		port := lis.Addr().(*net.TCPAddr).Port
 
@@ -178,7 +178,7 @@ func (s *Server) Stop() (err error) {
 
 // Run is a sample way to start the grpc server with gracefulStop stop
 func (s *Server) Run() error {
-	defer s.Stop()
+	defer s.Stop() //nolint:errcheck
 	ch := make(chan error)
 	go func() {
 		grpclog.Info("%s start grpc server on %s", s.opts.Namespace, s.opts.Addr)

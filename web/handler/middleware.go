@@ -4,13 +4,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"github.com/tsingsun/woocoo/web/handler/auth"
-	"github.com/tsingsun/woocoo/web/handler/logger"
-	"github.com/tsingsun/woocoo/web/handler/recovery"
 )
 
-// Handler is an instance to build a gin middleware for web application.
-type Handler interface {
+var (
+	logger = log.Component(log.WebComponentName)
+)
+
+// Middleware is an instance to build a echo middleware for web application.
+type Middleware interface {
 	// Name returns the name of the handler.
 	Name() string
 	// ApplyFunc return a gin's handler function by a configuration
@@ -20,12 +21,12 @@ type Handler interface {
 }
 
 type Manager struct {
-	handlers map[string]Handler
+	middlewares map[string]Middleware
 }
 
 func NewManager() *Manager {
 	mgr := &Manager{
-		handlers: make(map[string]Handler),
+		middlewares: make(map[string]Middleware),
 	}
 	mgr.registerIntegrationHandler()
 	return mgr
@@ -34,23 +35,26 @@ func NewManager() *Manager {
 // RegisterHandlerFunc registry a handler middleware
 //
 // you can override exists handler
-func (m *Manager) RegisterHandlerFunc(name string, handler Handler) {
-	if _, ok := m.handlers[name]; ok {
+func (m *Manager) RegisterHandlerFunc(name string, handler Middleware) {
+	if _, ok := m.middlewares[name]; ok {
 		log.Infof("handler override:%s", name)
 	}
-	m.handlers[name] = handler
+	m.middlewares[name] = handler
 }
 
-func (m *Manager) GetHandler(name string) (Handler, bool) {
-	h, ok := m.handlers[name]
+func (m *Manager) Get(name string) (Middleware, bool) {
+	h, ok := m.middlewares[name]
 	return h, ok
 }
 
-func integration() map[string]Handler {
-	var handlerMap = map[string]Handler{
-		recovery.RecoveryHandlerName: recovery.New(),
-		auth.AuthHandlerName:         auth.New(),
-		logger.LoggerHandlerName:     logger.New(),
+func integration() map[string]Middleware {
+	jwt := JWT()
+	reco := Recovery()
+	acclog := Logger()
+	var handlerMap = map[string]Middleware{
+		reco.Name():   reco,
+		jwt.Name():    jwt,
+		acclog.Name(): acclog,
 	}
 	return handlerMap
 }
@@ -63,7 +67,7 @@ func (m *Manager) registerIntegrationHandler() {
 
 // Shutdown a handler if handler base on file,net such as need to release resource
 func (m *Manager) Shutdown() {
-	for _, handler := range m.handlers {
+	for _, handler := range m.middlewares {
 		handler.Shutdown()
 	}
 }

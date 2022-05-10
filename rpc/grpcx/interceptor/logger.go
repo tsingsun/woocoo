@@ -1,4 +1,4 @@
-package logger
+package interceptor
 
 import (
 	"context"
@@ -24,36 +24,68 @@ var (
 
 type loggerIncomingKey struct{}
 
-func UnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInterceptor {
-	o := defautlOptions
+var defaultLoggerOptions = &LoggerOptions{
+	TimestampFormat: time.RFC3339,
+}
+
+type LoggerOptions struct {
+	TimestampFormat string `json:"TimestampFormat" yaml:"TimestampFormat"`
+}
+
+func (o *LoggerOptions) Apply(cfg *conf.Configuration) {
+	if err := cfg.Unmarshal(o); err != nil {
+		panic(err)
+	}
+}
+
+func LoggerUnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInterceptor {
+	o := defaultLoggerOptions
 	o.Apply(cfg)
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		start := time.Now()
 		newCtx := newLoggerForCall(ctx, info.FullMethod, start, o.TimestampFormat)
 		resp, err := handler(newCtx, req)
-		ctxloger, ok := FromIncomingContext(newCtx)
+
 		latency := time.Since(start)
-		code := status.Code(err)
-		level := DefaultCodeToLevel(code)
-		fs := []zap.Field{
-			zap.Int("status", int(code)),
-			zap.Duration("latency", latency),
-			zap.Error(err),
-		}
-		if ok {
-			fs = append(fs, ctxloger.fields...)
-		}
-		log.Operator().Check(level, info.FullMethod).Write(fs...)
+		loggerOutPut(newCtx, info.FullMethod, latency, err)
 		return resp, err
+	}
+}
+
+func loggerOutPut(ctx context.Context, method string, latency time.Duration, err error) {
+	code := status.Code(err)
+	level := DefaultCodeToLevel(code)
+	fs := []zap.Field{
+		zap.Int("status", int(code)),
+		zap.Duration("latency", latency),
+		zap.Error(err),
+	}
+
+	ctxloger, ok := LoggerFromIncomingContext(ctx)
+	if ok {
+		fs = append(fs, ctxloger.fields...)
+	}
+	// use global
+	log.Operator().Check(level, method).Write(fs...)
+}
+
+func LoggerStreamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterceptor {
+	o := defaultLoggerOptions
+	o.Apply(cfg)
+	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		start := time.Now()
+		newCtx := newLoggerForCall(stream.Context(), info.FullMethod, start, o.TimestampFormat)
+		wrapped := WrapServerStream(stream)
+		wrapped.WrappedContext = newCtx
+		err := handler(srv, wrapped)
+		latency := time.Since(start)
+		loggerOutPut(newCtx, info.FullMethod, latency, err)
+		return err
 	}
 }
 
 type contextLogger struct {
 	fields []zapcore.Field
-}
-
-func New() (*contextLogger, error) {
-	return &contextLogger{}, nil
 }
 
 func (c *contextLogger) Apply(cfg *conf.Configuration) {
@@ -72,17 +104,18 @@ func newLoggerForCall(ctx context.Context, fullMethodString string, start time.T
 		f = append(f, zap.Any("peer.address", cl.Addr.String()))
 	}
 	callLog := &contextLogger{fields: append(f, serverCallFields(fullMethodString)...)}
-	return AppendToContext(ctx, callLog)
+	return AppendLoggerToContext(ctx, callLog)
 }
 
-func AppendToContext(ctx context.Context, logger *contextLogger, fields ...zap.Field) context.Context {
+func AppendLoggerToContext(ctx context.Context, logger *contextLogger, fields ...zap.Field) context.Context {
 	if len(fields) > 0 {
 		logger.fields = append(logger.fields, fields...)
 	}
 	return context.WithValue(ctx, loggerIncomingKey{}, logger)
 }
 
-func FromIncomingContext(ctx context.Context) (*contextLogger, bool) {
+// LoggerFromIncomingContext returns the logger stored in ctx, if any.
+func LoggerFromIncomingContext(ctx context.Context) (*contextLogger, bool) {
 	fs, ok := ctx.Value(loggerIncomingKey{}).(*contextLogger)
 	if !ok {
 		return nil, false

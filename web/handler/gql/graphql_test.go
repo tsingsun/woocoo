@@ -20,19 +20,19 @@ web:
   engine:
     routerGroups:
       - default:
-          handleFuncs:
+          middlewares:
             - graphql:
                 queryPath: "/query"
                 docPath: "/"
                 group: "/"
       - graphql:
           basePath: "/graphql"
-          handleFuncs:
+          middlewares:
             - graphql:
 `
 
 	cfg := conf.NewFromBytes([]byte(cfgStr))
-	srv := web.New(web.Configuration(cfg.Sub("web")), web.RegisterHandler(New()))
+	srv := web.New(web.Configuration(cfg.Sub("web")), web.RegisterMiddleware(New()))
 	gqlsrvList, err := RegisterSchema(srv, &graphql.ExecutableSchemaMock{
 		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]interface{}) (int, bool) {
 			panic("mock out the Complexity method")
@@ -41,7 +41,7 @@ web:
 			panic("mock out the Exec method")
 		},
 		SchemaFunc: func() *ast.Schema {
-			//panic("mock out the Schema method")
+			// panic("mock out the Schema method")
 			return nil
 		},
 	}, &graphql.ExecutableSchemaMock{
@@ -52,7 +52,7 @@ web:
 			panic("mock out the Exec method")
 		},
 		SchemaFunc: func() *ast.Schema {
-			//panic("mock out the Schema method")
+			// panic("mock out the Schema method")
 			return nil
 		},
 	})

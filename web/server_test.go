@@ -12,10 +12,6 @@ import (
 	"time"
 )
 
-func init() {
-	gin.SetMode(gin.ReleaseMode)
-}
-
 func TestNew(t *testing.T) {
 	srv := web.New()
 	r := httptest.NewRequest("GET", "/user/123", nil)
@@ -42,29 +38,18 @@ web:
       - X-Real-XIP
     routerGroups:
       - default:
-          handleFuncs: 
+          middlewares: 
             - accessLog:
                 exclude:
                   - IntrospectionQuery
             - recovery:
       - auth:
           basePath: "/auth"
-          handleFuncs:
-            - auth:
-                realm: woocoo
-                secret: 12345678
+          middlewares:
+            - jwt: 
+                signingKey: 12345678
                 privKey: config/privKey.pem
-                pubKey: config/pubKey.pem
-                tenantHeader: Qeelyn-Org-Id
-                disabledExpiredCheck: false
-  ##以下配置暂时用于 标识出哪些路由为被客制化的
-  routerules:
-    - path: /
-      handler: "GraphQL DevTool"
-      method: get
-    - path: /query
-      handler: "GraphQL Query"
-      method: post
+                pubKey: config/pubKey.pem  
 `
 	cfg := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
 	srv := web.New(web.Configuration(cfg.Sub("web")))
@@ -74,7 +59,7 @@ web:
 	srv.Router().GET("/user/:id", func(c *gin.Context) {
 		c.String(200, "User")
 	})
-	srv.Router().ServeHTTP(w, r)
+	srv.Router().Engine.ServeHTTP(w, r)
 	assert.Equal(t, 200, w.Code)
 }
 

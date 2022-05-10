@@ -176,7 +176,7 @@ func (c *Configuration) SetBaseDir(dir string) {
 func Global() *AppConfiguration {
 	if global.Configuration == nil || global.parser == nil {
 		global.Configuration = New().Load()
-		//panic("global configuration has not initialed.")
+		// panic("global configuration has not initialed.")
 	}
 	return &global
 }
@@ -239,7 +239,7 @@ func (c Configuration) passRoot(sub *Configuration) {
 	}
 }
 
-//SubOperator return the slice operator of the Configuration which is only contains slice path
+// SubOperator return the slice operator of the Configuration which is only contains slice path
 func (c *Configuration) SubOperator(path string) (out []*koanf.Koanf, err error) {
 	raw := c.parser.k.Raw()
 	for k, v := range raw {
@@ -367,10 +367,10 @@ func (c *Configuration) Duration(path string) time.Duration {
 	return c.parser.k.Duration(path)
 }
 
-//IsSet check if the key is set
+// IsSet check if the key is set
 func IsSet(path string) bool { return global.IsSet(path) }
 
-//IsSet check if the key is set
+// IsSet check if the key is set
 func (c *Configuration) IsSet(path string) bool {
 	return c.parser.IsSet(path)
 }

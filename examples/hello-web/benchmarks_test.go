@@ -36,6 +36,7 @@ web:
       - default:
           handleFuncs:
             - accessLog:
+                format: "clientIp,method,path,status,latency,bytesOut,error,userAgent"
             - recovery:
 `
 	_, currentFile, _, _ := runtime.Caller(0)

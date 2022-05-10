@@ -2,45 +2,21 @@ package web
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
-type CustomizeRoute struct{}
-
-func (r *CustomizeRoute) InitRule() {
-	RegisterRouteRule("/", http.MethodGet, func(context *gin.Context) {})
-}
-
-func (r CustomizeRoute) Get() func(context2 *gin.Context) {
-	return func(context2 *gin.Context) {
-	}
-}
-
-func TestRouter_Collect(t *testing.T) {
-	r := NewRouter(&serverOptions{})
-	r.Engine = gin.New()
-	r.Engine.GET("/", func(context *gin.Context) {
-		context.JSON(500, nil)
-	})
-	c := r.Collect()
-	if len(c) != 1 {
-		t.Error("not collect rule")
-	}
-}
-
 func TestRouter_AddRule(t *testing.T) {
-	r := NewRouter(&serverOptions{})
+	r := NewRouter(&ServerOptions{})
 	r.Engine = gin.New()
-	var newfunc gin.HandlerFunc = func(context *gin.Context) {
-		context.JSON(500, nil)
+	var newfunc gin.HandlerFunc = func(c *gin.Context) {
+		c.String(http.StatusOK, "hello")
 	}
 	r.Engine.GET("/", newfunc)
-	r.Engine.GET("/a", CustomizeRoute{}.Get())
-	cr := &CustomizeRoute{}
-	cr.InitRule()
-	c := r.Collect()
-	if len(c) != 2 {
-		t.Error("add rule failure!")
-	}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	r.Engine.ServeHTTP(rec, req)
+	assert.Equal(t, rec.Body.String(), "hello")
 }

@@ -2,7 +2,7 @@ appName: hello-web
 version: 0.0.1
 development: true
 log:
-  core:
+  cores:
     - level: debug
       disableCaller: true
       disableStacktrace: true
@@ -24,7 +24,7 @@ web:
   engine:
     routerGroups:
       - default:
-          handleFuncs:
+          middlewares:
             - otel:
                 traceExporterEndpoint: stdout
                 metricExporterEndpoint:

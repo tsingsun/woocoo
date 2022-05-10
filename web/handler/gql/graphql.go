@@ -10,8 +10,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/web"
-	"github.com/tsingsun/woocoo/web/handler/logger"
-	"github.com/tsingsun/woocoo/web/handler/recovery"
+	"github.com/tsingsun/woocoo/web/handler"
 	"net/http"
 	"runtime/debug"
 )
@@ -69,7 +68,7 @@ func (h *Handler) Shutdown() {
 
 // RegisterSchema is builder for initializing graphql schemas,initialize order is based on the router group order
 func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss []*gqlgen.Server, err error) {
-	h, ok := websrv.HandlerManager().GetHandler(graphqlHandlerName)
+	h, ok := websrv.HandlerManager().Get(graphqlHandlerName)
 	if !ok {
 		return nil, fmt.Errorf("handler %s not found", graphqlHandlerName)
 	}
@@ -78,9 +77,9 @@ func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss
 			continue
 		}
 		opt := h.(*Handler).opts[i]
-		var rg *gin.RouterGroup
-		if rg = websrv.Router().Group(opt.Group); rg == nil {
-			rg = &websrv.Router().Engine.RouterGroup
+		var rg *web.RouterGroup
+		if rg = websrv.Router().FindGroup(opt.Group); rg == nil {
+			rg = &web.RouterGroup{Group: &websrv.Router().Engine.RouterGroup, Router: websrv.Router()}
 		}
 		ss = append(ss, newGraphqlServer(rg, schema, &opt))
 	}
@@ -88,30 +87,39 @@ func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss
 }
 
 // newGraphqlServer create a graphiql server
-func newGraphqlServer(routerGroup *gin.RouterGroup, schema graphql.ExecutableSchema, opt *Options) *gqlgen.Server {
+func newGraphqlServer(routerGroup *web.RouterGroup, schema graphql.ExecutableSchema, opt *Options) *gqlgen.Server {
 	server := gqlgen.NewDefaultServer(schema)
 	server.AroundResponses(func(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
 		if gctx, err := FromIncomingContext(ctx); err == nil {
-			gctx.Set(logger.InnerPath, graphql.GetOperationContext(ctx).OperationName)
+			gctx.Set(handler.InnerPath, graphql.GetOperationContext(ctx).OperationName)
 		}
 		return next(ctx)
 	})
 
-	routerGroup.POST(opt.QueryPath, func(c *gin.Context) {
+	var QueryHandler = func(c *gin.Context) {
 		server.ServeHTTP(c.Writer, c.Request)
-	})
-	routerGroup.GET(opt.DocPath, func(c *gin.Context) {
+	}
+
+	var DocHandler = func(c *gin.Context) {
 		// set endpoint to graphql-playground used in playground UI
 		h := playground.Handler("graphql", opt.SubDomain+opt.Group+opt.QueryPath)
 		h.ServeHTTP(c.Writer, c.Request)
-	})
+	}
+
+	if routerGroup.Group == nil {
+		routerGroup.Router.Engine.POST(opt.QueryPath, QueryHandler)
+		routerGroup.Router.Engine.GET(opt.DocPath, DocHandler)
+	} else {
+		routerGroup.Group.POST(opt.QueryPath, QueryHandler)
+		routerGroup.Group.GET(opt.DocPath, DocHandler)
+	}
 
 	server.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
 		gctx, e := FromIncomingContext(ctx)
 		if e != nil {
 			return e
 		}
-		recovery.HandleRecoverError(gctx, err, log.Component(log.WebComponentName), true)
+		handler.HandleRecoverError(gctx, err)
 		gctx.AbortWithStatus(http.StatusInternalServerError)
 		if conf.Global().Development {
 			log.StdPrintln(err)

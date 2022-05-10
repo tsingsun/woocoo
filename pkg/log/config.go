@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	zapConfigPath = "core"
+	zapConfigPath = "cores"
 	// rotate:[//[userinfo@]host][/]path[?query][#fragment]
 	rotateSchema = "Rotate"
 )
@@ -27,7 +27,7 @@ var once sync.Once
 // Sole use as one zap logger core
 type Config struct {
 	// ZapConfigs is for initial zap multi core
-	ZapConfigs []zap.Config `json:"core" yaml:"core"`
+	ZapConfigs []zap.Config `json:"cores" yaml:"cores"`
 	// Rotate is for log rotate
 	Rotate *rotate `json:"rotate" yaml:"rotate"`
 	// Disable automatic timestamps in output if use textEncoder
@@ -58,7 +58,7 @@ func NewConfig(cfg *conf.Configuration) (*Config, error) {
 		panic(err)
 	}
 	if len(kps) == 0 {
-		return nil, fmt.Errorf("none logger config,plz set up section: core")
+		return nil, fmt.Errorf("none logger config,plz set up section: cores")
 	}
 	v := &Config{
 		ZapConfigs: make([]zap.Config, len(kps)),
@@ -162,16 +162,16 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 		if err = c.fixZapConfig(&zc); err != nil {
 			return
 		}
-		tmpzl, err := zc.Build(opts...)
+		tmpzl, err := zc.Build()
 		if err != nil {
 			return nil, err
 		}
 		cores = append(cores, tmpzl.Core())
 	}
 	if len(cores) == 1 {
-		zl = zap.New(cores[0])
+		zl = zap.New(cores[0], opts...)
 	} else {
-		zl = zap.New(zapcore.NewTee(cores...))
+		zl = zap.New(zapcore.NewTee(cores...), opts...)
 	}
 	return
 }

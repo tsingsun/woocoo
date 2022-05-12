@@ -51,10 +51,12 @@ func integration() map[string]Middleware {
 	jwt := JWT()
 	reco := Recovery()
 	acclog := Logger()
+	errhandle := ErrorHandle()
 	var handlerMap = map[string]Middleware{
-		reco.Name():   reco,
-		jwt.Name():    jwt,
-		acclog.Name(): acclog,
+		reco.Name():      reco,
+		jwt.Name():       jwt,
+		acclog.Name():    acclog,
+		errhandle.Name(): errhandle,
 	}
 	return handlerMap
 }

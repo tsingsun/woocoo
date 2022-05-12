@@ -8,7 +8,7 @@ import (
 )
 
 type (
-	JWTOptions struct {
+	JWTConfig struct {
 		auth.JWTOptions `json:",squash" yaml:",squash"`
 
 		// TokenLookupFuncs defines a list of user-defined functions that extract JWT token from the given context.
@@ -56,7 +56,7 @@ func (mw *JWTMiddleware) Name() string {
 }
 
 func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	opts := &JWTOptions{
+	opts := &JWTConfig{
 		JWTOptions: *auth.NewJWT(),
 	}
 	if err := cfg.Unmarshal(&opts); err != nil {
@@ -69,7 +69,7 @@ func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 func (mw *JWTMiddleware) Shutdown() {
 }
 
-func jwtWithOption(opts *JWTOptions) gin.HandlerFunc {
+func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
 	if err := opts.Apply(); err != nil {
 		panic(err)
 	}
@@ -110,7 +110,7 @@ func jwtWithOption(opts *JWTOptions) gin.HandlerFunc {
 			err = lastExtractorErr
 		}
 		if opts.ErrorHandler != nil {
-			opts.ErrorHandler(err)
+			opts.ErrorHandler(err) //nolint:errcheck
 			return
 		}
 		if opts.ErrorHandlerWithContext != nil {
@@ -123,14 +123,7 @@ func jwtWithOption(opts *JWTOptions) gin.HandlerFunc {
 
 		// backwards compatible errors codes
 		if lastTokenErr != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"errors": []map[string]interface{}{
-					{
-						"code":    http.StatusUnauthorized,
-						"message": auth.ErrJWTInvalid.Error(),
-					},
-				},
-			})
+			c.JSON(http.StatusUnauthorized, FormatResponseError(http.StatusUnauthorized, lastTokenErr))
 		}
 	}
 }

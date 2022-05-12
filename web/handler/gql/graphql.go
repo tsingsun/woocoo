@@ -26,6 +26,7 @@ type Options struct {
 	// Group must the same as the base path of route group
 	Group     string
 	SubDomain string
+	Skip      bool
 }
 
 var defaultOptions = Options{
@@ -77,6 +78,9 @@ func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss
 			continue
 		}
 		opt := h.(*Handler).opts[i]
+		if opt.Skip {
+			continue
+		}
 		var rg *web.RouterGroup
 		if rg = websrv.Router().FindGroup(opt.Group); rg == nil {
 			rg = &web.RouterGroup{Group: &websrv.Router().Engine.RouterGroup, Router: websrv.Router()}

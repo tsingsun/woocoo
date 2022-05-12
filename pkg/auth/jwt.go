@@ -113,23 +113,23 @@ func NewJWT() *JWTOptions {
 	return &v
 }
 
-func (opts *JWTOptions) defaultParseToken(auth string, ctx context.Context) (interface{}, error) {
+func (opts *JWTOptions) defaultParseToken(authStr string, ctx context.Context) (interface{}, error) {
 	var err error
 
-	token := new(jwt.Token)
+	var token *jwt.Token
 	// Issue #647, #656
 	if _, ok := opts.Claims.(jwt.MapClaims); ok {
-		token, err = jwt.Parse(auth, opts.KeyFunc)
+		token, err = jwt.Parse(authStr, opts.KeyFunc)
 	} else {
 		t := reflect.ValueOf(opts.Claims).Type().Elem()
 		claims := reflect.New(t).Interface().(jwt.Claims)
-		token, err = jwt.ParseWithClaims(auth, claims, opts.KeyFunc)
+		token, err = jwt.ParseWithClaims(authStr, claims, opts.KeyFunc)
 	}
 	if err != nil {
 		return nil, err
 	}
 	if !token.Valid {
-		return nil, errors.New("invalid token")
+		return nil, ErrJWTInvalid
 	}
 	return token, nil
 }

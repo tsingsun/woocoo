@@ -8,7 +8,7 @@ import (
 	"runtime"
 )
 
-type RecoveryOptions struct {
+type RecoveryConfig struct {
 	// Size of the stack to be printed.
 	// Optional. Default value 4KB.
 	StackSize int `json:"stackSize" yaml:"stackSize"`
@@ -24,7 +24,7 @@ type RecoveryOptions struct {
 }
 
 var (
-	defaultRecoveryOptions = RecoveryOptions{
+	defaultRecoveryConfig = RecoveryConfig{
 		StackSize:         4 << 10, // 4 KB
 		DisableStackAll:   false,
 		DisablePrintStack: false,
@@ -43,7 +43,7 @@ func (h *RecoveryMiddleware) Name() string {
 }
 
 func (h *RecoveryMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	if err := cfg.Unmarshal(&defaultRecoveryOptions); err != nil {
+	if err := cfg.Unmarshal(&defaultRecoveryConfig); err != nil {
 		panic(err)
 	}
 	return gin.CustomRecovery(HandleRecoverError)
@@ -56,9 +56,9 @@ func HandleRecoverError(c *gin.Context, err interface{}) {
 	var stack []byte
 	var length int
 	httpRequest, _ := httputil.DumpRequest(c.Request, false)
-	if !defaultRecoveryOptions.DisablePrintStack {
-		stack = make([]byte, defaultRecoveryOptions.StackSize)
-		length = runtime.Stack(stack, !defaultRecoveryOptions.DisableStackAll)
+	if !defaultRecoveryConfig.DisablePrintStack {
+		stack = make([]byte, defaultRecoveryConfig.StackSize)
+		length = runtime.Stack(stack, !defaultRecoveryConfig.DisableStackAll)
 		stack = stack[:length]
 	}
 	logger.Error("[Recovery from panic]",

@@ -70,8 +70,6 @@ web:
 	g2 := gqlsrvList[0]
 	r = httptest.NewRequest("GET", "/graphql", nil)
 	w = httptest.NewRecorder()
-
 	g2.ServeHTTP(w, r)
 	assert.Equal(t, http.StatusOK, w.Code)
-
 }

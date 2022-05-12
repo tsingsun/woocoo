@@ -17,7 +17,7 @@ var (
 		"latency,bytesIn,bytesOut"
 )
 
-type LoggerOptions struct {
+type LoggerConfig struct {
 	Exclude []string `json:"exclude" yaml:"exclude"`
 	// Tags to construct the logger format.
 	//
@@ -59,7 +59,7 @@ func (h *LoggerMiddleware) Name() string {
 
 // ApplyFunc build a gin.HandlerFunc for AccessLog middleware
 func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	opts := LoggerOptions{
+	opts := LoggerConfig{
 		Format: defaultLoggerFormat,
 	}
 	if err := cfg.Unmarshal(&opts); err != nil {

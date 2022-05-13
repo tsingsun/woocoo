@@ -24,6 +24,7 @@ var errFormExtractorValueMissing = errors.New("missing value in the form")
 // ValuesExtractor defines a function for extracting values (keys/tokens) from the given context.
 type ValuesExtractor func(c *gin.Context) ([]string, error)
 
+// CreateExtractors creates a list of extractors based on the given list of extractor names.
 func CreateExtractors(lookups string, authScheme string) ([]ValuesExtractor, error) {
 	if lookups == "" {
 		return nil, nil
@@ -38,13 +39,13 @@ func CreateExtractors(lookups string, authScheme string) ([]ValuesExtractor, err
 
 		switch parts[0] {
 		case "query":
-			extractors = append(extractors, valuesFromQuery(parts[1]))
+			extractors = append(extractors, ValuesFromQuery(parts[1]))
 		case "param":
-			extractors = append(extractors, valuesFromParam(parts[1]))
+			extractors = append(extractors, ValuesFromParam(parts[1]))
 		case "cookie":
-			extractors = append(extractors, valuesFromCookie(parts[1]))
+			extractors = append(extractors, ValuesFromCookie(parts[1]))
 		case "form":
-			extractors = append(extractors, valuesFromForm(parts[1]))
+			extractors = append(extractors, ValuesFromForm(parts[1]))
 		case "header":
 			prefix := ""
 			if len(parts) > 2 {
@@ -59,19 +60,19 @@ func CreateExtractors(lookups string, authScheme string) ([]ValuesExtractor, err
 					prefix += " "
 				}
 			}
-			extractors = append(extractors, valuesFromHeader(parts[1], prefix))
+			extractors = append(extractors, ValuesFromHeader(parts[1], prefix))
 		}
 	}
 	return extractors, nil
 }
 
-// valuesFromHeader returns a functions that extracts values from the request header.
+// ValuesFromHeader returns a functions that extracts values from the request header.
 // valuePrefix is parameter to remove first part (prefix) of the extracted value. This is useful if header value has static
 // prefix like `Authorization: <auth-scheme> <authorisation-parameters>` where part that we want to remove is `<auth-scheme> `
 // note the space at the end. In case of basic authentication `Authorization: Basic <credentials>` prefix we want to remove
 // is `Basic `. In case of JWT tokens `Authorization: Bearer <token>` prefix is `Bearer `.
 // If prefix is left empty the whole value is returned.
-func valuesFromHeader(header string, valuePrefix string) ValuesExtractor {
+func ValuesFromHeader(header string, valuePrefix string) ValuesExtractor {
 	prefixLen := len(valuePrefix)
 	// standard library parses http.Request header keys in canonical form but we may provide something else so fix this
 	header = textproto.CanonicalMIMEHeaderKey(header)
@@ -108,8 +109,8 @@ func valuesFromHeader(header string, valuePrefix string) ValuesExtractor {
 	}
 }
 
-// valuesFromQuery returns a function that extracts values from the query string.
-func valuesFromQuery(param string) ValuesExtractor {
+// ValuesFromQuery returns a function that extracts values from the query string.
+func ValuesFromQuery(param string) ValuesExtractor {
 	return func(c *gin.Context) ([]string, error) {
 		result := c.QueryArray(param)
 		if len(result) == 0 {
@@ -121,8 +122,8 @@ func valuesFromQuery(param string) ValuesExtractor {
 	}
 }
 
-// valuesFromParam returns a function that extracts values from the url param string.
-func valuesFromParam(param string) ValuesExtractor {
+// ValuesFromParam returns a function that extracts values from the url param string.
+func ValuesFromParam(param string) ValuesExtractor {
 	return func(c *gin.Context) ([]string, error) {
 		result := make([]string, 0)
 		for i, p := range c.Params {
@@ -140,8 +141,8 @@ func valuesFromParam(param string) ValuesExtractor {
 	}
 }
 
-// valuesFromCookie returns a function that extracts values from the named cookie.
-func valuesFromCookie(name string) ValuesExtractor {
+// ValuesFromCookie returns a function that extracts values from the named cookie.
+func ValuesFromCookie(name string) ValuesExtractor {
 	return func(c *gin.Context) ([]string, error) {
 		cookies := c.Request.Cookies()
 		if len(cookies) == 0 {
@@ -164,8 +165,8 @@ func valuesFromCookie(name string) ValuesExtractor {
 	}
 }
 
-// valuesFromForm returns a function that extracts values from the form field.
-func valuesFromForm(name string) ValuesExtractor {
+// ValuesFromForm returns a function that extracts values from the form field.
+func ValuesFromForm(name string) ValuesExtractor {
 	return func(c *gin.Context) ([]string, error) {
 		if c.Request.Form == nil {
 			_ = c.Request.ParseMultipartForm(32 << 20) // same what `c.Request().FormValue(name)` does

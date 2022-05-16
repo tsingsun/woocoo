@@ -42,6 +42,13 @@ func FormatResponseError(code int, err error) gin.H {
 	return gin.H{"msg": err.Error()}
 }
 
+// SetContextError set the error to Context,and the error will be handled by ErrorHandleMiddleware
+func SetContextError(c *gin.Context, code int, err error) {
+	ce := c.Error(err)
+	ce.Type = gin.ErrorType(code)
+	c.Status(code)
+}
+
 // ErrorHandleMiddleware is the middleware for error handle to format the errors to client
 type ErrorHandleMiddleware struct {
 }

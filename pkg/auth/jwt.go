@@ -93,7 +93,7 @@ type (
 		// ParseTokenFunc defines a user-defined function that parses token from given auth. Returns an error when token
 		// parsing fails or parsed token is invalid.
 		// Defaults to implementation using `github.com/golang-jwt/jwt` as JWT implementation library
-		ParseTokenFunc func(auth string, ctx context.Context) (interface{}, error)
+		ParseTokenFunc func(ctx context.Context, auth string) (interface{}, error)
 	}
 )
 
@@ -103,7 +103,7 @@ var (
 		ContextKey:    "user",
 		TokenLookup:   "header:Authorization",
 		AuthScheme:    "Bearer",
-		Claims:        jwt.MapClaims{},
+		Claims:        &jwt.RegisteredClaims{},
 		KeyFunc:       nil,
 	}
 )
@@ -113,7 +113,7 @@ func NewJWT() *JWTOptions {
 	return &v
 }
 
-func (opts *JWTOptions) defaultParseToken(authStr string, ctx context.Context) (interface{}, error) {
+func (opts *JWTOptions) defaultParseToken(ctx context.Context, authStr string) (interface{}, error) {
 	var err error
 
 	var token *jwt.Token
@@ -152,40 +152,56 @@ func (opts *JWTOptions) defaultKeyFunc(t *jwt.Token) (interface{}, error) {
 	return opts.SigningKey, nil
 }
 
-func (opts *JWTOptions) Apply() error {
+func parseKey(keyStr string) ([]byte, error) {
+	if strings.HasPrefix(keyStr, "file://") {
+		uri, err := url.Parse(keyStr)
+		if err != nil {
+			return nil, err
+		}
+		path := conf.Abs(uri.Path)
+		// if format is relative, resolve it relative to the basedir
+		if strings.HasPrefix(uri.Path, "/.") {
+			path = conf.Abs(uri.Path[1:])
+		}
+		return os.ReadFile(path)
+	}
+	return []byte(keyStr), nil
+}
+
+// ParseSigningKeyFromString parses a key([]byte or rsa Key) from a string.
+//
+// keystr format:
+// - file uri: "file:///path/to/key",such as rsa file
+// - string: "raw key",such as hs256 key or rsa rwa key string
+// private key: if need to use private key,such as rsa private key
+func ParseSigningKeyFromString(keystr, method string, privateKey bool) (interface{}, error) {
+	switch strings.ToUpper(method) {
+	case "RS256", "RS384", "RS512":
+		bt, err := parseKey(keystr)
+		if err != nil {
+			return nil, err
+		}
+		if privateKey {
+			return jwt.ParseRSAPrivateKeyFromPEM(bt)
+		}
+		return jwt.ParseRSAPublicKeyFromPEM(bt)
+	case "ES256", "ES384", "ES512":
+	case "PS256", "PS384", "PS512":
+	case "HS256", "HS384", "HS512":
+		return []byte(keystr), nil
+	}
+	return nil, fmt.Errorf("jwt middleware requires signing method")
+}
+
+// Apply initial JWTOptions
+func (opts *JWTOptions) Apply() (err error) {
 	if opts.SigningKey == nil && len(opts.SigningKeys) == 0 && opts.KeyFunc == nil && opts.ParseTokenFunc == nil {
 		return fmt.Errorf("jwt middleware requires signing key")
 	}
 	if sk, ok := opts.SigningKey.(string); ok {
-		switch strings.ToUpper(opts.SigningMethod) {
-		case "RS256", "RS384", "RS512":
-			if strings.HasPrefix(sk, "file://") {
-				uri, err := url.Parse(sk)
-				if err != nil {
-					return err
-				}
-				path := conf.Abs(uri.Path)
-				fc, err := os.ReadFile(path)
-				if err != nil {
-					return err
-				}
-				opts.SigningKey, err = jwt.ParseRSAPublicKeyFromPEM(fc)
-				if err != nil {
-					return err
-				}
-			} else {
-				var err error
-				opts.SigningKey, err = jwt.ParseRSAPublicKeyFromPEM([]byte(sk))
-				if err != nil {
-					return err
-				}
-			}
-		case "ES256", "ES384", "ES512":
-		case "PS256", "PS384", "PS512":
-		case "HS256", "HS384", "HS512":
-			opts.SigningKey = []byte(sk)
-		default:
-			return fmt.Errorf("jwt middleware requires signing method")
+		opts.SigningKey, err = ParseSigningKeyFromString(sk, opts.SigningMethod, false)
+		if err != nil {
+			return err
 		}
 	}
 	if opts.KeyFunc == nil {

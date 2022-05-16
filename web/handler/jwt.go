@@ -10,7 +10,9 @@ import (
 type (
 	JWTConfig struct {
 		auth.JWTOptions `json:",squash" yaml:",squash"`
-
+		Skipper         Skipper
+		// Exclude is a list of http paths to exclude from JWT auth
+		Exclude []string `json:"exclude" yaml:"exclude"`
 		// TokenLookupFuncs defines a list of user-defined functions that extract JWT token from the given context.
 		// This is one of the two options to provide a token extractor.
 		// The order of precedence is user-defined TokenLookupFuncs, and TokenLookup.
@@ -62,6 +64,17 @@ func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if err := cfg.Unmarshal(&opts); err != nil {
 		panic(err)
 	}
+	if opts.Skipper == nil {
+		opts.Skipper = func(c *gin.Context) bool {
+			path := c.Request.URL.Path
+			for _, p := range opts.Exclude {
+				if p == path {
+					return true
+				}
+			}
+			return false
+		}
+	}
 	return jwtWithOption(opts)
 }
 
@@ -81,6 +94,10 @@ func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
 		extractors = append(opts.TokenLookupFuncs, extractors...)
 	}
 	return func(c *gin.Context) {
+		if opts.Skipper(c) {
+			c.Next()
+			return
+		}
 		var lastExtractorErr error
 		var lastTokenErr error
 		for _, extractor := range extractors {
@@ -90,7 +107,7 @@ func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
 				continue
 			}
 			for _, authStr := range auths {
-				token, err := opts.ParseTokenFunc(authStr, c)
+				token, err := opts.ParseTokenFunc(c, authStr)
 				if err != nil {
 					lastTokenErr = err
 					continue

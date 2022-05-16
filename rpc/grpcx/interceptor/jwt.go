@@ -61,7 +61,7 @@ func JWTUnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerIntercep
 		}
 		var lastTokenErr error
 		for _, s := range authstr {
-			token, err := interceptor.ParseTokenFunc(s, ctx)
+			token, err := interceptor.ParseTokenFunc(ctx, s)
 			if err != nil {
 				lastTokenErr = err
 				continue
@@ -92,7 +92,7 @@ func JWTSteamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterce
 		}
 		var lastTokenErr error
 		for _, s := range authstr {
-			token, err := interceptor.ParseTokenFunc(s, ss.Context())
+			token, err := interceptor.ParseTokenFunc(ss.Context(), s)
 			if err != nil {
 				lastTokenErr = err
 				continue

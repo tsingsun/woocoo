@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	InnerPath = "innerPath"
+	InnerPath = "woocoo.innerPath"
 )
 
 var (
@@ -18,6 +18,7 @@ var (
 )
 
 type LoggerConfig struct {
+	Skipper Skipper
 	Exclude []string `json:"exclude" yaml:"exclude"`
 	// Tags to construct the logger format.
 	//
@@ -39,6 +40,7 @@ type LoggerConfig struct {
 	// - header:<NAME>
 	// - query:<NAME>
 	// - form:<NAME>
+	// - context:<NAME>
 	//
 	//
 	// Optional. Default value DefaultLoggerConfig.Format.
@@ -66,28 +68,35 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		panic(err)
 	}
 	opts.tags = strings.Split(opts.Format, ",")
-
+	if opts.Skipper == nil && len(opts.Exclude) > 0 {
+		opts.Skipper = func(c *gin.Context) bool {
+			// if has error,should log
+			if len(c.Errors) > 0 {
+				return false
+			}
+			path := c.Request.URL.Path
+			for _, p := range opts.Exclude {
+				if path == p {
+					return true
+				}
+			}
+			return false
+		}
+	} else {
+		opts.Skipper = DefaultSkipper
+	}
 	return func(c *gin.Context) {
 		req := c.Request
 		start := time.Now()
-		// Process request
+		// Process request first
 		c.Next()
-		res := c.Writer
-		shouldLog := true
-		path := c.GetString(InnerPath)
-		if path == "" {
-			path = req.URL.Path
-		}
-		for _, ex := range opts.Exclude {
-			if path == ex {
-				shouldLog = false
-				break
-			}
-		}
-		if !shouldLog && len(c.Errors) == 0 {
+		stop := time.Now()
+
+		if opts.Skipper(c) {
+			c.Next()
 			return
 		}
-		stop := time.Now()
+		res := c.Writer
 		latency := stop.Sub(start)
 		var fields []zap.Field
 		for _, tag := range opts.tags {
@@ -104,7 +113,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			case "method":
 				fields = append(fields, zap.String("method", req.Method))
 			case "path":
-				fields = append(fields, zap.String("path", path))
+				fields = append(fields, zap.String("path", c.GetString(InnerPath)))
 			case "protocol":
 				fields = append(fields, zap.String("protocol", req.Proto))
 			case "referer":
@@ -137,6 +146,11 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 					cookie, err := c.Cookie(tag[7:])
 					if err == nil {
 						fields = append(fields, zap.String(tag, cookie))
+					}
+				case strings.HasPrefix(tag, "context:"):
+					val, ok := c.Get(tag[8:])
+					if ok {
+						fields = append(fields, zap.Any(tag, val))
 					}
 				}
 			}

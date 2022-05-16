@@ -95,7 +95,15 @@ func newGraphqlServer(routerGroup *web.RouterGroup, schema graphql.ExecutableSch
 	server := gqlgen.NewDefaultServer(schema)
 	server.AroundResponses(func(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
 		if gctx, err := FromIncomingContext(ctx); err == nil {
-			gctx.Set(handler.InnerPath, graphql.GetOperationContext(ctx).OperationName)
+			opctx := graphql.GetOperationContext(ctx)
+			if gctx.Request.Method == http.MethodPost {
+				rp := graphql.RawParams{
+					Query:         opctx.RawQuery,
+					Variables:     opctx.Variables,
+					OperationName: opctx.OperationName,
+				}
+				gctx.Set("gqlraw", rp)
+			}
 		}
 		return next(ctx)
 	})

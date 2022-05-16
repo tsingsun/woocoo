@@ -20,10 +20,21 @@ type Middleware interface {
 	Shutdown()
 }
 
+// Skipper defines a function to skip middleware. Returning true skips processing
+// the middleware.
+type Skipper func(c *gin.Context) bool
+
+// DefaultSkipper returns false which processes the middleware.
+func DefaultSkipper(c *gin.Context) bool {
+	return false
+}
+
+// Manager is a middleware manager
 type Manager struct {
 	middlewares map[string]Middleware
 }
 
+// NewManager creates a new middleware manager, initialize common useful middlewares.
 func NewManager() *Manager {
 	mgr := &Manager{
 		middlewares: make(map[string]Middleware),

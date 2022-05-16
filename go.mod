@@ -3,15 +3,15 @@ module github.com/tsingsun/woocoo
 go 1.17
 
 require (
-	github.com/99designs/gqlgen v0.17.3
-	github.com/alicebob/miniredis/v2 v2.20.0
+	github.com/99designs/gqlgen v0.17.5
+	github.com/alicebob/miniredis/v2 v2.21.0
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-playground/validator/v10 v10.9.0 // indirect
 	github.com/go-redis/cache/v8 v8.4.4-0.20211002053735-6382f515292d
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v4 v4.4.1
 	github.com/knadh/koanf v1.4.1
-	github.com/mattn/go-isatty v0.0.13 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/pelletier/go-toml v1.9.3 // indirect
@@ -49,7 +49,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.15.1 // indirect

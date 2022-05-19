@@ -43,6 +43,7 @@ web:
                 exclude:
                   - IntrospectionQuery
             - recovery:
+            - test:
       - auth:
           basePath: "/auth"
           middlewares:
@@ -52,15 +53,36 @@ web:
                 pubKey: config/pubKey.pem  
 `
 	cfg := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
-	srv := web.New(web.Configuration(cfg.Sub("web")))
-	r := httptest.NewRequest("GET", "/user/123", nil)
-	w := httptest.NewRecorder()
-
-	srv.Router().GET("/user/:id", func(c *gin.Context) {
-		c.String(200, "User")
-	})
-	srv.Router().Engine.ServeHTTP(w, r)
-	assert.Equal(t, 200, w.Code)
+	tests := []struct {
+		name       string
+		srv        *web.Server
+		wantStatus int
+	}{
+		{
+			name: "normal",
+			srv: web.New(web.Configuration(cfg.Sub("web")), web.RegisterMiddlewareByFunc("test", func(c *gin.Context) {
+			})),
+			wantStatus: 200,
+		},
+		{
+			name: "registerHandlerAbort",
+			srv: web.New(web.Configuration(cfg.Sub("web")), web.RegisterMiddlewareByFunc("test", func(c *gin.Context) {
+				c.AbortWithStatus(500)
+			})),
+			wantStatus: 500,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := httptest.NewRequest("GET", "/user/123", nil)
+			w := httptest.NewRecorder()
+			tt.srv.Router().Engine.GET("/user/:id", func(c *gin.Context) {
+				c.String(200, "User")
+			})
+			tt.srv.Router().Engine.ServeHTTP(w, r)
+			assert.Equal(t, tt.wantStatus, w.Code)
+		})
+	}
 }
 
 func TestServer_Run(t *testing.T) {

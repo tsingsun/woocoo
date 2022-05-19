@@ -34,6 +34,10 @@ func main() {
 		c.String(200, "hello world")
 	})
 
+	r.GET("/abort", func(c *gin.Context) {
+		c.Abort()
+	})
+
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(404, gin.H{"code": "PAGE_NOT_FOUND", "message": "Page not found"})
 	})

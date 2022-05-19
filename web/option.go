@@ -1,6 +1,7 @@
 package web
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web/handler"
 )
@@ -27,6 +28,22 @@ func Configuration(cfg *conf.Configuration) Option {
 func RegisterMiddleware(middleware handler.Middleware) Option {
 	return func(s *ServerOptions) {
 		s.handlerManager.RegisterHandlerFunc(middleware.Name(), middleware)
+	}
+}
+
+// RegisterMiddlewareByFunc provide a simple way to inject a middleware by gin.HandlerFunc.
+//
+// Notice: the middleware usual attach `c.Next()` or `c.Abort` to indicator whether exits the method.
+// example:
+//  RegisterMiddlewareByFunc("test",func(c *gin.Context) {
+//          ....process
+//          c.Next() or c.Abort() or c.AbortWithStatus(500)
+//      }
+//  )
+func RegisterMiddlewareByFunc(name string, handlerFunc gin.HandlerFunc) Option {
+	ware := handler.NewSimpleMiddleware(name, handlerFunc)
+	return func(s *ServerOptions) {
+		s.handlerManager.RegisterHandlerFunc(name, ware)
 	}
 }
 

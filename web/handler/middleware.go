@@ -20,6 +20,32 @@ type Middleware interface {
 	Shutdown()
 }
 
+// SimpleMiddleware is a convenience to build middleware by name and gin.HandlerFunc
+type SimpleMiddleware struct {
+	name        string
+	handlerFunc gin.HandlerFunc
+}
+
+// NewSimpleMiddleware returns a new SimpleMiddleware instance.
+func NewSimpleMiddleware(name string, handlerFunc gin.HandlerFunc) *SimpleMiddleware {
+	middleware := &SimpleMiddleware{
+		name:        name,
+		handlerFunc: handlerFunc,
+	}
+	return middleware
+}
+
+func (s *SimpleMiddleware) Name() string {
+	return s.name
+}
+
+func (s *SimpleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
+	return s.handlerFunc
+}
+
+func (s SimpleMiddleware) Shutdown() {
+}
+
 // Skipper defines a function to skip middleware. Returning true skips processing
 // the middleware.
 type Skipper func(c *gin.Context) bool
@@ -53,6 +79,7 @@ func (m *Manager) RegisterHandlerFunc(name string, handler Middleware) {
 	m.middlewares[name] = handler
 }
 
+// Get returns a handler middleware by name
 func (m *Manager) Get(name string) (Middleware, bool) {
 	h, ok := m.middlewares[name]
 	return h, ok

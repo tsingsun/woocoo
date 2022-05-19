@@ -86,16 +86,15 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		opts.Skipper = DefaultSkipper
 	}
 	return func(c *gin.Context) {
-		req := c.Request
 		start := time.Now()
 		// Process request first
 		c.Next()
-		stop := time.Now()
-
+		// c.Next() may change implicit skipper,so call it after c.Next()
 		if opts.Skipper(c) {
-			c.Next()
 			return
 		}
+		req := c.Request
+		stop := time.Now()
 		res := c.Writer
 		latency := stop.Sub(start)
 		var fields []zap.Field

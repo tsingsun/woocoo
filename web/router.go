@@ -19,7 +19,6 @@ type RouterGroup struct {
 // you can use AfterRegisterInternalHandler to replace an inline HandlerFunc or add a new
 type Router struct {
 	*gin.Engine
-	//*gin.Engine
 	Groups                       []*RouterGroup
 	serverOptions                *ServerOptions
 	AfterRegisterInternalHandler func(*Router)

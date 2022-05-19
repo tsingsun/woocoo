@@ -43,6 +43,7 @@ type Handler struct {
 	opts []Options
 }
 
+// New create a graphql handler for middleware register
 func New() *Handler {
 	return &Handler{}
 }

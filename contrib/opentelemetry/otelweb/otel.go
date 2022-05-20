@@ -23,57 +23,57 @@ const (
 	tracerName = "go.opentelemetry.io/contrib/instrumentation/github.com/tsingsun/web/otelwoocoo"
 )
 
-type Handler struct {
-	service string
-	Config  *otelwoocoo.Config
+type Middleware struct {
+	Configs []*otelwoocoo.Config
 }
 
-func New() *Handler {
-	return &Handler{}
+func New() *Middleware {
+	return &Middleware{}
 }
 
-func (h *Handler) Name() string {
+func (h *Middleware) Name() string {
 	return "otel"
 }
 
-func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	h.Config = otelwoocoo.NewConfig(cfg.Root().AppName())
-	h.Config.Apply(cfg)
-	return h.middleware()
+func (h *Middleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
+	opts := otelwoocoo.NewConfig(cfg.Root().AppName())
+	opts.Apply(cfg)
+	h.Configs = append(h.Configs, opts)
+	return middleware(opts)
 }
 
-func (h *Handler) Shutdown() {
+func (h *Middleware) Shutdown() {
 	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		defer cancel()
-		if tp, ok := h.Config.TracerProvider.(*sdktrace.TracerProvider); ok {
-			if err := tp.Shutdown(ctx); err != nil {
-				log.Errorf("Error shutting down tracer provider: %v", err)
+	wg.Add(2 * len(h.Configs))
+	for _, opt := range h.Configs {
+		go func(config *otelwoocoo.Config) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
+			if tp, ok := config.TracerProvider.(*sdktrace.TracerProvider); ok {
+				if err := tp.Shutdown(ctx); err != nil {
+					log.Errorf("Error shutting down tracer provider: %v", err)
+				}
 			}
-		}
-		wg.Done()
-	}()
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		defer cancel()
-		if mp, ok := h.Config.MeterProvider.(*controller.Controller); ok {
-			if err := mp.Stop(ctx); err != nil {
-				log.Errorf("Error shutting down metric provider: %v", err)
+			wg.Done()
+		}(opt)
+		go func(config *otelwoocoo.Config) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
+			if mp, ok := config.MeterProvider.(*controller.Controller); ok {
+				if err := mp.Stop(ctx); err != nil {
+					log.Errorf("Error shutting down metric provider: %v", err)
+				}
 			}
-		}
-		wg.Done()
-	}()
+			wg.Done()
+		}(opt)
+	}
 	wg.Wait()
 }
 
 // middleware returns middleware that will trace incoming requests.
 // The service parameter should describe the name of the (virtual)
 // server handling the request.
-func (h *Handler) middleware() gin.HandlerFunc {
-	cfg := h.Config
-	service := h.Config.ServiceName
+func middleware(cfg *otelwoocoo.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set(tracerKey, cfg.Tracer)
 		savedCtx := c.Request.Context()
@@ -84,7 +84,7 @@ func (h *Handler) middleware() gin.HandlerFunc {
 		opts := []trace.SpanStartOption{
 			trace.WithAttributes(semconv.NetAttributesFromHTTPRequest("tcp", c.Request)...),
 			trace.WithAttributes(semconv.EndUserAttributesFromHTTPRequest(c.Request)...),
-			trace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(service, c.FullPath(), c.Request)...),
+			trace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(cfg.ServiceName, c.FullPath(), c.Request)...),
 			trace.WithSpanKind(trace.SpanKindServer),
 		}
 		spanName := c.FullPath()

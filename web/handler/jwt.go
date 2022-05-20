@@ -47,10 +47,13 @@ type (
 // Users can get a token by posting a json request to LoginHandler. The token then needs to be passed in
 // the Authentication header. Example: Authorization:Bearer XXX_TOKEN_XXX
 type JWTMiddleware struct {
+	opts middlewareOptions
 }
 
-func JWT() *JWTMiddleware {
-	return &JWTMiddleware{}
+func JWT(opts ...MiddlewareOption) *JWTMiddleware {
+	md := &JWTMiddleware{}
+	applyOptions(&md.opts, opts...)
+	return md
 }
 
 func (mw *JWTMiddleware) Name() string {
@@ -58,8 +61,13 @@ func (mw *JWTMiddleware) Name() string {
 }
 
 func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	opts := &JWTConfig{
-		JWTOptions: *auth.NewJWT(),
+	var opts *JWTConfig
+	if mw.opts.configFunc != nil {
+		opts = mw.opts.configFunc().(*JWTConfig)
+	} else {
+		opts = &JWTConfig{
+			JWTOptions: *auth.NewJWT(),
+		}
 	}
 	if err := cfg.Unmarshal(&opts); err != nil {
 		panic(err)

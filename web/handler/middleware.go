@@ -20,17 +20,22 @@ type Middleware interface {
 	Shutdown()
 }
 
+type MiddlewareApplyFunc func(cfg *conf.Configuration) gin.HandlerFunc
+
 // SimpleMiddleware is a convenience to build middleware by name and gin.HandlerFunc
 type SimpleMiddleware struct {
-	name        string
-	handlerFunc gin.HandlerFunc
+	name      string
+	applyFunc func(cfg *conf.Configuration) gin.HandlerFunc
 }
 
 // NewSimpleMiddleware returns a new SimpleMiddleware instance.
-func NewSimpleMiddleware(name string, handlerFunc gin.HandlerFunc) *SimpleMiddleware {
+//
+// SimpleMiddleware Shutdown method is empty.
+// cfg: the configuration of the middleware, usually pass by web server.
+func NewSimpleMiddleware(name string, applyFunc MiddlewareApplyFunc) *SimpleMiddleware {
 	middleware := &SimpleMiddleware{
-		name:        name,
-		handlerFunc: handlerFunc,
+		name:      name,
+		applyFunc: applyFunc,
 	}
 	return middleware
 }
@@ -40,7 +45,7 @@ func (s *SimpleMiddleware) Name() string {
 }
 
 func (s *SimpleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	return s.handlerFunc
+	return s.applyFunc(cfg)
 }
 
 func (s SimpleMiddleware) Shutdown() {
@@ -88,7 +93,7 @@ func (m *Manager) Get(name string) (Middleware, bool) {
 func integration() map[string]Middleware {
 	jwt := JWT()
 	reco := Recovery()
-	acclog := Logger()
+	acclog := AccessLog()
 	errhandle := ErrorHandle()
 	var handlerMap = map[string]Middleware{
 		reco.Name():      reco,

@@ -1,7 +1,6 @@
 package web
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web/handler"
 )
@@ -40,7 +39,7 @@ func RegisterMiddleware(middleware handler.Middleware) Option {
 //          c.Next() or c.Abort() or c.AbortWithStatus(500)
 //      }
 //  )
-func RegisterMiddlewareByFunc(name string, handlerFunc gin.HandlerFunc) Option {
+func RegisterMiddlewareByFunc(name string, handlerFunc handler.MiddlewareApplyFunc) Option {
 	ware := handler.NewSimpleMiddleware(name, handlerFunc)
 	return func(s *ServerOptions) {
 		s.handlerManager.RegisterHandlerFunc(name, ware)

@@ -51,11 +51,14 @@ func SetContextError(c *gin.Context, code int, err error) {
 
 // ErrorHandleMiddleware is the middleware for error handle to format the errors to client
 type ErrorHandleMiddleware struct {
+	opts middlewareOptions
 }
 
 // ErrorHandle is the error handle middleware
-func ErrorHandle() *ErrorHandleMiddleware {
-	return &ErrorHandleMiddleware{}
+func ErrorHandle(opts ...MiddlewareOption) *ErrorHandleMiddleware {
+	md := &ErrorHandleMiddleware{}
+	applyOptions(&md.opts, opts...)
+	return md
 }
 
 func (e ErrorHandleMiddleware) Name() string {
@@ -64,8 +67,12 @@ func (e ErrorHandleMiddleware) Name() string {
 
 func (e ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	eh := defaultErrorHandleConfig
-	if err := cfg.Unmarshal(&eh); err != nil {
-		panic(err)
+	if e.opts.configFunc != nil {
+		eh = e.opts.configFunc().(*ErrorHandleConfig)
+	} else {
+		if err := cfg.Unmarshal(&eh); err != nil {
+			panic(err)
+		}
 	}
 	return func(c *gin.Context) {
 		c.Next()

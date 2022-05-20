@@ -60,14 +60,19 @@ web:
 	}{
 		{
 			name: "normal",
-			srv: web.New(web.Configuration(cfg.Sub("web")), web.RegisterMiddlewareByFunc("test", func(c *gin.Context) {
+			srv: web.New(web.Configuration(cfg.Sub("web")), web.RegisterMiddlewareByFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
+				return func(c *gin.Context) {
+					c.Next()
+				}
 			})),
 			wantStatus: 200,
 		},
 		{
 			name: "registerHandlerAbort",
-			srv: web.New(web.Configuration(cfg.Sub("web")), web.RegisterMiddlewareByFunc("test", func(c *gin.Context) {
-				c.AbortWithStatus(500)
+			srv: web.New(web.Configuration(cfg.Sub("web")), web.RegisterMiddlewareByFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
+				return func(c *gin.Context) {
+					c.AbortWithStatus(500)
+				}
 			})),
 			wantStatus: 500,
 		},

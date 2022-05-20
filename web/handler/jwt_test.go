@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/tsingsun/woocoo/pkg/auth"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/web"
@@ -14,7 +15,8 @@ import (
 
 func TestJWTMiddleware_ApplyFunc(t *testing.T) {
 	type args struct {
-		cfg *conf.Configuration
+		cfg  *conf.Configuration
+		opts []handler.MiddlewareOption
 	}
 	tests := []struct {
 		name    string
@@ -28,6 +30,24 @@ func TestJWTMiddleware_ApplyFunc(t *testing.T) {
 			}))},
 			token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.XbPfbIHMI6arZ3Y922BhjWgQzWXcXNrz0ogtVhfEd2o",
 		},
+		{
+			name: "default-opts", args: args{cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+				"signingKey": "secret",
+			})),
+				opts: []handler.MiddlewareOption{
+					handler.WithMiddlewareConfig(func() interface{} {
+						nc := &handler.JWTConfig{
+							JWTOptions: *auth.NewJWT(),
+						}
+						nc.JWTOptions.SigningKey = "wrong"
+						return nc
+					}),
+				},
+			},
+			token:   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.XbPfbIHMI6arZ3Y922BhjWgQzWXcXNrz0ogtVhfEd2o",
+			wantErr: true,
+		},
+
 		{
 			name: "rs256", args: args{cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
 				"signingMethod": "RS256",
@@ -54,7 +74,7 @@ ZwIDAQAB
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mw := &handler.JWTMiddleware{}
+			mw := handler.JWT(tt.args.opts...)
 			srv := web.New()
 			srv.Router().Engine.Use(mw.ApplyFunc(tt.args.cfg))
 			srv.Router().Engine.NoRoute(func(c *gin.Context) {

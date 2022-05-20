@@ -50,8 +50,8 @@ type LoggerConfig struct {
 
 type LoggerMiddleware struct{}
 
-// Logger a new LoggerMiddleware,it is for handler registry
-func Logger() *LoggerMiddleware {
+// AccessLog a new LoggerMiddleware,it is for handler registry
+func AccessLog() *LoggerMiddleware {
 	return &LoggerMiddleware{}
 }
 

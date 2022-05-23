@@ -3,7 +3,7 @@ module github.com/tsingsun/woocoo
 go 1.17
 
 require (
-	github.com/99designs/gqlgen v0.17.5
+	github.com/99designs/gqlgen v0.17.6
 	github.com/alicebob/miniredis/v2 v2.20.0
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-playground/validator/v10 v10.9.0 // indirect
@@ -16,7 +16,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/pelletier/go-toml v1.9.3 // indirect
 	github.com/stretchr/testify v1.7.1
-	github.com/vektah/gqlparser/v2 v2.4.2
+	github.com/vektah/gqlparser/v2 v2.4.3-0.20220508162109-d3d9eb001575
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.3
 	go.etcd.io/etcd/client/v3 v3.5.3

@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-var testcnf = conf.New(conf.LocalPath(testdata.TestConfigFile()), conf.BaseDir(testdata.BaseDir())).Load()
+var testcnf = conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
 
 func TestRegistry_Apply(t *testing.T) {
 	b := []byte(`

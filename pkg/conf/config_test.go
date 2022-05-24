@@ -18,20 +18,25 @@ func TestNew(t *testing.T) {
 	}{
 		{"default", args{opt: nil}, false},
 		{"local",
-			args{opt: []Option{LocalPath(testdata.Path(testdata.DefaultConfigFile))}},
+			args{opt: []Option{WithLocalPath(testdata.Path(testdata.DefaultConfigFile))}},
 			false,
 		},
 		{"basedir",
-			args{opt: []Option{BaseDir("."), LocalPath(testdata.Path(testdata.DefaultConfigFile))}},
+			args{opt: []Option{WithBaseDir("."), WithLocalPath(testdata.Path(testdata.DefaultConfigFile))}},
 			false,
 		},
 		{"attach",
-			args{opt: []Option{LocalPath(testdata.Path(testdata.DefaultConfigFile)), IncludeFiles(testdata.Path("config/attach.yaml"))}}, false,
+			args{opt: []Option{WithLocalPath(testdata.Path(testdata.DefaultConfigFile)), WithIncludeFiles(testdata.Path("etc/attach.yaml"))}}, false,
+		},
+		{
+			"global",
+			args{opt: []Option{WithGlobal(false), WithLocalPath(testdata.Path(testdata.DefaultConfigFile))}},
+			false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			New()
+			New(tt.args.opt...)
 		})
 	}
 }
@@ -49,12 +54,8 @@ duration: 1s
 	copyCfg := cfg.Copy()
 	cfg.Parser().Set("appname", "woocoocopy")
 	cfg.Parser().Set("log.config.level", "info")
-	if copyCfg.Get("appname") == cfg.Get("appname") {
-		t.Fatal()
-	}
-	if copyCfg.Duration("duration") != time.Second {
-		t.Fatal("duration section copy error")
-	}
+	assert.Equal(t, copyCfg.Get("appname"), cfg.Get("appname"))
+	assert.Equal(t, copyCfg.Duration("duration"), time.Second)
 }
 
 func TestConfiguration_Load(t *testing.T) {
@@ -66,7 +67,7 @@ func TestConfiguration_Load(t *testing.T) {
 		fields fields
 		want   *Configuration
 	}{
-		{name: "merge", fields: fields{cfg: New(LocalPath(testdata.TestConfigFile()), BaseDir(testdata.BaseDir()))}},
+		{name: "merge", fields: fields{cfg: New(WithLocalPath(testdata.TestConfigFile()), WithBaseDir(testdata.BaseDir()))}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

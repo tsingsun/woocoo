@@ -19,9 +19,9 @@ type options struct {
 // Option the function to apply configuration option
 type Option func(*options)
 
-// LocalPath init local instance file path
+// WithLocalPath init local instance file path
 // A s is file path
-func LocalPath(s string) Option {
+func WithLocalPath(s string) Option {
 	return func(o *options) {
 		if !filepath.IsAbs(s) {
 			s = filepath.Join(o.basedir, s)
@@ -34,9 +34,9 @@ func LocalPath(s string) Option {
 	}
 }
 
-// BaseDir init base directory usually is the directory which application executable file is in
+// WithBaseDir init base directory usually is the directory which application executable file is in
 // s can be an absolute path or relative path
-func BaseDir(s string) Option {
+func WithBaseDir(s string) Option {
 	return func(o *options) {
 		var err error
 		o.basedir, err = filepath.Abs(s)
@@ -46,9 +46,11 @@ func BaseDir(s string) Option {
 	}
 }
 
-// IncludeFiles 附加文件中的配置将会重写主配置文件,对于非法的文件,将被忽略.
+// WithIncludeFiles init include files
+//
+// The configuration in the attached file will overwrite the master configuration file and will be ignored for invalid files.
 // you can set a configuration for dev ENV,but attach instance only effect in local file configuration
-func IncludeFiles(paths ...string) Option {
+func WithIncludeFiles(paths ...string) Option {
 	return func(o *options) {
 		for _, s := range paths {
 			_, err := os.Stat(s)
@@ -57,5 +59,12 @@ func IncludeFiles(paths ...string) Option {
 			}
 			o.includeFiles = append(o.includeFiles, s)
 		}
+	}
+}
+
+// WithGlobal indicate weather use as global configuration
+func WithGlobal(g bool) Option {
+	return func(o *options) {
+		o.global = g
 	}
 }

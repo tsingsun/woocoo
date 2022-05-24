@@ -62,7 +62,9 @@ func init() {
 	}
 }
 
-// New create an application configuration instance
+// New create an application configuration instance.
+//
+// New as global by default,if you want to create a local configuration,set global to false.
 func New(opts ...Option) *Configuration {
 	cnf := &Configuration{
 		opts: defaultOptions,
@@ -112,7 +114,7 @@ func (c *Configuration) loadInternal() (err error) {
 	// if parser is nil, use default local config file
 	if c.parser == nil {
 		if c.opts.localPath == "" {
-			LocalPath(defaultConfigFile)(&c.opts)
+			WithLocalPath(defaultConfigFile)(&c.opts)
 		}
 		c.parser, err = NewParserFromFile(c.opts.localPath)
 		if err != nil {

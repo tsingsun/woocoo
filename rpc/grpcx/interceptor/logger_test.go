@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	cnf  = conf.New(conf.LocalPath(testdata.TestConfigFile()), conf.BaseDir(testdata.BaseDir())).Load()
+	cnf  = conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
 	addr = "localhost:50052"
 )
 

@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	cfg = conf.New(conf.LocalPath(testdata.TestConfigFile()), conf.BaseDir(testdata.BaseDir())).Load()
+	cfg = conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
 )
 
 func initStandaloneCache(t *testing.T) (*redis.Cache, *miniredis.Miniredis) {

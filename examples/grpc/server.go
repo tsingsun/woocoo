@@ -11,7 +11,7 @@ import (
 func main() {
 	_, currentFile, _, _ := runtime.Caller(0)
 	basedir := filepath.Dir(currentFile)
-	cfg := conf.New(conf.BaseDir(basedir)).Load()
+	cfg := conf.New(conf.WithBaseDir(basedir)).Load()
 	srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
 	if err := srv.Run(); err != nil {
 		panic(err)

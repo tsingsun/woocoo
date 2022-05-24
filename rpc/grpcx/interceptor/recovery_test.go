@@ -17,7 +17,7 @@ import (
 )
 
 func TestRecoveryUnaryServerInterceptorUnary(t *testing.T) {
-	cnf := conf.New(conf.BaseDir(testdata.BaseDir())).Load()
+	cnf := conf.New(conf.WithBaseDir(testdata.BaseDir())).Load()
 	addr := "localhost:50053"
 	p := conf.NewParserFromStringMap(map[string]interface{}{
 		"TimestampFormat": "2006-01-02 15:04:05",

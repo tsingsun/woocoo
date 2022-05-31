@@ -144,6 +144,10 @@ func (m *MySQL) applyColumnAttributes(f *field.Descriptor, col *schema.Column) {
 	f.Optional = col.Type.Null
 	switch dt := col.Default.(type) {
 	case *schema.Literal:
+		//TODO literal use "" for default value
+		if strings.HasPrefix(dt.V, "\"") {
+			f.Default = dt.V[1 : len(dt.V)-1]
+		}
 		f.Default = dt.V
 	case *schema.RawExpr:
 		if strings.ToLower(dt.X) == "current_timestamp()" || strings.ToLower(dt.X) == "current_timestamp" {

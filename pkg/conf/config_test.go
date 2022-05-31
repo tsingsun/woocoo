@@ -54,7 +54,7 @@ duration: 1s
 	copyCfg := cfg.Copy()
 	cfg.Parser().Set("appname", "woocoocopy")
 	cfg.Parser().Set("log.config.level", "info")
-	assert.Equal(t, copyCfg.Get("appname"), cfg.Get("appname"))
+	assert.NotEqual(t, copyCfg.Get("appname"), cfg.Get("appname"))
 	assert.Equal(t, copyCfg.Duration("duration"), time.Second)
 }
 

@@ -29,7 +29,7 @@ service:
         sslCertificate: ""
         sslCertificateKey: ""
       endpoints:
-        - localhost:12379
+        - localhost:2379
       dial-timeout: 3s
       dial-keep-alive-time: 1h
   client:

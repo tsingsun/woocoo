@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/internal/mock/helloworld"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
@@ -63,7 +64,10 @@ func TestRegistryMultiService(t *testing.T) {
 	}
 	etcdCli, err := clientv3.New(etcdConfg)
 	assert.NoError(t, err)
-	etcdCli.Delete(context.Background(), sn, clientv3.WithPrefix())
+	ctx, cxl := context.WithTimeout(context.Background(), time.Second*1)
+	defer cxl()
+	_, err = etcdCli.Delete(ctx, sn, clientv3.WithPrefix())
+	require.NoError(t, err)
 
 	go func() {
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
@@ -86,7 +90,7 @@ func TestRegistryMultiService(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, respts.Value, "ping")
 	}
-	ctx, cxl := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cxl = context.WithTimeout(context.Background(), time.Second*3)
 	defer cxl()
 	d, err := grpc.DialContext(ctx, fmt.Sprintf("etcd://%s/", sn), grpc.WithInsecure(), grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
 	defer d.Close()

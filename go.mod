@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/99designs/gqlgen v0.17.5
 	github.com/alicebob/miniredis/v2 v2.20.0
-	github.com/gin-gonic/gin v1.8.0
+	github.com/gin-gonic/gin v1.8.1
 	github.com/go-playground/validator/v10 v10.11.0 // indirect
 	github.com/go-redis/cache/v8 v8.4.4-0.20211002053735-6382f515292d
 	github.com/go-redis/redis/v8 v8.11.5

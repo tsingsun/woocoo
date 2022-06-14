@@ -39,6 +39,11 @@ cache:
 
 func TestCache_Apply(t *testing.T) {
 	b := []byte(`
+local:
+  redis:
+    local:
+      size: 1000
+      ttl: 60s
 standalone:
   redis:
     type: standalone
@@ -61,13 +66,12 @@ cluster:
 	if err != nil {
 		panic(err)
 	}
-	cache := &redis.Cache{}
-	cache.Apply(cfg.Sub("standalone.redis"))
-	if cache == nil {
-		t.Error("apply cache error")
+	for _, s := range []string{"local", "standalone", "cluster"} {
+		t.Run(s, func(t *testing.T) {
+			cache := &redis.Cache{}
+			cache.Apply(cfg.Sub(s + ".redis"))
+		})
 	}
-
-	cache.Apply(cfg.Sub("cluster.redis"))
 }
 
 func TestCache_Take(t *testing.T) {

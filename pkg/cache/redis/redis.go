@@ -30,19 +30,25 @@ func NewBuiltIn() *Cache {
 
 // Apply conf.configurable
 func (c *Cache) Apply(cfg *conf.Configuration) {
-	var local *cache.TinyLFU
+	var (
+		opts   cache.Options
+		local  *cache.TinyLFU
+		remote *store.Client
+		err    error
+	)
 	if cfg.IsSet("local") {
-		local = cache.NewTinyLFU(cfg.Int("local.size"), time.Second*time.Duration(cfg.Int("local.ttl")))
+		local = cache.NewTinyLFU(cfg.Int("local.size"), cfg.Duration("local.ttl"))
+		opts.LocalCache = local
 	}
-	rediscli, err := store.NewClient()
-	if err != nil {
-		panic(err)
+	if cfg.IsSet("type") {
+		remote, err = store.NewClient()
+		if err != nil {
+			panic(err)
+		}
+		remote.Apply(cfg)
+		opts.Redis = remote
 	}
-	rediscli.Apply(cfg)
-	c.client = cache.New(&cache.Options{
-		Redis:      rediscli,
-		LocalCache: local,
-	})
+	c.client = cache.New(&opts)
 }
 
 func (c *Cache) Get(key string, v interface{}) error {

@@ -60,16 +60,16 @@ web:
 	if !assert.Len(t, gqlsrvList, 2) {
 		return
 	}
-	g1 := gqlsrvList[0]
+	//g1 := gqlsrvList[0]
 	r := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 
-	g1.ServeHTTP(w, r)
+	srv.Router().ServeHTTP(w, r)
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	g2 := gqlsrvList[0]
 	r = httptest.NewRequest("GET", "/graphql", nil)
 	w = httptest.NewRecorder()
 	g2.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 }

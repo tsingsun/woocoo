@@ -78,8 +78,11 @@ func (r *Router) Apply(cfg *conf.Configuration) error {
 		var gr RouterGroup
 		// The sequence allows flexible processing of handlers
 		gr.basePath = rCfg.String("basePath")
+		gr.Router = r
 		if name == "default" {
-			gr.Router = r
+			if gr.basePath == "" {
+				gr.basePath = "/"
+			}
 			r.Engine.Use(mdl...)
 		} else {
 			if gr.basePath == "" {
@@ -88,7 +91,6 @@ func (r *Router) Apply(cfg *conf.Configuration) error {
 			gr.Group = r.Engine.Group(gr.basePath)
 			// clear handlers,let group use self config
 			gr.Group.Handlers = gin.HandlersChain{}
-			gr.Router = r
 			gr.Group.Use(mdl...)
 		}
 		r.Groups = append(r.Groups, &gr)

@@ -1,9 +1,9 @@
-package redis_test
+package redisc_test
 
 import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/pkg/cache/redis"
+	"github.com/tsingsun/woocoo/pkg/cache/redisc"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"testing"
@@ -14,7 +14,7 @@ var (
 	cfg = conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
 )
 
-func initStandaloneCache(t *testing.T) (*redis.Cache, *miniredis.Miniredis) {
+func initStandaloneCache(t *testing.T) (*redisc.Redisc, *miniredis.Miniredis) {
 	cfgstr := `
 cache:
   redis:
@@ -33,7 +33,7 @@ cache:
 	mr := miniredis.RunT(t)
 	cfg.Parser().Set("cache.redis.addr", mr.Addr())
 	cfg.Parser().Set("cache.redis.driverName", mr.Addr())
-	cache := redis.NewBuiltIn()
+	cache := redisc.NewBuiltIn()
 	return cache, mr
 }
 
@@ -68,7 +68,7 @@ cluster:
 	}
 	for _, s := range []string{"local", "standalone", "cluster"} {
 		t.Run(s, func(t *testing.T) {
-			cache := &redis.Cache{}
+			cache := &redisc.Redisc{}
 			cache.Apply(cfg.Sub(s + ".redis"))
 		})
 	}

@@ -12,19 +12,15 @@ type Client struct {
 	option    interface{}
 }
 
-func NewClient() (*Client, error) {
+func NewClient(cfg *conf.Configuration) *Client {
 	v := &Client{}
-	return v, nil
+	v.Apply(cfg)
+	return v
 }
 
 // NewBuiltIn return a Client through application default
 func NewBuiltIn() *Client {
-	v, err := NewClient()
-	if err != nil {
-		panic(err)
-	}
-	v.Apply(conf.Global().Sub("store.redis"))
-	return v
+	return NewClient(conf.Global().Sub("store.redis"))
 }
 
 func (c *Client) Close() error {

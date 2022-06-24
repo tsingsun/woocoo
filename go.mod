@@ -32,7 +32,7 @@ require (
 )
 
 require (
-	github.com/klauspost/compress v1.15.1
+	github.com/klauspost/compress v1.15.6
 	github.com/vmihailenco/go-tinylfu v0.2.2
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )

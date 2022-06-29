@@ -176,7 +176,7 @@ func (cd *Cache) set(item *Item) ([]byte, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
-	if item.Skip.Is(SkipAll) {
+	if item.Skip == SkipAll {
 		return b, true, nil
 	}
 	if cd.opt.LocalCache != nil && !item.Skip.Is(SkipLocal) {
@@ -246,7 +246,7 @@ func (cd *Cache) get(
 }
 
 func (cd *Cache) getBytes(ctx context.Context, key string, mode SkipMode) ([]byte, error) {
-	if mode.Is(SkipAll) {
+	if mode == SkipAll {
 		return nil, ErrCacheMiss
 	}
 	if !mode.Is(SkipLocal) && cd.opt.LocalCache != nil {

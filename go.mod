@@ -3,7 +3,7 @@ module github.com/tsingsun/woocoo
 go 1.18
 
 require (
-	github.com/99designs/gqlgen v0.17.11
+	github.com/99designs/gqlgen v0.17.12
 	github.com/alicebob/miniredis/v2 v2.22.0
 	github.com/gin-gonic/gin v1.8.1
 	github.com/go-playground/validator/v10 v10.11.0 // indirect

@@ -147,8 +147,9 @@ func (m *MySQL) applyColumnAttributes(f *field.Descriptor, col *schema.Column) {
 		//TODO literal use "" for default value
 		if strings.HasPrefix(dt.V, "\"") {
 			f.Default = dt.V[1 : len(dt.V)-1]
+		} else {
+			f.Default = dt.V
 		}
-		f.Default = dt.V
 	case *schema.RawExpr:
 		if strings.ToLower(dt.X) == "current_timestamp()" || strings.ToLower(dt.X) == "current_timestamp" {
 			f.Default = FuncTag + "time.Now"

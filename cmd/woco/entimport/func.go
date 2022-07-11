@@ -102,6 +102,9 @@ func defaultValue(f *gen.Field) string {
 		if ok {
 			return str
 		}
+		if f.Type.Numeric() {
+			return v
+		}
 		return `"` + f.DefaultValue().(string) + `"`
 	default:
 		return ""

@@ -34,6 +34,7 @@ require (
 require (
 	github.com/klauspost/compress v1.15.8
 	github.com/vmihailenco/go-tinylfu v0.2.2
+	go.uber.org/goleak v1.1.12
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
 
@@ -69,7 +70,6 @@ require (
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20210529063254-f4c35e4016d9 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.3 // indirect
-	go.uber.org/goleak v1.1.12 // indirect
 	golang.org/x/net v0.0.0-20220531201128-c960675eff93 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220413183235-5e96e2839df9 // indirect

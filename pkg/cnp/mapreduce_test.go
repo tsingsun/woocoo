@@ -1,9 +1,11 @@
 package cnp
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/goleak"
 	"runtime"
 	"sync/atomic"
 	"testing"
@@ -13,6 +15,8 @@ import (
 var errDummy = errors.New("dummy")
 
 func TestParallel(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	var total uint32
 	err := Parallel(func() error {
 		atomic.AddUint32(&total, 2)
@@ -38,6 +42,8 @@ func TestParallelVoidNone(t *testing.T) {
 }
 
 func TestParallelErr(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	var total uint32
 	err := Parallel(func() error {
 		atomic.AddUint32(&total, 2)
@@ -54,6 +60,8 @@ func TestParallelErr(t *testing.T) {
 }
 
 func TestParallelVoid(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	var total uint32
 	ParallelVoid(func() {
 		atomic.AddUint32(&total, 2)
@@ -67,6 +75,8 @@ func TestParallelVoid(t *testing.T) {
 }
 
 func TestMap(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	tests := []struct {
 		mapper MapperFunc
 		expect int
@@ -121,6 +131,8 @@ func TestMap(t *testing.T) {
 }
 
 func TestMapReduce(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	tests := []struct {
 		mapper      MapperFunc
 		reducer     ReducerFunc
@@ -213,6 +225,8 @@ func TestMapReduceWithReduerWriteMoreThanOnce(t *testing.T) {
 }
 
 func TestMapReduceVoid(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	var value uint32
 	tests := []struct {
 		mapper      MapperFunc
@@ -291,6 +305,8 @@ func TestMapReduceVoid(t *testing.T) {
 }
 
 func TestMapReduceVoidWithDelay(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	var result []int
 	err := MapReduce(func(source chan<- interface{}) {
 		source <- 0
@@ -315,23 +331,24 @@ func TestMapReduceVoidWithDelay(t *testing.T) {
 }
 
 func TestMapReducePanic(t *testing.T) {
-	v, err := MapReduce(func(source chan<- interface{}) {
-		source <- 0
-		source <- 1
-	}).Map(func(item interface{}, writer Writer, cancel func(error)) {
-		i := item.(int)
-		writer.Write(i)
-	}).Reduce(func(pipe <-chan interface{}, writer Writer, cancel func(error)) {
-		for range pipe {
-			panic("panic")
-		}
-	}).Result()
-	assert.Nil(t, v)
-	assert.NotNil(t, err)
-	assert.Equal(t, "panic", err.Error())
+	assert.Panics(t, func() {
+		_, _ = MapReduce(func(source chan<- interface{}) {
+			source <- 0
+			source <- 1
+		}).Map(func(item interface{}, writer Writer, cancel func(error)) {
+			i := item.(int)
+			writer.Write(i)
+		}).Reduce(func(pipe <-chan interface{}, writer Writer, cancel func(error)) {
+			for range pipe {
+				panic("panic")
+			}
+		}).Result()
+	})
 }
 
 func TestMapReduceVoidCancel(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	var result []int
 	err := MapReduce(func(source chan<- interface{}) {
 		source <- 0
@@ -354,6 +371,8 @@ func TestMapReduceVoidCancel(t *testing.T) {
 }
 
 func TestMapReduceVoidCancelWithRemains(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	var done atomic.Value
 	var result []int
 	err := MapReduce(func(source chan<- interface{}) {
@@ -380,6 +399,8 @@ func TestMapReduceVoidCancelWithRemains(t *testing.T) {
 }
 
 func TestMapReduceWithoutReducerWrite(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	uids := []int{1, 2, 3}
 	res, err := MapReduce(func(source chan<- interface{}) {
 		for _, uid := range uids {
@@ -393,6 +414,33 @@ func TestMapReduceWithoutReducerWrite(t *testing.T) {
 	}).Result()
 	assert.Equal(t, ErrReduceNoOutput, err)
 	assert.Nil(t, res)
+}
+
+func TestMapReduceWithContext(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	var done int32
+	var result []int
+	ctx, cancel := context.WithCancel(context.Background())
+	err := MapReduce(func(source chan<- interface{}) {
+		for i := 0; i < defaultWorkers*2; i++ {
+			source <- i
+		}
+		atomic.AddInt32(&done, 1)
+	}, WithContext(ctx)).Map(func(item interface{}, writer Writer, c func(error)) {
+		i := item.(int)
+		if i == defaultWorkers/2 {
+			cancel()
+		}
+		writer.Write(i)
+	}).Reduce(func(pipe <-chan interface{}, writer Writer, cancel func(error)) {
+		for item := range pipe {
+			i := item.(int)
+			result = append(result, i)
+		}
+	}).Dry()
+	assert.NotNil(t, err)
+	assert.Equal(t, context.DeadlineExceeded, err)
 }
 
 func BenchmarkMapReduce(b *testing.B) {

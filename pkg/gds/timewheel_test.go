@@ -134,19 +134,19 @@ func TestTimeWheel_AddTimerAndRun(t *testing.T) {
 }
 
 func TestTimeWheel_ResetTask(t *testing.T) {
-	count := 0
+	count := int64(0)
 	cb := func(k, v interface{}) {
 		assert.Equal(t, "any", k)
 		assert.Equal(t, 3, v.(int))
-		assert.Equal(t, count, 1)
-		count++
+		assert.EqualValues(t, atomic.LoadInt64(&count), 1)
+		atomic.AddInt64(&count, 1)
 	}
 	tw, _ := NewTimeWheel(defaultTickerDuration, 3)
 	assert.NoError(t, tw.AddTimer("any", 3, defaultTickerDuration*4, cb))
 	assert.NoError(t, tw.ResetTask("any", defaultTickerDuration*7))
 	assert.Error(t, tw.ResetTask("any", -defaultTickerDuration))
 	assert.NoError(t, tw.ResetTask("any", defaultTickerDuration))
-	count++
+	atomic.AddInt64(&count, 1)
 	time.Sleep(defaultTickerDuration * 8)
 	tw.Stop()
 	assert.Error(t, tw.ResetTask("any", time.Millisecond))

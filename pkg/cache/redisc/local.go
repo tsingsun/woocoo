@@ -8,10 +8,13 @@ import (
 	"github.com/vmihailenco/go-tinylfu"
 )
 
+// LocalCache is a local cache to store a marshalled data in memory.
 type LocalCache interface {
 	Set(key string, data []byte)
 	Get(key string) ([]byte, bool)
 	Del(key string)
+	// Clean removes all items from the cache in memory.
+	Clean()
 }
 
 type TinyLFU struct {
@@ -20,6 +23,8 @@ type TinyLFU struct {
 	lfu    *tinylfu.T
 	ttl    time.Duration
 	offset time.Duration
+
+	size, samples int
 }
 
 var _ LocalCache = (*TinyLFU)(nil)
@@ -32,12 +37,15 @@ func NewTinyLFU(size int, ttl time.Duration) *TinyLFU {
 		offset = maxOffset
 	}
 
-	return &TinyLFU{
-		rand:   rand.New(rand.NewSource(time.Now().UnixNano())),
-		lfu:    tinylfu.New(size, 100000),
-		ttl:    ttl,
-		offset: offset,
+	c := &TinyLFU{
+		rand:    rand.New(rand.NewSource(time.Now().UnixNano())),
+		ttl:     ttl,
+		offset:  offset,
+		size:    size,
+		samples: 100000,
 	}
+	c.lfu = tinylfu.New(c.size, c.samples)
+	return c
 }
 
 func (c *TinyLFU) UseRandomizedTTL(offset time.Duration) {
@@ -78,4 +86,8 @@ func (c *TinyLFU) Del(key string) {
 	defer c.mu.Unlock()
 
 	c.lfu.Del(key)
+}
+
+func (c *TinyLFU) Clean() {
+	c.lfu = tinylfu.New(c.size, c.samples)
 }

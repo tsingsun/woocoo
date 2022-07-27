@@ -386,6 +386,12 @@ func (cd *Cache) DeleteFromLocalCache(key string) {
 	}
 }
 
+func (cd *Cache) CleanLocalCache() {
+	if cd.opt.LocalCache != nil {
+		cd.opt.LocalCache.Clean()
+	}
+}
+
 func (cd *Cache) Marshal(value interface{}) ([]byte, error) {
 	return cd.marshal(value)
 }

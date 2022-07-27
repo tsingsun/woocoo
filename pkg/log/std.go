@@ -12,7 +12,7 @@ __ |/ |/ // /_/ / /_/ / /__ / /_/ / /_/ /
 ____/|__/ \____/\____/\___/ \____/\____/
 `
 
-//StdPrintln use native log.Println
+// StdPrintln use native log.Println
 func StdPrintln(v ...interface{}) {
 	log.Println(v...)
 }

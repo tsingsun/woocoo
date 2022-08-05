@@ -52,7 +52,7 @@ type JWTMiddleware struct {
 
 func JWT(opts ...MiddlewareOption) *JWTMiddleware {
 	md := &JWTMiddleware{}
-	applyOptions(&md.opts, opts...)
+	md.opts.applyOptions(opts...)
 	return md
 }
 

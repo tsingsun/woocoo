@@ -57,7 +57,7 @@ type ErrorHandleMiddleware struct {
 // ErrorHandle is the error handle middleware
 func ErrorHandle(opts ...MiddlewareOption) *ErrorHandleMiddleware {
 	md := &ErrorHandleMiddleware{}
-	applyOptions(&md.opts, opts...)
+	md.opts.applyOptions(opts...)
 	return md
 }
 

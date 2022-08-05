@@ -28,7 +28,7 @@ func WithMiddlewareConfig(configFunc MiddlewareDefaultConfigFunc) MiddlewareOpti
 	}
 }
 
-func applyOptions(o *middlewareOptions, options ...MiddlewareOption) {
+func (o *middlewareOptions) applyOptions(options ...MiddlewareOption) {
 	for _, option := range options {
 		option(o)
 	}

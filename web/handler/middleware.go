@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
+	"github.com/tsingsun/woocoo/web/handler/gzip"
 )
 
 var (
@@ -25,7 +26,7 @@ type MiddlewareApplyFunc func(cfg *conf.Configuration) gin.HandlerFunc
 // SimpleMiddleware is a convenience to build middleware by name and gin.HandlerFunc
 type SimpleMiddleware struct {
 	name      string
-	applyFunc func(cfg *conf.Configuration) gin.HandlerFunc
+	applyFunc MiddlewareApplyFunc
 }
 
 // NewSimpleMiddleware returns a new SimpleMiddleware instance.
@@ -95,11 +96,13 @@ func integration() map[string]Middleware {
 	reco := Recovery()
 	acclog := AccessLog()
 	errhandle := ErrorHandle()
+	gz := gzip.Gzip()
 	var handlerMap = map[string]Middleware{
 		reco.Name():      reco,
 		jwt.Name():       jwt,
 		acclog.Name():    acclog,
 		errhandle.Name(): errhandle,
+		gz.Name():        gz,
 	}
 	return handlerMap
 }

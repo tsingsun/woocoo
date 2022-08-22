@@ -114,7 +114,8 @@ func (s *Server) Stop() error {
 // ListenAndServe Starts Http Server
 //
 // return
-//		http.ErrServerClosed or other error
+//
+//	http.ErrServerClosed or other error
 func (s *Server) ListenAndServe() (err error) {
 	if err = s.beforeRun(); err != nil {
 		return

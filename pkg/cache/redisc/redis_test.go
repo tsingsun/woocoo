@@ -2,16 +2,12 @@ package redisc_test
 
 import (
 	"github.com/alicebob/miniredis/v2"
+	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/cache/redisc"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/test/testdata"
 	"testing"
 	"time"
-)
-
-var (
-	cfg = conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
 )
 
 func initStandaloneCache(t *testing.T) (*redisc.Redisc, *miniredis.Miniredis) {
@@ -37,39 +33,106 @@ cache:
 	return cache, mr
 }
 
-func TestCache_Apply(t *testing.T) {
-	b := []byte(`
-local:
-  redis:
-    local:
-      size: 1000
-      ttl: 60s
-standalone:
-  redis:
-    type: standalone
-    addr: 127.0.0.1:6379
-    db: 1
-    local:
-      size: 1000
-      ttl: 60s
-cluster:
-  redis:
-    type: cluster
-    addrs:
-    - 127.0.0.1:6379  
-    db: 1
-    local:
-      size: 1000
-      ttl: 60s
-`)
-	err := cfg.ParserFromBytes(b)
-	if err != nil {
-		panic(err)
+func TestNew(t *testing.T) {
+	type args struct {
+		cfg *conf.Configuration
+		cli redis.Cmdable
 	}
-	for _, s := range []string{"local", "standalone", "cluster"} {
-		t.Run(s, func(t *testing.T) {
-			cache := &redisc.Redisc{}
-			cache.Apply(cfg.Sub(s + ".redis"))
+	tests := []struct {
+		name string
+		args args
+		want func(*redisc.Redisc, *testing.T)
+	}{
+		{
+			name: "local",
+			args: args{
+				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+					"local": map[string]interface{}{
+						"size": 1000,
+						"ttl":  "60s",
+					},
+				})),
+			},
+			want: func(r *redisc.Redisc, t *testing.T) {
+				assert.Nil(t, r.RedisClient())
+				assert.True(t, r.LocalCacheEnabled())
+			},
+		},
+		{
+			name: "local with redis",
+			args: args{
+				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+					"local": map[string]interface{}{
+						"size": 1000,
+						"ttl":  "60s",
+					},
+				})),
+				cli: redis.NewClient(&redis.Options{}),
+			},
+			want: func(r *redisc.Redisc, t *testing.T) {
+				assert.NotNil(t, r.RedisClient())
+				assert.True(t, r.LocalCacheEnabled())
+			},
+		},
+		{
+			name: "redis and local",
+			args: args{
+				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+					"local": map[string]interface{}{
+						"size": 1000,
+						"ttl":  "60s",
+					},
+					"type": "standalone",
+					"addr": "127.0.0.1:6379",
+					"db":   1,
+				})),
+			},
+			want: func(r *redisc.Redisc, t *testing.T) {
+				assert.NotNil(t, r.RedisClient())
+				assert.True(t, r.LocalCacheEnabled())
+			},
+		},
+		{
+			name: "standalone",
+			args: args{
+				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+					"local": map[string]interface{}{
+						"size": 1000,
+						"ttl":  "60s",
+					},
+					"type": "standalone",
+					"addr": "127.0.0.1:6379",
+					"db":   1,
+				})),
+			},
+			want: func(r *redisc.Redisc, t *testing.T) {
+				assert.NotNil(t, r.RedisClient())
+				assert.True(t, r.LocalCacheEnabled())
+			},
+		},
+		{
+			name: "cluster",
+			args: args{
+				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+					"local": map[string]interface{}{
+						"size": 1000,
+						"ttl":  "60s",
+					},
+					"type": "cluster",
+					"addr": []string{"127.0.0.1:6379"},
+					"db":   1,
+				})),
+			},
+			want: func(r *redisc.Redisc, t *testing.T) {
+				assert.NotNil(t, r.RedisClient())
+				assert.True(t, r.LocalCacheEnabled())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := redisc.New(tt.args.cfg, tt.args.cli)
+			tt.want(got, t)
 		})
 	}
 }

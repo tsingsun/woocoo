@@ -49,6 +49,9 @@ func (c *Redisc) Apply(cfg *conf.Configuration) {
 		opts  Options
 		local *TinyLFU
 	)
+	if c.client != nil {
+		opts.Redis = c.client
+	}
 	if cfg.IsSet("local") {
 		local = NewTinyLFU(cfg.Int("local.size"), cfg.Duration("local.ttl"))
 		opts.LocalCache = local
@@ -113,6 +116,15 @@ func (c *Redisc) Operator() *Cache {
 	return c.operator
 }
 
+// RedisClient returns the underlying redis client.
 func (c *Redisc) RedisClient() redis.Cmdable {
-	return c.client
+	if c.operator.opt.Redis == nil {
+		return nil
+	}
+	return c.operator.opt.Redis.(redis.Cmdable)
+}
+
+// LocalCacheEnabled returns true if local cache is enabled.
+func (c *Redisc) LocalCacheEnabled() bool {
+	return c.operator.opt.LocalCache != nil
 }

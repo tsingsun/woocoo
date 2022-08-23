@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	// SystemField is used in every log statement made through grpc_zap. Can be overwritten before any initialization code.
-	SystemField = zap.String("system", "grpc")
+	// ComponentField is used in every log statement made through grpc_zap. Can be overwritten before any initialization code.
+	ComponentField = zap.String("component", "grpc")
 
 	// ServerField is used in every server-side log statement made through grpc_zap.Can be overwritten before initialization.
 	ServerField = zap.String("span.kind", "server")
@@ -127,7 +127,7 @@ func serverCallFields(fullMethodString string) []zapcore.Field {
 	service := path.Dir(fullMethodString)[1:]
 	method := path.Base(fullMethodString)
 	return []zapcore.Field{
-		SystemField,
+		ComponentField,
 		ServerField,
 		zap.String("grpc.service", service),
 		zap.String("grpc.method", method),

@@ -46,7 +46,7 @@ func RegisterDriver(scheme string, drv Driver) {
 	driverManager[scheme] = drv
 }
 
-//GetRegistry get a registry by scheme
+// GetRegistry get a registry by scheme
 func GetRegistry(scheme string) (Driver, bool) {
 	f, ok := driverManager[scheme]
 	return f, ok
@@ -61,10 +61,12 @@ type DialOption interface {
 type DialOptions struct {
 	GRPCDialOptions []grpc.DialOption `json:"-" yaml:"-"`
 	Namespace       string            `json:"namespace" yaml:"namespace"`
-	ServiceName     string            `json:"serviceName" yaml:"serviceName"`
-	Metadata        map[string]string `json:"metadata" yaml:"metadata"`
+	// ServiceName may omit leading slash
+	ServiceName string            `json:"serviceName" yaml:"serviceName"`
+	Metadata    map[string]string `json:"metadata" yaml:"metadata"`
 }
 
+// TargetToOptions parse resolver target to DialOptions
 func TargetToOptions(target resolver.Target) (*DialOptions, error) {
 	options := &DialOptions{}
 	if len(target.URL.RawQuery) > 0 {
@@ -79,11 +81,12 @@ func TargetToOptions(target resolver.Target) (*DialOptions, error) {
 		if len(optionsStr) > 0 {
 			value, err := base64.URLEncoding.DecodeString(optionsStr)
 			if nil != err {
-				return nil, fmt.Errorf(
-					"fail to decode endpoint %s, options %s: %v", target.URL.Path, optionsStr, err)
+				return nil, fmt.Errorf("TargetToOptions:fail to decode endpoint %s, options %s: %v",
+					target.URL.Path, optionsStr, err)
 			}
 			if err = json.Unmarshal(value, options); nil != err {
-				return nil, fmt.Errorf("fail to unmarshal options %s: %v", string(value), err)
+				return nil, fmt.Errorf("TargetToOptions:fail to unmarshal options %s: %v",
+					string(value), err)
 			}
 		}
 	} else {

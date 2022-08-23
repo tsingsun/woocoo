@@ -107,10 +107,10 @@ func (r *Registry) buildClient() (err error) {
 }
 
 func (r *Registry) Register(node *registry.ServiceInfo) error {
-	r.RLock()
-	leaseID, ok := r.leases[node.BuildKey()]
-	r.RUnlock()
 	key := node.BuildKey()
+	r.RLock()
+	leaseID, ok := r.leases[key]
+	r.RUnlock()
 	if !ok {
 		ctx, cancle := context.WithTimeout(context.Background(), r.opts.EtcdConfig.DialTimeout)
 		defer cancle()
@@ -124,9 +124,9 @@ func (r *Registry) Register(node *registry.ServiceInfo) error {
 			if kv.Lease > 0 {
 				leaseID = clientv3.LeaseID(kv.Lease)
 
-				// decode the existing node
-				var oldNode = new(registry.ServiceInfo)
-				err := json.Unmarshal(kv.Value, oldNode)
+				// decode the existing node,if the value unmarshal error,will ignore
+				var oldNode *registry.ServiceInfo
+				_ = json.Unmarshal(kv.Value, &oldNode)
 				if oldNode == nil {
 					continue
 				}

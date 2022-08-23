@@ -78,7 +78,9 @@ func TestRegistryMultiService(t *testing.T) {
 	}()
 	time.Sleep(time.Second * 3)
 	RegisterResolver(etcdConfg)
-	c, err := grpc.Dial(fmt.Sprintf("etcd://%s/", sn), grpc.WithInsecure(), grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
+	c, err := grpc.Dial(fmt.Sprintf("etcd://%s/", sn), grpc.WithInsecure(),
+		grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
+	require.NoError(t, err)
 	defer c.Close()
 	hlClient := helloworld.NewGreeterClient(c)
 	tsClient := testproto.NewTestServiceClient(c)
@@ -92,7 +94,8 @@ func TestRegistryMultiService(t *testing.T) {
 	}
 	ctx, cxl = context.WithTimeout(context.Background(), time.Second*3)
 	defer cxl()
-	d, err := grpc.DialContext(ctx, fmt.Sprintf("etcd://%s/", sn), grpc.WithInsecure(), grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
+	d, err := grpc.DialContext(ctx, fmt.Sprintf("etcd://%s/", sn), grpc.WithInsecure(),
+		grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
 	defer d.Close()
 	assert.NoError(t, err)
 }
@@ -109,12 +112,12 @@ func TestRegisterResolver(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	ctx, cxl := context.WithTimeout(context.Background(), time.Second)
-	reg.client.Delete(ctx, sn, clientv3.WithPrefix())
+	_, _ = reg.client.Delete(ctx, sn, clientv3.WithPrefix())
 	defer cxl()
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	runfunc := func(namespace, name, host string, port int) {
+	runfunc := func(namespace, name, host string, port int, listen bool) {
 		service := &registry.ServiceInfo{
 			Namespace: namespace,
 			Name:      name,
@@ -125,34 +128,47 @@ func TestRegisterResolver(t *testing.T) {
 		}
 		err := reg.Register(service)
 		assert.NoError(t, err)
-		l, err := net.Listen("tcp", string(service.Host)+":"+strconv.Itoa(service.Port))
+		if !listen {
+			return
+		}
+		l, err := net.Listen("tcp", service.Host+":"+strconv.Itoa(service.Port))
 		assert.NoError(t, err)
 		srv := grpc.NewServer()
 		helloworld.RegisterGreeterServer(srv, &helloworld.Server{})
 		wg.Done()
 		assert.NoError(t, srv.Serve(l))
 	}
-
-	go func() {
-		runfunc(sn, "grpc1", "localhost", 9999)
-	}()
-	go func() {
-		runfunc(sn, "grpc2", "localhost", 9998)
-	}()
-	wg.Wait()
-	res, err := reg.client.Get(context.Background(), sn, clientv3.WithPrefix())
-	assert.NoError(t, err)
-	assert.EqualValues(t, res.Count, 2)
-	RegisterResolver(etcdConfg)
-	c, err := grpc.Dial(fmt.Sprintf("etcd://%s/", sn), grpc.WithInsecure(), grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
-	assert.NoError(t, err)
-	defer c.Close()
-	client := helloworld.NewGreeterClient(c)
-	for i := 0; i < 5; i++ {
-		resp, err := client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
+	t.Run("1-grpc-cluster", func(t *testing.T) {
+		go func() {
+			runfunc(sn, "grpc1", "localhost", 9999, true)
+		}()
+		go func() {
+			runfunc(sn, "grpc2", "localhost", 9998, true)
+		}()
+		wg.Wait()
+		res, err := reg.client.Get(context.Background(), sn, clientv3.WithPrefix())
 		assert.NoError(t, err)
-		assert.Equal(t, resp.Message, "Hello round robin")
-	}
+		assert.EqualValues(t, res.Count, 2)
+		RegisterResolver(etcdConfg)
+		c, err := grpc.Dial(fmt.Sprintf("etcd://%s/", sn), grpc.WithInsecure(), grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
+		assert.NoError(t, err)
+		defer c.Close()
+		client := helloworld.NewGreeterClient(c)
+		for i := 0; i < 5; i++ {
+			resp, err := client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
+			assert.NoError(t, err)
+			assert.Equal(t, resp.Message, "Hello round robin")
+		}
+	})
+	t.Run("2-exists-node", func(t *testing.T) {
+		t.Logf("must run after pretest and renew reg")
+		reg, err = BuildFromConfig(&Options{
+			EtcdConfig: etcdConfg,
+			TTL:        10 * time.Minute,
+		})
+		require.NoError(t, err)
+		runfunc(sn, "grpc2", "localhost", 9998, false)
+	})
 }
 
 func TestRegistryGrpcx(t *testing.T) {
@@ -163,7 +179,7 @@ func TestRegistryGrpcx(t *testing.T) {
 		DialTimeout: 10 * time.Second,
 	}
 	etcdCli, err := clientv3.New(etcdConfg)
-	etcdCli.Delete(context.Background(), sn, clientv3.WithPrefix())
+	_, _ = etcdCli.Delete(context.Background(), sn, clientv3.WithPrefix())
 
 	cfg := testcnf.Sub("grpc")
 	cfg.Parser().Set("server.namespace", sn)

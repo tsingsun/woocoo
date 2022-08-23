@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
+	"google.golang.org/grpc"
 	"testing"
 )
 
@@ -38,6 +39,6 @@ grpc:
         tenantHeader: Qeelyn-Org-Id
 `)
 	cfg := conf.NewFromBytes(b).Load()
-	s := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
+	s := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")), grpcx.GracefulStop(), grpcx.WithGrpcOption(grpc.ConnectionTimeout(1000)))
 	assert.NotNil(t, s)
 }

@@ -24,9 +24,7 @@ func WithConfiguration(cfg *conf.Configuration) Option {
 func UseLogger() Option {
 	return func(s *serverOptions) {
 		l := log.Global()
-		lg := l.With(zap.String("system", "grpc"),
-			zap.Bool("grpc_log", true),
-		).Operator().WithOptions(zap.AddCallerSkip(2))
+		lg := l.With(zap.String("component", "grpc")).Operator().WithOptions(zap.AddCallerSkip(2))
 		zgl := zapgrpc.NewLogger(lg)
 		once.Do(func() {
 			grpclog.SetLoggerV2(zgl)
@@ -40,7 +38,7 @@ func WithGrpcOption(opts ...grpc.ServerOption) Option {
 	}
 }
 
-// GracefulStop indicate use gracefull stop
+// GracefulStop indicate use graceful stop
 func GracefulStop() Option {
 	return func(s *serverOptions) {
 		s.gracefulStop = true

@@ -92,7 +92,7 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 
 func (s *Server) beforeRun() error {
 	if s.opts.Addr == "" {
-		return fmt.Errorf("web server configuration is not correct: miss listen")
+		return errors.New("web server configuration incorrect: miss listen address")
 	}
 	return nil
 }
@@ -136,7 +136,7 @@ func (s *Server) Run() error {
 	defer s.Stop() //nolint:errcheck
 	ch := make(chan error)
 	go func() {
-		log.StdPrintf("web server is starting:%s", s.opts.Addr)
+		s.opts.logger.Info(fmt.Sprintf("listening and serving HTTP on %s", s.opts.Addr))
 		err := s.ListenAndServe()
 		switch {
 		case errors.Is(err, http.ErrServerClosed):
@@ -154,7 +154,7 @@ func (s *Server) Run() error {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case <-quit:
-		log.StdPrintln("web server shutdown.")
+		s.opts.logger.Info(fmt.Sprintf("web server on %s shutdown", s.opts.Addr))
 	case err := <-ch:
 		return err
 	}
@@ -169,7 +169,7 @@ func (s *Server) httpServerStop() error {
 
 	if s.opts.gracefulStop {
 		if err := s.httpSrv.Shutdown(ctx); err != nil {
-			s.opts.logger.Error("Server forced to runAndClose", zap.Error(err))
+			s.opts.logger.Error("server forced to runAndClose", zap.Error(err))
 		}
 	} else {
 		if err := s.httpSrv.Close(); err != nil {

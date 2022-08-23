@@ -22,7 +22,6 @@ type ServerConfig struct {
 type Client struct {
 	dialOpts      registry.DialOptions
 	serverConfig  ServerConfig
-	registry      registry.Registry
 	configuration *conf.Configuration
 
 	// for dialcontext
@@ -48,22 +47,21 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 		c.scheme = cfg.String(strings.Join([]string{"registry", "scheme"}, conf.KeyDelimiter))
 		drv, ok := registry.GetRegistry(c.scheme)
 		if !ok {
-			panic(fmt.Errorf("registry driver not found"))
+			panic(fmt.Errorf("registry driver not found:%s", c.scheme))
 		}
-		//resolver.Register(c.registry.ResolverBuilder(cfg.Sub(k)))
 		rb, err := drv.ResolverBuilder(cfg.Sub(k))
 		if err != nil {
 			panic(err)
 		}
 		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, grpc.WithResolvers(rb))
 	}
-	//service info
+	// service info
 	if k := strings.Join([]string{"client", "target"}, conf.KeyDelimiter); cfg.IsSet(k) {
 		if err := cfg.Sub(k).Unmarshal(&c.dialOpts); err != nil {
 			panic(err)
 		}
 	}
-	//grpc dial options
+	// grpc dial options
 	if k := strings.Join([]string{"client", "grpcDialOption"}, conf.KeyDelimiter); cfg.IsSet(k) {
 		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, grpcDialOptions.Apply(c, cfg, k)...)
 	}
@@ -95,10 +93,10 @@ func (c *Client) DialContext(ctx context.Context, target string, opts ...grpc.Di
 	} else if !strings.HasPrefix(target, c.targetPrefix()) {
 		return grpc.DialContext(ctx, target, append(c.dialOpts.GRPCDialOptions, opts...)...)
 	}
-	//attach service info
+	// attach service info
 	jsonstr, err := json.Marshal(c.dialOpts)
 	if err != nil {
-		return nil, fmt.Errorf("marshal dial options error:%v", err)
+		return nil, fmt.Errorf("DialContext:marshal dial options error:%v", err)
 	}
 	endpoint := base64.URLEncoding.EncodeToString(jsonstr)
 	target = fmt.Sprintf("%s?%s=%s", target, registry.OptionKey, endpoint)

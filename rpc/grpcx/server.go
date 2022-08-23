@@ -181,7 +181,7 @@ func (s *Server) Run() error {
 	defer s.Stop() //nolint:errcheck
 	ch := make(chan error)
 	go func() {
-		grpclog.Infof("%s start grpc server on %s", s.opts.Namespace, s.opts.Addr)
+		grpclog.Infof("start grpc server on %s", s.opts.Addr)
 		err := s.ListenAndServe()
 		ch <- err
 	}()
@@ -195,7 +195,7 @@ func (s *Server) Run() error {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case <-quit:
-		grpclog.Info("grpc server shutdown.")
+		grpclog.Infof("grpc server on %s shutdown", s.opts.Addr)
 		return nil
 	case err := <-ch:
 		return err

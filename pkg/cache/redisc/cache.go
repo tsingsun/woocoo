@@ -122,11 +122,12 @@ type (
 )
 
 type Options struct {
-	Redis        rediser
-	LocalCache   LocalCache
-	StatsEnabled bool
-	Marshal      MarshalFunc
-	Unmarshal    UnmarshalFunc
+	Redis         rediser
+	LocalCache    LocalCache
+	LocalCacheTTL time.Duration
+	StatsEnabled  bool
+	Marshal       MarshalFunc
+	Unmarshal     UnmarshalFunc
 }
 
 type Cache struct {
@@ -268,7 +269,7 @@ func (cd *Cache) getBytes(ctx context.Context, key string, mode SkipMode) ([]byt
 		if cd.opt.StatsEnabled {
 			atomic.AddUint64(&cd.misses, 1)
 		}
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return nil, ErrCacheMiss
 		}
 		return nil, err

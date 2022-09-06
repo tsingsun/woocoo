@@ -233,11 +233,11 @@ func (c *Configuration) CutFromOperator(kf *koanf.Koanf) *Configuration {
 	return &nf
 }
 
-func (c Configuration) passRoot(sub *Configuration) {
+func (c *Configuration) passRoot(sub *Configuration) {
 	if c.root != nil {
 		sub.root = c.root
 	} else {
-		sub.root = &c
+		sub.root = c
 	}
 }
 

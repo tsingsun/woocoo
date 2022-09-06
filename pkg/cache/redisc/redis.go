@@ -52,8 +52,12 @@ func (c *Redisc) Apply(cfg *conf.Configuration) {
 	if c.client != nil {
 		opts.Redis = c.client
 	}
+	if cfg.Development {
+		opts.StatsEnabled = true
+	}
 	if cfg.IsSet("local") {
-		local = NewTinyLFU(cfg.Int("local.size"), cfg.Duration("local.ttl"))
+		opts.LocalCacheTTL = cfg.Duration("local.ttl")
+		local = NewTinyLFU(cfg.Int("local.size"), opts.LocalCacheTTL)
 		opts.LocalCache = local
 	}
 	if c.client == nil {

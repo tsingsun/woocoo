@@ -34,7 +34,7 @@ require (
 require (
 	github.com/klauspost/compress v1.15.9
 	github.com/vmihailenco/go-tinylfu v0.2.2
-	go.uber.org/goleak v1.1.12
+	go.uber.org/goleak v1.2.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
 

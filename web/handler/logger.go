@@ -4,12 +4,20 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"strings"
 	"time"
 )
 
+type loggerTagType int
+
 const (
-	InnerPath = "woocoo.innerPath"
+	loggerTagTypeString loggerTagType = iota
+	loggerTagTypeHeader
+	loggerTagTypeQuery
+	loggerTagTypeForm
+	loggerTagTypeCookie
+	loggerTagTypeContext
 )
 
 var (
@@ -45,7 +53,13 @@ type LoggerConfig struct {
 	//
 	// Optional. Default value DefaultLoggerConfig.Format.
 	Format string `json:"format" yaml:"format"`
-	tags   []string
+	tags   []loggerTag
+}
+
+type loggerTag struct {
+	v string
+	t loggerTagType
+	k string
 }
 
 type LoggerMiddleware struct{}
@@ -59,6 +73,27 @@ func (h *LoggerMiddleware) Name() string {
 	return "accessLog"
 }
 
+func (h *LoggerMiddleware) buildTag(format string) (tags []loggerTag) {
+	ts := strings.Split(format, ",")
+	for _, tag := range ts {
+		switch {
+		case strings.HasPrefix(tag, "header:"):
+			tags = append(tags, loggerTag{v: tag, t: loggerTagTypeHeader, k: tag[7:]})
+		case strings.HasPrefix(tag, "query:"):
+			tags = append(tags, loggerTag{v: tag, t: loggerTagTypeQuery, k: tag[6:]})
+		case strings.HasPrefix(tag, "form:"):
+			tags = append(tags, loggerTag{v: tag, t: loggerTagTypeForm, k: tag[5:]})
+		case strings.HasPrefix(tag, "cookie:"):
+			tags = append(tags, loggerTag{v: tag, t: loggerTagTypeCookie, k: tag[7:]})
+		case strings.HasPrefix(tag, "context:"):
+			tags = append(tags, loggerTag{v: tag, t: loggerTagTypeContext, k: tag[8:]})
+		default:
+			tags = append(tags, loggerTag{v: tag, t: loggerTagTypeString})
+		}
+	}
+	return
+}
+
 // ApplyFunc build a gin.HandlerFunc for AccessLog middleware
 func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	opts := LoggerConfig{
@@ -67,10 +102,10 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if err := cfg.Unmarshal(&opts); err != nil {
 		panic(err)
 	}
-	opts.tags = strings.Split(opts.Format, ",")
+	opts.tags = h.buildTag(opts.Format)
 	if opts.Skipper == nil && len(opts.Exclude) > 0 {
 		opts.Skipper = func(c *gin.Context) bool {
-			// if has error,should log
+			// if it has error,should log
 			if len(c.Errors) > 0 {
 				return false
 			}
@@ -97,61 +132,69 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		stop := time.Now()
 		res := c.Writer
 		latency := stop.Sub(start)
-		var fields []zap.Field
-		for _, tag := range opts.tags {
-			switch tag {
+		path := c.Request.URL.Path
+
+		fields := make([]zap.Field, len(opts.tags))
+		for i, tag := range opts.tags {
+			switch tag.v {
 			case "id":
 				id := req.Header.Get("X-Request-Id")
-				fields = append(fields, zap.String("id", id))
+				fields[i] = zap.String("id", id)
 			case "remoteIp":
-				fields = append(fields, zap.String("remoteIp", c.ClientIP()))
+				fields[i] = zap.String("remoteIp", c.ClientIP())
 			case "host":
-				fields = append(fields, zap.String("host", req.Host))
+				fields[i] = zap.String("host", req.Host)
 			case "uri":
-				fields = append(fields, zap.String("uri", req.RequestURI))
+				fields[i] = zap.String("uri", req.RequestURI)
 			case "method":
-				fields = append(fields, zap.String("method", req.Method))
+				fields[i] = zap.String("method", req.Method)
 			case "path":
-				fields = append(fields, zap.String("path", c.GetString(InnerPath)))
+				if c.Request.URL.RawQuery != "" {
+					path = path + "?" + c.Request.URL.RawQuery
+				}
+				fields[i] = zap.String("path", path)
 			case "protocol":
-				fields = append(fields, zap.String("protocol", req.Proto))
+				fields[i] = zap.String("protocol", req.Proto)
 			case "referer":
-				fields = append(fields, zap.String("referer", req.Referer()))
+				fields[i] = zap.String("referer", req.Referer())
 			case "userAgent":
-				fields = append(fields, zap.String("userAgent", req.UserAgent()))
+				fields[i] = zap.String("userAgent", req.UserAgent())
 			case "status":
-				fields = append(fields, zap.Int("status", res.Status()))
+				fields[i] = zap.Int("status", res.Status())
 			case "error":
 				if len(c.Errors) > 0 {
-					fields = append(fields, zap.String("error", c.Errors.ByType(gin.ErrorTypePrivate).String()))
+					fields[i] = zap.String("error", c.Errors.ByType(gin.ErrorTypePrivate).String())
 				}
 			case "latency":
-				fields = append(fields, zap.Duration("latency", latency))
+				fields[i] = zap.Duration("latency", latency)
 			case "latencyHuman":
-				fields = append(fields, zap.String("latencyHuman", latency.String()))
+				fields[i] = zap.String("latencyHuman", latency.String())
 			case "bytesIn":
-				fields = append(fields, zap.Int64("bytesIn", req.ContentLength))
+				fields[i] = zap.Int64("bytesIn", req.ContentLength)
 			case "bytesOut":
-				fields = append(fields, zap.Int("bytesOut", res.Size()))
+				fields[i] = zap.Int("bytesOut", res.Size())
 			default:
-				switch {
-				case strings.HasPrefix(tag, "header:"):
-					fields = append(fields, zap.String(tag, c.Request.Header.Get(tag[7:])))
-				case strings.HasPrefix(tag, "query:"):
-					fields = append(fields, zap.String(tag, c.Query(tag[6:])))
-				case strings.HasPrefix(tag, "form:"):
-					fields = append(fields, zap.String(tag, c.PostForm(tag[5:])))
-				case strings.HasPrefix(tag, "cookie:"):
-					cookie, err := c.Cookie(tag[7:])
+				switch tag.t {
+				case loggerTagTypeHeader:
+					fields[i] = zap.String(tag.v, c.Request.Header.Get(tag.k))
+				case loggerTagTypeQuery:
+					fields[i] = zap.String(tag.v, c.Query(tag.k))
+				case loggerTagTypeForm:
+					fields[i] = zap.String(tag.v, c.PostForm(tag.k))
+				case loggerTagTypeCookie:
+					cookie, err := c.Cookie(tag.k)
 					if err == nil {
-						fields = append(fields, zap.String(tag, cookie))
+						fields[i] = zap.String(tag.v, cookie)
 					}
-				case strings.HasPrefix(tag, "context:"):
-					val, ok := c.Get(tag[8:])
+				case loggerTagTypeContext:
+					val, ok := c.Get(tag.k)
 					if ok {
-						fields = append(fields, zap.Any(tag, val))
+						fields[i] = zap.Any(tag.v, val)
 					}
 				}
+			}
+			if fields[i].Type == zapcore.UnknownType {
+				fields[i] = zap.Skip()
 			}
 		}
 		logger.Info("", fields...)

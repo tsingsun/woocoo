@@ -29,6 +29,7 @@ web:
                 traceExporterEndpoint: stdout
                 metricExporterEndpoint:
             - accessLog:
+                format: id,remoteIp,host,method,uri,userAgent,status,error,latency,bytesIn,bytesOut,header:Cache-Control
                 exclude:
                   - IntrospectionQuery
             - recovery:

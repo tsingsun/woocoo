@@ -14,14 +14,14 @@ import (
 func BenchmarkLoggerMiddleware(B *testing.B) {
 	var cfgstr = `
 log:
-  sole:
-    level: debug
-    disableCaller: true
-    disableStacktrace: true
-    outputPaths: 
-      - "logs/log-bench.log"
-    errorOutputPaths:
-      - stderr
+  cores:
+    - level: debug
+      disableCaller: true
+      disableStacktrace: true
+      outputPaths: 
+        - "logs/log-bench.log"
+      errorOutputPaths:
+        - stderr
   rotate:
     maxSize: 1
     maxage: 1
@@ -34,15 +34,15 @@ web:
   engine:
     routerGroups:
       - default:
-          handleFuncs:
+          middlewares:
             - accessLog:
-                format: "clientIp,method,path,status,latency,bytesOut,error,userAgent"
             - recovery:
 `
 	_, currentFile, _, _ := runtime.Caller(0)
 	basedir := filepath.Dir(currentFile)
 	cfg := conf.NewFromBytes([]byte(cfgstr))
 	cfg.SetBaseDir(basedir)
+	log.NewBuiltIn()
 	httpSvr := web.New(web.Configuration(cfg.Sub("web")))
 	router := httpSvr.Router().Engine
 	router.GET("/", func(c *gin.Context) {

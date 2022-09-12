@@ -15,7 +15,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/pelletier/go-toml v1.9.3 // indirect
 	github.com/stretchr/testify v1.8.0
-	github.com/vektah/gqlparser/v2 v2.5.0
+	github.com/vektah/gqlparser/v2 v2.5.1
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	go.etcd.io/etcd/api/v3 v3.5.3
 	go.etcd.io/etcd/client/v3 v3.5.3

@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"path"
@@ -15,11 +16,10 @@ import (
 )
 
 var (
-	// ComponentField is used in every log statement made through grpc_zap. Can be overwritten before any initialization code.
-	ComponentField = zap.String("component", "grpc")
-
 	// ServerField is used in every server-side log statement made through grpc_zap.Can be overwritten before initialization.
 	ServerField = zap.String("span.kind", "server")
+
+	logger = log.Component("grpc", ServerField)
 )
 
 type loggerIncomingKey struct{}
@@ -29,7 +29,7 @@ var defaultLoggerOptions = &LoggerOptions{
 }
 
 type LoggerOptions struct {
-	TimestampFormat string `json:"TimestampFormat" yaml:"TimestampFormat"`
+	TimestampFormat string `json:"timestampFormat" yaml:"timestampFormat"`
 }
 
 func (o *LoggerOptions) Apply(cfg *conf.Configuration) {
@@ -58,15 +58,11 @@ func loggerOutPut(ctx context.Context, method string, latency time.Duration, err
 	fs := []zap.Field{
 		zap.Int("status", int(code)),
 		zap.Duration("latency", latency),
-		zap.Error(err),
 	}
-
-	ctxloger, ok := LoggerFromIncomingContext(ctx)
-	if ok {
-		fs = append(fs, ctxloger.fields...)
+	if err != nil {
+		fs = append(fs, zap.Error(err))
 	}
-	// use global
-	log.Operator().Check(level, method).Write(fs...)
+	logger.Ctx(ctx).Log(level, method, fs)
 }
 
 func LoggerStreamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterceptor {
@@ -84,11 +80,12 @@ func LoggerStreamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInt
 	}
 }
 
-type contextLogger struct {
+// sample to carry context log
+type logFieldCarrier struct {
 	fields []zapcore.Field
 }
 
-func (c *contextLogger) Apply(cfg *conf.Configuration) {
+func (c *logFieldCarrier) Apply(cfg *conf.Configuration) {
 	if err := cfg.Unmarshal(c); err != nil {
 		panic(err)
 	}
@@ -103,11 +100,20 @@ func newLoggerForCall(ctx context.Context, fullMethodString string, start time.T
 	if cl, ok := peer.FromContext(ctx); ok {
 		f = append(f, zap.Any("peer.address", cl.Addr.String()))
 	}
-	callLog := &contextLogger{fields: append(f, serverCallFields(fullMethodString)...)}
+	callLog := &logFieldCarrier{fields: append(f, serverCallFields(fullMethodString)...)}
 	return AppendLoggerToContext(ctx, callLog)
 }
 
-func AppendLoggerToContext(ctx context.Context, logger *contextLogger, fields ...zap.Field) context.Context {
+// AppendLoggerFieldToContext appends zap field to context logger
+func AppendLoggerFieldToContext(ctx context.Context, fields ...zap.Field) {
+	ctxlog, ok := LoggerFromIncomingContext(ctx)
+	if ok {
+		ctxlog.fields = append(ctxlog.fields, fields...)
+	}
+}
+
+// AppendLoggerToContext initial a logger to context
+func AppendLoggerToContext(ctx context.Context, logger *logFieldCarrier, fields ...zap.Field) context.Context {
 	if len(fields) > 0 {
 		logger.fields = append(logger.fields, fields...)
 	}
@@ -115,8 +121,8 @@ func AppendLoggerToContext(ctx context.Context, logger *contextLogger, fields ..
 }
 
 // LoggerFromIncomingContext returns the logger stored in ctx, if any.
-func LoggerFromIncomingContext(ctx context.Context) (*contextLogger, bool) {
-	fs, ok := ctx.Value(loggerIncomingKey{}).(*contextLogger)
+func LoggerFromIncomingContext(ctx context.Context) (*logFieldCarrier, bool) {
+	fs, ok := ctx.Value(loggerIncomingKey{}).(*logFieldCarrier)
 	if !ok {
 		return nil, false
 	}
@@ -127,8 +133,6 @@ func serverCallFields(fullMethodString string) []zapcore.Field {
 	service := path.Dir(fullMethodString)[1:]
 	method := path.Base(fullMethodString)
 	return []zapcore.Field{
-		ComponentField,
-		ServerField,
 		zap.String("grpc.service", service),
 		zap.String("grpc.method", method),
 	}
@@ -174,4 +178,23 @@ func DefaultCodeToLevel(code codes.Code) zapcore.Level {
 	default:
 		return zap.ErrorLevel
 	}
+}
+
+type GrpcContextLogger struct {
+}
+
+func NewGrpcContextLogger() *GrpcContextLogger {
+	return &GrpcContextLogger{}
+}
+
+func (g GrpcContextLogger) LogFields(logger *log.Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field {
+	if logger.WithTraceID {
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			tid := md.Get(log.TraceID)
+			if len(tid) != 0 {
+				fields = append(fields, zap.String(log.TraceID, tid[0]))
+			}
+		}
+	}
+	return fields
 }

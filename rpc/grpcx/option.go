@@ -3,7 +3,7 @@ package grpcx
 import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"go.uber.org/zap"
+	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor"
 	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
@@ -20,12 +20,15 @@ func WithConfiguration(cfg *conf.Configuration) Option {
 	}
 }
 
-// UseLogger use global logger and set grpc logger with woocoo logger
+// UseLogger use component logger named "grpc" and set grpclog use zap logger
 func UseLogger() Option {
 	return func(s *serverOptions) {
-		l := log.Global()
-		lg := l.With(zap.String("component", "grpc")).Operator().WithOptions(zap.AddCallerSkip(2))
-		zgl := zapgrpc.NewLogger(lg)
+		logger := log.Component("grpc")
+		lg := logger.Logger()
+		if _, ok := lg.ContextLogger().(*log.NopContextLogger); ok {
+			lg.SetContextLogger(interceptor.NewGrpcContextLogger())
+		}
+		zgl := zapgrpc.NewLogger(lg.Operator())
 		once.Do(func() {
 			grpclog.SetLoggerV2(zgl)
 		})

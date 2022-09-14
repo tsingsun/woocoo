@@ -20,6 +20,7 @@ func TestNewConfigSolo(t *testing.T) {
 	var cfgStr = `
 development: true
 log:
+  WithTraceID: true
   cores:
     - level: debug
       disableCaller: true
@@ -66,6 +67,7 @@ log:
 	}
 	zc.OutputPaths = []string{"stdout"}
 	want.ZapConfigs[0] = zc
+	assert.True(t, got.WithTraceID)
 	assert.True(t, got.ZapConfigs[0].Development)
 	assert.EqualValues(t, got.ZapConfigs[0].Level.Level(), want.ZapConfigs[0].Level.Level())
 	assert.EqualValues(t, got.ZapConfigs[0].Encoding, want.ZapConfigs[0].Encoding)
@@ -76,7 +78,7 @@ func TestNewConfigTee(t *testing.T) {
 	var cfgStr = `
 development: true
 log:
-  cores:
+  cores: 
     - level: debug 
       disableCaller: true
       disableStacktrace: true

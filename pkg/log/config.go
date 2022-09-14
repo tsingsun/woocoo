@@ -35,12 +35,14 @@ type Config struct {
 	// DisableErrorVerbose stops annotating logs with the full verbose error
 	// message.
 	DisableErrorVerbose bool `json:"disableErrorVerbose" yaml:"disableErrorVerbose"`
-
-	useRotate bool
-	basedir   string
+	// WithTraceID configures the logger to add `trace_id` field to structured log messages.
+	WithTraceID bool `json:"WithTraceID" yaml:"WithTraceID"`
+	useRotate   bool
+	basedir     string
 }
 
 type rotate struct {
+	// mapstructor use json tag,so ignore `unknown JSON option "squash"` lint
 	lumberjack.Logger `json:",squash" yaml:",squash"`
 }
 
@@ -92,13 +94,13 @@ func DefaultTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 
 func defaultZapConfig(cfg *conf.Configuration) zap.Config {
 	dzapCfg := zap.NewProductionConfig()
-	//change default encode time format
+	// change default encode time format
 	dzapCfg.EncoderConfig.EncodeTime = DefaultTimeEncoder
 	dzapCfg.Development = cfg.Root().Development
 	return dzapCfg
 }
 
-func (c Config) fixZapConfig(zc *zap.Config) error {
+func (c *Config) fixZapConfig(zc *zap.Config) error {
 	var otps []string
 	for _, path := range zc.OutputPaths {
 		u, err := convertPath(path, c.basedir, c.useRotate)
@@ -124,7 +126,7 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 			panic(err)
 		}
 
-		//RegisterSink
+		// RegisterSink
 		if c.useRotate {
 			err := zap.RegisterSink(rotateSchema, func(u *url.URL) (zap.Sink, error) {
 				if u.User != nil {
@@ -158,9 +160,11 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 	})
 
 	var cores []zapcore.Core
-	for _, zc := range c.ZapConfigs {
-		if err = c.fixZapConfig(&zc); err != nil {
-			return
+	for i := range c.ZapConfigs {
+		zc := c.ZapConfigs[i]
+		err = c.fixZapConfig(&zc)
+		if err != nil {
+			return nil, err
 		}
 		tmpzl, err := zc.Build()
 		if err != nil {
@@ -176,7 +180,7 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 	return
 }
 
-func (c Config) newRotateWriter() *rotate {
+func (c *Config) newRotateWriter() *rotate {
 	return &rotate{
 		Logger: lumberjack.Logger{
 			MaxSize:    c.Rotate.MaxSize,

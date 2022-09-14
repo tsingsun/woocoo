@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"strings"
@@ -30,7 +31,7 @@ type LoggerConfig struct {
 	Exclude []string `json:"exclude" yaml:"exclude"`
 	// Tags to construct the logger format.
 	//
-	// - id (Request ID)
+	// - id (Request ID or trace ID)
 	// - remoteIp
 	// - uri
 	// - host
@@ -139,7 +140,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			switch tag.v {
 			case "id":
 				id := req.Header.Get("X-Request-Id")
-				fields[i] = zap.String("id", id)
+				fields[i] = zap.String(log.TraceID, id)
 			case "remoteIp":
 				fields[i] = zap.String("remoteIp", c.ClientIP())
 			case "host":

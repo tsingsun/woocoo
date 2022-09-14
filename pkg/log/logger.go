@@ -8,11 +8,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-const (
-	// ContextHeaderName opentracing log key is trace.traceid
-	ContextHeaderName = iota
-)
-
 var (
 	global      *Logger
 	globalApply bool // indicate if you use BuiltIn()
@@ -23,16 +18,36 @@ func init() {
 	global = New(zap.NewNop())
 }
 
+// ContextLogger is functions to help ContextLogger logging,the functions are called each ComponentLogger call the logging method
+type ContextLogger interface {
+	// LogFields defined how to get logger field from context
+	LogFields(logger *Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field
+}
+
+// NopContextLogger is hold a nothing
+type NopContextLogger struct {
+}
+
+func (n *NopContextLogger) LogFields(log *Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field {
+	return nil
+}
+
 // Logger integrate the Uber Zap library to use in woocoo
 //
 // if you prefer to golang builtin log style,use log.Info or log.Infof, if zap style,you should use log.Operator().Info()
+// if you want to clone Logger,you can call WithOption
 type Logger struct {
-	zap *zap.Logger
+	*zap.Logger
+	WithTraceID   bool
+	contextLogger ContextLogger
 }
 
 // New create an Instance from zap
 func New(zl *zap.Logger) *Logger {
-	return &Logger{zap: zl}
+	return &Logger{
+		Logger:        zl,
+		contextLogger: &NopContextLogger{},
+	}
 }
 
 // NewBuiltIn create a logger by configuration,path key is "log"
@@ -44,38 +59,21 @@ func NewBuiltIn() *Logger {
 	if conf.Global().IsSet(pkey) {
 		global.Apply(conf.Global().Sub(pkey))
 	} else {
-		StdPrintf("the configuration file does not contain section: log")
+		panic("NewBuiltIn:the configuration file does not contain section: log")
 	}
 	globalApply = true
 	return global
 }
 
+// Global return the global logger
 func Global() *Logger {
 	return global
 }
 
-func Component(name string) ComponentLogger {
-	if cData, ok := components[name]; ok {
-		return cData
-	}
-	c := &component{name}
-	components[name] = c
-	return c
-}
-
-func (l Logger) AsGlobal() {
-	global = &l
-	zap.ReplaceGlobals(l.zap)
-}
-
-func (l Logger) Operator() *zap.Logger {
-	return l.zap
-}
-
-// Sync calls the underlying Core's Sync method, flushing any buffered log
-// entries. Applications should take care to call Sync before exiting.
-func (l *Logger) Sync() error {
-	return l.zap.Sync()
+// AsGlobal set the Logger as global logger
+func (l *Logger) AsGlobal() {
+	global = l
+	zap.ReplaceGlobals(l.Logger)
 }
 
 // Apply implement Configurable interface which can initial from a file used in JSON,YAML
@@ -85,124 +83,119 @@ func (l *Logger) Apply(cfg *conf.Configuration) {
 	if err != nil {
 		panic(fmt.Errorf("apply log configuration err:%w", err))
 	}
-	zl, err := config.BuildZap(zap.AddCallerSkip(3))
+	zl, err := config.BuildZap(zap.AddCallerSkip(cfg.Int("callerSkip")))
 	if err != nil {
 		panic(fmt.Errorf("apply log configuration err:%w", err))
 	}
-
-	l.zap = zl
+	l.Logger = zl
+	l.WithTraceID = config.WithTraceID
 }
 
-func (l *Logger) With(fields ...zapcore.Field) *Logger {
-	return &Logger{zap: l.zap.With(fields...)}
+// WithOptions clones the current Logger, applies the supplied Options,
+// and returns the resulting Logger. It's safe to use concurrently.
+func (l *Logger) WithOptions(opts ...zap.Option) *Logger {
+	clone := *l
+	clone.Logger = l.Logger.WithOptions(opts...)
+	return &clone
 }
 
-func (l *Logger) Debug(msg string, fields ...zap.Field) {
-	l.zap.Debug(msg, fields...)
+// Operator returns the underlying zap logger.
+func (l *Logger) Operator() *zap.Logger {
+	return l.Logger
 }
 
-func (l *Logger) Info(msg string, fields ...zap.Field) {
-	l.zap.Info(msg, fields...)
+// ContextLogger return contextLogger field
+func (l *Logger) ContextLogger() ContextLogger {
+	return l.contextLogger
 }
 
-func (l *Logger) Warn(msg string, fields ...zap.Field) {
-	l.zap.Warn(msg, fields...)
+// SetContextLogger set contextLogger field,if you use the contextLogger,can set or override it.
+func (l *Logger) SetContextLogger(f ContextLogger) {
+	l.contextLogger = f
 }
 
-func (l *Logger) Error(msg string, fields ...zap.Field) {
-	l.zap.Error(msg, fields...)
-}
-
-func (l *Logger) DPanic(msg string, fields ...zap.Field) {
-	l.zap.DPanic(msg, fields...)
-}
-
-func (l *Logger) Panic(msg string, fields ...zap.Field) {
-	l.zap.Panic(msg, fields...)
-}
-
-func (l *Logger) Fatal(msg string, fields ...zap.Field) {
-	l.zap.Fatal(msg, fields...)
-}
-
-// NewContext creates a new context the given contextual fields
-func NewContext(ctx context.Context, fields ...zapcore.Field) context.Context {
-	return context.WithValue(ctx, ContextHeaderName, WithContext(ctx).With(fields...))
-}
-
-// WithContext returns a logger from the given context
-func WithContext(ctx context.Context) *Logger {
-	if ctx == nil {
-		return global
+// Ctx returns a new logger with the context.
+func (l *Logger) Ctx(ctx context.Context) *LoggerWithCtx {
+	return &LoggerWithCtx{
+		ctx: ctx,
+		l:   l,
 	}
-	if ctxLogger, ok := ctx.Value(ContextHeaderName).(*Logger); ok {
-		return ctxLogger
-	}
-	return global
 }
 
-// Operator return the structured logger
-func Operator() *zap.Logger {
-	return global.zap
+// Sync calls the underlying Core's Sync method, flushing any buffered log
+// entries. Applications should take care to call Sync before exiting.
+func Sync() error {
+	return global.Logger.Sync()
 }
 
+// Debug uses fmt.Sprint to construct and log a message.
 func Debug(args ...interface{}) {
-	global.zap.Sugar().Debug(args...)
+	global.Logger.Sugar().Debug(args...)
 }
 
+// Info uses fmt.Sprint to construct and log a message.
 func Info(args ...interface{}) {
-	global.zap.Sugar().Info(args...)
+	global.Logger.Sugar().Info(args...)
 }
 
+// Warn uses fmt.Sprint to construct and log a message.
 func Warn(args ...interface{}) {
-	global.zap.Sugar().Warn(args...)
+	global.Logger.Sugar().Warn(args...)
 }
 
+// Error uses fmt.Sprint to construct and log a message.
 func Error(args ...interface{}) {
-	global.zap.Sugar().Error(args...)
+	global.Logger.Sugar().Error(args...)
 }
 
+// DPanic uses fmt.Sprint to construct and log a message. In development, the
+// logger then panics. (See DPanicLevel for details.)
 func DPanic(args ...interface{}) {
-	global.zap.Sugar().DPanic(args...)
+	global.Logger.Sugar().DPanic(args...)
 }
 
+// Panic uses fmt.Sprint to construct and log a message, then panics.
 func Panic(args ...interface{}) {
-	global.zap.Sugar().Panic(args...)
+	global.Logger.Sugar().Panic(args...)
 }
 
+// Fatal uses fmt.Sprint to construct and log a message, then calls os.Exit.
 func Fatal(args ...interface{}) {
-	global.zap.Sugar().Fatal(args...)
+	global.Logger.Sugar().Fatal(args...)
 }
 
 // Debugf uses fmt.Sprintf to log a templated message.
 func Debugf(template string, args ...interface{}) {
-	global.zap.Sugar().Debugf(template, args...)
+	global.Logger.Sugar().Debugf(template, args...)
 }
 
+// Infof uses fmt.Sprintf to log a templated message.
 func Infof(template string, args ...interface{}) {
-	global.zap.Sugar().Infof(template, args...)
+	global.Logger.Sugar().Infof(template, args...)
 }
 
+// Warnf uses fmt.Sprintf to log a templated message.
 func Warnf(template string, args ...interface{}) {
-	global.zap.Sugar().Warnf(template, args...)
+	global.Logger.Sugar().Warnf(template, args...)
 }
 
+// Errorf uses fmt.Sprintf to log a templated message.
 func Errorf(template string, args ...interface{}) {
-	global.zap.Sugar().Errorf(template, args...)
+	global.Logger.Sugar().Errorf(template, args...)
 }
 
+// DPanicf uses fmt.Sprintf to log a templated message. In development, the
+// logger then panics. (See DPanicLevel for details.)
 func DPanicf(template string, args ...interface{}) {
-	global.zap.Sugar().DPanicf(template, args...)
+	global.Logger.Sugar().DPanicf(template, args...)
 }
 
+// Panicf uses fmt.Sprintf to log a templated message, then panics.
 func Panicf(template string, args ...interface{}) {
-	global.zap.Sugar().Panicf(template, args...)
+	global.Logger.Sugar().Panicf(template, args...)
 }
 
+// Fatalf uses fmt.Sprintf to log a templated message, then calls os.Exit.
 func Fatalf(template string, args ...interface{}) {
-	global.zap.Sugar().Fatalf(template, args...)
-}
-
-func Sync() error {
-	return global.zap.Sync()
+	global.Logger.Sugar().Fatalf(template, args...)
 }

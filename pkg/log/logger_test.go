@@ -26,7 +26,6 @@ func TestLogger_With(t *testing.T) {
 		name   string
 		fields fields
 	}{
-		{name: "global", fields: fields{logger: global.zap}},
 		{name: "component-1", fields: fields{logger: Component("component-1")}},
 	}
 	for _, tt := range tests {

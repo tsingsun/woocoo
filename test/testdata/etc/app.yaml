@@ -2,6 +2,8 @@ appName: woocoo
 version: 0.0.1
 development: true
 log:
+  # zap.AddCallerSkip
+  callerSkip: 1
   cores:
     - level: debug
       disableCaller: true

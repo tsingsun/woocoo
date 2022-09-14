@@ -188,6 +188,7 @@ func (c *Configuration) Parser() *Parser {
 	return c.parser
 }
 
+// ParserFromBytes build from a yaml bytes
 func (c *Configuration) ParserFromBytes(bs []byte) error {
 	p, err := NewParserFromBuffer(bytes.NewReader(bs))
 	if err != nil {
@@ -197,10 +198,12 @@ func (c *Configuration) ParserFromBytes(bs []byte) error {
 	return nil
 }
 
+// ParserOperator return the underlying parser that convert bytes to map
 func (c *Configuration) ParserOperator() *koanf.Koanf {
 	return c.parser.k
 }
 
+// Sub return a new Configuration by a sub node
 func (c *Configuration) Sub(path string) *Configuration {
 	if path == "" {
 		return c
@@ -224,6 +227,7 @@ func (c *Configuration) CutFromParser(p *Parser) *Configuration {
 	return &nf
 }
 
+// CutFromOperator splits a Configuration and replace the parser.
 func (c *Configuration) CutFromOperator(kf *koanf.Koanf) *Configuration {
 	nf := *c
 	nf.parser = &Parser{

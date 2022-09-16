@@ -17,8 +17,7 @@ import (
 )
 
 var (
-	cnf  = conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
-	addr = "localhost:50052"
+	cnf = conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
 )
 
 func applog() grpc.UnaryServerInterceptor {
@@ -32,6 +31,7 @@ func applog() grpc.UnaryServerInterceptor {
 }
 
 func TestUnaryServerInterceptor(t *testing.T) {
+	addr := "localhost:50052"
 	p := conf.NewParserFromStringMap(map[string]interface{}{
 		"TimestampFormat": "2006-01-02 15:04:05",
 	})
@@ -79,10 +79,12 @@ func TestUnaryServerInterceptor(t *testing.T) {
 }
 
 func TestGrpcContextLogger(t *testing.T) {
+	addr := "localhost:50054"
 	p := conf.NewParserFromStringMap(map[string]interface{}{
 		"TimestampFormat": "2006-01-02 15:04:05",
 	})
 	clfg := cnf.CutFromParser(p)
+	ss := make(chan bool)
 	go func() {
 		opts := []grpc.ServerOption{
 			// The following grpc.ServerOption adds an interceptor for all unary
@@ -99,11 +101,13 @@ func TestGrpcContextLogger(t *testing.T) {
 			t.Errorf("failed to listen: %v", err)
 			return
 		}
+		ss <- true
 		if err := s.Serve(lis); err != nil {
 			t.Errorf("failed to serve: %v", err)
 			return
 		}
 	}()
+	<-ss
 	time.Sleep(1000)
 
 	var copts []grpc.DialOption

@@ -1,8 +1,10 @@
 package conf
 
-import "net"
+import (
+	"net"
+)
 
-//GetIP returns the first non-loopback address
+// GetIP returns the first non-loopback address
 func GetIP(useIPv6 bool) string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {

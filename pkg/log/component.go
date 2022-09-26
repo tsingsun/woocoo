@@ -139,9 +139,6 @@ func (c *LoggerWithCtx) logFields(ctx context.Context, lvl zapcore.Level, msg st
 	if len(c.fields) != 0 {
 		fields = append(fields, c.fields...)
 	}
-	fs := c.l.contextLogger.LogFields(c.l, ctx, lvl, msg, fields)
-	if len(fs) != 0 {
-		fields = append(fields, fs...)
-	}
+	fields = c.l.contextLogger.LogFields(c.l, ctx, lvl, msg, fields)
 	return fields
 }

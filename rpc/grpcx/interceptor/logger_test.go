@@ -11,21 +11,15 @@ import (
 	"github.com/tsingsun/woocoo/test/testproto"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"net"
 	"testing"
 	"time"
 )
 
-var (
-	cnf = conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
-)
-
 func applog() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-		if lctx, ok := interceptor.LoggerFromIncomingContext(ctx); ok {
-			newctx := interceptor.AppendLoggerToContext(ctx, lctx, zap.String("logger_test", "test"))
-			return handler(newctx, req)
-		}
+		interceptor.AppendLoggerFieldToContext(ctx, zap.String("logger_test", "test"))
 		return handler(ctx, req)
 	}
 }
@@ -35,6 +29,7 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	p := conf.NewParserFromStringMap(map[string]interface{}{
 		"TimestampFormat": "2006-01-02 15:04:05",
 	})
+	cnf := conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
 	clfg := cnf.CutFromParser(p)
 	gloger := log.Logger{}
 	assert.NotPanics(t, func() { gloger.Apply(cnf.Sub("log")) })
@@ -67,8 +62,6 @@ func TestUnaryServerInterceptor(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := testproto.NewTestServiceClient(conn)
-	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	//defer cancel()
 	resp, err := client.Ping(context.Background(), &testproto.PingRequest{
 		Value: t.Name(),
 	})
@@ -79,10 +72,13 @@ func TestUnaryServerInterceptor(t *testing.T) {
 }
 
 func TestGrpcContextLogger(t *testing.T) {
+	logger := log.Component("grpc")
+	logger.SetLogger(log.New(zap.NewExample()))
 	addr := "localhost:50054"
 	p := conf.NewParserFromStringMap(map[string]interface{}{
 		"TimestampFormat": "2006-01-02 15:04:05",
 	})
+	cnf := conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
 	clfg := cnf.CutFromParser(p)
 	ss := make(chan bool)
 	go func() {
@@ -117,11 +113,10 @@ func TestGrpcContextLogger(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := testproto.NewTestServiceClient(conn)
-	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	//defer cancel()
-	resp, err := client.Ping(context.Background(), &testproto.PingRequest{
+	ctx := metadata.AppendToOutgoingContext(context.Background(), log.TraceID, "uuidtest")
+	resp, err := client.Ping(ctx, &testproto.PingRequest{
 		Value: t.Name(),
 	})
 	assert.NoError(t, err)
-	t.Log(resp)
+	assert.EqualValues(t, 42, resp.Counter)
 }

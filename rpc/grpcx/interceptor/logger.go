@@ -53,16 +53,18 @@ func LoggerUnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInter
 }
 
 func loggerOutPut(ctx context.Context, method string, latency time.Duration, err error) {
+	// must be ok
+	carr, _ := carrierFromIncomingContext(ctx)
 	code := status.Code(err)
 	level := DefaultCodeToLevel(code)
-	fs := []zap.Field{
+	carr.fields = append(carr.fields,
 		zap.Int("status", int(code)),
 		zap.Duration("latency", latency),
-	}
+	)
 	if err != nil {
-		fs = append(fs, zap.Error(err))
+		carr.fields = append(carr.fields, zap.Error(err))
 	}
-	logger.Ctx(ctx).Log(level, method, fs)
+	logger.Ctx(ctx).Log(level, method, carr.fields)
 }
 
 func LoggerStreamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterceptor {
@@ -80,7 +82,7 @@ func LoggerStreamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInt
 	}
 }
 
-// sample to carry context log
+// logFieldCarrier sample to carry context log
 type logFieldCarrier struct {
 	fields []zapcore.Field
 }
@@ -106,7 +108,7 @@ func newLoggerForCall(ctx context.Context, fullMethodString string, start time.T
 
 // AppendLoggerFieldToContext appends zap field to context logger
 func AppendLoggerFieldToContext(ctx context.Context, fields ...zap.Field) {
-	ctxlog, ok := LoggerFromIncomingContext(ctx)
+	ctxlog, ok := carrierFromIncomingContext(ctx)
 	if ok {
 		ctxlog.fields = append(ctxlog.fields, fields...)
 	}
@@ -120,8 +122,8 @@ func AppendLoggerToContext(ctx context.Context, logger *logFieldCarrier, fields 
 	return context.WithValue(ctx, loggerIncomingKey{}, logger)
 }
 
-// LoggerFromIncomingContext returns the logger stored in ctx, if any.
-func LoggerFromIncomingContext(ctx context.Context) (*logFieldCarrier, bool) {
+// carrierFromIncomingContext returns the logger stored in ctx, if any.
+func carrierFromIncomingContext(ctx context.Context) (*logFieldCarrier, bool) {
 	fs, ok := ctx.Value(loggerIncomingKey{}).(*logFieldCarrier)
 	if !ok {
 		return nil, false
@@ -187,7 +189,7 @@ func NewGrpcContextLogger() *GrpcContextLogger {
 	return &GrpcContextLogger{}
 }
 
-func (g GrpcContextLogger) LogFields(logger *log.Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field {
+func (g *GrpcContextLogger) LogFields(logger *log.Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field {
 	if logger.WithTraceID {
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
 			tid := md.Get(log.TraceID)

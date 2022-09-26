@@ -13,7 +13,6 @@ log:
         timeEncoder: iso8601
       outputPaths:
         - stdout
-        - "test.log"
       errorOutputPaths:
         - stderr
   rotate:

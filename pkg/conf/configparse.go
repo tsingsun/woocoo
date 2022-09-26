@@ -164,7 +164,7 @@ func (l *Parser) ToStringMap() map[string]interface{} {
 
 // ToBytes takes a Parser implementation and marshals the config map into bytes,
 // for example, to TOML or JSON bytes.
-func (l Parser) ToBytes(p koanf.Parser) ([]byte, error) {
+func (l *Parser) ToBytes(p koanf.Parser) ([]byte, error) {
 	return l.k.Marshal(p)
 }
 
@@ -233,7 +233,8 @@ func decoderConfig(result interface{}) *mapstructure.DecoderConfig {
 //
 // and yaml of:
 // config:
-//   thing:
+//
+//	thing:
 //
 // we want an unmarshalled Configuration to be equivalent to
 // Configuration{Thing: &SomeStruct{}} instead of Configuration{Thing: nil}

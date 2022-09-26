@@ -1,6 +1,7 @@
 package testdata
 
 import (
+	"errors"
 	"path/filepath"
 	"runtime"
 )
@@ -13,10 +14,11 @@ var (
 )
 
 func init() {
-	_, currentFile, _, _ := runtime.Caller(0)
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		panic(errors.New("runtime.Caller error at test init"))
+	}
 	basedir = filepath.Dir(currentFile)
-	//Config = conf.New(conf.LocalPath(Path(DefaultConfigFile)), conf.BaseDir(basedir)).Load()
-	//Config.AsGlobal()
 }
 
 func TestConfigFile() string {

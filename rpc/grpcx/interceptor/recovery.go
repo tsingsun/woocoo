@@ -2,10 +2,11 @@ package interceptor
 
 import (
 	"context"
+	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/status"
 	"runtime"
 )
@@ -70,6 +71,20 @@ func RecoveryStreamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerI
 	}
 }
 
+// HandleRecoverError return recovery error when grpc occur panic. use the options of recovery interceptor.
+//
+// the method can use easy in biz code, like :
+//
+//	wg.Go(func() (err error) {
+//		defer func() {
+//			if r := recover(); r != nil {
+//				err = interceptor.HandleRecoverError(ctx, r)
+//			}
+//		}()
+func HandleRecoverError(ctx context.Context, p interface{}) error {
+	return handleRecoverError(defaultRecoveryOptions, ctx, p)
+}
+
 func handleRecoverError(ro RecoveryOptions, ctx context.Context, p interface{}) error {
 	var stack []byte
 	var length int
@@ -78,7 +93,6 @@ func handleRecoverError(ro RecoveryOptions, ctx context.Context, p interface{}) 
 		length = runtime.Stack(stack, !ro.DisableStackAll)
 		stack = stack[:length]
 	}
-
-	grpclog.Errorf("%+v %s...", p, stack)
+	AppendLoggerFieldToContext(ctx, zap.String("grpc.recovery", fmt.Sprintf("%+v %s...", p, stack)))
 	return status.Errorf(codes.Internal, "panic: %v", p)
 }

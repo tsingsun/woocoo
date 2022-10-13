@@ -38,7 +38,12 @@ func (n *NopContextLogger) LogFields(log *Logger, ctx context.Context, lvl zapco
 // if you want to clone Logger,you can call WithOption
 type Logger struct {
 	*zap.Logger
-	WithTraceID   bool
+	WithTraceID bool
+	// DisableCaller set by ZapConfigs[0]
+	DisableCaller bool `json:"-"`
+	// DisableCaller set by ZapConfigs[0]
+	DisableStacktrace bool `json:"-"`
+
 	contextLogger ContextLogger
 }
 
@@ -89,6 +94,8 @@ func (l *Logger) Apply(cfg *conf.Configuration) {
 	}
 	l.Logger = zl
 	l.WithTraceID = config.WithTraceID
+	l.DisableCaller = config.DisableCaller
+	l.DisableStacktrace = config.DisableStacktrace
 }
 
 // WithOptions clones the current Logger, applies the supplied Options,

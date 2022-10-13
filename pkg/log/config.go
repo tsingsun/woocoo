@@ -37,8 +37,13 @@ type Config struct {
 	DisableErrorVerbose bool `json:"disableErrorVerbose" yaml:"disableErrorVerbose"`
 	// WithTraceID configures the logger to add `trace_id` field to structured log messages.
 	WithTraceID bool `json:"WithTraceID" yaml:"WithTraceID"`
-	useRotate   bool
-	basedir     string
+	// DisableCaller set by ZapConfigs[0]
+	DisableCaller bool `json:"-"`
+	// DisableCaller set by ZapConfigs[0]
+	DisableStacktrace bool `json:"-"`
+
+	useRotate bool
+	basedir   string
 }
 
 type rotate struct {
@@ -101,13 +106,13 @@ func defaultZapConfig(cfg *conf.Configuration) zap.Config {
 }
 
 func (c *Config) fixZapConfig(zc *zap.Config) error {
-	var otps []string
-	for _, path := range zc.OutputPaths {
+	otps := make([]string, len(zc.OutputPaths))
+	for i, path := range zc.OutputPaths {
 		u, err := convertPath(path, c.basedir, c.useRotate)
 		if err != nil {
 			return err
 		}
-		otps = append(otps, u)
+		otps[i] = u
 	}
 	zc.OutputPaths = otps
 	return nil
@@ -159,7 +164,10 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 		}
 	})
 
-	var cores []zapcore.Core
+	var (
+		cores []zapcore.Core
+		copts []zap.Option
+	)
 	for i := range c.ZapConfigs {
 		zc := c.ZapConfigs[i]
 		err = c.fixZapConfig(&zc)
@@ -171,13 +179,33 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 			return nil, err
 		}
 		cores = append(cores, tmpzl.Core())
+		if i == 0 {
+			copts = c.buildZapOptions(&zc)
+		}
 	}
+	opts = append(opts, copts...)
 	if len(cores) == 1 {
 		zl = zap.New(cores[0], opts...)
 	} else {
 		zl = zap.New(zapcore.NewTee(cores...), opts...)
 	}
 	return
+}
+
+func (c *Config) buildZapOptions(cfg *zap.Config) (opts []zap.Option) {
+	c.DisableStacktrace = cfg.DisableStacktrace
+	c.DisableCaller = cfg.DisableCaller
+	if !cfg.DisableCaller {
+		opts = append(opts, zap.AddCaller())
+	}
+	stackLevel := zap.ErrorLevel
+	if cfg.Development {
+		stackLevel = zap.WarnLevel
+	}
+	if !cfg.DisableStacktrace {
+		opts = append(opts, zap.AddStacktrace(stackLevel))
+	}
+	return opts
 }
 
 func (c *Config) newRotateWriter() *rotate {

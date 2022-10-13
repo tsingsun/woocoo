@@ -1,6 +1,6 @@
 ## 日志
 
-框架日志组件内置了Zap+Rotate组合,采用文件流记录日志.
+框架日志组件内置了[Uber Zap](http://go.uber.org/zap)+Rotate组合,采用文件流记录日志.
 
 文件流方式为性能最高的一种方式,满足绝大部分应用场景. 对于日志收集中间件来说文件采集支持也是必备的.
 
@@ -54,5 +54,9 @@ log:
       errorOutputPaths:
         - stderr
 ```
-
 内置配置基于Zap的Config对象
+> 虽然支持多个配置,但实际采用的还是同一个Zap.Logger,因此对于Config中的配置项作用于Zap.Core是有效的.对于其他全局项Logger将采用第一个配置
+
+全局项如下:
+- disableCaller
+- disableStacktrace

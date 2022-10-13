@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"go.uber.org/zap"
@@ -140,12 +141,12 @@ func TestConfig_BuildZap(t *testing.T) {
 			name: "tee",
 			fields: fields{
 				Tee: []zap.Config{
-					zap.NewDevelopmentConfig(),
 					{
-						Level:         zap.NewAtomicLevelAt(zapcore.WarnLevel),
-						Encoding:      "json",
-						OutputPaths:   []string{t.Name() + "-warn.log"},
-						EncoderConfig: zap.NewProductionEncoderConfig(),
+						Level:             zap.NewAtomicLevelAt(zapcore.WarnLevel),
+						Encoding:          "json",
+						DisableStacktrace: false,
+						OutputPaths:       []string{t.Name() + "-warn.log"},
+						EncoderConfig:     zap.NewProductionEncoderConfig(),
 					},
 					{
 						Level:         zap.NewAtomicLevelAt(zapcore.ErrorLevel),
@@ -153,6 +154,7 @@ func TestConfig_BuildZap(t *testing.T) {
 						OutputPaths:   []string{t.Name() + "-error.log"},
 						EncoderConfig: zap.NewProductionEncoderConfig(),
 					},
+					zap.NewDevelopmentConfig(),
 				},
 				Single: nil,
 				Rotate: &rotate{
@@ -185,15 +187,12 @@ func TestConfig_BuildZap(t *testing.T) {
 				t.Errorf("BuildZap() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			//if !reflect.DeepEqual(gotZl, tt.wantZl) {
-			//	t.Errorf("BuildZap() gotZl = %v, want %v", gotZl, tt.wantZl)
-			//}
 			field := zap.String("logger", "test")
 			gotZl.Debug(tt.name, field)
 			gotZl.Info(tt.name, field)
 			gotZl.Warn(tt.name, field)
 			gotZl.Error(tt.name, field, zap.Error(fmt.Errorf("error")))
-			gotZl.Sync()
+			_ = gotZl.Sync()
 			for _, tee := range tt.fields.Tee {
 				for _, outputPath := range tee.OutputPaths {
 					if outputPath == "stdout" || outputPath == "stderr" {
@@ -208,12 +207,17 @@ func TestConfig_BuildZap(t *testing.T) {
 							assert.Equal(t, 2, lc)
 						} else if strings.Index(outputPath, "error") > 0 {
 							assert.Equal(t, 1, lc)
+							if !tt.fields.Tee[0].DisableStacktrace {
+								bs, _ := os.Open(lf)
+								c, err := io.ReadAll(bs)
+								require.NoError(t, err)
+								assert.Contains(t, string(c), "stacktrace")
+							}
 						}
 						assert.NoError(t, os.Remove(lf))
 					}
 				}
 			}
-
 		})
 	}
 }

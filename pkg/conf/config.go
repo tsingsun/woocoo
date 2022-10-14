@@ -89,6 +89,13 @@ func NewFromBytes(b []byte, opts ...Option) *Configuration {
 	return NewFromParse(p, opts...)
 }
 
+// NewFromStringMap create from string map
+func NewFromStringMap(data map[string]interface{}, opts ...Option) *Configuration {
+	p := NewParserFromStringMap(data)
+	return NewFromParse(p, opts...)
+}
+
+// NewFromParse create from parser
 func NewFromParse(parser *Parser, opts ...Option) *Configuration {
 	cnf := New(opts...)
 	cnf.parser = parser

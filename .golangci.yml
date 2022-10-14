@@ -35,3 +35,10 @@ linters:
     - unused
     - varcheck
     - whitespace
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - funlen
+        - bodyclose
+        - gosec

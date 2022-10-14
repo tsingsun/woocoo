@@ -4,7 +4,6 @@ import (
 	"context"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"sync"
 )
 
 const (
@@ -91,9 +90,7 @@ func (c *component) Fatal(msg string, fields ...zap.Field) {
 
 // Ctx returns a new logger with the context.
 func (c *component) Ctx(ctx context.Context) *LoggerWithCtx {
-	lc := loggerWithCtxPool.Get().(*LoggerWithCtx)
-	lc.ctx = ctx
-	lc.l = c.l
+	lc := NewLoggerWithCtx(ctx, c.l)
 	lc.fields = c.builtInFields
 	return lc
 }
@@ -106,69 +103,46 @@ type LoggerWithCtx struct {
 }
 
 func (c *LoggerWithCtx) Debug(msg string, fields ...zap.Field) {
-	fields = c.logFields(c.ctx, zap.DebugLevel, msg, fields)
-	c.l.Debug(msg, fields...)
+	c.logFields(c.ctx, zap.DebugLevel, msg, fields)
 }
 
 func (c *LoggerWithCtx) Info(msg string, fields ...zap.Field) {
-	fields = c.logFields(c.ctx, zap.InfoLevel, msg, fields)
-	c.l.Info(msg, fields...)
+	c.logFields(c.ctx, zap.InfoLevel, msg, fields)
 }
 
 func (c *LoggerWithCtx) Warn(msg string, fields ...zap.Field) {
-	fields = c.logFields(c.ctx, zap.WarnLevel, msg, fields)
-	c.l.Warn(msg, fields...)
+	c.logFields(c.ctx, zap.WarnLevel, msg, fields)
 }
 
 func (c *LoggerWithCtx) Error(msg string, fields ...zap.Field) {
-	fields = c.logFields(c.ctx, zap.ErrorLevel, msg, fields)
-	c.l.Error(msg, fields...)
+	c.logFields(c.ctx, zap.ErrorLevel, msg, fields)
 }
 
 func (c *LoggerWithCtx) DPanic(msg string, fields ...zap.Field) {
-	fields = c.logFields(c.ctx, zap.DPanicLevel, msg, fields)
-	c.l.DPanic(msg, fields...)
+	c.logFields(c.ctx, zap.DPanicLevel, msg, fields)
 }
 
 func (c *LoggerWithCtx) Panic(msg string, fields ...zap.Field) {
-	fields = c.logFields(c.ctx, zap.PanicLevel, msg, fields)
-	c.l.Panic(msg, fields...)
+	c.logFields(c.ctx, zap.PanicLevel, msg, fields)
 }
 
 func (c *LoggerWithCtx) Fatal(msg string, fields ...zap.Field) {
-	fields = c.logFields(c.ctx, zap.FatalLevel, msg, fields)
-	c.l.Fatal(msg, fields...)
+	c.logFields(c.ctx, zap.FatalLevel, msg, fields)
 }
 
 func (c *LoggerWithCtx) Log(lvl zapcore.Level, msg string, fields []zap.Field) {
-	fields = c.logFields(c.ctx, zap.FatalLevel, msg, fields)
-	c.l.Operator().Log(lvl, msg, fields...)
+	c.logFields(c.ctx, lvl, msg, fields)
 }
 
 func (c *LoggerWithCtx) logFields(ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field {
 	if len(c.fields) != 0 {
 		fields = append(fields, c.fields...)
 	}
-	fields = c.l.contextLogger.LogFields(c.l, ctx, lvl, msg, fields)
+	c.l.contextLogger.LogFields(c.l, ctx, lvl, msg, fields)
 	return fields
 }
 
-// LoggerWithCtx Pool
-var loggerWithCtxPool = sync.Pool{
-	New: func() interface{} {
-		return &LoggerWithCtx{}
-	},
-}
-
-// GetLoggerWithCtxFromPool get a logger with context from pool
-func GetLoggerWithCtxFromPool() *LoggerWithCtx {
-	return loggerWithCtxPool.Get().(*LoggerWithCtx)
-}
-
-// PutLoggerWithCtxToPool put a logger with context to pool
-func PutLoggerWithCtxToPool(logger *LoggerWithCtx) {
-	logger.fields = nil
-	logger.ctx = nil
-	logger.l = nil
-	loggerWithCtxPool.Put(logger)
+// NewLoggerWithCtx get a logger with context from pool
+func NewLoggerWithCtx(ctx context.Context, l *Logger) *LoggerWithCtx {
+	return &LoggerWithCtx{ctx: ctx, l: l}
 }

@@ -24,11 +24,12 @@ type ContextLogger interface {
 	LogFields(logger *Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field
 }
 
-// NopContextLogger is hold a nothing
-type NopContextLogger struct {
+// DefaultContextLogger is hold a nothing
+type DefaultContextLogger struct {
 }
 
-func (n *NopContextLogger) LogFields(log *Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field {
+func (n *DefaultContextLogger) LogFields(log *Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field {
+	log.Log(lvl, msg, fields...)
 	return fields
 }
 
@@ -51,7 +52,7 @@ type Logger struct {
 func New(zl *zap.Logger) *Logger {
 	return &Logger{
 		Logger:        zl,
-		contextLogger: &NopContextLogger{},
+		contextLogger: &DefaultContextLogger{},
 	}
 }
 
@@ -76,9 +77,10 @@ func Global() *Logger {
 }
 
 // AsGlobal set the Logger as global logger
-func (l *Logger) AsGlobal() {
+func (l *Logger) AsGlobal() *Logger {
 	*global = *l
 	zap.ReplaceGlobals(l.Logger)
+	return global
 }
 
 // Apply implement Configurable interface which can initial from a file used in JSON,YAML
@@ -123,10 +125,7 @@ func (l *Logger) SetContextLogger(f ContextLogger) {
 
 // Ctx returns a new logger with the context.
 func (l *Logger) Ctx(ctx context.Context) *LoggerWithCtx {
-	lc := GetLoggerWithCtxFromPool()
-	lc.ctx = ctx
-	lc.l = l
-	return lc
+	return NewLoggerWithCtx(ctx, l)
 }
 
 // Sync calls the underlying Core's Sync method, flushing any buffered log

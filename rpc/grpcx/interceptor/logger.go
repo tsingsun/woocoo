@@ -35,6 +35,7 @@ func (o *LoggerOptions) Apply(cfg *conf.Configuration) {
 	o.logger = logger
 }
 
+// LoggerUnaryServerInterceptor returns a new unary server interceptors that adds a zap.Logger to the context.
 func LoggerUnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInterceptor {
 	o := defaultLoggerOptions
 	o.Apply(cfg)
@@ -68,9 +69,9 @@ func loggerOutPut(l log.ComponentLogger, ctx context.Context, method string, lat
 		}
 	}
 	clog.Log(level, "", carr.Fields)
-	log.PutLoggerWithCtxToPool(clog)
 }
 
+// LoggerStreamServerInterceptor returns a new streaming server interceptors that adds a zap.Logger to the context.
 func LoggerStreamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterceptor {
 	o := defaultLoggerOptions
 	o.Apply(cfg)

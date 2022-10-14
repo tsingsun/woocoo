@@ -22,8 +22,8 @@ const (
 )
 
 var (
-	accessLoggerName    = "web.accessLog"
-	defaultLoggerFormat = "id,remoteIp,host,method,uri,userAgent,status,error," +
+	AccessLogComponentName = "web.accessLog"
+	defaultLoggerFormat    = "id,remoteIp,host,method,uri,userAgent,status,error," +
 		"latency,bytesIn,bytesOut"
 )
 
@@ -72,7 +72,7 @@ type LoggerMiddleware struct {
 func AccessLog() *LoggerMiddleware {
 	al := &LoggerMiddleware{}
 	operator := logger.Logger().WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
-	logger := log.Component(accessLoggerName)
+	logger := log.Component(AccessLogComponentName)
 	logger.SetLogger(operator)
 	al.logger = logger
 	return al
@@ -132,7 +132,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		logCarrier := log.NewCarrier()
-		c.Set(accessLoggerName, logCarrier)
+		c.Set(AccessLogComponentName, logCarrier)
 		// Process request first
 		c.Next()
 		// c.Next() may change implicit skipper,so call it after c.Next()
@@ -213,7 +213,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 				fields[i] = zap.Skip()
 			}
 		}
-		if fc := getLogCarrierFromGinContext(c); fc != nil && len(fc.Fields) > 0 {
+		if fc := GetLogCarrierFromGinContext(c); fc != nil && len(fc.Fields) > 0 {
 			fields = append(fields, fc.Fields...)
 		}
 		clog := h.logger.Ctx(c)
@@ -222,7 +222,6 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		} else {
 			clog.Info("", fields...)
 		}
-		log.PutLoggerWithCtxToPool(clog)
 	}
 }
 
@@ -230,8 +229,8 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 func (h *LoggerMiddleware) Shutdown() {
 }
 
-func getLogCarrierFromGinContext(c *gin.Context) *log.FieldCarrier {
-	if fc, ok := c.Get(accessLoggerName); ok {
+func GetLogCarrierFromGinContext(c *gin.Context) *log.FieldCarrier {
+	if fc, ok := c.Get(AccessLogComponentName); ok {
 		return fc.(*log.FieldCarrier)
 	}
 	return nil

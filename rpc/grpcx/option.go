@@ -25,7 +25,7 @@ func UseLogger() Option {
 	return func(s *serverOptions) {
 		logger := log.Component("grpc")
 		lg := logger.Logger()
-		if _, ok := lg.ContextLogger().(*log.NopContextLogger); ok {
+		if _, ok := lg.ContextLogger().(*log.DefaultContextLogger); ok {
 			lg.SetContextLogger(interceptor.NewGrpcContextLogger())
 		}
 		zgl := zapgrpc.NewLogger(lg.Operator())

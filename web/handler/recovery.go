@@ -42,7 +42,7 @@ func HandleRecoverError(c *gin.Context, err any) {
 	} else {
 		_ = c.AbortWithError(http.StatusInternalServerError, ErrRecovery)
 	}
-	fc := getLogCarrierFromGinContext(c)
+	fc := GetLogCarrierFromGinContext(c)
 	if fc != nil {
 		fc.Fields = append(fc.Fields,
 			zap.Any("panic", err),

@@ -29,7 +29,7 @@ type NopContextLogger struct {
 }
 
 func (n *NopContextLogger) LogFields(log *Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field {
-	return nil
+	return fields
 }
 
 // Logger integrate the Uber Zap library to use in woocoo
@@ -77,7 +77,7 @@ func Global() *Logger {
 
 // AsGlobal set the Logger as global logger
 func (l *Logger) AsGlobal() {
-	global = l
+	*global = *l
 	zap.ReplaceGlobals(l.Logger)
 }
 
@@ -123,10 +123,10 @@ func (l *Logger) SetContextLogger(f ContextLogger) {
 
 // Ctx returns a new logger with the context.
 func (l *Logger) Ctx(ctx context.Context) *LoggerWithCtx {
-	return &LoggerWithCtx{
-		ctx: ctx,
-		l:   l,
-	}
+	lc := GetLoggerWithCtxFromPool()
+	lc.ctx = ctx
+	lc.l = l
+	return lc
 }
 
 // Sync calls the underlying Core's Sync method, flushing any buffered log

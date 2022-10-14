@@ -19,7 +19,7 @@ import (
 
 func applog() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-		interceptor.AppendLoggerFieldToContext(ctx, zap.String("logger_test", "test"))
+		log.AppendLoggerFieldToContext(ctx, zap.String("logger_test", "test"))
 		return handler(ctx, req)
 	}
 }
@@ -31,14 +31,20 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	})
 	cnf := conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
 	clfg := cnf.CutFromParser(p)
-	gloger := log.Logger{}
+	gloger := log.New(nil)
 	assert.NotPanics(t, func() { gloger.Apply(cnf.Sub("log")) })
+	gloger.AsGlobal()
 	go func() {
 		opts := []grpc.ServerOption{
 			// The following grpc.ServerOption adds an interceptor for all unary
 			// RPCs. To configure an interceptor for streaming RPCs, see:
 			// https://godoc.org/google.golang.org/grpc#StreamInterceptor
-			grpc.ChainUnaryInterceptor(interceptor.LoggerUnaryServerInterceptor(clfg), applog()),
+			grpc.ChainUnaryInterceptor(interceptor.LoggerUnaryServerInterceptor(clfg), interceptor.RecoveryUnaryServerInterceptor(clfg),
+				func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+					log.AppendLoggerFieldToContext(ctx, zap.String("logger_test", "test"))
+					panic("test")
+					return handler(ctx, req)
+				}),
 		}
 
 		s := grpc.NewServer(opts...)
@@ -80,6 +86,9 @@ func TestGrpcContextLogger(t *testing.T) {
 	})
 	cnf := conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
 	clfg := cnf.CutFromParser(p)
+	gloger := log.New(nil)
+	assert.NotPanics(t, func() { gloger.Apply(cnf.Sub("log")) })
+	gloger.AsGlobal()
 	ss := make(chan bool)
 	go func() {
 		opts := []grpc.ServerOption{

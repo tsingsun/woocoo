@@ -105,7 +105,7 @@ web:
 	tests := []struct {
 		name    string
 		fields  fields
-		wantErr bool //port conflict
+		wantErr bool // port conflict
 	}{
 		{name: "run", fields: fields{web.New(web.Configuration(cnf.Sub("web")))}},
 		{name: "runGracefull", fields: fields{web.New(web.Configuration(cnf.Sub("web")), web.GracefulStop())}},

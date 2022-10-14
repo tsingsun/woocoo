@@ -12,7 +12,7 @@ type options struct {
 	localPath    string
 	basedir      string
 	includeFiles []string
-	//use parser global
+	// use parser global
 	global bool
 }
 

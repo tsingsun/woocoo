@@ -59,8 +59,6 @@ func TestRecoveryUnaryServerInterceptorUnary(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := testproto.NewTestServiceClient(conn)
-	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	//defer cancel()
 	_, err = client.PingPanic(context.Background(), &testproto.PingRequest{
 		Value: t.Name(),
 	})

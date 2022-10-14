@@ -247,7 +247,7 @@ func (enc *textEncoder) AppendByteString(val []byte) {
 func (enc *textEncoder) AppendComplex128(val complex128) {
 	enc.addElementSeparator()
 	// Cast to a platform-independent, fixed-size type.
-	r, i := float64(real(val)), imag(val)
+	r, i := real(val), imag(val)
 	enc.buf.AppendFloat(r, 64)
 	enc.buf.AppendByte('+')
 	enc.buf.AppendFloat(i, 64)

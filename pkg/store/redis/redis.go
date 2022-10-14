@@ -61,5 +61,4 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 	if err != nil {
 		panic(err)
 	}
-
 }

@@ -71,8 +71,6 @@ func TestJWTUnaryServerInterceptor(t *testing.T) {
 	conn, err := grpc.DialContext(ctx, addr, copts...)
 	assert.NoError(t, err)
 	client := testproto.NewTestServiceClient(conn)
-	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	//defer cancel()
 	resp, err := client.Ping(context.Background(), &testproto.PingRequest{
 		Value: t.Name(),
 	})

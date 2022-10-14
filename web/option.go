@@ -34,11 +34,13 @@ func RegisterMiddleware(middleware handler.Middleware) Option {
 //
 // Notice: the middleware usual attach `c.Next()` or `c.Abort` to indicator whether exits the method.
 // example:
-//  RegisterMiddlewareByFunc("test",func(c *gin.Context) {
-//          ....process
-//          c.Next() or c.Abort() or c.AbortWithStatus(500)
-//      }
-//  )
+//
+//	RegisterMiddlewareByFunc("test",func(c *gin.Context) {
+//	        ....process
+//	        c.Next() or c.Abort() or c.AbortWithStatus(500)
+//	    }
+//
+// )
 func RegisterMiddlewareByFunc(name string, handlerFunc handler.MiddlewareApplyFunc) Option {
 	ware := handler.NewSimpleMiddleware(name, handlerFunc)
 	return func(s *ServerOptions) {

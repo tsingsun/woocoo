@@ -1,36 +1,20 @@
 package handler
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"go.uber.org/zap"
+	"net/http"
 	"net/http/httputil"
-	"runtime"
 )
-
-type RecoveryConfig struct {
-	// Size of the stack to be printed.
-	// Optional. Default value 4KB.
-	StackSize int `json:"stackSize" yaml:"stackSize"`
-
-	// DisableStackAll disables formatting stack traces of all other goroutines
-	// into buffer after the trace for the current goroutine.
-	// Optional. Default value false.
-	DisableStackAll bool `json:"disableStackAll" yaml:"disableStackAll"`
-
-	// DisablePrintStack disables printing stack trace.
-	// Optional. Default value as false.
-	DisablePrintStack bool `json:"disablePrintStack" yaml:"disablePrintStack"`
-}
 
 var (
-	defaultRecoveryConfig = RecoveryConfig{
-		StackSize:         4 << 10, // 4 KB
-		DisableStackAll:   false,
-		DisablePrintStack: false,
-	}
+	ErrRecovery = errors.New("internal server error")
 )
 
+// RecoveryMiddleware is a middleware which recovers from panics anywhere in the chain
+// and handles the control to the centralized HTTPErrorHandler.
 type RecoveryMiddleware struct {
 }
 
@@ -42,28 +26,41 @@ func (h *RecoveryMiddleware) Name() string {
 	return "recovery"
 }
 
-func (h *RecoveryMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	if err := cfg.Unmarshal(&defaultRecoveryConfig); err != nil {
-		panic(err)
-	}
+func (h *RecoveryMiddleware) ApplyFunc(_ *conf.Configuration) gin.HandlerFunc {
 	return gin.CustomRecovery(HandleRecoverError)
 }
 
-func (h RecoveryMiddleware) Shutdown() {
+func (h *RecoveryMiddleware) Shutdown() {
 }
 
-func HandleRecoverError(c *gin.Context, err interface{}) {
-	var stack []byte
-	var length int
+func HandleRecoverError(c *gin.Context, err any) {
 	httpRequest, _ := httputil.DumpRequest(c.Request, false)
-	if !defaultRecoveryConfig.DisablePrintStack {
-		stack = make([]byte, defaultRecoveryConfig.StackSize)
-		length = runtime.Stack(stack, !defaultRecoveryConfig.DisableStackAll)
-		stack = stack[:length]
+	var ce *gin.Error
+	if e, ok := err.(error); ok {
+		ce = c.AbortWithError(http.StatusInternalServerError, e)
+		ce.Type = gin.ErrorTypePrivate
+	} else {
+		_ = c.AbortWithError(http.StatusInternalServerError, ErrRecovery)
 	}
-	logger.Error("[Recovery from panic]",
-		zap.Any("error", err),
-		zap.String("request", string(httpRequest)),
-		zap.ByteString("stack", stack),
-	)
+	fc := getLogCarrierFromGinContext(c)
+	if fc != nil {
+		fc.Fields = append(fc.Fields,
+			zap.Any("panic", err),
+			zap.String("request", string(httpRequest)),
+			zap.Stack("stacktrace"),
+		)
+		return
+	}
+	if logger.Logger().DisableStacktrace {
+		logger.Ctx(c).Error("[Recovery from panic]",
+			zap.Any("error", err),
+			zap.String("request", string(httpRequest)),
+			zap.Stack("stacktrace"),
+		)
+	} else {
+		logger.Ctx(c).Error("[Recovery from panic]",
+			zap.Any("error", err),
+			zap.String("request", string(httpRequest)),
+		)
+	}
 }

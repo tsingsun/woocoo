@@ -50,7 +50,7 @@ func (ab *AtlasBase) SchemaInspect(ctx context.Context) ([]*gen.Type, error) {
 	return ab.BuildSchema(s.Tables)
 }
 
-func (ab AtlasBase) BuildSchema(tables []*schema.Table) ([]*gen.Type, error) {
+func (ab *AtlasBase) BuildSchema(tables []*schema.Table) ([]*gen.Type, error) {
 	for _, table := range tables {
 		if len(ab.Options.Tables) > 0 {
 			found := false
@@ -89,7 +89,7 @@ func (ab AtlasBase) BuildSchema(tables []*schema.Table) ([]*gen.Type, error) {
 	return ml, nil
 }
 
-func (ab AtlasBase) TableToGenType(table *schema.Table) (*gen.Type, error) {
+func (ab *AtlasBase) TableToGenType(table *schema.Table) (*gen.Type, error) {
 	entSchema := &load.Schema{
 		Name:        TypeName(table.Name),
 		Annotations: make(map[string]interface{}),

@@ -73,7 +73,7 @@ func TestConfiguration_Load(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := tt.fields.cfg.Load()
 			if tt.name == "merge" {
-				assert.Len(t, cfg.opts.includeFiles, 3) //slice merge no support
+				assert.Len(t, cfg.opts.includeFiles, 3) // slice merge no support
 			}
 		})
 	}
@@ -116,7 +116,6 @@ func TestConfiguration_Unmarshal(t *testing.T) {
 				root:        tt.fields.root,
 			}
 			tt.wantErr(t, c.parser.Unmarshal(tt.args.key, &tt.args.dst), tt.args.dst)
-			//tt.wantErr(t, c.Sub(tt.args.key).Unmarshal(&tt.args.dst), tt.args.dst)
 		})
 	}
 }

@@ -22,6 +22,7 @@ const (
 )
 
 var (
+	accessLoggerName    = "web.accessLog"
 	defaultLoggerFormat = "id,remoteIp,host,method,uri,userAgent,status,error," +
 		"latency,bytesIn,bytesOut"
 )
@@ -63,11 +64,18 @@ type loggerTag struct {
 	k string
 }
 
-type LoggerMiddleware struct{}
+type LoggerMiddleware struct {
+	logger log.ComponentLogger
+}
 
 // AccessLog a new LoggerMiddleware,it is for handler registry
 func AccessLog() *LoggerMiddleware {
-	return &LoggerMiddleware{}
+	al := &LoggerMiddleware{}
+	operator := logger.Logger().WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
+	logger := log.Component(accessLoggerName)
+	logger.SetLogger(operator)
+	al.logger = logger
+	return al
 }
 
 func (h *LoggerMiddleware) Name() string {
@@ -123,6 +131,8 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	}
 	return func(c *gin.Context) {
 		start := time.Now()
+		logCarrier := log.NewCarrier()
+		c.Set(accessLoggerName, logCarrier)
 		// Process request first
 		c.Next()
 		// c.Next() may change implicit skipper,so call it after c.Next()
@@ -136,6 +146,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		path := c.Request.URL.Path
 
 		fields := make([]zap.Field, len(opts.tags))
+		privateErr := false
 		for i, tag := range opts.tags {
 			switch tag.v {
 			case "id":
@@ -164,7 +175,11 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 				fields[i] = zap.Int("status", res.Status())
 			case "error":
 				if len(c.Errors) > 0 {
-					fields[i] = zap.String("error", c.Errors.ByType(gin.ErrorTypePrivate).String())
+					v := c.Errors.ByType(gin.ErrorTypePrivate).String()
+					if v != "" {
+						privateErr = true
+						fields[i] = zap.String("error", c.Errors.ByType(gin.ErrorTypePrivate).String())
+					}
 				}
 			case "latency":
 				fields[i] = zap.Duration("latency", latency)
@@ -198,10 +213,26 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 				fields[i] = zap.Skip()
 			}
 		}
-		logger.Info("", fields...)
+		if fc := getLogCarrierFromGinContext(c); fc != nil && len(fc.Fields) > 0 {
+			fields = append(fields, fc.Fields...)
+		}
+		clog := h.logger.Ctx(c)
+		if privateErr {
+			clog.Error("", fields...)
+		} else {
+			clog.Info("", fields...)
+		}
+		log.PutLoggerWithCtxToPool(clog)
 	}
 }
 
 // Shutdown does nothing for logger
 func (h *LoggerMiddleware) Shutdown() {
+}
+
+func getLogCarrierFromGinContext(c *gin.Context) *log.FieldCarrier {
+	if fc, ok := c.Get(accessLoggerName); ok {
+		return fc.(*log.FieldCarrier)
+	}
+	return nil
 }

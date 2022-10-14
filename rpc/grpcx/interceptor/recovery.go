@@ -2,36 +2,19 @@ package interceptor
 
 import (
 	"context"
-	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"runtime"
 )
 
 type RecoveryOptions struct {
-	// Size of the stack to be printed.
-	// Optional. Default value 4KB.
-	StackSize int `json:"stackSize" yaml:"stackSize"`
-
-	// DisableStackAll disables formatting stack traces of all other goroutines
-	// into buffer after the trace for the current goroutine.
-	// Optional. Default value false.
-	DisableStackAll bool `json:"disableStackAll" yaml:"disableStackAll"`
-
-	// DisablePrintStack disables printing stack trace.
-	// Optional. Default value as false.
-	DisablePrintStack bool `json:"disablePrintStack" yaml:"disablePrintStack"`
 }
 
 var (
-	defaultRecoveryOptions = RecoveryOptions{
-		StackSize:         4 << 10, // 4 KB
-		DisableStackAll:   false,
-		DisablePrintStack: false,
-	}
+	defaultRecoveryOptions = RecoveryOptions{}
 )
 
 // RecoveryUnaryServerInterceptor catches panics in processing unary requests and recovers.
@@ -85,14 +68,19 @@ func HandleRecoverError(ctx context.Context, p interface{}) error {
 	return handleRecoverError(defaultRecoveryOptions, ctx, p)
 }
 
+// if use logger,let it log the stack trace
 func handleRecoverError(ro RecoveryOptions, ctx context.Context, p interface{}) error {
-	var stack []byte
-	var length int
-	if !ro.DisablePrintStack {
-		stack = make([]byte, ro.StackSize)
-		length = runtime.Stack(stack, !ro.DisableStackAll)
-		stack = stack[:length]
+	if _, ok := log.CarrierFromIncomingContext(ctx); ok {
+		return status.Errorf(codes.Internal, "panic: %v", p)
 	}
-	AppendLoggerFieldToContext(ctx, zap.String("grpc.recovery", fmt.Sprintf("%+v %s...", p, stack)))
-	return status.Errorf(codes.Internal, "panic: %v", p)
+	if logger.Logger().DisableStacktrace {
+		logger.Ctx(ctx).Error("[Recovery from panic]",
+			zap.Stack("stacktrace"),
+		)
+	} else {
+		logger.Ctx(ctx).Error("[Recovery from panic]",
+			zap.Any("error", p),
+		)
+	}
+	return nil
 }

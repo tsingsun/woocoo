@@ -23,10 +23,10 @@ func (u User) OrgID() string {
 	return u[OrgIDKey].(string)
 }
 
-func (u *User) FindIdentity(id string) Identity {
+func (u User) FindIdentity(id string) Identity {
 	return nil
 }
 
-func (u *User) FindIdentityByToken(token string) Identity {
+func (u User) FindIdentityByToken(token string) Identity {
 	return nil
 }

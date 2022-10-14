@@ -15,27 +15,24 @@ import (
 	"time"
 )
 
-var (
-	// ServerField is used in every server-side log statement made through grpc_zap.Can be overwritten before initialization.
-	ServerField = zap.String("span.kind", "server")
-
-	logger = log.Component("grpc", ServerField)
-)
-
-type loggerIncomingKey struct{}
-
 var defaultLoggerOptions = &LoggerOptions{
 	TimestampFormat: time.RFC3339,
 }
 
 type LoggerOptions struct {
 	TimestampFormat string `json:"timestampFormat" yaml:"timestampFormat"`
+
+	logger log.ComponentLogger
 }
 
 func (o *LoggerOptions) Apply(cfg *conf.Configuration) {
 	if err := cfg.Unmarshal(o); err != nil {
 		panic(err)
 	}
+	operator := logger.Logger().WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
+	logger := log.Component(ComponentKey + "." + "accessLog")
+	logger.SetLogger(operator)
+	o.logger = logger
 }
 
 func LoggerUnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInterceptor {
@@ -47,24 +44,31 @@ func LoggerUnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInter
 		resp, err := handler(newCtx, req)
 
 		latency := time.Since(start)
-		loggerOutPut(newCtx, info.FullMethod, latency, err)
+		loggerOutPut(o.logger, newCtx, info.FullMethod, latency, err)
 		return resp, err
 	}
 }
 
-func loggerOutPut(ctx context.Context, method string, latency time.Duration, err error) {
+func loggerOutPut(l log.ComponentLogger, ctx context.Context, method string, latency time.Duration, err error) {
 	// must be ok
-	carr, _ := carrierFromIncomingContext(ctx)
+	carr, _ := log.CarrierFromIncomingContext(ctx)
 	code := status.Code(err)
 	level := DefaultCodeToLevel(code)
-	carr.fields = append(carr.fields,
+	carr.Fields = append(carr.Fields,
 		zap.Int("status", int(code)),
 		zap.Duration("latency", latency),
 	)
 	if err != nil {
-		carr.fields = append(carr.fields, zap.Error(err))
+		carr.Fields = append(carr.Fields, zap.Error(err))
 	}
-	logger.Ctx(ctx).Log(level, method, carr.fields)
+	clog := l.Ctx(ctx)
+	if err != nil {
+		if l.Logger().DisableStacktrace && level >= zapcore.ErrorLevel {
+			carr.Fields = append(carr.Fields, zap.Stack("stacktrace"))
+		}
+	}
+	clog.Log(level, "", carr.Fields)
+	log.PutLoggerWithCtxToPool(clog)
 }
 
 func LoggerStreamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterceptor {
@@ -77,19 +81,8 @@ func LoggerStreamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInt
 		wrapped.WrappedContext = newCtx
 		err := handler(srv, wrapped)
 		latency := time.Since(start)
-		loggerOutPut(newCtx, info.FullMethod, latency, err)
+		loggerOutPut(o.logger, newCtx, info.FullMethod, latency, err)
 		return err
-	}
-}
-
-// logFieldCarrier sample to carry context log
-type logFieldCarrier struct {
-	fields []zapcore.Field
-}
-
-func (c *logFieldCarrier) Apply(cfg *conf.Configuration) {
-	if err := cfg.Unmarshal(c); err != nil {
-		panic(err)
 	}
 }
 
@@ -102,33 +95,8 @@ func newLoggerForCall(ctx context.Context, fullMethodString string, start time.T
 	if cl, ok := peer.FromContext(ctx); ok {
 		f = append(f, zap.Any("peer.address", cl.Addr.String()))
 	}
-	callLog := &logFieldCarrier{fields: append(f, serverCallFields(fullMethodString)...)}
-	return AppendLoggerToContext(ctx, callLog)
-}
-
-// AppendLoggerFieldToContext appends zap field to context logger
-func AppendLoggerFieldToContext(ctx context.Context, fields ...zap.Field) {
-	ctxlog, ok := carrierFromIncomingContext(ctx)
-	if ok {
-		ctxlog.fields = append(ctxlog.fields, fields...)
-	}
-}
-
-// AppendLoggerToContext initial a logger to context
-func AppendLoggerToContext(ctx context.Context, logger *logFieldCarrier, fields ...zap.Field) context.Context {
-	if len(fields) > 0 {
-		logger.fields = append(logger.fields, fields...)
-	}
-	return context.WithValue(ctx, loggerIncomingKey{}, logger)
-}
-
-// carrierFromIncomingContext returns the logger stored in ctx, if any.
-func carrierFromIncomingContext(ctx context.Context) (*logFieldCarrier, bool) {
-	fs, ok := ctx.Value(loggerIncomingKey{}).(*logFieldCarrier)
-	if !ok {
-		return nil, false
-	}
-	return fs, true
+	callLog := &log.FieldCarrier{Fields: append(f, serverCallFields(fullMethodString)...)}
+	return log.WithLoggerCarrierContext(ctx, callLog)
 }
 
 func serverCallFields(fullMethodString string) []zapcore.Field {

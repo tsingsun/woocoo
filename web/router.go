@@ -101,9 +101,10 @@ func (r *Router) Apply(cfg *conf.Configuration) error {
 // FindGroup return a specified router group by an url format base path.
 //
 // parameter basePath is map to configuration:
-//   routerGroups:
-//     - group:
-//         basePath: "/auth"
+//
+//	routerGroups:
+//	- group:
+//	  basePath: "/auth"
 func (r *Router) FindGroup(basePath string) *RouterGroup {
 	for _, group := range r.Groups {
 		if group.basePath == basePath {

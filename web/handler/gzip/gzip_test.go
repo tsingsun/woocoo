@@ -9,11 +9,11 @@ import (
 	"github.com/tsingsun/woocoo/web"
 	"github.com/tsingsun/woocoo/web/handler/gzip"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strconv"
 	"testing"
 
@@ -154,7 +154,7 @@ func unzipBody(r io.Reader) (string, error) {
 		return "", err
 	}
 	defer gr.Close()
-	body, _ := ioutil.ReadAll(gr)
+	body, _ := io.ReadAll(gr)
 	return string(body), nil
 }
 
@@ -235,7 +235,7 @@ func BenchmarkGzip_S100k(b *testing.B) {
 func BenchmarkGzip_P100k(b *testing.B) { benchmarkGzip(b, true, 102400, nativeGzip.DefaultCompression) }
 
 func benchmarkGzip(b *testing.B, parallel bool, size, level int) {
-	bin, err := ioutil.ReadFile("../../../test/testdata/gzip/benchmark.json")
+	bin, err := os.ReadFile("../../../test/testdata/gzip/benchmark.json")
 	if err != nil {
 		b.Fatal(err)
 	}

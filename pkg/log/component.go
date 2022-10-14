@@ -4,9 +4,11 @@ import (
 	"context"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"sync"
 )
 
 const (
+	ComponentKey     = "component"
 	WebComponentName = "web"
 	TraceID          = "traceId"
 )
@@ -36,9 +38,17 @@ func Component(name string, fields ...zap.Field) ComponentLogger {
 	if cData, ok := components[name]; ok {
 		return cData
 	}
-	c := &component{name: name, builtInFields: append(fields, zap.String("component", name)), l: global}
+	c := &component{name: name, builtInFields: append(fields, zap.String(ComponentKey, name)), l: global}
 	components[name] = c
 	return c
+}
+
+// TryGetComponent try to get component logger by name
+func TryGetComponent(name string) ComponentLogger {
+	if cData, ok := components[name]; ok {
+		return cData
+	}
+	return nil
 }
 
 // Logger return component's logger
@@ -81,11 +91,11 @@ func (c *component) Fatal(msg string, fields ...zap.Field) {
 
 // Ctx returns a new logger with the context.
 func (c *component) Ctx(ctx context.Context) *LoggerWithCtx {
-	return &LoggerWithCtx{
-		ctx:    ctx,
-		l:      c.l,
-		fields: c.builtInFields,
-	}
+	lc := loggerWithCtxPool.Get().(*LoggerWithCtx)
+	lc.ctx = ctx
+	lc.l = c.l
+	lc.fields = c.builtInFields
+	return lc
 }
 
 // LoggerWithCtx is a wrapper for Logger that also carries a context.Context.
@@ -141,4 +151,24 @@ func (c *LoggerWithCtx) logFields(ctx context.Context, lvl zapcore.Level, msg st
 	}
 	fields = c.l.contextLogger.LogFields(c.l, ctx, lvl, msg, fields)
 	return fields
+}
+
+// LoggerWithCtx Pool
+var loggerWithCtxPool = sync.Pool{
+	New: func() interface{} {
+		return &LoggerWithCtx{}
+	},
+}
+
+// GetLoggerWithCtxFromPool get a logger with context from pool
+func GetLoggerWithCtxFromPool() *LoggerWithCtx {
+	return loggerWithCtxPool.Get().(*LoggerWithCtx)
+}
+
+// PutLoggerWithCtxToPool put a logger with context to pool
+func PutLoggerWithCtxToPool(logger *LoggerWithCtx) {
+	logger.fields = nil
+	logger.ctx = nil
+	logger.l = nil
+	loggerWithCtxPool.Put(logger)
 }

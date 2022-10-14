@@ -49,7 +49,7 @@ func (s *SimpleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	return s.applyFunc(cfg)
 }
 
-func (s SimpleMiddleware) Shutdown() {
+func (s *SimpleMiddleware) Shutdown() {
 }
 
 // Skipper defines a function to skip middleware. Returning true skips processing

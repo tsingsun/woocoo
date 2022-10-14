@@ -46,7 +46,6 @@ func (s *TestPingService) PingError(ctx context.Context, ping *PingRequest) (*Em
 
 func (s *TestPingService) PingPanic(ctx context.Context, ping *PingRequest) (*Empty, error) {
 	panic("grpc panic error")
-	return nil, nil
 }
 
 func (s *TestPingService) PingList(ping *PingRequest, stream TestService_PingListServer) error {
@@ -55,14 +54,17 @@ func (s *TestPingService) PingList(ping *PingRequest, stream TestService_PingLis
 	}
 	// Send user trailers and headers.
 	for i := 0; i < ListResponseCount; i++ {
-		stream.Send(&PingResponse{Value: ping.Value, Counter: int32(i)})
+		err := stream.Send(&PingResponse{Value: ping.Value, Counter: int32(i)})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func (s *TestPingService) PingStream(stream TestService_PingStreamServer) error {
 	count := 0
-	for true {
+	for {
 		ping, err := stream.Recv()
 		if err == io.EOF {
 			break

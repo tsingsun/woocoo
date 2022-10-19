@@ -51,7 +51,8 @@ cores:
 				},
 			},
 			want: func() any {
-				logdata := test.NewGlobalStringLogger()
+				logdata := &test.StringWriteSyncer{}
+				log.New(test.NewStringLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
 				return logdata
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
@@ -82,7 +83,8 @@ cores:
 				},
 			},
 			want: func() any {
-				logdata := test.NewGlobalStringLogger()
+				logdata := &test.StringWriteSyncer{}
+				log.New(test.NewStringLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
 				log.Global().DisableStacktrace = true
 				return logdata
 			},

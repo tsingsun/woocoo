@@ -7,6 +7,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/test"
 	"github.com/tsingsun/woocoo/test/testproto"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
@@ -17,7 +18,8 @@ import (
 
 func TestRecoveryUnaryServerInterceptor(t *testing.T) {
 	addr := "localhost:50053"
-	logdata := test.NewGlobalStringLogger()
+	logdata := &test.StringWriteSyncer{}
+	log.New(test.NewStringLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
 
 	zgl := zapgrpc.NewLogger(log.Global().Operator())
 	grpclog.SetLoggerV2(zgl)
@@ -79,7 +81,8 @@ func TestRecoveryUnaryServerInterceptor(t *testing.T) {
 
 func TestRecoveryUnaryServerInterceptorWithoutLogger(t *testing.T) {
 	addr := "localhost:50055"
-	logdata := test.NewGlobalStringLogger()
+	logdata := &test.StringWriteSyncer{}
+	log.New(test.NewStringLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
 
 	zgl := zapgrpc.NewLogger(log.Global().Operator())
 	grpclog.SetLoggerV2(zgl)

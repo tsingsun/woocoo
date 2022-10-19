@@ -1,18 +1,21 @@
 package test
 
 import (
-	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"strings"
+	"sync"
 )
 
 // StringWriteSyncer is a WriteSyncer that writes to a string slice for test checking.
 type StringWriteSyncer struct {
 	Entry []string
+	mu    sync.RWMutex
 }
 
 func (s *StringWriteSyncer) Write(p []byte) (n int, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.Entry = append(s.Entry, string(p))
 	return len(p), nil
 }
@@ -42,10 +45,4 @@ func NewStringLogger(ws *StringWriteSyncer, opts ...zap.Option) *zap.Logger {
 	}
 	core := zapcore.NewTee(std.Core(), NewStringCore(ws))
 	return zap.New(core, opts...)
-}
-
-func NewGlobalStringLogger() *StringWriteSyncer {
-	logdata := &StringWriteSyncer{}
-	log.New(NewStringLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
-	return logdata
 }

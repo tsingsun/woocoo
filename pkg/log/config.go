@@ -42,8 +42,9 @@ type Config struct {
 	// DisableCaller set by ZapConfigs[0]
 	DisableStacktrace bool `json:"-"`
 
-	useRotate bool
-	basedir   string
+	callerSkip int
+	useRotate  bool
+	basedir    string
 }
 
 type rotate struct {
@@ -70,6 +71,7 @@ func NewConfig(cfg *conf.Configuration) (*Config, error) {
 	v := &Config{
 		ZapConfigs: make([]zap.Config, len(kps)),
 		basedir:    cfg.Root().GetBaseDir(),
+		callerSkip: cfg.Int("callerSkip"),
 	}
 	for i := 0; i < len(v.ZapConfigs); i++ {
 		v.ZapConfigs[i] = defaultZapConfig(cfg)
@@ -115,6 +117,7 @@ func (c *Config) fixZapConfig(zc *zap.Config) error {
 		otps[i] = u
 	}
 	zc.OutputPaths = otps
+	zc.EncoderConfig.StacktraceKey = StacktraceKey
 	return nil
 }
 

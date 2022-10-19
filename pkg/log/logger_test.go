@@ -1,24 +1,211 @@
 package log
 
 import (
+	"context"
+	"errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/test"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"testing"
+	"time"
 )
 
-var (
-	cnf = conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
-)
+type user int
 
-func TestInfo(t *testing.T) {
-	cnf.AsGlobal()
-	NewBuiltIn()
-	Info("get log")
+func (u user) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	if int(u) < 0 {
+		return errors.New("too few users")
+	}
+	enc.AddInt("users", int(u))
+	return nil
 }
 
-func TestLogger_With(t *testing.T) {
+func TestNewBuiltIn(t *testing.T) {
+	tests := []struct {
+		name    string
+		want    func() *Logger
+		wantErr bool
+	}{
+		{
+			name: "global",
+			want: func() *Logger {
+				conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
+				return Global()
+			},
+		},
+		{
+			name: "miss config",
+			want: func() *Logger {
+				conf.NewFromStringMap(map[string]interface{}{}).AsGlobal()
+				globalApply = false
+				return nil
+			},
+			wantErr: true,
+		},
+		{
+			name: "global twice",
+			want: func() *Logger {
+				conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
+				globalApply = true
+				conf.NewFromStringMap(map[string]interface{}{}).AsGlobal()
+				return Global()
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			want := tt.want()
+			if tt.wantErr {
+				assert.Panics(t, func() {
+					NewBuiltIn()
+				})
+				return
+			}
+			assert.Equalf(t, want, NewBuiltIn(), "NewBuiltIn()")
+		})
+	}
+}
+
+func TestLogger_AsGlobal(t *testing.T) {
+	type fields struct {
+		Logger            *zap.Logger
+		WithTraceID       bool
+		DisableCaller     bool
+		DisableStacktrace bool
+		contextLogger     ContextLogger
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   *Logger
+	}{
+		{
+			fields: fields{
+				Logger:      zap.NewNop(),
+				WithTraceID: true,
+			},
+			want: global,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := &Logger{
+				Logger:            tt.fields.Logger,
+				WithTraceID:       tt.fields.WithTraceID,
+				DisableCaller:     tt.fields.DisableCaller,
+				DisableStacktrace: tt.fields.DisableStacktrace,
+				contextLogger:     tt.fields.contextLogger,
+			}
+			got := l.AsGlobal()
+			// pointer not equal
+			require.NotSame(t, got, l, "global logger pointer must not change")
+			assert.Equalf(t, tt.want, got, "AsGlobal()")
+		})
+	}
+}
+
+func TestLogger_WithOptions(t *testing.T) {
+	type fields struct {
+		Logger            *zap.Logger
+		WithTraceID       bool
+		DisableCaller     bool
+		DisableStacktrace bool
+		contextLogger     ContextLogger
+	}
+	type args struct {
+		opts []zap.Option
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   *Logger
+	}{
+		{
+			fields: fields{
+				Logger:            zap.NewNop(),
+				WithTraceID:       true,
+				DisableCaller:     false,
+				DisableStacktrace: false,
+				contextLogger:     nil,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := &Logger{
+				Logger:            tt.fields.Logger,
+				WithTraceID:       tt.fields.WithTraceID,
+				DisableCaller:     tt.fields.DisableCaller,
+				DisableStacktrace: tt.fields.DisableStacktrace,
+				contextLogger:     tt.fields.contextLogger,
+			}
+			got := l.WithOptions(tt.args.opts...)
+			require.NotSame(t, got, l)
+			require.NotSame(t, got.Operator(), l.Operator())
+			assert.Equalf(t, l, got, "WithOptions(%v)", tt.args.opts)
+		})
+	}
+}
+
+func TestLogger_Ctx(t *testing.T) {
+	type fields struct {
+		Logger            *zap.Logger
+		WithTraceID       bool
+		DisableCaller     bool
+		DisableStacktrace bool
+		contextLogger     ContextLogger
+	}
+	type args struct {
+		ctx context.Context
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   *LoggerWithCtx
+	}{
+		{
+			fields: fields{
+				WithTraceID:       false,
+				DisableCaller:     false,
+				DisableStacktrace: false,
+				contextLogger:     &DefaultContextLogger{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logdata := &test.StringWriteSyncer{}
+			zp := tt.fields.Logger
+			if zp == nil {
+				zp = test.NewStringLogger(logdata)
+			}
+			l := &Logger{
+				Logger:            zp,
+				WithTraceID:       tt.fields.WithTraceID,
+				DisableCaller:     tt.fields.DisableCaller,
+				DisableStacktrace: tt.fields.DisableStacktrace,
+				contextLogger:     tt.fields.contextLogger,
+			}
+			got := l.Ctx(tt.args.ctx)
+			got.Debug("debug", zap.String("key", "value"))
+			got.Info("info", zap.String("key", "value"))
+			got.Warn("warn", zap.String("key", "value"))
+			got.Error("error", zap.String("key", "value"))
+			got.DPanic("dpanic", zap.String("key", "value"))
+			got.Log(zap.ErrorLevel, "log", []zap.Field{zap.String("key", "value")})
+			assert.Len(t, logdata.Entry, 6)
+		})
+	}
+}
+
+func TestLogger_Component(t *testing.T) {
 	type fields struct {
 		logger ComponentLogger
 	}
@@ -30,8 +217,19 @@ func TestLogger_With(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := tt.fields.logger
-			l.Info("test")
+			logdata := &test.StringWriteSyncer{}
+			zp := test.NewStringLogger(logdata)
+			l := &Logger{
+				Logger: zp,
+			}
+			got := tt.fields.logger
+			got.SetLogger(l)
+			got.Debug("debug", zap.String("key", "value"))
+			got.Info("info", zap.String("key", "value"))
+			got.Warn("warn", zap.String("key", "value"))
+			got.Error("error", zap.String("key", "value"))
+			got.DPanic("dpanic", zap.String("key", "value"))
+			assert.Len(t, logdata.Entry, 5)
 		})
 	}
 }
@@ -56,6 +254,30 @@ log:
 	logger := New(zl)
 	logger.Info("info")
 	// TODO: github action bug for output error
-	logger.Info("info for scalar", zap.String("string", "it's a string"), zap.Int("int", 1), zap.Int64("int64", 1), zap.Duration("duration", 1))
-	logger.Info("info for object", zap.Any("object", testdata.TestStruct()))
+	logger.Info("info for scalar", zap.String("string", "it's a string"),
+		zap.Int("int", 1), zap.Int8("int8", 1), zap.Int16("int16", 1), zap.Int32("int32", 1), zap.Int64("int64", 1),
+		zap.Uint("uint", 1), zap.Uint8("uint8", 1), zap.Uint16("uint16", 1), zap.Uint32("uint32", 1), zap.Uint64("uint64", 1),
+		zap.Float64("float64", 64.0), zap.Float32("float32", float32(32.0)), zap.Bool("bool", true),
+		zap.Duration("duration", 1), zap.Time("time", time.Now()),
+		zap.ByteString("byteString", []byte("byteString\n\r\t")),
+		zap.Complex64("complex64", 1), zap.Complex128("complex128", 1),
+	)
+	logger.Info("info for object", zap.Any("any", testdata.TestStruct()))
+	logger.Info("info for object", zap.Object("object", user(0)))
+	logger.Info("info for Binary", zap.Binary("binary", []byte{1, 2, 3, 4, 5}))
+	logger.Info("info for array", zap.Bools("array", []bool{true, false}))
+}
+
+// -----------------------------------------------------------------------------
+func TestPrintLogo(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{name: "print-logo"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			PrintLogo()
+		})
+	}
 }

@@ -17,11 +17,11 @@ import (
 type Configurable interface {
 	// Apply set up property or field value by configuration
 	//
-	// cfg is the Configuration of the component, and it's sub configuration of root
+	// cnf is the Configuration of the component, and it's sub configuration of root
 	// path is the relative path to root,if root is the component,path will be empty
 	// Apply also use for lazy load scene
 	// notice: if any error in apply process,use panic to expose error,and stop application.
-	Apply(cfg *Configuration)
+	Apply(cnf *Configuration)
 }
 
 const (

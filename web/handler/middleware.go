@@ -31,7 +31,7 @@ type SimpleMiddleware struct {
 
 // NewSimpleMiddleware returns a new SimpleMiddleware instance.
 //
-// SimpleMiddleware Shutdown method is empty.
+// SimpleMiddleware shutdowns method is empty.
 // cfg: the configuration of the middleware, usually pass by web server.
 func NewSimpleMiddleware(name string, applyFunc MiddlewareApplyFunc) *SimpleMiddleware {
 	middleware := &SimpleMiddleware{

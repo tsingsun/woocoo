@@ -2,80 +2,64 @@ package opentelemetry
 
 import (
 	"context"
+	"encoding/json"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/propagation"
-	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
-	"go.opentelemetry.io/otel/sdk/metric/export"
-	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
-	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding/gzip"
+	"os"
 	"time"
 )
 
 // NewStdTracer return a stdout tracer provider and an error if any
-func NewStdTracer(c *Config, opts ...stdouttrace.Option) (*sdktrace.TracerProvider, error) {
+func NewStdTracer(c *Config, opts ...stdouttrace.Option) (
+	tp *sdktrace.TracerProvider, shutdown func(ctx context.Context) error, err error) {
 	exporter, err := stdouttrace.New(opts...)
 	if err != nil {
-		return nil, err
-		//log.Fatalf("%s: %v", "failed to create stdout tracer provider", err)
+		return
 	}
 
-	tp := sdktrace.NewTracerProvider(
+	tp = sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithResource(c.Resource),
 		sdktrace.WithBatcher(exporter),
 	)
-	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
-	return tp, nil
+	shutdown = tp.Shutdown
+	return
 }
 
 // NewStdMetric return a stdout metric provider and an error if any
-func NewStdMetric(c *Config) (metric.MeterProvider, error) {
-	exporter, err := stdoutmetric.New(stdoutmetric.WithPrettyPrint())
+func NewStdMetric(c *Config) (mp metric.MeterProvider, shutdown func(ctx context.Context) error, err error) {
+	// Print with a JSON encoder that indents with two spaces.
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	exporter, err := stdoutmetric.New(stdoutmetric.WithEncoder(enc))
 	if err != nil {
-		return nil, err
-		//log.Fatalf("%s: %v", "failed to create stdout metric provider", err)
+		return
 	}
-	return initMetric(c, exporter)
+	shutdown = exporter.Shutdown
+	mp, err = initMetric(c, exporter)
+	return
 }
 
-func initMetric(c *Config, exporter export.Exporter) (metric.MeterProvider, error) {
-	cont := controller.New(
-		processor.NewFactory(
-			simple.NewWithHistogramDistribution(),
-			exporter,
-		),
-		controller.WithExporter(exporter),
-		controller.WithCollectPeriod(c.MetricReportingPeriod),
-		controller.WithResource(c.Resource),
+func initMetric(c *Config, exporter sdkmetric.Exporter) (metric.MeterProvider, error) {
+	meterProvider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(c.Resource),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(c.MetricPeriodicReaderInterval))),
 	)
-	global.SetMeterProvider(cont)
-	if err := cont.Start(context.Background()); err != nil {
-		return nil, err
-	}
-
-	//// host indicator
-	//if err := host.Start(host.WithMeterProvider(cont)); err != nil {
-	//	return nil, err
-	//}
-
 	// Golang runtime
-	err := runtime.Start(runtime.WithMeterProvider(cont), runtime.WithMinimumReadMemStatsInterval(time.Second))
-	return cont, err
+	err := runtime.Start(runtime.WithMeterProvider(meterProvider), runtime.WithMinimumReadMemStatsInterval(time.Second))
+	return meterProvider, err
 }
 
-func NewOtlpTracer(c *Config) (*sdktrace.TracerProvider, error) {
+func NewOtlpTracer(c *Config) (tp *sdktrace.TracerProvider, shutdown func(ctx context.Context) error, err error) {
 	ctx := context.Background()
 	traceSecureOption := otlptracegrpc.WithInsecure()
 	if c.TraceExporterEndpointInsecure {
@@ -91,25 +75,22 @@ func NewOtlpTracer(c *Config) (*sdktrace.TracerProvider, error) {
 	)
 	if err != nil {
 		//log.Fatalf("%s: %v", "failed to create trace exporter", err)
-		return nil, err
+		return
 	}
 
 	// Register the trace exporter with a TracerProvider, using a batch
 	// span processor to aggregate spans before export.
 	bsp := sdktrace.NewBatchSpanProcessor(exporter)
-	tracerProvider := sdktrace.NewTracerProvider(
+	tp = sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithResource(c.Resource),
 		sdktrace.WithSpanProcessor(bsp),
 	)
-	otel.SetTracerProvider(tracerProvider)
-
-	// set global propagator to tracecontext (the default is no-op).
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
-	return tracerProvider, nil
+	shutdown = exporter.Shutdown
+	return
 }
 
-func NewOtlpMetric(c *Config) (metric.MeterProvider, error) {
+func NewOtlpMetric(c *Config) (mp metric.MeterProvider, shutdown func(ctx context.Context) error, err error) {
 	secureOption := otlpmetricgrpc.WithInsecure()
 	if c.MetricExporterEndpointInsecure {
 		secureOption = otlpmetricgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
@@ -121,8 +102,9 @@ func NewOtlpMetric(c *Config) (metric.MeterProvider, error) {
 		otlpmetricgrpc.WithCompressor(gzip.Name),
 	)
 	if err != nil {
-		return nil, err
-		//log.Fatalf("%s: %v", "failed to create otlp metric provider", err)
+		return
 	}
-	return initMetric(c, exporter)
+	shutdown = exporter.Shutdown
+	mp, err = initMetric(c, exporter)
+	return
 }

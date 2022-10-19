@@ -1,21 +1,15 @@
 package otelweb
 
 import (
-	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	otelwoocoo "github.com/tsingsun/woocoo/contrib/opentelemetry"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/pkg/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
-	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
-	"sync"
-	"time"
 )
 
 const (
@@ -23,11 +17,12 @@ const (
 	tracerName = "go.opentelemetry.io/contrib/instrumentation/github.com/tsingsun/web/otelwoocoo"
 )
 
+// Middleware returns middleware that will trace incoming requests.
 type Middleware struct {
-	Configs []*otelwoocoo.Config
+	cfg *otelwoocoo.Config
 }
 
-func New() *Middleware {
+func NewMiddleware() *Middleware {
 	return &Middleware{}
 }
 
@@ -35,63 +30,42 @@ func (h *Middleware) Name() string {
 	return "otel"
 }
 
-func (h *Middleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	opts := otelwoocoo.NewConfig(cfg.Root().AppName())
-	opts.Apply(cfg)
-	h.Configs = append(h.Configs, opts)
-	return middleware(opts)
+func (h *Middleware) ApplyFunc(_ *conf.Configuration) gin.HandlerFunc {
+	h.cfg = otelwoocoo.GlobalConfig()
+	return middleware(h.cfg)
 }
 
+// Shutdown will flush the tracer's span processor and then shut it down.
+//
+// the middleware uses the global tracer provider, so this function is empty.you should call otelwoocoo.Shutdown() when
+// application shutdown.
 func (h *Middleware) Shutdown() {
-	var wg sync.WaitGroup
-	wg.Add(2 * len(h.Configs))
-	for _, opt := range h.Configs {
-		go func(config *otelwoocoo.Config) {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-			defer cancel()
-			if tp, ok := config.TracerProvider.(*sdktrace.TracerProvider); ok {
-				if err := tp.Shutdown(ctx); err != nil {
-					log.Errorf("Error shutting down tracer provider: %v", err)
-				}
-			}
-			wg.Done()
-		}(opt)
-		go func(config *otelwoocoo.Config) {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-			defer cancel()
-			if mp, ok := config.MeterProvider.(*controller.Controller); ok {
-				if err := mp.Stop(ctx); err != nil {
-					log.Errorf("Error shutting down metric provider: %v", err)
-				}
-			}
-			wg.Done()
-		}(opt)
-	}
-	wg.Wait()
 }
 
 // middleware returns middleware that will trace incoming requests.
 // The service parameter should describe the name of the (virtual)
 // server handling the request.
 func middleware(cfg *otelwoocoo.Config) gin.HandlerFunc {
+	prop := cfg.Propagator
+	tracer := cfg.Tracer
 	return func(c *gin.Context) {
-		c.Set(tracerKey, cfg.Tracer)
+		c.Set(tracerKey, tracer)
 		savedCtx := c.Request.Context()
 		defer func() {
 			c.Request = c.Request.WithContext(savedCtx)
 		}()
-		ctx := cfg.Propagator.Extract(savedCtx, propagation.HeaderCarrier(c.Request.Header))
+		ctx := prop.Extract(savedCtx, propagation.HeaderCarrier(c.Request.Header))
 		opts := []trace.SpanStartOption{
 			trace.WithAttributes(semconv.NetAttributesFromHTTPRequest("tcp", c.Request)...),
 			trace.WithAttributes(semconv.EndUserAttributesFromHTTPRequest(c.Request)...),
-			trace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(cfg.ServiceName, c.FullPath(), c.Request)...),
+			trace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(c.Request.Host, c.FullPath(), c.Request)...),
 			trace.WithSpanKind(trace.SpanKindServer),
 		}
 		spanName := c.FullPath()
 		if spanName == "" {
 			spanName = fmt.Sprintf("HTTP %s route not found", c.Request.Method)
 		}
-		ctx, span := cfg.Tracer.Start(ctx, spanName, opts...)
+		ctx, span := tracer.Start(ctx, spanName, opts...)
 		defer span.End()
 		// pass the span through the request context
 		c.Request = c.Request.WithContext(ctx)

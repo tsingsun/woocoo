@@ -8,6 +8,10 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+const (
+	StacktraceKey = "stacktrace"
+)
+
 var (
 	global      *Logger
 	globalApply bool // indicate if you use BuiltIn()
@@ -40,9 +44,9 @@ func (n *DefaultContextLogger) LogFields(log *Logger, ctx context.Context, lvl z
 type Logger struct {
 	*zap.Logger
 	WithTraceID bool
-	// DisableCaller set by ZapConfigs[0]
+	// DisableCaller only indicate the logger weather DisableCaller set by ZapConfigs[0]
 	DisableCaller bool `json:"-"`
-	// DisableCaller set by ZapConfigs[0]
+	// DisableStacktrace only indicate the logger weather DisableCaller, set by ZapConfigs[0]
 	DisableStacktrace bool `json:"-"`
 
 	contextLogger ContextLogger
@@ -56,7 +60,7 @@ func New(zl *zap.Logger) *Logger {
 	}
 }
 
-// NewBuiltIn create a logger by configuration,path key is "log"
+// NewBuiltIn create a logger by configuration,path key is "log", it will be set as global logger
 func NewBuiltIn() *Logger {
 	if globalApply {
 		return global
@@ -78,8 +82,9 @@ func Global() *Logger {
 
 // AsGlobal set the Logger as global logger
 func (l *Logger) AsGlobal() *Logger {
+	globalApply = true
 	*global = *l
-	zap.ReplaceGlobals(l.Logger)
+	zap.ReplaceGlobals(global.Logger)
 	return global
 }
 
@@ -90,7 +95,7 @@ func (l *Logger) Apply(cfg *conf.Configuration) {
 	if err != nil {
 		panic(fmt.Errorf("apply log configuration err:%w", err))
 	}
-	zl, err := config.BuildZap(zap.AddCallerSkip(cfg.Int("callerSkip")))
+	zl, err := config.BuildZap(zap.AddCallerSkip(config.callerSkip))
 	if err != nil {
 		panic(fmt.Errorf("apply log configuration err:%w", err))
 	}

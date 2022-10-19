@@ -64,6 +64,7 @@ type loggerTag struct {
 	k string
 }
 
+// LoggerMiddleware is a middleware that logs each request.
 type LoggerMiddleware struct {
 	logger log.ComponentLogger
 }

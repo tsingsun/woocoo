@@ -1,22 +1,52 @@
 package opentelemetry
 
 import (
+	"context"
+	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
-const defaultTracerName = "github.com/tsingsun/woocoo"
+const (
+	defaultTracerName = "github.com/tsingsun/woocoo"
+)
+
+var (
+	globalConfig *Config
+)
+
+func SetGlobalConfig(cfg *Config) {
+	globalConfig = cfg
+}
+
+func GlobalConfig() *Config {
+	return globalConfig
+}
+
+func GlobalTracer() trace.Tracer {
+	return globalConfig.Tracer
+}
+
+func GlobalMeter() metric.Meter {
+	return globalConfig.Meter
+}
+
+func GetTextMapPropagator() propagation.TextMapPropagator {
+	return globalConfig.Propagator
+}
 
 // Option specifies instrumentation configuration options.
 type Option interface {
@@ -29,91 +59,136 @@ func (o optionFunc) apply(c *Config) {
 	o(c)
 }
 
+// Config is the configuration for the opentelemetry instrumentation,Through it to set global tracer and meter provider.
 type Config struct {
-	ServiceName                    string             `json:"serviceName,omitempty" yaml:"serviceName"`
-	ServiceNamespace               string             `json:"serviceNamespace,omitempty" yaml:"serviceNamespace"`
-	ServiceVersion                 string             `json:"serviceVersion,omitempty" yaml:"serviceVersion"`
-	Resource                       *resource.Resource `json:"resource,omitempty" yaml:"resource"`
-	AttributesEnvKeys              string             `json:"attributesEnvKeys,omitempty" yaml:"attributesEnvKeys"`
-	TraceExporterEndpoint          string             `json:"traceExporterEndpoint" yaml:"traceExporterEndpoint"`
-	TraceExporterEndpointInsecure  bool               `json:"traceExporterEndpointInsecure" yaml:"traceExporterEndpointInsecure"`
-	MetricExporterEndpoint         string             `json:"metricExporterEndpoint" yaml:"metricExporterEndpoint"`
-	MetricExporterEndpointInsecure bool               `json:"metricExporterEndpointInsecure" yaml:"metricExporterEndpointInsecure"`
-	MetricReportingPeriod          time.Duration      `json:"metricReportingPeriod" yaml:"metricReportingPeriod"`
+	ServiceName                    string `json:"serviceName,omitempty" yaml:"serviceName"`
+	ServiceNamespace               string `json:"serviceNamespace,omitempty" yaml:"serviceNamespace"`
+	ServiceVersion                 string `json:"serviceVersion,omitempty" yaml:"serviceVersion"`
+	AttributesEnvKeys              string `json:"attributesEnvKeys,omitempty" yaml:"attributesEnvKeys"`
+	TraceExporterEndpoint          string `json:"traceExporterEndpoint" yaml:"traceExporterEndpoint"`
+	TraceExporterEndpointInsecure  bool   `json:"traceExporterEndpointInsecure" yaml:"traceExporterEndpointInsecure"`
+	MetricExporterEndpoint         string `json:"metricExporterEndpoint" yaml:"metricExporterEndpoint"`
+	MetricExporterEndpointInsecure bool   `json:"metricExporterEndpointInsecure" yaml:"metricExporterEndpointInsecure"`
+	// the intervening time between exports for a PeriodicReader.
+	MetricPeriodicReaderInterval time.Duration `json:"metricReportingPeriod" yaml:"metricReportingPeriod"`
 
-	TracerProvider trace.TracerProvider
-	Tracer         trace.Tracer
-	MeterProvider  metric.MeterProvider
-	Meter          metric.Meter
+	Resource       *resource.Resource            `json:"-" yaml:"-"`
+	TracerProvider trace.TracerProvider          `json:"-" yaml:"-"`
+	Tracer         trace.Tracer                  `json:"-" yaml:"-"`
+	MeterProvider  metric.MeterProvider          `json:"-" yaml:"-"`
+	Meter          metric.Meter                  `json:"-" yaml:"-"`
+	Propagator     propagation.TextMapPropagator `json:"-" yaml:"-"`
 
-	Propagator         propagation.TextMapPropagator
 	resourceAttributes map[string]string
+
+	shutdowns []func(ctx context.Context) error
+
+	asGlobal bool
 }
 
-func NewConfig(name string, opts ...Option) *Config {
-	cfg := &Config{
-		ServiceName:           name,
-		TracerProvider:        otel.GetTracerProvider(),
-		MeterProvider:         metric.NewNoopMeterProvider(),
-		Propagator:            otel.GetTextMapPropagator(),
-		MetricReportingPeriod: time.Second * 30,
+func NewConfig(cnf *conf.Configuration, opts ...Option) *Config {
+	c := &Config{
+		ServiceName:                  cnf.Root().AppName(),
+		MetricPeriodicReaderInterval: time.Second * 30,
+		asGlobal:                     true,
+		resourceAttributes:           make(map[string]string),
 	}
 	for _, opt := range opts {
-		opt.apply(cfg)
+		opt.apply(c)
 	}
-	if name == "" {
-		name = defaultTracerName
+	if c.ServiceName == "" {
+		c.ServiceName = defaultTracerName
 	}
-	cfg.Tracer = cfg.TracerProvider.Tracer(name,
-		trace.WithInstrumentationVersion(SemVersion()),
-	)
-	cfg.Meter = cfg.MeterProvider.Meter(name)
-
-	return cfg
+	c.Apply(cnf)
+	return c
 }
 
 // Apply implement conf.Configurable interface
 //
 // if ServiceName and ServiceVersion and ServiceNameSpace is set in cfg, they will override before
-func (c *Config) Apply(cfg *conf.Configuration) {
-	c.ServiceName = cfg.Root().AppName()
-	c.ServiceVersion = cfg.Root().Version()
+func (c *Config) Apply(cnf *conf.Configuration) {
+	c.ServiceName = cnf.Root().AppName()
+	c.ServiceVersion = cnf.Root().Version()
 	if c.Resource == nil {
 		c.Resource = getDefaultResource(c)
 	}
 
-	if err := cfg.Unmarshal(&c); err != nil {
+	if err := cnf.Unmarshal(&c); err != nil {
 		panic(err)
 	}
 	c.parseEnvKeys()
 	if err := c.mergeResource(); err != nil {
 		panic(err)
 	}
+
+	c.applyTracerProvider()
+	c.applyMetricProvider()
+	if c.TracerProvider != nil {
+		otel.SetTracerProvider(c.TracerProvider)
+	} else {
+		c.TracerProvider = otel.GetTracerProvider()
+	}
+	c.Tracer = c.TracerProvider.Tracer(c.ServiceName, trace.WithInstrumentationVersion(SemVersion()))
+
+	if c.MeterProvider != nil {
+		global.SetMeterProvider(c.MeterProvider)
+	} else {
+		c.MeterProvider = global.MeterProvider()
+	}
+	c.Meter = c.MeterProvider.Meter(c.ServiceName)
+
+	if c.Propagator != nil {
+		otel.SetTextMapPropagator(c.Propagator)
+	} else {
+		c.Propagator = otel.GetTextMapPropagator()
+	}
+
+	if globalConfig == nil {
+		SetGlobalConfig(c)
+	}
+}
+
+func (c *Config) applyTracerProvider() {
+	var (
+		shutdown func(ctx context.Context) error
+		err      error
+	)
 	// trace
 	switch c.TraceExporterEndpoint {
+	case "otlp":
+		c.TracerProvider, shutdown, err = NewOtlpTracer(c)
 	case "stdout":
-		if _, err := NewStdTracer(c, stdouttrace.WithPrettyPrint()); err != nil {
-			log.Fatalf("%s: %v", "failed to create stdout tracer provider", err)
-		}
-	case "":
-		//tracer do not need
+		c.TracerProvider, shutdown, err = NewStdTracer(c, stdouttrace.WithPrettyPrint())
 	default:
-		if _, err := NewOtlpTracer(c); err != nil {
-			log.Fatalf("%s: %v", "failed to create otlp tracer provider", err)
-		}
+		return
 	}
+	if err != nil {
+		panic(fmt.Errorf("failed to create %s tracer provider:%v", c.TraceExporterEndpoint, err))
+	}
+	if shutdown != nil {
+		c.shutdowns = append(c.shutdowns, shutdown)
+	}
+}
+
+func (c *Config) applyMetricProvider() {
+	var (
+		shutdown func(ctx context.Context) error
+		err      error
+	)
 	//metric
 	switch c.MetricExporterEndpoint {
+	case "otlp":
+		c.MeterProvider, shutdown, err = NewOtlpMetric(c)
 	case "stdout":
-		if _, err := NewStdMetric(c); err != nil {
-			log.Fatalf("%s: %v", "failed to create stdout metric provider", err)
-		}
-	case "":
-
+		c.MeterProvider, shutdown, err = NewStdMetric(c)
 	default:
-		if _, err := NewOtlpMetric(c); err != nil {
-			log.Fatalf("%s: %v", "failed to create otlp metric provider", err)
-		}
+		return
+	}
+	if err != nil {
+		panic(fmt.Errorf("failed to create %s metric provider:%v", c.MetricExporterEndpoint, err))
+	}
+	if shutdown != nil {
+		c.shutdowns = append(c.shutdowns, shutdown)
 	}
 }
 
@@ -171,13 +246,32 @@ func (c *Config) mergeResource() error {
 	return nil
 }
 
+func (c *Config) Shutdown() {
+	var wg sync.WaitGroup
+	wg.Add(len(c.shutdowns))
+	for _, shutdown := range c.shutdowns {
+		go func(shutdown func(ctx context.Context) error) {
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
+			if err := shutdown(ctx); err != nil {
+				log.Errorf("Error shutting down tracer provider: %v", err)
+			}
+		}(shutdown)
+	}
+	wg.Wait()
+}
+
 // WithTracerProvider specifies a tracer provider to use for creating a tracer.
 //
 // If none is specified, the global provider is used.
-func WithTracerProvider(provider trace.TracerProvider) Option {
+func WithTracerProvider(provider trace.TracerProvider, shutdown func(ctx context.Context) error) Option {
 	return optionFunc(func(cfg *Config) {
 		if provider != nil {
 			cfg.TracerProvider = provider
+		}
+		if shutdown != nil {
+			cfg.shutdowns = append(cfg.shutdowns, shutdown)
 		}
 	})
 }
@@ -185,10 +279,13 @@ func WithTracerProvider(provider trace.TracerProvider) Option {
 // WithMeterProvider specifies a meter provider to use for creating a meter.
 //
 // If none is specified, the metric.NewNoopMeterProvider is used.
-func WithMeterProvider(provider metric.MeterProvider) Option {
+func WithMeterProvider(provider metric.MeterProvider, shutdown func(ctx context.Context) error) Option {
 	return optionFunc(func(cfg *Config) {
 		if provider != nil {
 			cfg.MeterProvider = provider
+		}
+		if shutdown != nil {
+			cfg.shutdowns = append(cfg.shutdowns, shutdown)
 		}
 	})
 }
@@ -212,7 +309,8 @@ func WithResource(resource *resource.Resource) Option {
 }
 
 // WithResourceAttributes configures attributes on the resource
-// 配置上传附加的一些tag信息，例如环境、可用区等
+//
+// example: zone=shanghai|app=app1|app_version=1.0.0
 func WithResourceAttributes(attributes map[string]string) Option {
 	return optionFunc(func(c *Config) {
 		c.resourceAttributes = attributes

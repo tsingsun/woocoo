@@ -18,8 +18,8 @@ var (
 )
 
 // RecoveryUnaryServerInterceptor catches panics in processing unary requests and recovers.
-func RecoveryUnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInterceptor {
-	if err := cfg.Unmarshal(&defaultRecoveryOptions); err != nil {
+func RecoveryUnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInterceptor {
+	if err := cnf.Unmarshal(&defaultRecoveryOptions); err != nil {
 		panic(err)
 	}
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
@@ -36,8 +36,8 @@ func RecoveryUnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInt
 }
 
 // RecoveryStreamServerInterceptor returns a new streaming server interceptor for panic recovery.
-func RecoveryStreamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterceptor {
-	if err := cfg.Unmarshal(&defaultRecoveryOptions); err != nil {
+func RecoveryStreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerInterceptor {
+	if err := cnf.Unmarshal(&defaultRecoveryOptions); err != nil {
 		panic(err)
 	}
 
@@ -69,18 +69,21 @@ func HandleRecoverError(ctx context.Context, p interface{}) error {
 }
 
 // if use logger,let it log the stack trace
-func handleRecoverError(ro RecoveryOptions, ctx context.Context, p interface{}) error {
-	if _, ok := log.CarrierFromIncomingContext(ctx); ok {
-		return status.Errorf(codes.Internal, "panic: %v", p)
+func handleRecoverError(ro RecoveryOptions, ctx context.Context, p interface{}) (err error) {
+	err = status.Errorf(codes.Internal, "panic: %v", p)
+	if carrier, ok := log.FromIncomingContext(ctx); ok {
+		carrier.Fields = append(carrier.Fields, zap.StackSkip(log.StacktraceKey, 3))
+		return err
 	}
 	if logger.Logger().DisableStacktrace {
 		logger.Ctx(ctx).Error("[Recovery from panic]",
-			zap.Stack("stacktrace"),
+			zap.Any("error", p),
+			zap.StackSkip(log.StacktraceKey, 3),
 		)
 	} else {
-		logger.Ctx(ctx).Error("[Recovery from panic]",
+		logger.Logger().WithOptions(zap.AddCallerSkip(6)).Ctx(ctx).Error("[Recovery from panic]",
 			zap.Any("error", p),
 		)
 	}
-	return nil
+	return err
 }

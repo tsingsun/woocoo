@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
 	"net/http"
 	"net/http/httputil"
@@ -47,7 +48,7 @@ func HandleRecoverError(c *gin.Context, err any) {
 		fc.Fields = append(fc.Fields,
 			zap.Any("panic", err),
 			zap.String("request", string(httpRequest)),
-			zap.Stack("stacktrace"),
+			zap.StackSkip(log.StacktraceKey, 3),
 		)
 		return
 	}
@@ -55,10 +56,10 @@ func HandleRecoverError(c *gin.Context, err any) {
 		logger.Ctx(c).Error("[Recovery from panic]",
 			zap.Any("error", err),
 			zap.String("request", string(httpRequest)),
-			zap.Stack("stacktrace"),
+			zap.StackSkip(log.StacktraceKey, 3),
 		)
 	} else {
-		logger.Ctx(c).Error("[Recovery from panic]",
+		logger.Logger().WithOptions(zap.AddCallerSkip(6)).Ctx(c).Error("[Recovery from panic]",
 			zap.Any("error", err),
 			zap.String("request", string(httpRequest)),
 		)

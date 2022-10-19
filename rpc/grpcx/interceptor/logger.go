@@ -25,8 +25,8 @@ type LoggerOptions struct {
 	logger log.ComponentLogger
 }
 
-func (o *LoggerOptions) Apply(cfg *conf.Configuration) {
-	if err := cfg.Unmarshal(o); err != nil {
+func (o *LoggerOptions) Apply(cnf *conf.Configuration) {
+	if err := cnf.Unmarshal(o); err != nil {
 		panic(err)
 	}
 	operator := logger.Logger().WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
@@ -36,9 +36,9 @@ func (o *LoggerOptions) Apply(cfg *conf.Configuration) {
 }
 
 // LoggerUnaryServerInterceptor returns a new unary server interceptors that adds a zap.Logger to the context.
-func LoggerUnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInterceptor {
+func LoggerUnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInterceptor {
 	o := defaultLoggerOptions
-	o.Apply(cfg)
+	o.Apply(cnf)
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		start := time.Now()
 		newCtx := newLoggerForCall(ctx, info.FullMethod, start, o.TimestampFormat)
@@ -52,7 +52,7 @@ func LoggerUnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInter
 
 func loggerOutPut(l log.ComponentLogger, ctx context.Context, method string, latency time.Duration, err error) {
 	// must be ok
-	carr, _ := log.CarrierFromIncomingContext(ctx)
+	carr, _ := log.FromIncomingContext(ctx)
 	code := status.Code(err)
 	level := DefaultCodeToLevel(code)
 	carr.Fields = append(carr.Fields,
@@ -63,18 +63,13 @@ func loggerOutPut(l log.ComponentLogger, ctx context.Context, method string, lat
 		carr.Fields = append(carr.Fields, zap.Error(err))
 	}
 	clog := l.Ctx(ctx)
-	if err != nil {
-		if l.Logger().DisableStacktrace && level >= zapcore.ErrorLevel {
-			carr.Fields = append(carr.Fields, zap.Stack("stacktrace"))
-		}
-	}
 	clog.Log(level, "", carr.Fields)
 }
 
 // LoggerStreamServerInterceptor returns a new streaming server interceptors that adds a zap.Logger to the context.
-func LoggerStreamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterceptor {
+func LoggerStreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerInterceptor {
 	o := defaultLoggerOptions
-	o.Apply(cfg)
+	o.Apply(cnf)
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		start := time.Now()
 		newCtx := newLoggerForCall(stream.Context(), info.FullMethod, start, o.TimestampFormat)
@@ -88,7 +83,7 @@ func LoggerStreamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInt
 }
 
 func newLoggerForCall(ctx context.Context, fullMethodString string, start time.Time, timestampFormat string) context.Context {
-	var f []zapcore.Field
+	var f = make([]zapcore.Field, 0, 5)
 	f = append(f, zap.String("grpc.start_time", start.Format(timestampFormat)))
 	if d, ok := ctx.Deadline(); ok {
 		f = append(f, zap.String("grpc.request.deadline", d.Format(timestampFormat)))
@@ -97,7 +92,7 @@ func newLoggerForCall(ctx context.Context, fullMethodString string, start time.T
 		f = append(f, zap.Any("peer.address", cl.Addr.String()))
 	}
 	callLog := &log.FieldCarrier{Fields: append(f, serverCallFields(fullMethodString)...)}
-	return log.WithLoggerCarrierContext(ctx, callLog)
+	return log.NewIncomingContext(ctx, callLog)
 }
 
 func serverCallFields(fullMethodString string) []zapcore.Field {

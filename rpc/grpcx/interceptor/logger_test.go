@@ -20,7 +20,7 @@ import (
 
 func applog() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-		log.AppendLoggerFieldToContext(ctx, zap.String("logger_test", "test"))
+		log.AppendToIncomingContext(ctx, zap.String("logger_test", "test"))
 		return handler(ctx, req)
 	}
 }
@@ -102,7 +102,7 @@ func TestLoggerUnaryServerInterceptor(t *testing.T) {
 			fields: fields{
 				ctx: context.Background(),
 				handler: func(ctx context.Context, req interface{}) (interface{}, error) {
-					log.AppendLoggerFieldToContext(ctx, zap.String("woocoo", "test"))
+					log.AppendToIncomingContext(ctx, zap.String("woocoo", "test"))
 					return nil, nil
 				},
 				info: &grpc.UnaryServerInfo{FullMethod: "test"},

@@ -4,37 +4,54 @@ import (
 	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/contrib/opentelemetry"
+	otelwoocoo "github.com/tsingsun/woocoo/contrib/opentelemetry"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	b3prop "go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	b3prop "go.opentelemetry.io/contrib/propagators/b3"
 )
 
-func TestOtelHandler(t *testing.T) {
-	var cfgStr = `
-appName: test
-otel:
-  traceExporterEndpoint: stdout
-  metricExporterEndpoint: stdout
-`
-	rcfg := conf.NewFromBytes([]byte(cfgStr))
-	hcfg := rcfg.Sub("otel")
-
+func TestMiddleware_NewConfig(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	type args struct {
+		cfg *conf.Configuration
+	}
 	tests := []struct {
-		name string
+		name        string
+		args        args
+		handlerFunc gin.HandlerFunc
 	}{
-		{name: "base"},
+		{
+			name: "std",
+			args: args{
+				cfg: conf.NewFromStringMap(map[string]any{
+					"appName": "gin-web",
+					"otel": map[string]interface{}{
+						"traceExporterEndpoint":  "stdout",
+						"metricExporterEndpoint": "stdout",
+					},
+				}),
+			},
+			handlerFunc: func(c *gin.Context) {
+				return
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := New().ApplyFunc(hcfg)
-			assert.NotNil(t, got)
+			otlecfg := otelwoocoo.NewConfig(tt.args.cfg.Sub("otel"))
+			defer otlecfg.Shutdown()
+			h := NewMiddleware()
+			router := gin.New()
+			router.Use(h.ApplyFunc(tt.args.cfg))
+			router.GET("/ping", tt.handlerFunc)
+			r := httptest.NewRequest("GET", "/ping", nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, r)
 		})
 	}
 }
@@ -73,9 +90,11 @@ func TestPropagationWithGlobalPropagators(t *testing.T) {
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(r.Header))
 
 	router := gin.New()
-
-	otelcfg := opentelemetry.NewConfig("foobar", opentelemetry.WithTracerProvider(provider))
-
+	cnf := conf.NewFromStringMap(map[string]interface{}{
+		"appName": "foobar",
+	})
+	otelcfg := otelwoocoo.NewConfig(cnf, otelwoocoo.WithTracerProvider(provider, nil))
+	defer otelcfg.Shutdown()
 	router.Use(middleware(otelcfg))
 	router.GET("/user/:id", func(c *gin.Context) {
 		span := trace.SpanFromContext(c.Request.Context())
@@ -103,9 +122,11 @@ func TestPropagationWithCustomPropagators(t *testing.T) {
 	b3.Inject(ctx, propagation.HeaderCarrier(r.Header))
 
 	router := gin.New()
-
-	otelcfg := opentelemetry.NewConfig("foobar", opentelemetry.WithTracerProvider(provider), opentelemetry.WithPropagator(b3))
-
+	cnf := conf.NewFromStringMap(map[string]interface{}{
+		"appName": "foobar",
+	})
+	otelcfg := otelwoocoo.NewConfig(cnf, otelwoocoo.WithTracerProvider(provider, nil), otelwoocoo.WithPropagator(b3))
+	defer otelcfg.Shutdown()
 	router.Use(middleware(otelcfg))
 	router.GET("/user/:id", func(c *gin.Context) {
 		span := trace.SpanFromContext(c.Request.Context())

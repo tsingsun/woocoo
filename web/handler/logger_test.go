@@ -51,8 +51,7 @@ cores:
 				},
 			},
 			want: func() any {
-				logdata := &test.StringWriteSyncer{}
-				log.New(test.NewStringLogger(logdata)).AsGlobal()
+				logdata := test.NewGlobalStringLogger()
 				return logdata
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
@@ -72,27 +71,27 @@ cores:
 			},
 		},
 		{
-			name: "panic any",
+			name: "private error",
 			args: args{
 				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
 					"format": "error",
 				})),
 				handler: func(c *gin.Context) {
-					panic("panicx")
+					ce := c.Error(errors.New("private error"))
+					ce.Type = gin.ErrorTypePrivate
 				},
 			},
 			want: func() any {
-				logdata := &test.StringWriteSyncer{}
-				log.New(test.NewStringLogger(logdata)).AsGlobal().DisableStacktrace = true
+				logdata := test.NewGlobalStringLogger()
+				log.Global().DisableStacktrace = true
 				return logdata
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				ss := i[0].(*test.StringWriteSyncer)
 				all := ss.String()
 				// panic
-				assert.Contains(t, all, "panicx")
-				assert.Contains(t, all, "stacktrace")
-				assert.Contains(t, all, "internal server error")
+				assert.Contains(t, all, "private error")
+				assert.NotContains(t, all, "stacktrace")
 				return true
 			},
 		},

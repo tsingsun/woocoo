@@ -60,3 +60,27 @@ log:
 全局项如下:
 - disableCaller
 - disableStacktrace
+
+## Web访问日志
+
+在web服务中,经常需要记录访问日志,框架提供了一个中间件,用于记录访问日志,同时搭配recovery中间件来处理panic错误.
+
+```yaml
+web:
+  server:
+    addr: 0.0.0.0:33333
+  engine:
+    routerGroups:
+      - default:
+          middlewares:
+            - accessLog:
+                requestBody: true
+                exclude:
+                  - /healthCheck
+```
+
+Error的处理: 
+  - 对于内部错误时,记录类型为Error
+  - 对于公共错误,如404,500等,记录类型为Info
+
+Panic的处理: 额外记录stacktrace

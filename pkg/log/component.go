@@ -8,8 +8,9 @@ import (
 
 const (
 	ComponentKey     = "component"
+	StacktraceKey    = "stacktrace"
+	TraceIDKey       = "trace_id"
 	WebComponentName = "web"
-	TraceID          = "traceId"
 )
 
 // ComponentLogger is sample and base using for component that also carries a context.Context. It uses the global logger.
@@ -40,14 +41,6 @@ func Component(name string, fields ...zap.Field) ComponentLogger {
 	c := &component{name: name, builtInFields: append(fields, zap.String(ComponentKey, name)), l: global}
 	components[name] = c
 	return c
-}
-
-// TryGetComponent try to get component logger by name
-func TryGetComponent(name string) ComponentLogger {
-	if cData, ok := components[name]; ok {
-		return cData
-	}
-	return nil
 }
 
 // Logger return component's logger
@@ -134,12 +127,11 @@ func (c *LoggerWithCtx) Log(lvl zapcore.Level, msg string, fields []zap.Field) {
 	c.logFields(c.ctx, lvl, msg, fields)
 }
 
-func (c *LoggerWithCtx) logFields(ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field {
+func (c *LoggerWithCtx) logFields(ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) {
 	if len(c.fields) != 0 {
 		fields = append(fields, c.fields...)
 	}
 	c.l.contextLogger.LogFields(c.l, ctx, lvl, msg, fields)
-	return fields
 }
 
 // NewLoggerWithCtx get a logger with context from pool

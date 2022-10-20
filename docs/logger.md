@@ -10,6 +10,7 @@
 log:
   disableTimestamp: false # encoder text 时,是否显示时间戳
   disableErrorVerbose: false # encoder text 时,是否显示错误详情
+  callerSkip: 1 # 跳过的调用层级
   # 单日志组件,不需要复杂日志记录时一般采用sole
   cores:
     - level: debug

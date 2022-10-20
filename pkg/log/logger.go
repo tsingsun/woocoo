@@ -8,10 +8,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-const (
-	StacktraceKey = "stacktrace"
-)
-
 var (
 	global      *Logger
 	globalApply bool // indicate if you use BuiltIn()
@@ -24,17 +20,16 @@ func init() {
 
 // ContextLogger is functions to help ContextLogger logging,the functions are called each ComponentLogger call the logging method
 type ContextLogger interface {
-	// LogFields defined how to get logger field from context
-	LogFields(logger *Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field
+	// LogFields defined how to log field with context
+	LogFields(logger *Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field)
 }
 
 // DefaultContextLogger is hold a nothing
 type DefaultContextLogger struct {
 }
 
-func (n *DefaultContextLogger) LogFields(log *Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field {
+func (n *DefaultContextLogger) LogFields(log *Logger, _ context.Context, lvl zapcore.Level, msg string, fields []zap.Field) {
 	log.Log(lvl, msg, fields...)
-	return fields
 }
 
 // Logger integrate the Uber Zap library to use in woocoo

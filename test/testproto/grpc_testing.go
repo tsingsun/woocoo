@@ -1,17 +1,14 @@
-// Copyright 2016 Michal Witkowski. All Rights Reserved.
-// See LICENSE for licensing terms.
-
-/*
-Package `grpc_testing` provides helper functions for testing validators in this package.
-*/
-
 package testproto
 
 import (
 	"context"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 	"io"
 	"log"
+	"net"
 	"testing"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -76,4 +73,40 @@ func (s *TestPingService) PingStream(stream TestService_PingStreamServer) error 
 		count += 1
 	}
 	return nil
+}
+
+func NewPingGrpcService(t *testing.T, opts ...grpc.ServerOption) (server *grpc.Server, addr string) {
+	addr = "localhost:50053"
+	ch := make(chan struct{})
+	go func() {
+		server = grpc.NewServer(opts...)
+		ch <- struct{}{}
+		RegisterTestServiceServer(server, &TestPingService{})
+		lis, err := net.Listen("tcp", addr)
+		if err != nil {
+			t.Errorf("failed to listen: %v", err)
+			return
+		}
+		if err := server.Serve(lis); err != nil {
+			t.Errorf("failed to serve: %v", err)
+			return
+		}
+	}()
+	if <-ch; true {
+		time.Sleep(time.Microsecond * 100)
+	}
+	return
+}
+
+func NewPingGrpcClient(t *testing.T, ctx context.Context, addr string, opts ...grpc.DialOption) (conn *grpc.ClientConn, client TestServiceClient) {
+	var copts []grpc.DialOption
+	if len(opts) == 0 {
+		copts = []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
+	} else {
+		copts = opts
+	}
+	conn, err := grpc.DialContext(ctx, addr, copts...)
+	require.NoError(t, err)
+	client = NewTestServiceClient(conn)
+	return
 }

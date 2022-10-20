@@ -4,50 +4,43 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/test/testproto"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapgrpc"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
-	"net"
+	"google.golang.org/grpc/grpclog"
 	"testing"
 	"time"
 )
 
-var (
-	addr       = "127.0.0.1:50051"
-	hs256Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.XbPfbIHMI6arZ3Y922BhjWgQzWXcXNrz0ogtVhfEd2o"
-)
-
 func TestJWTUnaryServerInterceptor(t *testing.T) {
+	var (
+		hs256Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.XbPfbIHMI6arZ3Y922BhjWgQzWXcXNrz0ogtVhfEd2o"
+	)
+	logger, err := zap.NewProduction()
+	assert.NoError(t, err)
+	zgl := zapgrpc.NewLogger(logger)
+	grpclog.SetLoggerV2(zgl)
+
 	acfg := conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
 		"signingKey":  "secret",
 		"tokenLookup": "authorization",
 	}))
 
-	go func() {
-		cert, err := tls.LoadX509KeyPair(testdata.Path("x509/test.pem"), testdata.Path("x509/test.key"))
-		assert.NoError(t, err)
-		opts := []grpc.ServerOption{
-			// The following grpc.ServerOption adds an interceptor for all unary
-			// RPCs. To configure an interceptor for streaming RPCs, see:
-			// https://godoc.org/google.golang.org/grpc#StreamInterceptor
-			grpc.UnaryInterceptor(JWTUnaryServerInterceptor(acfg)),
-			// Enable TLS for all incoming connections.
-			grpc.Creds(credentials.NewServerTLSFromCert(&cert)),
-		}
-		s := grpc.NewServer(opts...)
-		testproto.RegisterTestServiceServer(s, &testproto.TestPingService{})
-		lis, err := net.Listen("tcp", addr)
-		assert.NoError(t, err)
-		if err := s.Serve(lis); err != nil {
-			t.Error(err)
-			return
-		}
-	}()
-	time.Sleep(time.Second)
+	cert, err := tls.LoadX509KeyPair(testdata.Path("x509/test.pem"), testdata.Path("x509/test.key"))
+	require.NoError(t, err)
+	gs, addr := testproto.NewPingGrpcService(t,
+		grpc.UnaryInterceptor(JWTUnaryServerInterceptor(acfg)),
+		grpc.Creds(credentials.NewServerTLSFromCert(&cert)))
+	assert.NotNil(t, gs)
+	defer gs.Stop()
+
 	ccreds, err := credentials.NewClientTLSFromFile(testdata.Path("x509/test.pem"), "*.woocoo.com")
 	assert.NoError(t, err)
 	fetchToken := &oauth2.Token{
@@ -64,13 +57,13 @@ func TestJWTUnaryServerInterceptor(t *testing.T) {
 		// oauth.NewOauthAccess requires the configuration of transport
 		// credentials.
 		grpc.WithTransportCredentials(ccreds),
+		grpc.WithBlock(),
 	}
-	copts = append(copts, grpc.WithBlock())
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	conn, client := testproto.NewPingGrpcClient(t, ctx, addr, copts...)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, addr, copts...)
-	assert.NoError(t, err)
-	client := testproto.NewTestServiceClient(conn)
+	defer conn.Close()
+
 	resp, err := client.Ping(context.Background(), &testproto.PingRequest{
 		Value: t.Name(),
 	})

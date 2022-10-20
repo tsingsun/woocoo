@@ -9,129 +9,116 @@ import (
 	"github.com/tsingsun/woocoo/test/testproto"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapgrpc"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
-	"net"
 	"testing"
-	"time"
 )
 
 func TestRecoveryUnaryServerInterceptor(t *testing.T) {
-	addr := "localhost:50053"
 	logdata := &test.StringWriteSyncer{}
 	log.New(test.NewStringLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
 
 	zgl := zapgrpc.NewLogger(log.Global().Operator())
 	grpclog.SetLoggerV2(zgl)
-	go func() {
-		clfg := conf.NewFromStringMap(map[string]interface{}{
-			"TimestampFormat": "2006-01-02 15:04:05",
-		})
-		cnf := conf.NewFromStringMap(map[string]interface{}{})
-		opts := []grpc.ServerOption{
-			// The following grpc.ServerOption adds an interceptor for all unary
-			// RPCs. To configure an interceptor for streaming RPCs, see:
-			// https://godoc.org/google.golang.org/grpc#StreamInterceptor
-			grpc.ChainUnaryInterceptor(LoggerUnaryServerInterceptor(clfg), RecoveryUnaryServerInterceptor(cnf)),
-		}
+	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(
+		LoggerUnaryServerInterceptor(conf.NewFromStringMap(map[string]interface{}{})),
+		RecoveryUnaryServerInterceptor(conf.NewFromStringMap(map[string]interface{}{})),
+	))
+	require.NotNil(t, gs)
+	defer gs.Stop()
 
-		s := grpc.NewServer(opts...)
-		testproto.RegisterTestServiceServer(s, &testproto.TestPingService{})
-		lis, err := net.Listen("tcp", addr)
-		if err != nil {
-			t.Errorf("failed to listen: %v", err)
-			return
-		}
-		if err := s.Serve(lis); err != nil {
-			t.Errorf("failed to serve: %v", err)
-			return
-		}
-	}()
-	time.Sleep(time.Second)
+	conn, client := testproto.NewPingGrpcClient(t, context.Background(), addr)
+	defer conn.Close()
 
-	var copts []grpc.DialOption
-	copts = append(copts, grpc.WithBlock(), grpc.WithInsecure())
-	conn, err := grpc.Dial(addr, copts...)
-	if err != nil {
-		t.Fatal(err)
-	}
 	t.Run("stacktrace", func(t *testing.T) {
 		log.Global().DisableStacktrace = false
-		client := testproto.NewTestServiceClient(conn)
-		_, err = client.PingPanic(context.Background(), &testproto.PingRequest{
+		_, err := client.PingPanic(context.Background(), &testproto.PingRequest{
 			Value: t.Name(),
 		})
 		require.Error(t, err)
 		last := logdata.Entry[len(logdata.Entry)-1]
 		require.Contains(t, last, "grpc panic error")
-		require.Contains(t, last, "testproto/pingservice.go")
+		require.Contains(t, last, "testproto/grpc_testing.go")
 	})
 	t.Run("disableStacktrace", func(t *testing.T) {
 		log.Global().DisableStacktrace = true
-		client := testproto.NewTestServiceClient(conn)
-		_, err = client.PingPanic(context.Background(), &testproto.PingRequest{
+		_, err := client.PingPanic(context.Background(), &testproto.PingRequest{
 			Value: t.Name(),
 		})
 		require.Error(t, err)
 		last := logdata.Entry[len(logdata.Entry)-1]
 		require.Contains(t, last, "grpc panic error")
-		require.Contains(t, last, "testproto/pingservice.go")
+		require.Contains(t, last, "testproto/grpc_testing.go")
 	})
 }
 
 func TestRecoveryUnaryServerInterceptorWithoutLogger(t *testing.T) {
-	addr := "localhost:50055"
 	logdata := &test.StringWriteSyncer{}
 	log.New(test.NewStringLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
 
-	zgl := zapgrpc.NewLogger(log.Global().Operator())
-	grpclog.SetLoggerV2(zgl)
-	go func() {
-		cnf := conf.NewFromStringMap(map[string]interface{}{})
-		opts := []grpc.ServerOption{
-			grpc.ChainUnaryInterceptor(RecoveryUnaryServerInterceptor(cnf)),
-		}
+	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(
+		RecoveryUnaryServerInterceptor(conf.NewFromStringMap(map[string]interface{}{})),
+	))
+	require.NotNil(t, gs)
+	defer gs.Stop()
 
-		s := grpc.NewServer(opts...)
-		testproto.RegisterTestServiceServer(s, &testproto.TestPingService{})
-		lis, err := net.Listen("tcp", addr)
-		if err != nil {
-			t.Errorf("failed to listen: %v", err)
-			return
-		}
-		if err := s.Serve(lis); err != nil {
-			t.Errorf("failed to serve: %v", err)
-			return
-		}
-	}()
-	time.Sleep(time.Second)
+	conn, client := testproto.NewPingGrpcClient(t, context.Background(), addr)
+	defer conn.Close()
 
-	var copts []grpc.DialOption
-	copts = append(copts, grpc.WithBlock(), grpc.WithInsecure())
-	conn, err := grpc.Dial(addr, copts...)
-	if err != nil {
-		t.Fatal(err)
-	}
 	t.Run("stacktrace", func(t *testing.T) {
 		log.Global().DisableStacktrace = false
-		client := testproto.NewTestServiceClient(conn)
-		_, err = client.PingPanic(context.Background(), &testproto.PingRequest{
+		_, err := client.PingPanic(context.Background(), &testproto.PingRequest{
 			Value: t.Name(),
 		})
 		require.Error(t, err)
 		last := logdata.Entry[len(logdata.Entry)-1]
 		require.Contains(t, last, "grpc panic error")
-		require.Contains(t, last, "testproto/pingservice.go")
+		require.Contains(t, last, "testproto/grpc_testing.go")
 	})
 	t.Run("disableStacktrace", func(t *testing.T) {
 		log.Global().DisableStacktrace = true
-		client := testproto.NewTestServiceClient(conn)
-		_, err = client.PingPanic(context.Background(), &testproto.PingRequest{
+		_, err := client.PingPanic(context.Background(), &testproto.PingRequest{
 			Value: t.Name(),
 		})
 		require.Error(t, err)
 		last := logdata.Entry[len(logdata.Entry)-1]
 		require.Contains(t, last, "[Recovery from panic]")
-		require.Contains(t, last, "testproto/pingservice.go")
+		require.Contains(t, last, "testproto/grpc_testing.go")
+	})
+}
+
+func TestHandleRecoverError(t *testing.T) {
+	logdata := &test.StringWriteSyncer{}
+	log.New(test.NewStringLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
+
+	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(
+		RecoveryUnaryServerInterceptor(conf.NewFromStringMap(map[string]interface{}{})),
+		func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+			wg := new(errgroup.Group)
+			wg.Go(func() (err error) {
+				defer func() {
+					if r := recover(); r != nil {
+						err = HandleRecoverError(ctx, r)
+					}
+				}()
+				panic("test panic")
+			})
+			err = wg.Wait()
+			return
+		},
+	))
+	require.NotNil(t, gs)
+	defer gs.Stop()
+
+	conn, client := testproto.NewPingGrpcClient(t, context.Background(), addr)
+	defer conn.Close()
+
+	t.Run("panic", func(t *testing.T) {
+		_, err := client.PingPanic(context.Background(), &testproto.PingRequest{})
+		require.Error(t, err)
+		last := logdata.Entry[len(logdata.Entry)-1]
+		require.Contains(t, last, "[Recovery from panic]")
+		require.Contains(t, last, "interceptor.TestHandleRecoverError")
 	})
 }

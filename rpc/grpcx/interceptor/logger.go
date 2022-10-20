@@ -153,14 +153,14 @@ func NewGrpcContextLogger() *GrpcContextLogger {
 	return &GrpcContextLogger{}
 }
 
-func (g *GrpcContextLogger) LogFields(logger *log.Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field {
+func (g *GrpcContextLogger) LogFields(logger *log.Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) {
 	if logger.WithTraceID {
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
-			tid := md.Get(log.TraceID)
+			tid := md.Get(log.TraceIDKey)
 			if len(tid) != 0 {
-				fields = append(fields, zap.String(log.TraceID, tid[0]))
+				fields = append(fields, zap.String(log.TraceIDKey, tid[0]))
 			}
 		}
 	}
-	return fields
+	logger.Log(lvl, msg, fields...)
 }

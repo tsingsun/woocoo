@@ -152,7 +152,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			switch tag.v {
 			case "id":
 				id := req.Header.Get("X-Request-Id")
-				fields[i] = zap.String(log.TraceID, id)
+				fields[i] = zap.String(log.TraceIDKey, id)
 			case "remoteIp":
 				fields[i] = zap.String("remoteIp", c.ClientIP())
 			case "host":

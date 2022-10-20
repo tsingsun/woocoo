@@ -26,7 +26,7 @@ func RecoveryUnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInt
 		panicked := true
 		defer func() {
 			if r := recover(); r != nil || panicked {
-				err = handleRecoverError(defaultRecoveryOptions, ctx, r)
+				err = handleRecoverError(defaultRecoveryOptions, ctx, r, 0)
 			}
 		}()
 		resp, err = handler(ctx, req)
@@ -45,7 +45,7 @@ func RecoveryStreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerI
 		panicked := true
 		defer func() {
 			if r := recover(); r != nil || panicked {
-				err = handleRecoverError(defaultRecoveryOptions, stream.Context(), r)
+				err = handleRecoverError(defaultRecoveryOptions, stream.Context(), r, 0)
 			}
 		}()
 		err = handler(srv, stream)
@@ -65,23 +65,23 @@ func RecoveryStreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerI
 //			}
 //		}()
 func HandleRecoverError(ctx context.Context, p interface{}) error {
-	return handleRecoverError(defaultRecoveryOptions, ctx, p)
+	return handleRecoverError(defaultRecoveryOptions, ctx, p, 1)
 }
 
 // if use logger,let it log the stack trace
-func handleRecoverError(ro RecoveryOptions, ctx context.Context, p interface{}) (err error) {
+func handleRecoverError(_ RecoveryOptions, ctx context.Context, p interface{}, stackSkip int) (err error) {
 	err = status.Errorf(codes.Internal, "panic: %v", p)
 	if carrier, ok := log.FromIncomingContext(ctx); ok {
-		carrier.Fields = append(carrier.Fields, zap.StackSkip(log.StacktraceKey, 3))
+		carrier.Fields = append(carrier.Fields, zap.StackSkip(log.StacktraceKey, 3+stackSkip))
 		return err
 	}
 	if logger.Logger().DisableStacktrace {
 		logger.Ctx(ctx).Error("[Recovery from panic]",
 			zap.Any("error", p),
-			zap.StackSkip(log.StacktraceKey, 3),
+			zap.StackSkip(log.StacktraceKey, 3+stackSkip),
 		)
 	} else {
-		logger.Logger().WithOptions(zap.AddCallerSkip(6)).Ctx(ctx).Error("[Recovery from panic]",
+		logger.Logger().WithOptions(zap.AddCallerSkip(6+stackSkip)).Ctx(ctx).Error("[Recovery from panic]",
 			zap.Any("error", p),
 		)
 	}

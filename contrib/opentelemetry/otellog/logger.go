@@ -13,32 +13,30 @@ import (
 	"go.uber.org/zap/zapcore"
 	"math"
 	"reflect"
-	"runtime"
 	"strconv"
 	"time"
 )
-
-// trace to the log.XXX call method
-const runtimeCallerSkip = 5
 
 var (
 	logSeverityKey = attribute.Key("log.severity")
 	logMessageKey  = attribute.Key("log.message")
 )
 
+// ContextLogger is a zapcore.Core that logs to the current span in the context.
+//
+// log configuration set the `callerSkip: 4` for matching the stacktrace
 type ContextLogger struct {
-	callerDepth      int
-	errorStatusLevel zapcore.Level
 }
 
 func NewContextZapLogger() *ContextLogger {
 	return &ContextLogger{}
 }
 
-func (l *ContextLogger) LogFields(logger *log.Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) []zap.Field {
+func (l *ContextLogger) LogFields(logger *log.Logger, ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) {
 	span := trace.SpanFromContext(ctx)
 	if !span.IsRecording() {
-		return fields
+		logger.Log(lvl, msg, fields...)
+		return
 	}
 
 	attrs := make([]attribute.KeyValue, len(fields))
@@ -48,53 +46,38 @@ func (l *ContextLogger) LogFields(logger *log.Logger, ctx context.Context, lvl z
 		}
 		attrs = appendField(attrs, f)
 	}
-	l.log(logger, span, lvl, msg, attrs)
-
-	if logger.WithTraceID {
-		traceID := span.SpanContext().TraceID().String()
-		fields = append(fields, zap.String("trace_id", traceID))
-	}
-
-	return fields
-}
-
-func (l *ContextLogger) log(logger *log.Logger, span trace.Span, lvl zapcore.Level, msg string, attrs []attribute.KeyValue) {
-	attrs = append(attrs, logSeverityKey.String(levelString(lvl)))
-	attrs = append(attrs, logMessageKey.String(msg))
-
-	if !logger.DisableCaller {
-		if fn, file, line, ok := runtimeCaller(runtimeCallerSkip + l.callerDepth); ok {
-			if fn != "" {
-				attrs = append(attrs, semconv.CodeFunctionKey.String(fn))
-			}
-			if file != "" {
-				attrs = append(attrs, semconv.CodeFilepathKey.String(file))
-				attrs = append(attrs, semconv.CodeLineNumberKey.Int(line))
-			}
-		}
-	}
-
-	if !logger.DisableStacktrace {
-		stackTrace := make([]byte, 2048)
-		n := runtime.Stack(stackTrace, false)
-		attrs = append(attrs, semconv.ExceptionStacktraceKey.String(string(stackTrace[0:n])))
-	}
-
-	span.AddEvent("log", trace.WithAttributes(attrs...))
-
-	if lvl >= l.errorStatusLevel {
-		span.SetStatus(codes.Error, msg)
-	}
-}
-
-func runtimeCaller(skip int) (fn, file string, line int, ok bool) {
-	rpc := make([]uintptr, 1)
-	n := runtime.Callers(skip+1, rpc[:])
-	if n < 1 {
+	ce := l.log(logger, span, lvl, msg, attrs)
+	if ce == nil {
 		return
 	}
-	frame, _ := runtime.CallersFrames(rpc).Next()
-	return frame.Function, frame.File, frame.Line, frame.PC != 0
+	if logger.WithTraceID {
+		traceID := span.SpanContext().TraceID().String()
+		fields = append(fields, zap.String(log.TraceIDKey, traceID))
+	}
+	ce.Write(fields...)
+}
+
+func (l *ContextLogger) log(logger *log.Logger, span trace.Span, lvl zapcore.Level, msg string, attrs []attribute.KeyValue) *zapcore.CheckedEntry {
+	ce := logger.Operator().Check(lvl, msg)
+	if ce == nil {
+		return ce
+	}
+	attrs = append(attrs, logSeverityKey.String(levelString(lvl)), logMessageKey.String(msg))
+	if caller := ce.Entry.Caller; caller.Defined {
+		attrs = append(attrs,
+			semconv.CodeFilepathKey.String(caller.File),
+			semconv.CodeFunctionKey.String(caller.Function),
+			semconv.CodeLineNumberKey.Int(caller.Line),
+		)
+	}
+	if ce.Entry.Stack != "" {
+		attrs = append(attrs, semconv.ExceptionStacktraceKey.String(ce.Entry.Stack))
+	}
+	span.AddEvent("log", trace.WithAttributes(attrs...))
+	if lvl >= zap.ErrorLevel {
+		span.SetStatus(codes.Error, msg)
+	}
+	return ce
 }
 
 func appendField(attrs []attribute.KeyValue, f zapcore.Field) []attribute.KeyValue {

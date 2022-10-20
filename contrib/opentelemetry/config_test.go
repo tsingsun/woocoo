@@ -112,7 +112,8 @@ func zipkinProvider(t *testing.T) (*sdktrace.TracerProvider, func(ctx context.Co
 }
 
 func prometheusProvider(t *testing.T) (*sdkmetric.MeterProvider, func(ctx context.Context) error) {
-	exporter := prometheus.New()
+	exporter, err := prometheus.New()
+	require.NoError(t, err)
 	mp := sdkmetric.NewMeterProvider(
 		sdkmetric.WithReader(exporter))
 	return mp, exporter.Shutdown

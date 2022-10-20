@@ -10,7 +10,7 @@ require (
 	github.com/tsingsun/woocoo v0.0.4-0.20220914053344-66129458f045
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.36.3
 	go.opentelemetry.io/contrib/propagators/b3 v1.11.0
-	go.opentelemetry.io/otel v1.11.0
+	go.opentelemetry.io/otel v1.11.1
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.32.3
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.10.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.32.3
@@ -20,7 +20,7 @@ require (
 	go.opentelemetry.io/otel/metric v0.32.3
 	go.opentelemetry.io/otel/sdk v1.11.0
 	go.opentelemetry.io/otel/sdk/metric v0.32.3
-	go.opentelemetry.io/otel/trace v1.11.0
+	go.opentelemetry.io/otel/trace v1.11.1
 	go.uber.org/zap v1.23.0
 	google.golang.org/grpc v1.50.1
 )

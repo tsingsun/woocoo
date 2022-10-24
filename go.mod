@@ -15,7 +15,7 @@ require (
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pelletier/go-toml v1.9.3 // indirect
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/vektah/gqlparser/v2 v2.5.1
 	github.com/vmihailenco/go-tinylfu v0.2.2
 	github.com/vmihailenco/msgpack/v5 v5.3.5
@@ -23,7 +23,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.5
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/goleak v1.2.0
-	go.uber.org/multierr v1.8.0 // indirect
+	go.uber.org/multierr v1.8.0
 	go.uber.org/zap v1.23.0
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8

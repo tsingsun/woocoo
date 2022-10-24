@@ -6,13 +6,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-const (
-	ComponentKey     = "component"
-	StacktraceKey    = "stacktrace"
-	TraceIDKey       = "trace_id"
-	WebComponentName = "web"
-)
-
 // ComponentLogger is sample and base using for component that also carries a context.Context. It uses the global logger.
 type ComponentLogger interface {
 	Logger() *Logger
@@ -30,27 +23,43 @@ type ComponentLogger interface {
 type component struct {
 	name          string
 	l             *Logger
+	cl            *Logger
 	builtInFields []zap.Field
+	// useGlobal is true if the component is using the global logger.
+	useGlobal bool
 }
 
-// Component return a logger with name option base on global logger
+// Component return a logger with name option base on a logger.
+//
+// The logger will be lazy set up,Using the global logger by default.
 func Component(name string, fields ...zap.Field) ComponentLogger {
 	if cData, ok := components[name]; ok {
 		return cData
 	}
-	c := &component{name: name, builtInFields: append(fields, zap.String(ComponentKey, name)), l: global}
+	c := &component{
+		name:          name,
+		builtInFields: append(fields, zap.String(ComponentKey, name)),
+		useGlobal:     true,
+	}
 	components[name] = c
 	return c
 }
 
 // Logger return component's logger
 func (c *component) Logger() *Logger {
+	if c.l == nil {
+		c.SetLogger(global)
+	}
 	return c.l
 }
 
 // SetLogger replace logger, by default component use global logger
 func (c *component) SetLogger(logger *Logger) {
-	c.l = logger
+	c.useGlobal = logger == global
+	if c.l != logger {
+		c.l = logger
+		c.cl = c.l.WithOptions(zap.AddCallerSkip(CallerSkip + 1))
+	}
 }
 
 func (c *component) Debug(msg string, fields ...zap.Field) {
@@ -83,7 +92,7 @@ func (c *component) Fatal(msg string, fields ...zap.Field) {
 
 // Ctx returns a new logger with the context.
 func (c *component) Ctx(ctx context.Context) *LoggerWithCtx {
-	lc := NewLoggerWithCtx(ctx, c.l)
+	lc := NewLoggerWithCtx(ctx, c.cl)
 	lc.fields = c.builtInFields
 	return lc
 }
@@ -93,6 +102,12 @@ type LoggerWithCtx struct {
 	ctx    context.Context
 	l      *Logger
 	fields []zapcore.Field
+}
+
+// WithOptions reset the logger with options.
+func (c *LoggerWithCtx) WithOptions(opts ...zap.Option) *LoggerWithCtx {
+	c.l = c.l.WithOptions(opts...)
+	return c
 }
 
 func (c *LoggerWithCtx) Debug(msg string, fields ...zap.Field) {

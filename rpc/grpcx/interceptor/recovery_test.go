@@ -6,20 +6,20 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/test"
+	"github.com/tsingsun/woocoo/test/testlog"
 	"github.com/tsingsun/woocoo/test/testproto"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapgrpc"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"strings"
 	"testing"
 )
 
 func TestRecoveryUnaryServerInterceptor(t *testing.T) {
-	logdata := &test.StringWriteSyncer{}
-	log.New(test.NewStringLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
-
-	zgl := zapgrpc.NewLogger(log.Global().Operator())
+	testlog.ApplyGlobal(false)
+	zgl := zapgrpc.NewLogger(log.Global().Logger().Logger)
 	grpclog.SetLoggerV2(zgl)
 	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(
 		LoggerUnaryServerInterceptor(conf.NewFromStringMap(map[string]interface{}{})),
@@ -32,31 +32,33 @@ func TestRecoveryUnaryServerInterceptor(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("stacktrace", func(t *testing.T) {
-		log.Global().DisableStacktrace = false
+		logdata := testlog.InitStringWriteSyncer()
+		log.Component(AccessLogComponentName).SetLogger(log.Global().Logger())
 		_, err := client.PingPanic(context.Background(), &testproto.PingRequest{
 			Value: t.Name(),
 		})
 		require.Error(t, err)
 		last := logdata.Entry[len(logdata.Entry)-1]
 		require.Contains(t, last, "grpc panic error")
-		require.Contains(t, last, "testproto/grpc_testing.go")
+		line := strings.Split(last, "\\n\\t")[1]
+		require.Contains(t, line, "testproto/grpc_testing.go")
 	})
 	t.Run("disableStacktrace", func(t *testing.T) {
-		log.Global().DisableStacktrace = true
+		testlog.ApplyGlobal(true)
+		logdata := testlog.InitStringWriteSyncer()
+		log.Component(AccessLogComponentName).SetLogger(log.Global().Logger())
 		_, err := client.PingPanic(context.Background(), &testproto.PingRequest{
 			Value: t.Name(),
 		})
 		require.Error(t, err)
 		last := logdata.Entry[len(logdata.Entry)-1]
-		require.Contains(t, last, "grpc panic error")
-		require.Contains(t, last, "testproto/grpc_testing.go")
+		line := strings.Split(last, "\\n\\t")[1]
+		require.Contains(t, line, "testproto/grpc_testing.go")
 	})
 }
 
 func TestRecoveryUnaryServerInterceptorWithoutLogger(t *testing.T) {
-	logdata := &test.StringWriteSyncer{}
-	log.New(test.NewStringLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
-
+	logdata := testlog.InitStringWriteSyncer()
 	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(
 		RecoveryUnaryServerInterceptor(conf.NewFromStringMap(map[string]interface{}{})),
 	))
@@ -67,24 +69,24 @@ func TestRecoveryUnaryServerInterceptorWithoutLogger(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("stacktrace", func(t *testing.T) {
-		log.Global().DisableStacktrace = false
 		_, err := client.PingPanic(context.Background(), &testproto.PingRequest{
 			Value: t.Name(),
 		})
 		require.Error(t, err)
 		last := logdata.Entry[len(logdata.Entry)-1]
 		require.Contains(t, last, "grpc panic error")
-		require.Contains(t, last, "testproto/grpc_testing.go")
+		line := strings.Split(last, "\\n\\t")[1]
+		require.Contains(t, line, "testproto/grpc_testing.go")
 	})
 	t.Run("disableStacktrace", func(t *testing.T) {
-		log.Global().DisableStacktrace = true
 		_, err := client.PingPanic(context.Background(), &testproto.PingRequest{
 			Value: t.Name(),
 		})
 		require.Error(t, err)
 		last := logdata.Entry[len(logdata.Entry)-1]
 		require.Contains(t, last, "[Recovery from panic]")
-		require.Contains(t, last, "testproto/grpc_testing.go")
+		line := strings.Split(last, "\\n\\t")[1]
+		require.Contains(t, line, "testproto/grpc_testing.go")
 	})
 }
 
@@ -119,6 +121,7 @@ func TestHandleRecoverError(t *testing.T) {
 		require.Error(t, err)
 		last := logdata.Entry[len(logdata.Entry)-1]
 		require.Contains(t, last, "[Recovery from panic]")
-		require.Contains(t, last, "interceptor.TestHandleRecoverError")
+		line := strings.Split(last, "\\n\\t")[1]
+		require.Contains(t, line, "interceptor.TestHandleRecoverError")
 	})
 }

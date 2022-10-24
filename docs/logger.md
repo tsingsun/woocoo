@@ -4,6 +4,23 @@
 
 文件流方式为性能最高的一种方式,满足绝大部分应用场景. 对于日志收集中间件来说文件采集支持也是必备的.
 
+为了支持不同场景下的使用,具有多种使用方式:
+
+- 普通日志: 类似go及zap的使用方式.
+```go
+log.Info("hello world")
+```
+- 组件日志: 
+```go
+logger := log.Component("component-name")
+logger.Info("hello world")
+```
+- 上下文日志:
+```go
+logger := log.Component("component-name")
+logger.Ctx(ctx).Info("hello world")
+```
+
 配置结构如下:
 
 ```yaml
@@ -75,7 +92,6 @@ web:
       - default:
           middlewares:
             - accessLog:
-                requestBody: true
                 exclude:
                   - /healthCheck
 ```
@@ -83,5 +99,23 @@ web:
 Error的处理: 
   - 对于内部错误时,记录类型为Error
   - 对于公共错误,如404,500等,记录类型为Info
+
+Panic的处理: 额外记录stacktrace
+
+## grpc服务端访问日志
+
+grpc访问日志以拦截器形式实现支持,搭配recovery拦截器来附加panic错误.
+
+```yaml
+grpc:
+  server:
+    engine:
+      - unaryInterceptors:
+          - accessLog:
+              timestampFormat: "2006-01-02 15:04:05"
+          - recovery:
+```
+
+Error的处理根据grpc的状态码来判断: 详见`interceptor.DefaultCodeToLevel`函数
 
 Panic的处理: 额外记录stacktrace

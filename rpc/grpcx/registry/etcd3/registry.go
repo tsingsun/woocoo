@@ -101,7 +101,7 @@ func BuildFromConfig(config *Options) (*Registry, error) {
 }
 
 func (r *Registry) buildClient() (err error) {
-	r.opts.EtcdConfig.Logger = log.Global().Operator()
+	r.opts.EtcdConfig.Logger = log.Global().Logger().Operator()
 	r.client, err = clientv3.New(r.opts.EtcdConfig)
 	return err
 }

@@ -29,8 +29,8 @@ func (o *LoggerOptions) Apply(cnf *conf.Configuration) {
 	if err := cnf.Unmarshal(o); err != nil {
 		panic(err)
 	}
+	logger := log.Component(AccessLogComponentName)
 	operator := logger.Logger().WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
-	logger := log.Component(ComponentKey + "." + "accessLog")
 	logger.SetLogger(operator)
 	o.logger = logger
 }

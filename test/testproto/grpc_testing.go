@@ -80,8 +80,8 @@ func NewPingGrpcService(t *testing.T, opts ...grpc.ServerOption) (server *grpc.S
 	ch := make(chan struct{})
 	go func() {
 		server = grpc.NewServer(opts...)
-		ch <- struct{}{}
 		RegisterTestServiceServer(server, &TestPingService{})
+		ch <- struct{}{}
 		lis, err := net.Listen("tcp", addr)
 		if err != nil {
 			t.Errorf("failed to listen: %v", err)

@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
+	"github.com/tsingsun/woocoo/test/testdata"
 	"google.golang.org/grpc"
 	"testing"
 )
@@ -22,14 +23,12 @@ grpc:
   - keepalive:
       time: 1h
   - tls:
-      sslCertificate: ""
-      sslCertificateKey: ""
+      sslCertificate: "x509/test.pem"
+      sslCertificateKey: "x509/test.key"
   - unaryInterceptors:
-    - trace:
     - accessLog:
         timestampFormat: "2006-01-02 15:04:05"
     - recovery:
-    - prometheus:
     - auth:
         signingAlgorithm: HS256
         realm: woocoo
@@ -38,7 +37,12 @@ grpc:
         pubKey: config/pubKey.pem
         tenantHeader: Qeelyn-Org-Id
 `)
-	cfg := conf.NewFromBytes(b).Load()
-	s := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")), grpcx.GracefulStop(), grpcx.WithGrpcOption(grpc.ConnectionTimeout(1000)))
+	//testdata.Path("x509/test.pem"), testdata.Path("x509/test.key")
+	cfg := conf.NewFromBytes(b)
+	cfg.SetBaseDir(testdata.BaseDir())
+	cfg.Load()
+	s := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")),
+		grpcx.GracefulStop(),
+		grpcx.WithGrpcOption(grpc.ConnectionTimeout(1000)))
 	assert.NotNil(t, s)
 }

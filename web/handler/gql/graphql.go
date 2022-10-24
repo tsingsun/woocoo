@@ -132,7 +132,7 @@ func newGraphqlServer(routerGroup *web.RouterGroup, schema graphql.ExecutableSch
 		if e != nil {
 			return e
 		}
-		handler.HandleRecoverError(gctx, err)
+		handler.HandleRecoverError(gctx, err, 3)
 		gctx.AbortWithStatus(http.StatusInternalServerError)
 		if conf.Global().Development {
 			log.StdPrintln(err)

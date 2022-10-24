@@ -1,11 +1,9 @@
-package web_test
+package web
 
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/web"
-	_ "github.com/tsingsun/woocoo/web/handler/gql"
 	"net/http/httptest"
 	"sync"
 	"testing"
@@ -13,7 +11,9 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	srv := web.New()
+	srv := New(GracefulStop())
+	assert.Equal(t, srv.ServerOptions().Addr, defaultAddr)
+	assert.NotNil(t, srv.HandlerManager())
 	r := httptest.NewRequest("GET", "/user/123", nil)
 	w := httptest.NewRecorder()
 
@@ -55,25 +55,27 @@ web:
 	cfg := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
 	tests := []struct {
 		name       string
-		srv        *web.Server
+		srv        *Server
 		wantStatus int
 	}{
 		{
 			name: "normal",
-			srv: web.New(web.Configuration(cfg.Sub("web")), web.RegisterMiddlewareByFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
-				return func(c *gin.Context) {
-					c.Next()
-				}
-			})),
+			srv: New(Configuration(cfg.Sub("web")),
+				RegisterMiddlewareByFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
+					return func(c *gin.Context) {
+						c.Next()
+					}
+				})),
 			wantStatus: 200,
 		},
 		{
 			name: "registerHandlerAbort",
-			srv: web.New(web.Configuration(cfg.Sub("web")), web.RegisterMiddlewareByFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
-				return func(c *gin.Context) {
-					c.AbortWithStatus(500)
-				}
-			})),
+			srv: New(Configuration(cfg.Sub("web")),
+				RegisterMiddlewareByFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
+					return func(c *gin.Context) {
+						c.AbortWithStatus(500)
+					}
+				})),
 			wantStatus: 500,
 		},
 	}
@@ -100,16 +102,16 @@ web:
 `
 	cnf := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
 	type fields struct {
-		srv *web.Server
+		srv *Server
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		wantErr bool // port conflict
 	}{
-		{name: "run", fields: fields{web.New(web.Configuration(cnf.Sub("web")))}},
-		{name: "runGracefull", fields: fields{web.New(web.Configuration(cnf.Sub("web")), web.GracefulStop())}},
-		{name: "runConflictPort", fields: fields{web.New(web.Configuration(cnf.Sub("web")))}, wantErr: true},
+		{name: "run", fields: fields{New(Configuration(cnf.Sub("web")))}},
+		{name: "runGracefull", fields: fields{New(Configuration(cnf.Sub("web")), GracefulStop())}},
+		{name: "runConflictPort", fields: fields{New(Configuration(cnf.Sub("web")))}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -117,7 +119,7 @@ web:
 			wg.Add(1)
 			if tt.wantErr {
 				go func() {
-					srv1 := web.New(web.Configuration(cnf.Sub("web")))
+					srv1 := New(Configuration(cnf.Sub("web")))
 					srv1.Run()
 				}()
 				time.Sleep(time.Second)

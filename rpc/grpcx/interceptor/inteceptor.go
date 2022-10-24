@@ -7,8 +7,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	ComponentKey           = "grpc"
+	AccessLogComponentName = ComponentKey + ".accessLog"
+)
+
 var (
-	ComponentKey = "gprc"
 	// ServerField is used in every server-side log statement made through grpc_zap.Can be overwritten before initialization.
 	ServerField = zap.String("span.kind", "server")
 

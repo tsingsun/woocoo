@@ -6,6 +6,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/test"
+	"github.com/tsingsun/woocoo/test/testlog"
 	"github.com/tsingsun/woocoo/test/testproto"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -21,11 +22,12 @@ func applog() grpc.UnaryServerInterceptor {
 }
 
 func TestGrpcContextLogger(t *testing.T) {
-	logdata := &test.StringWriteSyncer{}
-	glog := log.New(test.NewStringLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
-	glog.SetContextLogger(NewGrpcContextLogger())
+	logdata := testlog.InitStringWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
+	//logdata := &test.StringWriteSyncer{}
+	//glog := log.New(test.NewStringLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
+	log.Global().Logger().SetContextLogger(NewGrpcContextLogger())
 
-	log.Component("grpc").Logger().WithTraceID = true
+	log.Component(ComponentKey).Logger().WithTraceID = true
 
 	clfg := conf.NewFromStringMap(map[string]interface{}{
 		"TimestampFormat": "2006-01-02 15:04:05",
@@ -78,7 +80,7 @@ func TestLoggerUnaryServerInterceptor(t *testing.T) {
 			},
 			want: func() *test.StringWriteSyncer {
 				logdata := &test.StringWriteSyncer{}
-				log.New(test.NewStringLogger(logdata)).AsGlobal()
+				log.Component(AccessLogComponentName).SetLogger(log.New(test.NewStringLogger(logdata)))
 				return logdata
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {

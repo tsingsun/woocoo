@@ -35,58 +35,36 @@ func NewRouter(options *ServerOptions) *Router {
 	return r
 }
 
-func (r *Router) Apply(cfg *conf.Configuration) error {
+func (r *Router) Apply(cnf *conf.Configuration) (err error) {
 	if r.serverOptions == nil {
 		return errors.New("router apply must apply after Server")
 	}
-	if err := cfg.Unmarshal(r.Engine); err != nil {
+	if err := cnf.Unmarshal(r.Engine); err != nil {
 		return err
 	}
 
-	rgs := cfg.ParserOperator().Slices("routerGroups")
 	if r.AfterRegisterInternalHandler != nil {
 		r.AfterRegisterInternalHandler(r)
 	}
-	for _, rItem := range rgs {
-		var name string
-		for s := range rItem.Raw() {
-			name = s // key is the router group name
-			break
-		}
-
-		rCfg := rItem.Cut(name)
-		hfs := rCfg.Slices("middlewares")
-
+	cnf.Each("routerGroups", func(group string, sub *conf.Configuration) {
 		var mdl []gin.HandlerFunc
-		for _, hItem := range hfs {
-			var fname string
-			for s := range hItem.Raw() {
-				fname = s
-				break
+		sub.Each("middlewares", func(name string, mid *conf.Configuration) {
+			if hf, ok := r.serverOptions.handlerManager.Get(name); ok {
+				mdl = append(mdl, hf.ApplyFunc(mid))
 			}
-			if hf, ok := r.serverOptions.handlerManager.Get(fname); ok {
-				subhf := hItem.Cut(fname)
-				// if subhf is empty,pass the original config
-				if len(subhf.Keys()) == 0 {
-					subhf = hItem
-				}
-				mdl = append(mdl, hf.ApplyFunc(cfg.CutFromOperator(subhf)))
-			} else {
-				return errors.New("middleware not found:" + fname)
-			}
-		}
+		})
 		var gr RouterGroup
 		// The sequence allows flexible processing of handlers
-		gr.basePath = rCfg.String("basePath")
+		gr.basePath = sub.String("basePath")
 		gr.Router = r
-		if name == "default" {
+		if group == "default" {
 			if gr.basePath == "" {
 				gr.basePath = "/"
 			}
 			r.Engine.Use(mdl...)
 		} else {
 			if gr.basePath == "" {
-				return fmt.Errorf("router group: %s must have a basePath", name)
+				err = fmt.Errorf("router group: %s must have a basePath", group)
 			}
 			gr.Group = r.Engine.Group(gr.basePath)
 			// clear handlers,let group use self config
@@ -94,7 +72,7 @@ func (r *Router) Apply(cfg *conf.Configuration) error {
 			gr.Group.Use(mdl...)
 		}
 		r.Groups = append(r.Groups, &gr)
-	}
+	})
 	return nil
 }
 

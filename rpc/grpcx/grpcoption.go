@@ -2,6 +2,7 @@ package grpcx
 
 import (
 	"crypto/tls"
+	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor"
 	"google.golang.org/grpc"
@@ -66,87 +67,49 @@ func keepaliveHandler(cfg *conf.Configuration) grpc.ServerOption {
 func tlsHandler(cfg *conf.Configuration) grpc.ServerOption {
 	sslCertificate := cfg.String("sslCertificate")
 	sslCertificateKey := cfg.String("sslCertificateKey")
-	if sslCertificate != "" && sslCertificateKey != "" {
-		if !filepath.IsAbs(sslCertificate) {
-			sslCertificate = filepath.Join(cfg.GetBaseDir(), sslCertificate)
-		}
-		if !filepath.IsAbs(sslCertificateKey) {
-			sslCertificateKey = filepath.Join(cfg.GetBaseDir(), sslCertificateKey)
-		}
-		cert, err := tls.LoadX509KeyPair(sslCertificate, sslCertificateKey)
-		if err != nil {
-			panic(err)
-		}
-		return grpc.Creds(credentials.NewServerTLSFromCert(&cert))
+	if !filepath.IsAbs(sslCertificate) {
+		sslCertificate = filepath.Join(cfg.GetBaseDir(), sslCertificate)
 	}
-	return nil
+	if !filepath.IsAbs(sslCertificateKey) {
+		sslCertificateKey = filepath.Join(cfg.GetBaseDir(), sslCertificateKey)
+	}
+	cert, err := tls.LoadX509KeyPair(sslCertificate, sslCertificateKey)
+	if err != nil {
+		panic(fmt.Errorf("tls.LoadX509KeyPair: %v", err))
+	}
+	return grpc.Creds(credentials.NewServerTLSFromCert(&cert))
 }
 
-func (c configurableGrpcServerOptions) unaryInterceptorHandler(cnf *conf.Configuration) grpc.ServerOption {
+func (c configurableGrpcServerOptions) unaryInterceptorHandler(root string, cnf *conf.Configuration) grpc.ServerOption {
 	var opts []grpc.UnaryServerInterceptor
-	its, err := cnf.SubOperator("")
-	if err != nil {
-		panic(err)
-	}
-	for _, it := range its {
-		var name string
-		for s := range it.Raw() {
-			name = s
-			break
+	cnf.Each(root, func(root string, sub *conf.Configuration) {
+		if handler, ok := c.usit[root]; ok {
+			opts = append(opts, handler(sub))
 		}
-		if handler, ok := c.usit[name]; ok {
-			itcfg := cnf.CutFromOperator(it.Cut(name))
-			opts = append(opts, handler(itcfg))
-		}
-	}
+	})
 	return grpc.ChainUnaryInterceptor(opts...)
 }
 
-func (c configurableGrpcServerOptions) streamServerInterceptorHandler(cnf *conf.Configuration) grpc.ServerOption {
+func (c configurableGrpcServerOptions) streamServerInterceptorHandler(root string, cnf *conf.Configuration) grpc.ServerOption {
 	var opts []grpc.StreamServerInterceptor
-	its, err := cnf.SubOperator("")
-	if err != nil {
-		panic(err)
-	}
-	for _, it := range its {
-		var name string
-		for s := range it.Raw() {
-			name = s
-			break
+	cnf.Each(root, func(root string, sub *conf.Configuration) {
+		if handler, ok := c.ssit[root]; ok {
+			opts = append(opts, handler(sub))
 		}
-		if handler, ok := c.ssit[name]; ok {
-			itcfg := cnf.CutFromOperator(it.Cut(name))
-			opts = append(opts, handler(itcfg))
-		}
-	}
+	})
 	return grpc.ChainStreamInterceptor(opts...)
 }
 
-func (c configurableGrpcServerOptions) Apply(cfg *conf.Configuration, path string) (opts []grpc.ServerOption) {
-	hfs := cfg.ParserOperator().Slices(path)
-	for _, hf := range hfs {
-		var name string
-		for s := range hf.Raw() {
-			name = s
-			break
+func (c configurableGrpcServerOptions) Apply(cnf *conf.Configuration, path string) (opts []grpc.ServerOption) {
+	cnf.Each(path, func(root string, sub *conf.Configuration) {
+		if root == "unaryInterceptors" {
+			opts = append(opts, c.unaryInterceptorHandler(root, sub))
+		} else if root == "streamInterceptors" {
+			opts = append(opts, c.streamServerInterceptorHandler(root, sub))
 		}
-		if name == "unaryInterceptors" {
-			itcfg := cfg.CutFromOperator(hf)
-			opts = append(opts, c.unaryInterceptorHandler(itcfg))
-		} else if name == "streamInterceptors" {
-			itcfg := cfg.CutFromOperator(hf)
-			opts = append(opts, c.streamServerInterceptorHandler(itcfg))
+		if handler, ok := c.ms[root]; ok {
+			opts = append(opts, handler(sub))
 		}
-		if handler, ok := c.ms[name]; ok {
-			subhf := hf.Cut(name)
-			// if subhf is empty,pass the original config
-			if len(subhf.Keys()) == 0 {
-				subhf = hf
-			}
-			if h := handler(cfg.CutFromOperator(subhf)); h != nil {
-				opts = append(opts, h)
-			}
-		}
-	}
+	})
 	return
 }

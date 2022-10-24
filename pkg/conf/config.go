@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/yaml"
-	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/file"
 	"os"
 	"path/filepath"
@@ -65,6 +64,9 @@ func init() {
 // New create an application configuration instance.
 //
 // New as global by default,if you want to create a local configuration,set global to false.
+// initialization such as:
+//
+//	cnf := conf.New().Load()
 func New(opts ...Option) *Configuration {
 	cnf := &Configuration{
 		opts: defaultOptions,
@@ -138,7 +140,7 @@ func (c *Configuration) loadInternal() (err error) {
 					c.opts.includeFiles = append(c.opts.includeFiles, v)
 				}
 			} else {
-				path := filepath.Join(c.opts.basedir, v)
+				path := filepath.Join(c.GetBaseDir(), v)
 				if _, err := os.Stat(path); err != nil {
 					panic(fmt.Errorf("config file no exists:%s,cause by:%s", path, err))
 				} else {
@@ -159,6 +161,10 @@ func (c *Configuration) loadInternal() (err error) {
 }
 
 // Merge an input config stream,parameter b is YAML stream
+//
+// types operation:
+//   - map[string]interface{}: merge
+//   - []interface{}: override
 func (c *Configuration) Merge(b []byte) error {
 	p, err := NewParserFromBuffer(bytes.NewReader(b))
 	if err != nil {
@@ -181,28 +187,9 @@ func (c *Configuration) SetBaseDir(dir string) {
 	c.opts.basedir = dir
 }
 
-// Global return default(global) Configuration instance
-func Global() *AppConfiguration {
-	if global.Configuration == nil || global.parser == nil {
-		global.Configuration = New().Load()
-		// panic("global configuration has not initialed.")
-	}
-	return &global
-}
-
 // Parser return configuration operator
 func (c *Configuration) Parser() *Parser {
 	return c.parser
-}
-
-// ParserFromBytes build from a yaml bytes
-func (c *Configuration) ParserFromBytes(bs []byte) error {
-	p, err := NewParserFromBuffer(bytes.NewReader(bs))
-	if err != nil {
-		return err
-	}
-	c.parser = p
-	return nil
 }
 
 // ParserOperator return the underlying parser that convert bytes to map
@@ -227,14 +214,7 @@ func (c *Configuration) Sub(path string) *Configuration {
 	}
 }
 
-func (c *Configuration) CutFromParser(p *Parser) *Configuration {
-	nf := *c
-	nf.parser = p
-	c.passRoot(&nf)
-	return &nf
-}
-
-// CutFromOperator splits a Configuration and replace the parser.
+// CutFromOperator return a new copied Configuration but replace the parser by koanf operator.
 func (c *Configuration) CutFromOperator(kf *koanf.Koanf) *Configuration {
 	nf := *c
 	nf.parser = &Parser{
@@ -252,31 +232,23 @@ func (c *Configuration) passRoot(sub *Configuration) {
 	}
 }
 
-// SubOperator return the slice operator of the Configuration which is only contains slice path
-func (c *Configuration) SubOperator(path string) (out []*koanf.Koanf, err error) {
-	raw := c.parser.k.Raw()
-	for k, v := range raw {
-		if path != "" && k != path {
-			continue
+// Each iterate the slice path of the Configuration.
+func (c *Configuration) Each(path string, cb func(root string, sub *Configuration)) {
+	ops := c.ParserOperator().Slices(path)
+	for _, op := range ops {
+		var root string
+		for s := range op.Raw() {
+			// first is the node key
+			root = s
+			break
 		}
-		v, ok := v.([]interface{})
-		if !ok {
-			continue
-		}
-		for _, s := range v {
-			mp, ok := s.(map[string]interface{})
-			if !ok {
-				continue
-			}
-
-			kf := koanf.New(KeyDelimiter)
-			if err = kf.Load(confmap.Provider(mp, ""), nil); err != nil {
-				return
-			}
-			out = append(out, kf)
+		kf := op.Cut(root)
+		if len(kf.Keys()) == 0 {
+			cb(root, c.CutFromOperator(op))
+		} else {
+			cb(root, c.CutFromOperator(kf))
 		}
 	}
-	return
 }
 
 func (c *Configuration) Copy() *Configuration {
@@ -312,70 +284,66 @@ func (c *Configuration) Unmarshal(dst interface{}) (err error) {
 	return c.parser.Unmarshal("", dst)
 }
 
-func (c *Configuration) IsSlice(path string) bool {
-	if !c.IsSet(path) {
-		return false
-	}
-	v := c.Get(path)
-	_, ok := v.([]interface{})
-	return ok
-}
-
-// Abs 返回绝对路径
+// Abs returns the absolute path by the base dir if path is a relative path
 func Abs(path string) string { return global.Abs(path) }
+
 func (c *Configuration) Abs(path string) string {
 	if filepath.IsAbs(path) {
 		return path
 	}
 	return filepath.Join(c.GetBaseDir(), path)
 }
-
 func Get(path string) interface{} { return global.Get(path) }
+
 func (c *Configuration) Get(key string) interface{} {
 	return c.parser.Get(key)
 }
-
 func Bool(path string) bool { return global.Bool(path) }
+
 func (c *Configuration) Bool(path string) bool {
 	return c.parser.k.Bool(path)
 }
-
 func Float64(path string) float64 { return global.Float64(path) }
+
 func (c *Configuration) Float64(path string) float64 {
 	return c.parser.k.Float64(path)
 }
-
 func Int(path string) int { return global.Int(path) }
+
 func (c *Configuration) Int(path string) int {
 	return c.parser.k.Int(path)
 }
-
 func IntSlice(path string) []int { return global.IntSlice(path) }
+
 func (c *Configuration) IntSlice(path string) []int {
 	return c.parser.k.Ints(path)
 }
-
 func String(path string) string { return global.String(path) }
+
 func (c *Configuration) String(path string) string {
 	return c.parser.k.String(path)
 }
-
 func StringMap(path string) map[string]string { return global.StringMap(path) }
+
 func (c *Configuration) StringMap(path string) map[string]string {
 	return c.parser.k.StringMap(path)
 }
-
 func StringSlice(path string) []string { return global.StringSlice(path) }
+
 func (c *Configuration) StringSlice(path string) []string {
 	return c.parser.k.Strings(path)
 }
 
+// Time return time by layout, eg: 2006-01-02 15:04:05
+//
+// if config is init from a map value of time.Time, the layout will be: `2006-01-02 15:04:05 -0700 MST`
 func Time(path string, layout string) time.Time { return global.Time(path, layout) }
+
 func (c *Configuration) Time(path string, layout string) time.Time {
 	return c.parser.k.Time(path, layout)
 }
-
 func Duration(path string) time.Duration { return global.Duration(path) }
+
 func (c *Configuration) Duration(path string) time.Duration {
 	return c.parser.k.Duration(path)
 }
@@ -390,11 +358,29 @@ func (c *Configuration) IsSet(path string) bool {
 
 // AllSettings return all settings
 func AllSettings() map[string]interface{} { return global.AllSettings() }
+
 func (c *Configuration) AllSettings() map[string]interface{} {
 	return c.parser.k.All()
 }
 
 // Join paths
 func Join(ps ...string) string {
+	if len(ps) == 0 {
+		return ps[0]
+	}
+	if ps[0] == "" {
+		return Join(ps[1:]...)
+	}
 	return strings.Join(ps, KeyDelimiter)
+}
+
+// ----------------------------------------------------------------------------
+
+// Global return default(global) Configuration instance
+func Global() *AppConfiguration {
+	if global.Configuration == nil || global.parser == nil {
+		global.Configuration = New().Load()
+		// panic("global configuration has not initialed.")
+	}
+	return &global
 }

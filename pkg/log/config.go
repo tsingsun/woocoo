@@ -18,6 +18,14 @@ const (
 	zapConfigPath = "cores"
 	// rotate:[//[userinfo@]host][/]path[?query][#fragment]
 	rotateSchema = "Rotate"
+
+	StacktraceKey = "stacktrace"
+	CallerSkip    = 1
+
+	TraceIDKey = "trace_id"
+
+	ComponentKey     = "component"
+	WebComponentName = "web"
 )
 
 var once sync.Once
@@ -61,23 +69,23 @@ func (r *rotate) Sync() error {
 
 // NewConfig return a Config instance
 func NewConfig(cfg *conf.Configuration) (*Config, error) {
-	kps, err := cfg.SubOperator(zapConfigPath)
-	if err != nil {
-		panic(err)
-	}
-	if len(kps) == 0 {
+	coresl := len(cfg.ParserOperator().Slices(zapConfigPath))
+	if coresl == 0 {
 		return nil, fmt.Errorf("none logger config,plz set up section: cores")
 	}
 	v := &Config{
-		ZapConfigs: make([]zap.Config, len(kps)),
+		ZapConfigs: make([]zap.Config, coresl),
 		basedir:    cfg.Root().GetBaseDir(),
-		callerSkip: cfg.Int("callerSkip"),
+		callerSkip: CallerSkip,
+	}
+	if cfg.IsSet("callerSkip") {
+		v.callerSkip = cfg.Int("callerSkip")
 	}
 	for i := 0; i < len(v.ZapConfigs); i++ {
 		v.ZapConfigs[i] = defaultZapConfig(cfg)
 	}
 
-	if err = cfg.Unmarshal(&v); err != nil {
+	if err := cfg.Unmarshal(&v); err != nil {
 		return nil, err
 	}
 
@@ -201,6 +209,7 @@ func (c *Config) buildZapOptions(cfg *zap.Config) (opts []zap.Option) {
 	if !cfg.DisableCaller {
 		opts = append(opts, zap.AddCaller())
 	}
+
 	stackLevel := zap.ErrorLevel
 	if cfg.Development {
 		stackLevel = zap.WarnLevel
@@ -208,6 +217,7 @@ func (c *Config) buildZapOptions(cfg *zap.Config) (opts []zap.Option) {
 	if !cfg.DisableStacktrace {
 		opts = append(opts, zap.AddStacktrace(stackLevel))
 	}
+
 	return opts
 }
 

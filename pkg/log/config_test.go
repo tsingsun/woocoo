@@ -262,3 +262,33 @@ func lineCounter(r io.Reader) (int, error) {
 		}
 	}
 }
+
+func TestNewConfig(t *testing.T) {
+	type args struct {
+		cfg *conf.Configuration
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *Config
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "miss cores",
+			args: args{
+				cfg: conf.NewFromBytes([]byte("log:\n")),
+			},
+			want:    nil,
+			wantErr: assert.Error,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewConfig(tt.args.cfg)
+			if !tt.wantErr(t, err, fmt.Sprintf("NewConfig(%v)", tt.args.cfg)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "NewConfig(%v)", tt.args.cfg)
+		})
+	}
+}

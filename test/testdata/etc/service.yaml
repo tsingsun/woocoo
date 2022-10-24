@@ -10,11 +10,9 @@ grpc:
           sslCertificate: ""
           sslCertificateKey: ""
       - unaryInterceptors:
-          - trace:
           - accessLog:
               timestampFormat: "2006-01-02 15:04:05"
           - recovery:
-          - prometheus:
           - auth:
               signingAlgorithm: HS256
               realm: woocoo

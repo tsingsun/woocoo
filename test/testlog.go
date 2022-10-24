@@ -28,10 +28,6 @@ func (s *StringWriteSyncer) String() string {
 	return strings.Join(s.Entry, "/n")
 }
 
-type StringCore struct {
-	zapcore.Core
-}
-
 func NewStringCore(ws *StringWriteSyncer) zapcore.Core {
 	en := zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
 	return zapcore.NewCore(en, ws, zap.DebugLevel)

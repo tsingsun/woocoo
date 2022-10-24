@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
@@ -28,40 +29,35 @@ func (h *RecoveryMiddleware) Name() string {
 }
 
 func (h *RecoveryMiddleware) ApplyFunc(_ *conf.Configuration) gin.HandlerFunc {
-	return gin.CustomRecovery(HandleRecoverError)
+	return gin.CustomRecovery(func(c *gin.Context, err any) {
+		HandleRecoverError(c, err, 4)
+	})
 }
 
 func (h *RecoveryMiddleware) Shutdown() {
 }
 
-func HandleRecoverError(c *gin.Context, err any) {
+func HandleRecoverError(c *gin.Context, p any, stackSkip int) {
 	httpRequest, _ := httputil.DumpRequest(c.Request, false)
-	var ce *gin.Error
-	if e, ok := err.(error); ok {
-		ce = c.AbortWithError(http.StatusInternalServerError, e)
-		ce.Type = gin.ErrorTypePrivate
+	err, ok := p.(error)
+	// gin private error not show to user
+	if ok {
+		c.AbortWithError(http.StatusInternalServerError, err)
 	} else {
-		_ = c.AbortWithError(http.StatusInternalServerError, ErrRecovery)
+		c.AbortWithError(http.StatusInternalServerError, ErrRecovery)
+		err = fmt.Errorf("%v", p)
 	}
 	fc := GetLogCarrierFromGinContext(c)
 	if fc != nil {
 		fc.Fields = append(fc.Fields,
-			zap.Any("panic", err),
+			zap.NamedError("panic", err),
 			zap.String("request", string(httpRequest)),
-			zap.StackSkip(log.StacktraceKey, 3),
+			zap.StackSkip(log.StacktraceKey, stackSkip),
 		)
 		return
 	}
-	if logger.Logger().DisableStacktrace {
-		logger.Ctx(c).Error("[Recovery from panic]",
-			zap.Any("error", err),
-			zap.String("request", string(httpRequest)),
-			zap.StackSkip(log.StacktraceKey, 3),
-		)
-	} else {
-		logger.Logger().WithOptions(zap.AddCallerSkip(6)).Ctx(c).Error("[Recovery from panic]",
-			zap.Any("error", err),
-			zap.String("request", string(httpRequest)),
-		)
-	}
+	logger.Ctx(c).WithOptions(zap.AddCallerSkip(stackSkip)).Error("[Recovery from panic]",
+		zap.Error(err),
+		zap.String("request", string(httpRequest)),
+	)
 }

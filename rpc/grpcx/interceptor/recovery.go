@@ -26,7 +26,7 @@ func RecoveryUnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInt
 		panicked := true
 		defer func() {
 			if r := recover(); r != nil || panicked {
-				err = handleRecoverError(defaultRecoveryOptions, ctx, r, 0)
+				err = handleRecoverError(defaultRecoveryOptions, ctx, r, log.CallerSkip+2)
 			}
 		}()
 		resp, err = handler(ctx, req)
@@ -45,7 +45,7 @@ func RecoveryStreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerI
 		panicked := true
 		defer func() {
 			if r := recover(); r != nil || panicked {
-				err = handleRecoverError(defaultRecoveryOptions, stream.Context(), r, 0)
+				err = handleRecoverError(defaultRecoveryOptions, stream.Context(), r, log.CallerSkip+2)
 			}
 		}()
 		err = handler(srv, stream)
@@ -65,25 +65,24 @@ func RecoveryStreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerI
 //			}
 //		}()
 func HandleRecoverError(ctx context.Context, p interface{}) error {
-	return handleRecoverError(defaultRecoveryOptions, ctx, p, 1)
+	return handleRecoverError(defaultRecoveryOptions, ctx, p, 2)
 }
 
 // if use logger,let it log the stack trace
 func handleRecoverError(_ RecoveryOptions, ctx context.Context, p interface{}, stackSkip int) (err error) {
-	err = status.Errorf(codes.Internal, "panic: %v", p)
+	err, ok := p.(error)
+	if !ok {
+		err = status.Errorf(codes.Internal, "%v", p)
+	}
 	if carrier, ok := log.FromIncomingContext(ctx); ok {
-		carrier.Fields = append(carrier.Fields, zap.StackSkip(log.StacktraceKey, 3+stackSkip))
+		carrier.Fields = append(carrier.Fields,
+			zap.NamedError("panic", err),
+			zap.StackSkip(log.StacktraceKey, stackSkip),
+		)
 		return err
 	}
-	if logger.Logger().DisableStacktrace {
-		logger.Ctx(ctx).Error("[Recovery from panic]",
-			zap.Any("error", p),
-			zap.StackSkip(log.StacktraceKey, 3+stackSkip),
-		)
-	} else {
-		logger.Logger().WithOptions(zap.AddCallerSkip(6+stackSkip)).Ctx(ctx).Error("[Recovery from panic]",
-			zap.Any("error", p),
-		)
-	}
+	logger.Ctx(ctx).WithOptions(zap.AddCallerSkip(stackSkip)).Error("[Recovery from panic]",
+		zap.Error(err))
+
 	return err
 }

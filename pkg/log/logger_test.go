@@ -3,6 +3,7 @@ package log
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -10,6 +11,8 @@ import (
 	"github.com/tsingsun/woocoo/test/testdata"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -24,6 +27,30 @@ func (u user) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	return nil
 }
 
+func applyGlobal(disableStacktrace bool) {
+	glog := InitGlobalLogger()
+	glog.Apply(conf.NewFromBytes([]byte(fmt.Sprintf(`
+disableTimestamp: false
+disableErrorVerbose: false
+cores:
+- level: debug
+  disableCaller: true
+  disableStacktrace: %s`, strconv.FormatBool(disableStacktrace)))))
+	glog.AsGlobal()
+}
+
+func initStringWriteSyncer(opts ...zap.Option) *test.StringWriteSyncer {
+	opts = append(opts, zap.AddStacktrace(zapcore.ErrorLevel))
+	logdata := &test.StringWriteSyncer{}
+	zl := test.NewStringLogger(logdata, opts...)
+	glog := Global().Logger()
+	opts = append(opts, zap.WrapCore(func(core zapcore.Core) zapcore.Core {
+		return zl.Core()
+	}))
+	glog.WithOptions(opts...).AsGlobal()
+	return logdata
+}
+
 func TestNewBuiltIn(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -31,42 +58,33 @@ func TestNewBuiltIn(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "global",
-			want: func() *Logger {
-				conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
-				return Global()
-			},
-		},
-		{
 			name: "miss config",
 			want: func() *Logger {
 				conf.NewFromStringMap(map[string]interface{}{}).AsGlobal()
-				globalApply = false
 				return nil
 			},
 			wantErr: true,
 		},
 		{
-			name: "global twice",
+			name: "global",
 			want: func() *Logger {
-				conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
-				globalApply = true
-				conf.NewFromStringMap(map[string]interface{}{}).AsGlobal()
-				return Global()
+				conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load().AsGlobal()
+				return Global().Logger()
 			},
-			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			want := tt.want()
+			tt.want()
 			if tt.wantErr {
 				assert.Panics(t, func() {
 					NewBuiltIn()
 				})
 				return
 			}
-			assert.Equalf(t, want, NewBuiltIn(), "NewBuiltIn()")
+			got := NewBuiltIn()
+			assert.Same(t, global, got)
+			assert.NotNil(t, global)
 		})
 	}
 }
@@ -82,14 +100,12 @@ func TestLogger_AsGlobal(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		want   *Logger
 	}{
 		{
 			fields: fields{
 				Logger:      zap.NewNop(),
 				WithTraceID: true,
 			},
-			want: global,
 		},
 	}
 	for _, tt := range tests {
@@ -101,10 +117,16 @@ func TestLogger_AsGlobal(t *testing.T) {
 				DisableStacktrace: tt.fields.DisableStacktrace,
 				contextLogger:     tt.fields.contextLogger,
 			}
+			Component("test").SetLogger(New(zap.NewNop()))
 			got := l.AsGlobal()
 			// pointer not equal
-			require.NotSame(t, got, l, "global logger pointer must not change")
-			assert.Equalf(t, tt.want, got, "AsGlobal()")
+			require.Same(t, got, global)
+			assert.NotSame(t, got, Component("test").Logger())
+			for name, i2 := range components {
+				if i2.Logger() == got {
+					require.Same(t, got, i2.Logger(), name)
+				}
+			}
 		})
 	}
 }
@@ -205,6 +227,118 @@ func TestLogger_Ctx(t *testing.T) {
 	}
 }
 
+func TestLoggerLog(t *testing.T) {
+	type args struct {
+	}
+	tests := []struct {
+		name    string
+		args    args
+		do      func() *test.StringWriteSyncer
+		require func(*test.StringWriteSyncer)
+		panic   bool
+	}{
+		{
+			name: "all but panic",
+			do: func() *test.StringWriteSyncer {
+				applyGlobal(true)
+				logdata := initStringWriteSyncer()
+				Debug("debug", "x")
+				Info("infox")
+				Warn("warnx")
+				Error("errorx")
+				DPanic("dpanicx")
+				return logdata
+			},
+			require: func(logdata *test.StringWriteSyncer) {
+				ss := logdata
+				assert.Contains(t, ss.Entry[0], "debugx")
+				assert.Contains(t, ss.Entry[1], "infox")
+				assert.Contains(t, ss.Entry[2], "warnx")
+				assert.Contains(t, ss.Entry[3], "errorx")
+				if !assert.Contains(t, strings.Split(ss.Entry[3], "\\n\\t")[1], "log/logger_test.go") {
+					t.Log(global)
+				}
+				assert.Contains(t, ss.Entry[4], "dpanicx")
+				assert.Contains(t, strings.Split(ss.Entry[4], "\\n\\t")[1], "log/logger_test.go")
+			},
+		},
+		{
+			name: "panic error",
+			do: func() *test.StringWriteSyncer {
+				applyGlobal(true)
+				logdata := initStringWriteSyncer()
+				Panic("error", zap.Error(errors.New("panicx")))
+				return logdata
+			},
+			require: func(logdata *test.StringWriteSyncer) {
+				ss := logdata
+				all := ss.String()
+				// panic
+				assert.Contains(t, all, "panic")
+				assert.Contains(t, all, "request")
+				assert.Contains(t, all, "stacktrace")
+				assert.Contains(t, all, "public error")
+			},
+			panic: true,
+		},
+		{
+			name: "all format but panic",
+			do: func() *test.StringWriteSyncer {
+				applyGlobal(true)
+				logdata := initStringWriteSyncer()
+				Debugf("debug%s", "x")
+				Infof("info%s", "x")
+				Warnf("warn%s", "x")
+				Errorf("error%s", "x")
+				DPanicf("dpanic%s", "x")
+				return logdata
+			},
+			require: func(logdata *test.StringWriteSyncer) {
+				ss := logdata
+				assert.Contains(t, ss.Entry[0], "debugx")
+				assert.Contains(t, ss.Entry[1], "infox")
+				assert.Contains(t, ss.Entry[2], "warnx")
+				assert.Contains(t, ss.Entry[3], "errorx")
+				if !assert.Contains(t, strings.Split(ss.Entry[3], "\\n\\t")[1], "log/logger_test.go") {
+					t.Log(global)
+				}
+				assert.Contains(t, ss.Entry[4], "dpanicx")
+				assert.Contains(t, strings.Split(ss.Entry[4], "\\n\\t")[1], "log/logger_test.go")
+			},
+		},
+		{
+			name: "panic format error",
+			do: func() *test.StringWriteSyncer {
+				applyGlobal(true)
+				logdata := initStringWriteSyncer()
+				Panicf("error%s", "x")
+				return logdata
+			},
+			require: func(logdata *test.StringWriteSyncer) {
+				ss := logdata
+				all := ss.String()
+				// panic
+				assert.Contains(t, all, "panic")
+				assert.Contains(t, all, "request")
+				assert.Contains(t, all, "stacktrace")
+				assert.Contains(t, all, "public error")
+			},
+			panic: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.panic {
+				assert.Panics(t, func() {
+					tt.require(tt.do())
+				})
+			} else {
+				tt.require(tt.do())
+			}
+		})
+	}
+}
+
 func TestLogger_Component(t *testing.T) {
 	type fields struct {
 		logger ComponentLogger
@@ -266,6 +400,52 @@ log:
 	logger.Info("info for object", zap.Object("object", user(0)))
 	logger.Info("info for Binary", zap.Binary("binary", []byte{1, 2, 3, 4, 5}))
 	logger.Info("info for array", zap.Bools("array", []bool{true, false}))
+}
+
+func TestLogger_callSkip(t *testing.T) {
+	tests := []struct {
+		name    string
+		do      func() *test.StringWriteSyncer
+		require func(data *test.StringWriteSyncer)
+	}{
+		{
+			name: "global",
+			do: func() *test.StringWriteSyncer {
+				applyGlobal(true)
+				data := initStringWriteSyncer()
+				Error("errorx")
+				return data
+			},
+			require: func(data *test.StringWriteSyncer) {
+				ss := data.Entry[0]
+				assert.Contains(t, ss, "errorx")
+				st := strings.Split(ss, "\\n\\t")[1]
+				assert.Contains(t, st, "log/logger_test.go")
+			},
+		},
+		{
+			name: "ctx",
+			do: func() *test.StringWriteSyncer {
+				applyGlobal(true)
+				data := initStringWriteSyncer()
+				Global().Ctx(context.Background()).Error("errorx")
+				return data
+			},
+			require: func(data *test.StringWriteSyncer) {
+				ss := data.Entry[0]
+				assert.Contains(t, ss, "errorx")
+				st := strings.Split(ss, "\\n\\t")[1]
+				assert.Contains(t, st, "log/logger_test.go")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := tt.do()
+			tt.require(data)
+			require.Len(t, data.Entry, 1)
+		})
+	}
 }
 
 // -----------------------------------------------------------------------------

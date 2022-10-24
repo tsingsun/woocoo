@@ -6,16 +6,19 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"sync"
 )
 
 var (
-	global      *Logger
-	globalApply bool // indicate if you use BuiltIn()
-	components  = map[string]*component{}
+	global          *Logger
+	globalComponent ComponentLogger
+	builtin         sync.Once
+	components      = map[string]*component{}
 )
 
 func init() {
-	global = New(zap.NewNop())
+	globalComponent = Component("global")
+	InitGlobalLogger()
 }
 
 // ContextLogger is functions to help ContextLogger logging,the functions are called each ComponentLogger call the logging method
@@ -55,30 +58,36 @@ func New(zl *zap.Logger) *Logger {
 	}
 }
 
-// NewBuiltIn create a logger by configuration,path key is "log", it will be set as global logger
+func InitGlobalLogger() *Logger {
+	global = New(zap.Must(zap.NewProduction(zap.AddCallerSkip(CallerSkip))))
+	global.AsGlobal()
+	return global
+}
+
+// NewBuiltIn create a logger by configuration path "log", it will be set as global logger but run only once.
 func NewBuiltIn() *Logger {
-	if globalApply {
-		return global
-	}
-	pkey := "log"
-	if conf.Global().IsSet(pkey) {
-		global.Apply(conf.Global().Sub(pkey))
-	} else {
-		panic("NewBuiltIn:the configuration file does not contain section: log")
-	}
-	globalApply = true
+	builtin.Do(func() {
+		l := New(nil)
+		l.Apply(conf.Global().Sub("log"))
+		l.AsGlobal()
+	})
 	return global
 }
 
 // Global return the global logger
-func Global() *Logger {
-	return global
+func Global() ComponentLogger {
+	return globalComponent
 }
 
 // AsGlobal set the Logger as global logger
 func (l *Logger) AsGlobal() *Logger {
-	globalApply = true
-	*global = *l
+	global = l
+	// reset component,don't reset user defined
+	for _, cp := range components {
+		if cp.useGlobal {
+			cp.SetLogger(l)
+		}
+	}
 	zap.ReplaceGlobals(global.Logger)
 	return global
 }

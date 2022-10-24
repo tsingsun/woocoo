@@ -35,54 +35,29 @@ func newConfigurableGrpcDialOptions() *configurableGrpcClientOptions {
 	}
 }
 
-func (c configurableGrpcClientOptions) unaryInterceptorHandler(cnf *conf.Configuration) grpc.DialOption {
+func (c configurableGrpcClientOptions) unaryInterceptorHandler(root string, cnf *conf.Configuration) grpc.DialOption {
 	var opts []grpc.UnaryClientInterceptor
-	its, err := cnf.SubOperator("")
-	if err != nil {
-		panic(err)
-	}
-	for _, it := range its {
-		var name string
-		for s := range it.Raw() {
-			name = s
-			break
+	cnf.Each(root, func(root string, sub *conf.Configuration) {
+		if handler, ok := c.ucit[root]; ok {
+			opts = append(opts, handler(sub))
 		}
-		if handler, ok := c.ucit[name]; ok {
-			itcfg := cnf.CutFromOperator(it.Cut(name))
-			opts = append(opts, handler(itcfg))
-		}
-	}
+	})
 	return grpc.WithChainUnaryInterceptor(opts...)
 }
 
 func (c configurableGrpcClientOptions) Apply(client *Client, cfg *conf.Configuration, path string) (opts []grpc.DialOption) {
-	hfs := cfg.ParserOperator().Slices(path)
-	for _, hf := range hfs {
-		var name string
-		for s := range hf.Raw() {
-			name = s
-			break
+	cfg.Each(path, func(root string, sub *conf.Configuration) {
+		if root == "timeout" {
+			client.timeout = sub.Duration(root)
+			return
 		}
-		// WithTimeout is deprecated,so handle it independently
-		if name == "timeout" {
-			client.timeout = hf.Duration(name)
-			continue
+		if root == "unaryInterceptors" {
+			opts = append(opts, c.unaryInterceptorHandler(root, sub))
 		}
-		if name == "unaryInterceptors" {
-			itcfg := cfg.CutFromOperator(hf)
-			opts = append(opts, c.unaryInterceptorHandler(itcfg))
+		if handler, ok := c.do[root]; ok {
+			opts = append(opts, handler(sub))
 		}
-		if handler, ok := c.do[name]; ok {
-			subhf := hf.Cut(name)
-			// if subhf is empty,pass the original config
-			if len(subhf.Keys()) == 0 {
-				subhf = hf
-			}
-			if h := handler(cfg.CutFromOperator(subhf)); h != nil {
-				opts = append(opts, h)
-			}
-		}
-	}
+	})
 	return
 }
 

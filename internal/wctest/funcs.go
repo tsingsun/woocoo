@@ -1,10 +1,10 @@
-package testlog
+package wctest
 
 import (
 	"fmt"
+	"github.com/tsingsun/woocoo/internal/logtest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"github.com/tsingsun/woocoo/test"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"strconv"
@@ -22,10 +22,10 @@ cores:
 	glog.AsGlobal()
 }
 
-func InitStringWriteSyncer(opts ...zap.Option) *test.StringWriteSyncer {
+func InitBuffWriteSyncer(opts ...zap.Option) *logtest.Buffer {
 	opts = append(opts, zap.AddStacktrace(zapcore.ErrorLevel))
-	logdata := &test.StringWriteSyncer{}
-	zl := test.NewStringLogger(logdata, opts...)
+	logdata := &logtest.Buffer{}
+	zl := logtest.NewBuffLogger(logdata, opts...)
 	glog := log.Global().Logger()
 	opts = append(opts, zap.WrapCore(func(core zapcore.Core) zapcore.Core {
 		return zl.Core()

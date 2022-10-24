@@ -5,10 +5,10 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/tsingsun/woocoo/internal/logtest"
+	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"github.com/tsingsun/woocoo/test"
-	"github.com/tsingsun/woocoo/test/testlog"
 	"go.uber.org/zap"
 	"net"
 	"net/http"
@@ -73,12 +73,12 @@ func TestHandleRecoverError(t *testing.T) {
 				err: errors.New("public error"),
 			},
 			want: func() any {
-				logdata := testlog.InitStringWriteSyncer()
+				logdata := wctest.InitBuffWriteSyncer()
 				return logdata
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
-				assert.Len(t, ss.Entry, 0)
+				ss := i[0].(*logtest.Buffer)
+				assert.Len(t, ss.Lines(), 0)
 				fc := GetLogCarrierFromGinContext(i[1].(*gin.Context))
 				assert.NotNil(t, fc)
 				assert.Len(t, fc.Fields, 3)
@@ -95,11 +95,11 @@ func TestHandleRecoverError(t *testing.T) {
 				err: "panic",
 			},
 			want: func() any {
-				logdata := testlog.InitStringWriteSyncer()
+				logdata := wctest.InitBuffWriteSyncer()
 				return logdata
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
+				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				assert.Contains(t, all, "request")
 				assert.Contains(t, all, "[Recovery from panic]")
@@ -120,7 +120,7 @@ func TestHandleRecoverError(t *testing.T) {
 }
 
 func TestRecoveryMiddleware(t *testing.T) {
-	testlog.ApplyGlobal(true)
+	wctest.ApplyGlobal(true)
 	type args struct {
 		cfg     *conf.Configuration
 		handler gin.HandlerFunc
@@ -145,11 +145,11 @@ func TestRecoveryMiddleware(t *testing.T) {
 			name: "panic any",
 			args: rargs("panicx"),
 			want: func() any {
-				testlog.ApplyGlobal(true)
-				return testlog.InitStringWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
+				wctest.ApplyGlobal(true)
+				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
+				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
 				assert.Contains(t, all, "panicx")
@@ -157,7 +157,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 				if !i[1].(bool) {
 					assert.Contains(t, all, "internal server error")
 				}
-				line := strings.Split(ss.Entry[0], "\\n\\t")[0]
+				line := strings.Split(ss.Lines()[0], "\\n\\t")[0]
 				assert.Contains(t, line, "handler.TestRecoveryMiddleware")
 				return true
 			},
@@ -166,17 +166,17 @@ func TestRecoveryMiddleware(t *testing.T) {
 			name: "panic error",
 			args: rargs(errors.New("panicx")),
 			want: func() any {
-				testlog.ApplyGlobal(true)
-				return testlog.InitStringWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
+				wctest.ApplyGlobal(true)
+				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
+				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
 				assert.Contains(t, all, "panicx")
 				assert.Contains(t, all, "request")
 				assert.Contains(t, all, "stacktrace")
-				line := strings.Split(ss.Entry[0], "\\n\\t")[0]
+				line := strings.Split(ss.Lines()[0], "\\n\\t")[0]
 				assert.Contains(t, line, "handler.TestRecoveryMiddleware")
 				return true
 			},
@@ -185,11 +185,11 @@ func TestRecoveryMiddleware(t *testing.T) {
 			name: "panic any-false",
 			args: rargs("panicx"),
 			want: func() any {
-				testlog.ApplyGlobal(false)
-				return testlog.InitStringWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
+				wctest.ApplyGlobal(false)
+				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
+				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
 				assert.Contains(t, all, "panicx")
@@ -197,7 +197,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 				if !i[1].(bool) {
 					assert.Contains(t, all, "internal server error")
 				}
-				line := strings.Split(ss.Entry[0], "\\n\\t")[0]
+				line := strings.Split(ss.Lines()[0], "\\n\\t")[0]
 				assert.Contains(t, line, "handler.TestRecoveryMiddleware")
 				return true
 			},
@@ -206,17 +206,17 @@ func TestRecoveryMiddleware(t *testing.T) {
 			name: "panic error-false",
 			args: rargs(errors.New("panicx")),
 			want: func() any {
-				testlog.ApplyGlobal(false)
-				return testlog.InitStringWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
+				wctest.ApplyGlobal(false)
+				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
+				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
 				assert.Contains(t, all, "panicx")
 				assert.Contains(t, all, "request")
 				assert.Contains(t, all, "stacktrace")
-				line := strings.Split(ss.Entry[0], "\\n\\t")[0]
+				line := strings.Split(ss.Lines()[0], "\\n\\t")[0]
 				assert.Contains(t, line, "handler.TestRecoveryMiddleware")
 				return true
 			},
@@ -266,16 +266,16 @@ func TestRecoveryMiddleware_WithLogger(t *testing.T) {
 			name: "panic any",
 			args: rargs,
 			want: func() any {
-				testlog.ApplyGlobal(true)
-				return testlog.InitStringWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
+				wctest.ApplyGlobal(true)
+				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
+				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
 				assert.Contains(t, all, "panicx")
 				assert.Contains(t, all, "stacktrace")
-				line := strings.Split(ss.Entry[0], "\\n\\t")[0]
+				line := strings.Split(ss.Lines()[0], "\\n\\t")[0]
 				assert.Contains(t, line, "handler.TestRecoveryMiddleware")
 				return true
 			},
@@ -284,17 +284,17 @@ func TestRecoveryMiddleware_WithLogger(t *testing.T) {
 			name: "panic error",
 			args: rargs,
 			want: func() any {
-				testlog.ApplyGlobal(true)
-				return testlog.InitStringWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
+				wctest.ApplyGlobal(true)
+				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
+				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
 				assert.Contains(t, all, "panic")
 				assert.Contains(t, all, "request")
 				assert.Contains(t, all, "stacktrace")
-				line := strings.Split(ss.Entry[0], "\\n\\t")[0]
+				line := strings.Split(ss.Lines()[0], "\\n\\t")[0]
 				assert.Contains(t, line, "handler.TestRecoveryMiddleware")
 				return true
 			},
@@ -303,16 +303,16 @@ func TestRecoveryMiddleware_WithLogger(t *testing.T) {
 			name: "panic any-false",
 			args: rargs,
 			want: func() any {
-				testlog.ApplyGlobal(false)
-				return testlog.InitStringWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
+				wctest.ApplyGlobal(false)
+				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
+				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
 				assert.Contains(t, all, "panicx")
 				assert.Contains(t, all, "stacktrace")
-				line := strings.Split(ss.Entry[0], "\\n\\t")[0]
+				line := strings.Split(ss.Lines()[0], "\\n\\t")[0]
 				assert.Contains(t, line, "handler.TestRecoveryMiddleware")
 				return true
 			},
@@ -321,17 +321,17 @@ func TestRecoveryMiddleware_WithLogger(t *testing.T) {
 			name: "panic error-false",
 			args: rargs,
 			want: func() any {
-				testlog.ApplyGlobal(false)
-				return testlog.InitStringWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
+				wctest.ApplyGlobal(false)
+				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
+				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
 				assert.Contains(t, all, "panic")
 				assert.Contains(t, all, "request")
 				assert.Contains(t, all, "stacktrace")
-				line := strings.Split(ss.Entry[0], "\\n\\t")[0]
+				line := strings.Split(ss.Lines()[0], "\\n\\t")[0]
 				assert.Contains(t, line, "handler.TestRecoveryMiddleware")
 				return true
 			},

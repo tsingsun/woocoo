@@ -4,10 +4,10 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/tsingsun/woocoo/internal/logtest"
+	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"github.com/tsingsun/woocoo/test"
-	"github.com/tsingsun/woocoo/test/testlog"
 	"go.uber.org/zap"
 	"net/http/httptest"
 	"strings"
@@ -46,23 +46,24 @@ func TestLoggerMiddleware(t *testing.T) {
 				},
 			},
 			want: func() any {
-				testlog.ApplyGlobal(false)
-				return testlog.InitStringWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
+				wctest.ApplyGlobal(false)
+				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
-				assert.Contains(t, ss.Entry[0], "debugx")
-				assert.Contains(t, ss.Entry[1], "infox")
-				assert.Contains(t, ss.Entry[2], "warnx")
-				assert.Contains(t, ss.Entry[3], "errorx")
-				assert.Contains(t, strings.Split(ss.Entry[3], "\\n\\t")[1], "handler/logger_test.go")
-				assert.Contains(t, ss.Entry[4], "dpanicx")
-				assert.Contains(t, ss.Entry[5], "panicx")
-				assert.Contains(t, strings.Split(ss.Entry[5], "\\n\\t")[1], "handler/logger_test.go")
+				ss := i[0].(*logtest.Buffer)
+				lines := ss.Lines()
+				assert.Contains(t, lines[0], "debugx")
+				assert.Contains(t, lines[1], "infox")
+				assert.Contains(t, lines[2], "warnx")
+				assert.Contains(t, lines[3], "errorx")
+				assert.Contains(t, strings.Split(lines[3], "\\n\\t")[1], "handler/logger_test.go")
+				assert.Contains(t, lines[4], "dpanicx")
+				assert.Contains(t, lines[5], "panicx")
+				assert.Contains(t, strings.Split(lines[5], "\\n\\t")[1], "handler/logger_test.go")
 				// panic trigger in zap,so check the zap file
-				assert.Contains(t, ss.Entry[6], AccessLogComponentName)
-				assert.Contains(t, ss.Entry[6], "internal server error")
-				assert.Contains(t, strings.Split(ss.Entry[6], "\\n\\t")[1], "zapcore/entry.go")
+				assert.Contains(t, lines[6], AccessLogComponentName)
+				assert.Contains(t, lines[6], "internal server error")
+				assert.Contains(t, strings.Split(lines[6], "\\n\\t")[1], "zapcore/entry.go")
 				return true
 			},
 		},
@@ -78,11 +79,11 @@ func TestLoggerMiddleware(t *testing.T) {
 				},
 			},
 			want: func() any {
-				logdata := testlog.InitStringWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
+				logdata := wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 				return logdata
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
+				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
 				assert.Contains(t, all, "private error")
@@ -102,11 +103,11 @@ func TestLoggerMiddleware(t *testing.T) {
 			},
 
 			want: func() any {
-				logdata := testlog.InitStringWriteSyncer()
+				logdata := wctest.InitBuffWriteSyncer()
 				return logdata
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
+				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
 				assert.Contains(t, all, "panic")

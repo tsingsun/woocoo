@@ -3,10 +3,10 @@ package interceptor
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
+	"github.com/tsingsun/woocoo/internal/logtest"
+	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"github.com/tsingsun/woocoo/test"
-	"github.com/tsingsun/woocoo/test/testlog"
 	"github.com/tsingsun/woocoo/test/testproto"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -22,9 +22,7 @@ func applog() grpc.UnaryServerInterceptor {
 }
 
 func TestGrpcContextLogger(t *testing.T) {
-	logdata := testlog.InitStringWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
-	//logdata := &test.StringWriteSyncer{}
-	//glog := log.New(test.NewStringLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
+	logdata := wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 	log.Global().Logger().SetContextLogger(NewGrpcContextLogger())
 
 	log.Component(ComponentKey).Logger().WithTraceID = true
@@ -62,7 +60,7 @@ func TestLoggerUnaryServerInterceptor(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    func() *test.StringWriteSyncer
+		want    func() *logtest.Buffer
 		wantErr assert.ErrorAssertionFunc
 	}{
 		{
@@ -78,16 +76,17 @@ func TestLoggerUnaryServerInterceptor(t *testing.T) {
 				},
 				info: &grpc.UnaryServerInfo{FullMethod: "test"},
 			},
-			want: func() *test.StringWriteSyncer {
-				logdata := &test.StringWriteSyncer{}
-				log.Component(AccessLogComponentName).SetLogger(log.New(test.NewStringLogger(logdata)))
+			want: func() *logtest.Buffer {
+				logdata := &logtest.Buffer{}
+				log.Component(AccessLogComponentName).SetLogger(log.New(logtest.NewBuffLogger(logdata)))
 				return logdata
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				ss := i[0].(*test.StringWriteSyncer)
-				assert.Len(t, ss.Entry, 1)
-				assert.Contains(t, ss.Entry[0], "info")
-				assert.Contains(t, ss.Entry[0], "woocoo")
+				logdata := i[0].(*logtest.Buffer)
+				lines := logdata.Lines()
+				assert.Len(t, lines, 1)
+				assert.Contains(t, lines[0], "info")
+				assert.Contains(t, lines[0], "woocoo")
 				return true
 			},
 		},

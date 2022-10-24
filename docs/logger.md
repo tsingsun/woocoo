@@ -15,11 +15,17 @@ log.Info("hello world")
 logger := log.Component("component-name")
 logger.Info("hello world")
 ```
-- 上下文日志:
+- 上下文日志: 把上下文信息记录到日志
+  > 每一次调用Ctx创建ContextLogger后调用日志记录方法,都会回收ContextLogger,因此应避免.
 ```go
 logger := log.Component("component-name")
 logger.Ctx(ctx).Info("hello world")
-```
+// 不可以使用下面的方式
+clog := logger.Ctx(ctx)
+clog.Info("hello world")
+clog.Info("hello world1")
+``` 
+  
 
 配置结构如下:
 

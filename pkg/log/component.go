@@ -4,6 +4,7 @@ import (
 	"context"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"sync"
 )
 
 // ComponentLogger is sample and base using for component that also carries a context.Context. It uses the global logger.
@@ -97,6 +98,26 @@ func (c *component) Ctx(ctx context.Context) *LoggerWithCtx {
 	return lc
 }
 
+// loggerWithCtxPool
+var (
+	loggerWithCtxPool = sync.Pool{
+		New: func() any {
+			return &LoggerWithCtx{}
+		},
+	}
+	GetLoggerWithCtx = func(ctx context.Context, l *Logger) *LoggerWithCtx {
+		lc := loggerWithCtxPool.Get().(*LoggerWithCtx)
+		lc.ctx = ctx
+		lc.l = l
+		return lc
+	}
+	PutLoggerWithCtx = func(lc *LoggerWithCtx) {
+		lc.ctx = nil
+		lc.l = nil
+		loggerWithCtxPool.Put(lc)
+	}
+)
+
 // LoggerWithCtx is a wrapper for Logger that also carries a context.Context.
 type LoggerWithCtx struct {
 	ctx    context.Context
@@ -143,6 +164,7 @@ func (c *LoggerWithCtx) Log(lvl zapcore.Level, msg string, fields []zap.Field) {
 }
 
 func (c *LoggerWithCtx) logFields(ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) {
+	defer PutLoggerWithCtx(c)
 	if len(c.fields) != 0 {
 		fields = append(fields, c.fields...)
 	}
@@ -151,5 +173,5 @@ func (c *LoggerWithCtx) logFields(ctx context.Context, lvl zapcore.Level, msg st
 
 // NewLoggerWithCtx get a logger with context from pool
 func NewLoggerWithCtx(ctx context.Context, l *Logger) *LoggerWithCtx {
-	return &LoggerWithCtx{ctx: ctx, l: l}
+	return GetLoggerWithCtx(ctx, l)
 }

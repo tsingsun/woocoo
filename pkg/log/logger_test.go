@@ -111,11 +111,9 @@ func TestLogger_AsGlobal(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			l := &Logger{
-				Logger:            tt.fields.Logger,
-				WithTraceID:       tt.fields.WithTraceID,
-				DisableCaller:     tt.fields.DisableCaller,
-				DisableStacktrace: tt.fields.DisableStacktrace,
-				contextLogger:     tt.fields.contextLogger,
+				Logger:        tt.fields.Logger,
+				WithTraceID:   tt.fields.WithTraceID,
+				contextLogger: tt.fields.contextLogger,
 			}
 			Component("test").SetLogger(New(zap.NewNop()))
 			got := l.AsGlobal()
@@ -161,11 +159,9 @@ func TestLogger_WithOptions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			l := &Logger{
-				Logger:            tt.fields.Logger,
-				WithTraceID:       tt.fields.WithTraceID,
-				DisableCaller:     tt.fields.DisableCaller,
-				DisableStacktrace: tt.fields.DisableStacktrace,
-				contextLogger:     tt.fields.contextLogger,
+				Logger:        tt.fields.Logger,
+				WithTraceID:   tt.fields.WithTraceID,
+				contextLogger: tt.fields.contextLogger,
 			}
 			got := l.WithOptions(tt.args.opts...)
 			require.NotSame(t, got, l)
@@ -209,11 +205,9 @@ func TestLogger_Ctx(t *testing.T) {
 				zp = test.NewStringLogger(logdata)
 			}
 			l := &Logger{
-				Logger:            zp,
-				WithTraceID:       tt.fields.WithTraceID,
-				DisableCaller:     tt.fields.DisableCaller,
-				DisableStacktrace: tt.fields.DisableStacktrace,
-				contextLogger:     tt.fields.contextLogger,
+				Logger:        zp,
+				WithTraceID:   tt.fields.WithTraceID,
+				contextLogger: tt.fields.contextLogger,
 			}
 			got := l.Ctx(tt.args.ctx)
 			got.Debug("debug", zap.String("key", "value"))

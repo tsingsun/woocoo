@@ -44,11 +44,7 @@ type Config struct {
 	// message.
 	DisableErrorVerbose bool `json:"disableErrorVerbose" yaml:"disableErrorVerbose"`
 	// WithTraceID configures the logger to add `trace_id` field to structured log messages.
-	WithTraceID bool `json:"WithTraceID" yaml:"WithTraceID"`
-	// DisableCaller set by ZapConfigs[0]
-	DisableCaller bool `json:"-"`
-	// DisableCaller set by ZapConfigs[0]
-	DisableStacktrace bool `json:"-"`
+	WithTraceID bool `json:"withTraceID" yaml:"withTraceID"`
 
 	callerSkip int
 	useRotate  bool
@@ -204,8 +200,6 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 }
 
 func (c *Config) buildZapOptions(cfg *zap.Config) (opts []zap.Option) {
-	c.DisableStacktrace = cfg.DisableStacktrace
-	c.DisableCaller = cfg.DisableCaller
 	if !cfg.DisableCaller {
 		opts = append(opts, zap.AddCaller())
 	}

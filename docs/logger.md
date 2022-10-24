@@ -73,11 +73,6 @@ log:
         - stderr
 ```
 内置配置基于Zap的Config对象
-> 虽然支持多个配置,但实际采用的还是同一个Zap.Logger,因此对于Config中的配置项作用于Zap.Core是有效的.对于其他全局项Logger将采用第一个配置
-
-全局项如下:
-- disableCaller
-- disableStacktrace
 
 ## Web访问日志
 

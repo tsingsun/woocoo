@@ -21,7 +21,7 @@ func TestNewConfigSolo(t *testing.T) {
 	var cfgStr = `
 development: true
 log:
-  WithTraceID: true
+  withTraceID: true
   cores:
     - level: debug
       disableCaller: true

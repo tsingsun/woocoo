@@ -39,13 +39,12 @@ func (n *DefaultContextLogger) LogFields(log *Logger, _ context.Context, lvl zap
 //
 // if you prefer to golang builtin log style,use log.Info or log.Infof, if zap style,you should use log.Operator().Info()
 // if you want to clone Logger,you can call WithOption
+// WithTraceID indicate whether to add trace_id field to the log.
+//   - web: from X-Request-Id header
+//   - grpc: from metadata key "trace_id"
 type Logger struct {
 	*zap.Logger
 	WithTraceID bool
-	// DisableCaller only indicate the logger weather DisableCaller set by ZapConfigs[0]
-	DisableCaller bool `json:"-"`
-	// DisableStacktrace only indicate the logger weather DisableCaller, set by ZapConfigs[0]
-	DisableStacktrace bool `json:"-"`
 
 	contextLogger ContextLogger
 }
@@ -105,8 +104,6 @@ func (l *Logger) Apply(cfg *conf.Configuration) {
 	}
 	l.Logger = zl
 	l.WithTraceID = config.WithTraceID
-	l.DisableCaller = config.DisableCaller
-	l.DisableStacktrace = config.DisableStacktrace
 }
 
 // WithOptions clones the current Logger, applies the supplied Options,

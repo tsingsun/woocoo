@@ -74,7 +74,6 @@ func New(opts ...Option) *Server {
 		},
 		exit: make(chan chan error),
 	}
-	opts = append([]Option{UseLogger()}, opts...)
 	for _, o := range opts {
 		o(&s.opts)
 	}

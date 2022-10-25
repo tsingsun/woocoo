@@ -225,8 +225,8 @@ func TestRegistryGrpcx(t *testing.T) {
 		//todo robin validate
 	}
 	{
-		srv.Stop()
-		srv2.Stop()
+		srv.Stop(context.Background())
+		srv2.Stop(context.Background())
 		//sleep let unregistry work,the latency 500 work fine, below will failure
 		time.Sleep(time.Millisecond * 500)
 		resp, err := client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})

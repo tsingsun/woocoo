@@ -5,10 +5,18 @@ import (
 	"github.com/tsingsun/woocoo/internal/logtest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
+	"github.com/tsingsun/woocoo/test/testdata"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"strconv"
 )
+
+func Configuration() *conf.Configuration {
+	return conf.New(
+		conf.WithBaseDir(testdata.BaseDir()),
+		conf.WithLocalPath(testdata.Path(testdata.DefaultConfigFile)),
+	).Load()
+}
 
 func ApplyGlobal(disableStacktrace bool) {
 	glog := log.InitGlobalLogger()

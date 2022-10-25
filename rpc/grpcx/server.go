@@ -1,6 +1,7 @@
 package grpcx
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -73,6 +74,7 @@ func New(opts ...Option) *Server {
 		},
 		exit: make(chan chan error),
 	}
+	opts = append([]Option{UseLogger()}, opts...)
 	for _, o := range opts {
 		o(&s.opts)
 	}
@@ -162,7 +164,12 @@ func (s *Server) Engine() *grpc.Server {
 	return s.engine
 }
 
-func (s *Server) Stop() (err error) {
+func (s *Server) Start(ctx context.Context) error {
+	grpclog.Infof("start grpc server on %s", s.opts.Addr)
+	return s.ListenAndServe()
+}
+
+func (s *Server) Stop(ctx context.Context) (err error) {
 	if s.registry != nil {
 		ch := make(chan error)
 		s.exit <- ch
@@ -178,10 +185,13 @@ func (s *Server) Stop() (err error) {
 
 // Run is a sample way to start the grpc server with gracefulStop stop
 func (s *Server) Run() error {
-	defer s.Stop() //nolint:errcheck
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		s.Stop(ctx) //nolint:errcheck
+	}()
 	ch := make(chan error)
 	go func() {
-		grpclog.Infof("start grpc server on %s", s.opts.Addr)
 		err := s.ListenAndServe()
 		ch <- err
 	}()

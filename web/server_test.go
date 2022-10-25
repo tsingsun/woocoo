@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -11,7 +12,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	srv := New(GracefulStop())
+	srv := New(WithGracefulStop())
 	assert.Equal(t, srv.ServerOptions().Addr, defaultAddr)
 	assert.NotNil(t, srv.HandlerManager())
 	r := httptest.NewRequest("GET", "/user/123", nil)
@@ -60,7 +61,7 @@ web:
 	}{
 		{
 			name: "normal",
-			srv: New(Configuration(cfg.Sub("web")),
+			srv: New(WithConfiguration(cfg.Sub("web")),
 				RegisterMiddlewareByFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
 					return func(c *gin.Context) {
 						c.Next()
@@ -70,7 +71,7 @@ web:
 		},
 		{
 			name: "registerHandlerAbort",
-			srv: New(Configuration(cfg.Sub("web")),
+			srv: New(WithConfiguration(cfg.Sub("web")),
 				RegisterMiddlewareByFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
 					return func(c *gin.Context) {
 						c.AbortWithStatus(500)
@@ -109,21 +110,21 @@ web:
 		fields  fields
 		wantErr bool // port conflict
 	}{
-		{name: "run", fields: fields{New(Configuration(cnf.Sub("web")))}},
-		{name: "runGracefull", fields: fields{New(Configuration(cnf.Sub("web")), GracefulStop())}},
-		{name: "runConflictPort", fields: fields{New(Configuration(cnf.Sub("web")))}, wantErr: true},
+		{name: "run", fields: fields{New(WithConfiguration(cnf.Sub("web")))}},
+		{name: "runGracefull", fields: fields{New(WithConfiguration(cnf.Sub("web")), WithGracefulStop())}},
+		{name: "runConflictPort", fields: fields{New(WithConfiguration(cnf.Sub("web")))}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var wg sync.WaitGroup
-			wg.Add(1)
+			wg := sync.WaitGroup{}
 			if tt.wantErr {
 				go func() {
-					srv1 := New(Configuration(cnf.Sub("web")))
+					srv1 := New(WithConfiguration(cnf.Sub("web")))
 					srv1.Run()
 				}()
 				time.Sleep(time.Second)
 			}
+			wg.Add(1)
 			go func() {
 				defer wg.Done()
 				err := tt.fields.srv.Run()
@@ -135,7 +136,9 @@ web:
 			}()
 			go func() {
 				time.Sleep(time.Second * 1)
-				tt.fields.srv.Stop()
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+				defer cancel()
+				tt.fields.srv.Stop(ctx)
 			}()
 			wg.Wait()
 		})

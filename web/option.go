@@ -8,8 +8,8 @@ import (
 // Option the function to apply configuration option
 type Option func(s *ServerOptions)
 
-// Configuration set up the configuration of the web server by a configuration instance
-func Configuration(cfg *conf.Configuration) Option {
+// WithConfiguration set up the configuration of the web server by a configuration instance
+func WithConfiguration(cfg *conf.Configuration) Option {
 	return func(s *ServerOptions) {
 		s.configuration = cfg
 	}
@@ -38,8 +38,8 @@ func RegisterMiddlewareByFunc(name string, handlerFunc handler.MiddlewareApplyFu
 	return RegisterMiddleware(ware)
 }
 
-// GracefulStop indicate use graceful stop
-func GracefulStop() Option {
+// WithGracefulStop indicate use graceful stop
+func WithGracefulStop() Option {
 	return func(s *ServerOptions) {
 		s.gracefulStop = true
 	}

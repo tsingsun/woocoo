@@ -32,7 +32,7 @@ web:
 `
 
 	cfg := conf.NewFromBytes([]byte(cfgStr))
-	srv := web.New(web.Configuration(cfg.Sub("web")), web.RegisterMiddleware(New()))
+	srv := web.New(web.WithConfiguration(cfg.Sub("web")), web.RegisterMiddleware(New()))
 	gqlsrvList, err := RegisterSchema(srv, &graphql.ExecutableSchemaMock{
 		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]interface{}) (int, bool) {
 			panic("mock out the Complexity method")

@@ -19,14 +19,17 @@ const (
 	defaultAddr = ":8080"
 )
 
+var (
+	logger = log.Component(log.WebComponentName)
+)
+
 type ServerOptions struct {
 	Addr              string              `json:"addr" yaml:"addr"`
 	SSLCertificate    string              `json:"sslCertificate" yaml:"sslCertificate"`
 	SSLCertificateKey string              `json:"sslCertificateKey" yaml:"sslCertificateKey"`
 	configuration     *conf.Configuration // not root configuration
-	logger            log.ComponentLogger
-	handlerManager    *handler.Manager // middleware manager
-	gracefulStop      bool             // run with grace full shutdown
+	handlerManager    *handler.Manager    // middleware manager
+	gracefulStop      bool                // run with grace full shutdown
 }
 
 type Server struct {
@@ -43,7 +46,6 @@ func New(opts ...Option) *Server {
 	s := &Server{
 		opts: ServerOptions{
 			Addr:           defaultAddr,
-			logger:         log.Component(log.WebComponentName),
 			handlerManager: handler.NewManager(),
 		},
 	}
@@ -97,11 +99,20 @@ func (s *Server) beforeRun() error {
 	return nil
 }
 
+func (s *Server) Start(ctx context.Context) error {
+	logger.Info(fmt.Sprintf("listening and serving HTTP on %s", s.opts.Addr))
+	err := s.ListenAndServe()
+	if err != nil && errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
+}
+
 // Stop http server and clear resource
-func (s *Server) Stop() error {
-	err := s.httpServerStop()
+func (s *Server) Stop(ctx context.Context) error {
+	err := s.httpServerStop(ctx)
 	if err != nil {
-		s.opts.logger.Error("web Server close err", zap.Error(err))
+		logger.Error("web Server close err", zap.Error(err))
 	}
 	if hm := s.opts.handlerManager; hm != nil {
 		hm.Shutdown()
@@ -133,17 +144,19 @@ func (s *Server) ListenAndServe() (err error) {
 //
 // you can process whole yourself
 func (s *Server) Run() error {
-	defer s.Stop() //nolint:errcheck
+	//ctx,cancel := context.WithCancel(context.Background())
 	ch := make(chan error)
+	defer func() {
+		//<-ctx.Done()
+		// The context is used to inform the server it has 5 seconds to finish
+		// the request it is currently handling
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		s.Stop(ctx) //nolint:errcheck
+	}()
 	go func() {
-		s.opts.logger.Info(fmt.Sprintf("listening and serving HTTP on %s", s.opts.Addr))
-		err := s.ListenAndServe()
-		switch {
-		case errors.Is(err, http.ErrServerClosed):
-			ch <- nil
-		case err != nil:
-			ch <- err
-		}
+		err := s.Start(context.Background())
+		ch <- err
 	}()
 	// Wait for interrupt signal to gracefully runAndClose the server with
 	// a timeout of 5 seconds.
@@ -154,26 +167,21 @@ func (s *Server) Run() error {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case <-quit:
-		s.opts.logger.Info(fmt.Sprintf("web server on %s shutdown", s.opts.Addr))
+		logger.Info(fmt.Sprintf("web server on %s shutdown", s.opts.Addr))
 	case err := <-ch:
 		return err
 	}
 	return nil
 }
 
-func (s *Server) httpServerStop() error {
-	// The context is used to inform the server it has 5 seconds to finish
-	// the request it is currently handling
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (s *Server) httpServerStop(ctx context.Context) error {
 	if s.opts.gracefulStop {
 		if err := s.httpSrv.Shutdown(ctx); err != nil {
-			s.opts.logger.Error("server forced to runAndClose", zap.Error(err))
+			logger.Error("server forced to runAndClose", zap.Error(err))
 		}
 	} else {
 		if err := s.httpSrv.Close(); err != nil {
-			s.opts.logger.Error("Server forced to runAndClose", zap.Error(err))
+			logger.Error("Server forced to runAndClose", zap.Error(err))
 		}
 	}
 	return nil

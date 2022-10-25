@@ -212,7 +212,7 @@ web:
 `
 
 	cfg := conf.NewFromBytes([]byte(cfgStr))
-	srv := web.New(web.Configuration(cfg.Sub("web")))
+	srv := web.New(web.WithConfiguration(cfg.Sub("web")))
 	srv.Router().GET("/", func(c *gin.Context) {
 		c.Header("Content-Length", strconv.Itoa(len(testResponse)))
 		c.String(200, testResponse)
@@ -252,7 +252,7 @@ web:
 
 	cfg := conf.NewFromBytes([]byte(fmt.Sprintf(cfgStr, level)))
 
-	srv := web.New(web.Configuration(cfg.Sub("web")))
+	srv := web.New(web.WithConfiguration(cfg.Sub("web")))
 	srv.Router().GET("/", func(c *gin.Context) {
 		c.Header("Content-Length", strconv.Itoa(len(testResponse)))
 		c.Writer.Write(bin[:size])

@@ -20,7 +20,7 @@ func WithConfiguration(cfg *conf.Configuration) Option {
 	}
 }
 
-// UseLogger use component logger named "grpc" and set grpclog use zap logger
+// UseLogger use component logger named "grpc" and set grpclog use zap logger.It is used by default.
 func UseLogger() Option {
 	return func(s *serverOptions) {
 		logger := log.Component("grpc")

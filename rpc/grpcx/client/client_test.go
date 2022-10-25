@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/internal/mock/helloworld"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -60,7 +61,7 @@ service:
 	assert.EqualValues(t, cli.dialOpts.Metadata, map[string]string{"version": "1.0"})
 	_, err := cli.Dial("")
 	assert.Error(t, err)
-	srv.Stop()
+	srv.Stop(context.Background())
 }
 
 func TestClient_DialNaming(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"github.com/stretchr/testify/require"
+	"github.com/tsingsun/woocoo/internal/logtest"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"github.com/tsingsun/woocoo/test"
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
@@ -15,8 +15,8 @@ import (
 )
 
 func stringlogger() *log.Logger {
-	logdata := &test.StringWriteSyncer{}
-	zp := test.NewStringLogger(logdata, zap.AddStacktrace(zap.DebugLevel), zap.AddCallerSkip(4), zap.AddCaller())
+	logdata := &logtest.Buffer{}
+	zp := logtest.NewBuffLogger(logdata, zap.AddStacktrace(zap.DebugLevel), zap.AddCallerSkip(4), zap.AddCaller())
 	l := log.New(zp)
 	l.SetContextLogger(NewContextZapLogger())
 	return l

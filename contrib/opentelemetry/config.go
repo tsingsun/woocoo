@@ -11,7 +11,9 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 	"os"
@@ -80,10 +82,12 @@ type Config struct {
 	Propagator     propagation.TextMapPropagator `json:"-" yaml:"-"`
 
 	resourceAttributes map[string]string
+	// with options
+	mops []sdkmetric.Option
+	tops []sdktrace.TracerProviderOption
 
 	shutdowns []func(ctx context.Context) error
-
-	asGlobal bool
+	asGlobal  bool
 }
 
 func NewConfig(cnf *conf.Configuration, opts ...Option) *Config {
@@ -160,7 +164,7 @@ func (c *Config) applyTracerProvider() {
 	case "stdout":
 		c.TracerProvider, shutdown, err = NewStdTracer(c, stdouttrace.WithPrettyPrint())
 	default:
-		return
+		c.TracerProvider, shutdown, err = NewTraceInOption(c)
 	}
 	if err != nil {
 		panic(fmt.Errorf("failed to create %s tracer provider:%v", c.TraceExporterEndpoint, err))
@@ -182,7 +186,7 @@ func (c *Config) applyMetricProvider() {
 	case "stdout":
 		c.MeterProvider, shutdown, err = NewStdMetric(c)
 	default:
-		return
+		c.MeterProvider, shutdown, err = NewMetricInOption(c)
 	}
 	if err != nil {
 		panic(fmt.Errorf("failed to create %s metric provider:%v", c.MetricExporterEndpoint, err))
@@ -273,6 +277,20 @@ func WithTracerProvider(provider trace.TracerProvider, shutdown func(ctx context
 		if shutdown != nil {
 			cfg.shutdowns = append(cfg.shutdowns, shutdown)
 		}
+	})
+}
+
+// WithTracerProviderOptions specifies sdk tracer provider options to use for creating a tracer.
+func WithTracerProviderOptions(opts ...sdktrace.TracerProviderOption) Option {
+	return optionFunc(func(cfg *Config) {
+		cfg.tops = opts
+	})
+}
+
+// WithMeterProviderOptions specifies sdk tracer provider options to use for creating a tracer.
+func WithMeterProviderOptions(opts ...sdkmetric.Option) Option {
+	return optionFunc(func(cfg *Config) {
+		cfg.mops = opts
 	})
 }
 

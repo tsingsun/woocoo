@@ -84,6 +84,38 @@ func TestNewConfig(t *testing.T) {
 				),
 			},
 		},
+		{
+			name: "with provider options",
+			args: args{
+				cnf: conf.NewFromStringMap(map[string]interface{}{
+					"appName": "test-with",
+					"otel": map[string]interface{}{
+						"traceExporterEndpoint": "",
+					},
+				}).Sub("otel"),
+				opts: func() (opts []Option) {
+					opts = append(opts,
+						WithResourceAttributes(map[string]string{"test": "test"}),
+						WithResource(resource.NewSchemaless(Attribute("attr1", "attr1"))),
+						WithTracerProviderOptions(zipkinProviderOptions(t)...), WithPropagator(b3.New()),
+						WithMeterProviderOptions(prometheusProviderOptions(t)...),
+					)
+					return
+				}(),
+			},
+			want: &Config{
+				ServiceName:                  "test-with",
+				MetricPeriodicReaderInterval: time.Second * 30,
+				TraceExporterEndpoint:        "",
+				resourceAttributes: map[string]string{
+					"test": "test",
+				},
+				Resource: resource.NewSchemaless(
+					Attribute("test", "test"),
+					Attribute("attr1", "attr1"),
+				),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -99,6 +131,15 @@ func TestNewConfig(t *testing.T) {
 	}
 }
 
+func zipkinProviderOptions(t *testing.T) []sdktrace.TracerProviderOption {
+	// Create a Zipkin exporter
+	exporter, err := zipkin.New("")
+	require.NoError(t, err)
+	return []sdktrace.TracerProviderOption{
+		sdktrace.WithBatcher(exporter),
+	}
+}
+
 func zipkinProvider(t *testing.T) (*sdktrace.TracerProvider, func(ctx context.Context) error) {
 	// Create a Zipkin exporter
 	exporter, err := zipkin.New("")
@@ -109,6 +150,14 @@ func zipkinProvider(t *testing.T) (*sdktrace.TracerProvider, func(ctx context.Co
 		sdktrace.WithBatcher(exporter),
 	)
 	return tp, exporter.Shutdown
+}
+
+func prometheusProviderOptions(t *testing.T) []sdkmetric.Option {
+	exporter, err := prometheus.New()
+	require.NoError(t, err)
+	return []sdkmetric.Option{
+		sdkmetric.WithReader(exporter),
+	}
 }
 
 func prometheusProvider(t *testing.T) (*sdkmetric.MeterProvider, func(ctx context.Context) error) {

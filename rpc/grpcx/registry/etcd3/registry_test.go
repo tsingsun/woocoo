@@ -68,15 +68,18 @@ func TestRegistryMultiService(t *testing.T) {
 	defer cxl()
 	_, err = etcdCli.Delete(ctx, sn, clientv3.WithPrefix())
 	require.NoError(t, err)
-
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		testproto.RegisterTestServiceServer(srv.Engine(), &testproto.TestPingService{})
+		wg.Done()
 		if err := srv.Run(); err != nil {
 			assert.NoError(t, err)
 		}
 	}()
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 1)
+	wg.Wait()
 	RegisterResolver(etcdConfg)
 	c, err := grpc.Dial(fmt.Sprintf("etcd://%s/", sn), grpc.WithInsecure(),
 		grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
@@ -86,7 +89,7 @@ func TestRegistryMultiService(t *testing.T) {
 	tsClient := testproto.NewTestServiceClient(c)
 	for i := 0; i < 5; i++ {
 		resp, err := hlClient.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resp.Message, "Hello round robin")
 		respts, err := tsClient.Ping(context.Background(), &testproto.PingRequest{Value: "ping"})
 		assert.NoError(t, err)

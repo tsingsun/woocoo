@@ -3,7 +3,7 @@ package otelweb
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	otelwoocoo "github.com/tsingsun/woocoo/contrib/opentelemetry"
+	otelwoocoo "github.com/tsingsun/woocoo/contrib/telemetry"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"

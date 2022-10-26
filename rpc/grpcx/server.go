@@ -141,7 +141,7 @@ func (s *Server) ListenAndServe() error {
 			}
 		}()
 	}
-	// grpc Serve run, it will return a non-nil error unless Stop or GracefulStop is called.
+	// grpc Serve run, it will return a non-nil error unless Stop or WithGracefulStop is called.
 	// so director check err
 	err = s.engine.Serve(lis)
 	if errors.Is(err, grpc.ErrServerStopped) {

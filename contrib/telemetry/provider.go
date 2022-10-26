@@ -1,4 +1,4 @@
-package opentelemetry
+package telemetry
 
 import (
 	"context"
@@ -112,25 +112,21 @@ func NewOtlpMetric(c *Config) (mp metric.MeterProvider, shutdown func(ctx contex
 
 // NewTraceInOption return trace provider which export has been set in `trace.TracerProviderOption`
 func NewTraceInOption(c *Config) (tp trace.TracerProvider, shutdown func(ctx context.Context) error, err error) {
-	if len(c.tops) > 0 {
-		df := []sdktrace.TracerProviderOption{sdktrace.WithResource(c.Resource)}
-		c.tops = append(df, c.tops...)
-		tpt := sdktrace.NewTracerProvider(c.tops...)
-		tp = tpt
-		shutdown = tpt.Shutdown
-	}
+	df := []sdktrace.TracerProviderOption{sdktrace.WithResource(c.Resource)}
+	c.tops = append(df, c.tops...)
+	tpt := sdktrace.NewTracerProvider(c.tops...)
+	tp = tpt
+	shutdown = tpt.Shutdown
 	return
 }
 
 // NewMetricInOption return meter which export has been set in `metric.Option`
 func NewMetricInOption(c *Config) (mp metric.MeterProvider, shutdown func(ctx context.Context) error, err error) {
-	if len(c.mops) > 0 {
-		df := []sdkmetric.Option{sdkmetric.WithResource(c.Resource)}
-		c.mops = append(df, c.mops...)
-		mpt := sdkmetric.NewMeterProvider(c.mops...)
-		c.MeterProvider = mp
-		mp = mpt
-		shutdown = mpt.Shutdown
-	}
+	df := []sdkmetric.Option{sdkmetric.WithResource(c.Resource)}
+	c.mops = append(df, c.mops...)
+	mpt := sdkmetric.NewMeterProvider(c.mops...)
+	c.MeterProvider = mp
+	mp = mpt
+	shutdown = mpt.Shutdown
 	return
 }

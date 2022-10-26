@@ -9,6 +9,6 @@ updates:
     schedule:
       interval: daily
   - package-ecosystem: gomod
-    directory: /contrib/opentelemetry/
+    directory: /contrib/telemetry/
     schedule:
       interval: daily

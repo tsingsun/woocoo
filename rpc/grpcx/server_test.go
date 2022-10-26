@@ -42,7 +42,7 @@ grpc:
 	cfg.SetBaseDir(testdata.BaseDir())
 	cfg.Load()
 	s := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")),
-		grpcx.GracefulStop(),
+		grpcx.WithGracefulStop(),
 		grpcx.WithGrpcOption(grpc.ConnectionTimeout(1000)))
 	assert.NotNil(t, s)
 }

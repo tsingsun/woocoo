@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	otelwoocoo "github.com/tsingsun/woocoo/contrib/opentelemetry"
+	otelwoocoo "github.com/tsingsun/woocoo/contrib/telemetry"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	b3prop "go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
@@ -74,9 +74,14 @@ func TestGetSpanNotInstrumented(t *testing.T) {
 }
 
 func TestPropagationWithGlobalPropagators(t *testing.T) {
+	otelwoocoo.SetGlobalConfig(nil)
 	provider := trace.NewNoopTracerProvider()
 	otel.SetTextMapPropagator(b3prop.New())
-
+	cnf := conf.NewFromStringMap(map[string]interface{}{
+		"appName": "foobar",
+	})
+	otelcfg := otelwoocoo.NewConfig(cnf, otelwoocoo.WithTracerProvider(provider, nil))
+	defer otelcfg.Shutdown()
 	r := httptest.NewRequest("GET", "/user/123", nil)
 	w := httptest.NewRecorder()
 
@@ -90,11 +95,6 @@ func TestPropagationWithGlobalPropagators(t *testing.T) {
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(r.Header))
 
 	router := gin.New()
-	cnf := conf.NewFromStringMap(map[string]interface{}{
-		"appName": "foobar",
-	})
-	otelcfg := otelwoocoo.NewConfig(cnf, otelwoocoo.WithTracerProvider(provider, nil))
-	defer otelcfg.Shutdown()
 	router.Use(middleware(otelcfg))
 	router.GET("/user/:id", func(c *gin.Context) {
 		span := trace.SpanFromContext(c.Request.Context())
@@ -106,8 +106,14 @@ func TestPropagationWithGlobalPropagators(t *testing.T) {
 }
 
 func TestPropagationWithCustomPropagators(t *testing.T) {
+	otelwoocoo.SetGlobalConfig(nil)
 	provider := trace.NewNoopTracerProvider()
 	b3 := b3prop.New()
+	cnf := conf.NewFromStringMap(map[string]interface{}{
+		"appName": "foobar",
+	})
+	otelcfg := otelwoocoo.NewConfig(cnf, otelwoocoo.WithTracerProvider(provider, nil), otelwoocoo.WithPropagator(b3))
+	defer otelcfg.Shutdown()
 
 	r := httptest.NewRequest("GET", "/user/123", nil)
 	w := httptest.NewRecorder()
@@ -122,11 +128,6 @@ func TestPropagationWithCustomPropagators(t *testing.T) {
 	b3.Inject(ctx, propagation.HeaderCarrier(r.Header))
 
 	router := gin.New()
-	cnf := conf.NewFromStringMap(map[string]interface{}{
-		"appName": "foobar",
-	})
-	otelcfg := otelwoocoo.NewConfig(cnf, otelwoocoo.WithTracerProvider(provider, nil), otelwoocoo.WithPropagator(b3))
-	defer otelcfg.Shutdown()
 	router.Use(middleware(otelcfg))
 	router.GET("/user/:id", func(c *gin.Context) {
 		span := trace.SpanFromContext(c.Request.Context())

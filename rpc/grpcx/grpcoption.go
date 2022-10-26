@@ -16,14 +16,14 @@ var (
 )
 
 func init() {
-	_ = RegisterGrpcServerOption("keepalive", keepaliveHandler)
-	_ = RegisterGrpcServerOption("tls", tlsHandler)
-	_ = RegisterGrpcUnaryInterceptor("jwt", interceptor.JWTUnaryServerInterceptor)
-	_ = RegisterGrpcUnaryInterceptor("accessLog", interceptor.LoggerUnaryServerInterceptor)
-	_ = RegisterGrpcUnaryInterceptor("recovery", interceptor.RecoveryUnaryServerInterceptor)
-	_ = RegisterGrpcStreamInterceptor("jwt", interceptor.JWTSteamServerInterceptor)
-	_ = RegisterGrpcStreamInterceptor("accessLog", interceptor.LoggerStreamServerInterceptor)
-	_ = RegisterGrpcStreamInterceptor("recovery", interceptor.RecoveryStreamServerInterceptor)
+	RegisterGrpcServerOption("keepalive", keepaliveHandler)
+	RegisterGrpcServerOption("tls", tlsHandler)
+	RegisterGrpcUnaryInterceptor("jwt", interceptor.JWTUnaryServerInterceptor)
+	RegisterGrpcUnaryInterceptor("accessLog", interceptor.LoggerUnaryServerInterceptor)
+	RegisterGrpcUnaryInterceptor("recovery", interceptor.RecoveryUnaryServerInterceptor)
+	RegisterGrpcStreamInterceptor("jwt", interceptor.JWTSteamServerInterceptor)
+	RegisterGrpcStreamInterceptor("accessLog", interceptor.LoggerStreamServerInterceptor)
+	RegisterGrpcStreamInterceptor("recovery", interceptor.RecoveryStreamServerInterceptor)
 
 }
 
@@ -41,19 +41,16 @@ func newConfigurableGrpcOptions() *configurableGrpcServerOptions {
 	}
 }
 
-func RegisterGrpcServerOption(name string, handler func(cnf *conf.Configuration) grpc.ServerOption) error {
+func RegisterGrpcServerOption(name string, handler func(cnf *conf.Configuration) grpc.ServerOption) {
 	cGrpcServerOptions.ms[name] = handler
-	return nil
 }
 
-func RegisterGrpcUnaryInterceptor(name string, handler func(*conf.Configuration) grpc.UnaryServerInterceptor) error {
+func RegisterGrpcUnaryInterceptor(name string, handler func(*conf.Configuration) grpc.UnaryServerInterceptor) {
 	cGrpcServerOptions.usit[name] = handler
-	return nil
 }
 
-func RegisterGrpcStreamInterceptor(name string, handler func(*conf.Configuration) grpc.StreamServerInterceptor) error {
+func RegisterGrpcStreamInterceptor(name string, handler func(*conf.Configuration) grpc.StreamServerInterceptor) {
 	cGrpcServerOptions.ssit[name] = handler
-	return nil
 }
 
 func keepaliveHandler(cfg *conf.Configuration) grpc.ServerOption {

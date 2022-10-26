@@ -1,4 +1,4 @@
-package opentelemetry
+package telemetry
 
 import (
 	"context"
@@ -111,8 +111,12 @@ func NewConfig(cnf *conf.Configuration, opts ...Option) *Config {
 //
 // if ServiceName and ServiceVersion and ServiceNameSpace is set in cfg, they will override before
 func (c *Config) Apply(cnf *conf.Configuration) {
-	c.ServiceName = cnf.Root().AppName()
-	c.ServiceVersion = cnf.Root().Version()
+	if c.ServiceName == "" {
+		c.ServiceName = cnf.Root().AppName()
+	}
+	if c.ServiceVersion == "" {
+		c.ServiceVersion = cnf.Root().Version()
+	}
 	if c.Resource == nil {
 		c.Resource = getDefaultResource(c)
 	}
@@ -164,7 +168,9 @@ func (c *Config) applyTracerProvider() {
 	case "stdout":
 		c.TracerProvider, shutdown, err = NewStdTracer(c, stdouttrace.WithPrettyPrint())
 	default:
-		c.TracerProvider, shutdown, err = NewTraceInOption(c)
+		if c.TracerProvider == nil && len(c.tops) > 0 {
+			c.TracerProvider, shutdown, err = NewTraceInOption(c)
+		}
 	}
 	if err != nil {
 		panic(fmt.Errorf("failed to create %s tracer provider:%v", c.TraceExporterEndpoint, err))
@@ -186,7 +192,10 @@ func (c *Config) applyMetricProvider() {
 	case "stdout":
 		c.MeterProvider, shutdown, err = NewStdMetric(c)
 	default:
-		c.MeterProvider, shutdown, err = NewMetricInOption(c)
+		if c.MeterProvider == nil && len(c.mops) > 0 {
+			c.MeterProvider, shutdown, err = NewMetricInOption(c)
+		}
+
 	}
 	if err != nil {
 		panic(fmt.Errorf("failed to create %s metric provider:%v", c.MetricExporterEndpoint, err))
@@ -264,6 +273,12 @@ func (c *Config) Shutdown() {
 		}(shutdown)
 	}
 	wg.Wait()
+}
+
+func WithName(name string) Option {
+	return optionFunc(func(c *Config) {
+		c.ServiceName = name
+	})
 }
 
 // WithTracerProvider specifies a tracer provider to use for creating a tracer.

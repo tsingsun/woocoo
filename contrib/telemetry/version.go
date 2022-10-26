@@ -1,4 +1,4 @@
-package opentelemetry
+package telemetry
 
 // Version is the current release version of the woocoo instrumentation.
 func Version() string {

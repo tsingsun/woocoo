@@ -41,8 +41,8 @@ func WithGrpcOption(opts ...grpc.ServerOption) Option {
 	}
 }
 
-// GracefulStop indicate use graceful stop
-func GracefulStop() Option {
+// WithGracefulStop indicate use graceful stop
+func WithGracefulStop() Option {
 	return func(s *serverOptions) {
 		s.gracefulStop = true
 	}

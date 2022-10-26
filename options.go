@@ -24,7 +24,8 @@ type options struct {
 	// kill -9 is syscall.SIGKILL but can't be caught, so don't need add it
 	quitCh []os.Signal
 
-	servers     []Server
+	servers []Server
+	// StopTimeout is the timeout for stopping the server.
 	StopTimeout time.Duration
 }
 

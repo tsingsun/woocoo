@@ -3,7 +3,7 @@ package otellog
 import (
 	"context"
 	"fmt"
-	"github.com/tsingsun/woocoo/contrib/opentelemetry"
+	"github.com/tsingsun/woocoo/contrib/telemetry"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -128,7 +128,7 @@ func appendField(attrs []attribute.KeyValue, f zapcore.Field) []attribute.KeyVal
 		attrs = append(attrs, semconv.ExceptionMessageKey.String(err.Error()))
 		return attrs
 	case zapcore.ReflectType:
-		attr := opentelemetry.Attribute(f.Key, f.Interface)
+		attr := telemetry.Attribute(f.Key, f.Interface)
 		return append(attrs, attr)
 	case zapcore.SkipType:
 		return attrs

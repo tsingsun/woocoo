@@ -116,19 +116,21 @@ web:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := wctest.RunWait(t, time.Second*2, func() error {
-				return tt.fields.srv.Run()
+			srv := tt.fields.srv
+			wantErr := tt.wantErr
+			err := wctest.RunWait(t, time.Millisecond*200, func() error {
+				return srv.Run()
 			}, func() error {
-				if !tt.wantErr {
-					time.Sleep(time.Second)
-					return tt.fields.srv.Stop(context.Background())
+				if !wantErr {
+					time.Sleep(time.Millisecond * 100)
+					return srv.Stop(context.Background())
 				}
 				return nil
 			})
 			assert.NoError(t, err)
-			if tt.wantErr {
-				srv := New(WithConfiguration(cnf.Sub("web")))
-				assert.Error(t, srv.Run())
+			if wantErr {
+				srv1 := New(WithConfiguration(cnf.Sub("web")))
+				assert.Error(t, srv1.Run())
 				return
 			}
 		})

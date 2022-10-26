@@ -37,7 +37,7 @@ grpc:
         pubKey: config/pubKey.pem
         tenantHeader: Qeelyn-Org-Id
 `)
-	//testdata.Path("x509/test.pem"), testdata.Path("x509/test.key")
+	// testdata.Path("x509/test.pem"), testdata.Path("x509/test.key")
 	cfg := conf.NewFromBytes(b)
 	cfg.SetBaseDir(testdata.BaseDir())
 	cfg.Load()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"io"
 	"log"
 	"net"
@@ -101,7 +102,7 @@ func NewPingGrpcService(t *testing.T, opts ...grpc.ServerOption) (server *grpc.S
 func NewPingGrpcClient(t *testing.T, ctx context.Context, addr string, opts ...grpc.DialOption) (conn *grpc.ClientConn, client TestServiceClient) {
 	var copts []grpc.DialOption
 	if len(opts) == 0 {
-		copts = []grpc.DialOption{grpc.WithBlock(), grpc.WithInsecure()}
+		copts = []grpc.DialOption{grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials())}
 	} else {
 		copts = opts
 	}

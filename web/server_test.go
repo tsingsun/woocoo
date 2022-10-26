@@ -4,9 +4,9 @@ import (
 	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"net/http/httptest"
-	"sync"
 	"testing"
 	"time"
 )
@@ -111,36 +111,26 @@ web:
 		wantErr bool // port conflict
 	}{
 		{name: "run", fields: fields{New(WithConfiguration(cnf.Sub("web")))}},
-		{name: "runGracefull", fields: fields{New(WithConfiguration(cnf.Sub("web")), WithGracefulStop())}},
+		{name: "runGraceful", fields: fields{New(WithConfiguration(cnf.Sub("web")), WithGracefulStop())}},
 		{name: "runConflictPort", fields: fields{New(WithConfiguration(cnf.Sub("web")))}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wg := sync.WaitGroup{}
-			if tt.wantErr {
-				go func() {
-					srv1 := New(WithConfiguration(cnf.Sub("web")))
-					srv1.Run()
-				}()
-				time.Sleep(time.Second)
-			}
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				err := tt.fields.srv.Run()
-				if tt.wantErr {
-					assert.Error(t, err)
-				} else {
-					assert.NoError(t, err)
+			err := wctest.RunWait(t, time.Second*2, func() error {
+				return tt.fields.srv.Run()
+			}, func() error {
+				if !tt.wantErr {
+					time.Sleep(time.Second)
+					return tt.fields.srv.Stop(context.Background())
 				}
-			}()
-			go func() {
-				time.Sleep(time.Second * 1)
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
-				defer cancel()
-				tt.fields.srv.Stop(ctx)
-			}()
-			wg.Wait()
+				return nil
+			})
+			assert.NoError(t, err)
+			if tt.wantErr {
+				srv := New(WithConfiguration(cnf.Sub("web")))
+				assert.Error(t, srv.Run())
+				return
+			}
 		})
 	}
 }

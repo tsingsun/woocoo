@@ -1,6 +1,8 @@
 package wctest
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"github.com/tsingsun/woocoo/internal/logtest"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -8,7 +10,11 @@ import (
 	"github.com/tsingsun/woocoo/test/testdata"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"golang.org/x/sync/errgroup"
 	"strconv"
+	"sync"
+	"testing"
+	"time"
 )
 
 func Configuration() *conf.Configuration {
@@ -40,4 +46,38 @@ func InitBuffWriteSyncer(opts ...zap.Option) *logtest.Buffer {
 	}))
 	glog.WithOptions(opts...).AsGlobal()
 	return logdata
+}
+
+func RunWait(t *testing.T, timeout time.Duration, fns ...func() error) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	eg, ctx := errgroup.WithContext(ctx)
+	wg := sync.WaitGroup{}
+	for _, fn := range fns {
+		fn := fn
+		eg.Go(func() error {
+			<-ctx.Done()
+			err := ctx.Err()
+			if err != nil {
+				if errors.Is(err, context.DeadlineExceeded) {
+					return nil
+				}
+				return err
+			}
+			return nil
+		})
+		wg.Add(1)
+		go func() {
+			wg.Done()
+			if err := fn(); err != nil {
+				t.Error(err)
+				cancel()
+			}
+		}()
+	}
+	wg.Wait()
+	if err := eg.Wait(); err != nil {
+		return err
+	}
+	return nil
 }

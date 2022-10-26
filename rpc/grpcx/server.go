@@ -191,7 +191,7 @@ func (s *Server) Run() error {
 	}()
 	ch := make(chan error)
 	go func() {
-		err := s.ListenAndServe()
+		err := s.Start(context.Background())
 		ch <- err
 	}()
 

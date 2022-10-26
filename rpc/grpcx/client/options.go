@@ -3,6 +3,7 @@ package client
 import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -74,7 +75,9 @@ func RegisterStreamClientInterceptor(name string, f func(configuration *conf.Con
 }
 
 func registerInternal() {
-	RegisterDialOption("insecure", func(configuration *conf.Configuration) grpc.DialOption { return grpc.WithInsecure() })
+	RegisterDialOption("insecure", func(configuration *conf.Configuration) grpc.DialOption {
+		return grpc.WithTransportCredentials(insecure.NewCredentials())
+	})
 	RegisterDialOption("block", func(configuration *conf.Configuration) grpc.DialOption { return grpc.WithBlock() })
 	RegisterDialOption("defaultServiceConfig", func(configuration *conf.Configuration) grpc.DialOption {
 		return grpc.WithDefaultServiceConfig(configuration.String("defaultServiceConfig"))

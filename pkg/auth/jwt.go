@@ -93,7 +93,7 @@ type (
 		// ParseTokenFunc defines a user-defined function that parses token from given auth. Returns an error when token
 		// parsing fails or parsed token is invalid.
 		// Defaults to implementation using `github.com/golang-jwt/jwt` as JWT implementation library
-		ParseTokenFunc func(ctx context.Context, auth string) (interface{}, error)
+		ParseTokenFunc func(ctx context.Context, auth string) (*jwt.Token, error)
 	}
 )
 
@@ -113,15 +113,15 @@ func NewJWT() *JWTOptions {
 	return &v
 }
 
-func (opts *JWTOptions) defaultParseToken(ctx context.Context, authStr string) (interface{}, error) {
-	var err error
-
-	var token *jwt.Token
+func (opts *JWTOptions) defaultParseToken(ctx context.Context, authStr string) (token *jwt.Token, err error) {
 	// Issue #647, #656
-	if _, ok := opts.Claims.(jwt.MapClaims); ok {
+	switch v := opts.Claims.(type) {
+	case *jwt.RegisteredClaims:
+		token, err = jwt.ParseWithClaims(authStr, v, opts.KeyFunc)
+	case jwt.MapClaims:
 		token, err = jwt.Parse(authStr, opts.KeyFunc)
-	} else {
-		t := reflect.ValueOf(opts.Claims).Type().Elem()
+	default:
+		t := reflect.ValueOf(v).Type().Elem()
 		claims := reflect.New(t).Interface().(jwt.Claims)
 		token, err = jwt.ParseWithClaims(authStr, claims, opts.KeyFunc)
 	}

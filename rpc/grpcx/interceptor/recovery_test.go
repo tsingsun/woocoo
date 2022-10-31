@@ -18,7 +18,7 @@ import (
 )
 
 func TestRecoveryUnaryServerInterceptor(t *testing.T) {
-	wctest.ApplyGlobal(false)
+	wctest.InitGlobalLogger(false)
 	zgl := zapgrpc.NewLogger(log.Global().Logger().Logger)
 	grpclog.SetLoggerV2(zgl)
 	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(
@@ -44,7 +44,7 @@ func TestRecoveryUnaryServerInterceptor(t *testing.T) {
 		require.Contains(t, line, "testproto/grpc_testing.go")
 	})
 	t.Run("disableStacktrace", func(t *testing.T) {
-		wctest.ApplyGlobal(true)
+		wctest.InitGlobalLogger(true)
 		logdata := wctest.InitBuffWriteSyncer()
 		log.Component(AccessLogComponentName).SetLogger(log.Global().Logger())
 		_, err := client.PingPanic(context.Background(), &testproto.PingRequest{

@@ -46,7 +46,7 @@ func TestLoggerMiddleware(t *testing.T) {
 				},
 			},
 			want: func() any {
-				wctest.ApplyGlobal(false)
+				wctest.InitGlobalLogger(false)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {

@@ -120,7 +120,7 @@ func TestHandleRecoverError(t *testing.T) {
 }
 
 func TestRecoveryMiddleware(t *testing.T) {
-	wctest.ApplyGlobal(true)
+	wctest.InitGlobalLogger(true)
 	type args struct {
 		cfg     *conf.Configuration
 		handler gin.HandlerFunc
@@ -145,7 +145,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 			name: "panic any",
 			args: rargs("panicx"),
 			want: func() any {
-				wctest.ApplyGlobal(true)
+				wctest.InitGlobalLogger(true)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
@@ -166,7 +166,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 			name: "panic error",
 			args: rargs(errors.New("panicx")),
 			want: func() any {
-				wctest.ApplyGlobal(true)
+				wctest.InitGlobalLogger(true)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
@@ -185,7 +185,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 			name: "panic any-false",
 			args: rargs("panicx"),
 			want: func() any {
-				wctest.ApplyGlobal(false)
+				wctest.InitGlobalLogger(false)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
@@ -206,7 +206,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 			name: "panic error-false",
 			args: rargs(errors.New("panicx")),
 			want: func() any {
-				wctest.ApplyGlobal(false)
+				wctest.InitGlobalLogger(false)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
@@ -266,7 +266,7 @@ func TestRecoveryMiddleware_WithLogger(t *testing.T) {
 			name: "panic any",
 			args: rargs,
 			want: func() any {
-				wctest.ApplyGlobal(true)
+				wctest.InitGlobalLogger(true)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
@@ -284,7 +284,7 @@ func TestRecoveryMiddleware_WithLogger(t *testing.T) {
 			name: "panic error",
 			args: rargs,
 			want: func() any {
-				wctest.ApplyGlobal(true)
+				wctest.InitGlobalLogger(true)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
@@ -303,7 +303,7 @@ func TestRecoveryMiddleware_WithLogger(t *testing.T) {
 			name: "panic any-false",
 			args: rargs,
 			want: func() any {
-				wctest.ApplyGlobal(false)
+				wctest.InitGlobalLogger(false)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
@@ -321,7 +321,7 @@ func TestRecoveryMiddleware_WithLogger(t *testing.T) {
 			name: "panic error-false",
 			args: rargs,
 			want: func() any {
-				wctest.ApplyGlobal(false)
+				wctest.InitGlobalLogger(false)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {

@@ -2,7 +2,9 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/tsingsun/woocoo/pkg/auth"
+	"github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"net/http"
 )
@@ -18,17 +20,17 @@ type (
 		// The order of precedence is user-defined TokenLookupFuncs, and TokenLookup.
 		// You can also provide both if you want.
 		TokenLookupFuncs []ValuesExtractor
-
 		// SuccessHandler defines a function which is executed for a valid token before middleware chain continues with next
 		// middleware or handler.
 		SuccessHandler JWTSuccessHandler
-
 		// ErrorHandler defines a function which is executed for an invalid token.
 		// It may be used to define a custom JWT error.
 		ErrorHandler JWTErrorHandler
-
 		// ErrorHandlerWithContext is almost identical to ErrorHandler, but it's passed the current context.
 		ErrorHandlerWithContext JWTErrorHandlerWithContext
+		// TokenStoreKey is the name of the cache driver,default is "redis".
+		// When this option is used, requirements : token cache KEY that uses the JWT ID.
+		TokenStoreKey string `json:"tokenStoreKey" yaml:"TokenStoreKey"`
 	}
 
 	// JWTSuccessHandler defines a function which is executed for a valid token.
@@ -101,6 +103,10 @@ func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
 	if len(opts.TokenLookupFuncs) > 0 {
 		extractors = append(opts.TokenLookupFuncs, extractors...)
 	}
+	var store cache.Cache
+	if opts.TokenStoreKey != "" {
+		store = cache.GetCache(opts.TokenStoreKey)
+	}
 	return func(c *gin.Context) {
 		if opts.Skipper(c) {
 			c.Next()
@@ -119,6 +125,17 @@ func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
 				if err != nil {
 					lastTokenErr = err
 					continue
+				}
+				if store != nil {
+					if rjwt, ok := token.Claims.(*jwt.RegisteredClaims); ok {
+						if exists := store.Has(rjwt.ID); !exists {
+							lastTokenErr = jwt.ErrTokenUnverifiable
+							continue
+						}
+					} else {
+						lastTokenErr = jwt.ErrTokenInvalidClaims
+						continue
+					}
 				}
 				// Store user information from token into context.
 				c.Set(opts.ContextKey, token)

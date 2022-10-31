@@ -24,7 +24,8 @@ func Configuration() *conf.Configuration {
 	).Load()
 }
 
-func ApplyGlobal(disableStacktrace bool) {
+// InitGlobalLogger sets a sample logger as the global logger for pkg log test.
+func InitGlobalLogger(disableStacktrace bool) {
 	glog := log.InitGlobalLogger()
 	glog.Apply(conf.NewFromBytes([]byte(fmt.Sprintf(`
 disableTimestamp: false
@@ -36,6 +37,7 @@ cores:
 	glog.AsGlobal()
 }
 
+// InitBuffWriteSyncer returns a Memory WriteSyncer for log test
 func InitBuffWriteSyncer(opts ...zap.Option) *logtest.Buffer {
 	opts = append(opts, zap.AddStacktrace(zapcore.ErrorLevel))
 	logdata := &logtest.Buffer{}
@@ -48,6 +50,7 @@ func InitBuffWriteSyncer(opts ...zap.Option) *logtest.Buffer {
 	return logdata
 }
 
+// RunWait runs the given functions in a goroutine and waits for a time whatever a function is blocking.
 func RunWait(t *testing.T, timeout time.Duration, fns ...func() error) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()

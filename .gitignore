@@ -12,5 +12,6 @@
 *.out
 .idea
 .run
+go.work*
 
 test/tmp/

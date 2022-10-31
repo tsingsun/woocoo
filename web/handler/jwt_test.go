@@ -1,8 +1,14 @@
 package handler_test
 
 import (
+	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/auth"
+	"github.com/tsingsun/woocoo/pkg/cache"
+	"github.com/tsingsun/woocoo/pkg/cache/redisc"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/web"
@@ -14,6 +20,18 @@ import (
 )
 
 func TestJWTMiddleware_ApplyFunc(t *testing.T) {
+	p, err := conf.NewParserFromFile(testdata.Path("token/jwt.yaml"))
+	require.NoError(t, err)
+	tokens := conf.NewFromParse(p)
+
+	mredis := miniredis.RunT(t)
+	err = cache.RegisterCache("tokenStore", func() cache.Cache {
+		return redisc.New(conf.NewFromStringMap(map[string]any{
+			"type": "standalone",
+			"addr": mredis.Addr(),
+		}), nil)
+	}())
+	require.NoError(t, err)
 	type args struct {
 		cfg  *conf.Configuration
 		opts []handler.MiddlewareOption
@@ -21,19 +39,22 @@ func TestJWTMiddleware_ApplyFunc(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		token   string
-		wantErr bool
+		token   func() string
+		wantErr assert.ErrorAssertionFunc
 	}{
 		{
-			name: "default", args: args{cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+			name: "default", args: args{cfg: conf.NewFromStringMap(map[string]any{
 				"signingKey": "secret",
-			}))},
-			token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.XbPfbIHMI6arZ3Y922BhjWgQzWXcXNrz0ogtVhfEd2o",
+			})},
+			token: func() string {
+				return tokens.String("secretToken")
+			},
+			wantErr: assert.NoError,
 		},
 		{
-			name: "default-opts", args: args{cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+			name: "default-opts", args: args{cfg: conf.NewFromStringMap(map[string]any{
 				"signingKey": "secret",
-			})),
+			}),
 				opts: []handler.MiddlewareOption{
 					handler.WithMiddlewareConfig(func() interface{} {
 						nc := &handler.JWTConfig{
@@ -44,12 +65,17 @@ func TestJWTMiddleware_ApplyFunc(t *testing.T) {
 					}),
 				},
 			},
-			token:   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.XbPfbIHMI6arZ3Y922BhjWgQzWXcXNrz0ogtVhfEd2o",
-			wantErr: true,
+			token: func() string {
+				return tokens.String("secretToken")
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				r := i[0].(*httptest.ResponseRecorder)
+				return assert.Equal(t, http.StatusOK, r.Code)
+			},
 		},
 
 		{
-			name: "rs256", args: args{cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+			name: "rs256", args: args{cfg: conf.NewFromStringMap(map[string]any{
 				"signingMethod": "RS256",
 				"signingKey": `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnou03fsVPvv0cYdB61jO
@@ -61,20 +87,59 @@ xt3yh6529bjEJA4uILrdkO/36wBUEDOcfg4j8ldpEkIlLxRnKV/0FrRqrAaetAQJ
 ZwIDAQAB
 -----END PUBLIC KEY-----
 `,
-			}))},
-			token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.f5Wq6xqAZCTmtZSnCvp8-1uLMegHwBpAydy779wfZ9FtLxJgBQ1S6QsJuo-W-myLybeBHXBlFRQcc4OWoKGSFomP0oVAdUNPnrm_lm3yRup6mVYJ-QuvT_R0SLtv8ruOAmvu5fcszB06TjrQMHfLQHIikhgqbnMxBARtnlaGlEi4uxmce298QOI4TRtxm7-aR4RlfM2lGcltqrzjhT2sa8TibcdpJ8XPrCm4VBKF6qIX6CuVxZbzX6OT8UJKv_eEWnyL0es7-HIsvj7yHA_l6UgSFV9sXjsOxf-m4PI9iZqJHmOruedOYSgECvo4oiHE0wUc7rU9XQxv0b9HjEW7-Q",
+			})},
+			token: func() string {
+				return tokens.String("rs256Token")
+			},
+			wantErr: assert.NoError,
 		},
 		{
-			name: "rs256-file", args: args{cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+			name: "rs256-file", args: args{cfg: conf.NewFromStringMap(map[string]any{
 				"signingMethod": "RS256",
 				"signingKey":    "file:///" + testdata.Path(filepath.Join("etc", "jwt_public_key.pem")),
-			}))},
-			token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.f5Wq6xqAZCTmtZSnCvp8-1uLMegHwBpAydy779wfZ9FtLxJgBQ1S6QsJuo-W-myLybeBHXBlFRQcc4OWoKGSFomP0oVAdUNPnrm_lm3yRup6mVYJ-QuvT_R0SLtv8ruOAmvu5fcszB06TjrQMHfLQHIikhgqbnMxBARtnlaGlEi4uxmce298QOI4TRtxm7-aR4RlfM2lGcltqrzjhT2sa8TibcdpJ8XPrCm4VBKF6qIX6CuVxZbzX6OT8UJKv_eEWnyL0es7-HIsvj7yHA_l6UgSFV9sXjsOxf-m4PI9iZqJHmOruedOYSgECvo4oiHE0wUc7rU9XQxv0b9HjEW7-Q",
+			})},
+			token: func() string {
+				return tokens.String("rs256Token")
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "tokenStore Token no exist", args: args{cfg: conf.NewFromStringMap(map[string]any{
+				"signingKey":    "secret",
+				"tokenStoreKey": "tokenStore",
+			})},
+			token: func() string {
+				return tokens.String("secretToken")
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				r := i[0].(*httptest.ResponseRecorder)
+				return !assert.Equal(t, http.StatusUnauthorized, r.Code)
+			},
+		},
+		{
+			name: "tokenStoreExist", args: args{cfg: conf.NewFromStringMap(map[string]any{
+				"signingKey":    "secret",
+				"tokenStoreKey": "tokenStore",
+			})},
+			token: func() string {
+				tstr := tokens.String("secretToken")
+				token, err := jwt.Parse(tstr, func(token *jwt.Token) (interface{}, error) {
+					return []byte("secret"), nil
+				})
+				require.NoError(t, err)
+				require.NoError(t, mredis.Set(token.Claims.(jwt.MapClaims)["jti"].(string), tstr))
+				return tstr
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				r := i[0].(*httptest.ResponseRecorder)
+				return assert.Equal(t, http.StatusOK, r.Code)
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw := handler.JWT(tt.args.opts...)
+			defer mw.Shutdown()
 			srv := web.New()
 			srv.Router().Engine.Use(mw.ApplyFunc(tt.args.cfg))
 			srv.Router().Engine.NoRoute(func(c *gin.Context) {
@@ -82,17 +147,18 @@ ZwIDAQAB
 			})
 			var r *http.Request
 			var w = httptest.NewRecorder()
+			token := tt.token()
 			switch tt.args.cfg.String("lookupToken") {
 			case "query:token":
-				r = httptest.NewRequest("GET", "http://localhost?token="+tt.token, nil)
+				r = httptest.NewRequest("GET", "http://localhost?token="+token, nil)
 			default:
 				r = httptest.NewRequest("GET", "/", nil)
-				r.Header.Set("Authorization", "Bearer "+tt.token)
+				r.Header.Set("Authorization", "Bearer "+token)
 			}
 			srv.Router().ServeHTTP(w, r)
 
-			if w.Code != http.StatusOK && !tt.wantErr {
-				t.Errorf("JWTMiddleware.ApplyFunc() error = %v, wantErr %v", w.Code, http.StatusOK)
+			if !tt.wantErr(t, nil, w) {
+				return
 			}
 		})
 	}

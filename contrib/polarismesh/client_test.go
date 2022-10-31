@@ -3,7 +3,9 @@ package polarismesh
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/internal/mock/helloworld"
+	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"github.com/tsingsun/woocoo/rpc/grpcx/client"
@@ -59,16 +61,12 @@ grpc:
           - trace:
 `)
 	cfg := conf.NewFromBytes(b)
-	go func() {
+	err := wctest.RunWait(t, time.Second, func() error {
 		srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
-		defer srv.Stop()
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
-		if err := srv.Run(); err != nil {
-			t.Error(err)
-			return
-		}
-	}()
-	time.Sleep(time.Second)
+		return srv.Run()
+	})
+	require.NoError(t, err)
 	cli := client.New(client.Configuration(cfg.Sub("grpc")))
 	conn, err := cli.Dial("")
 	assert.NoError(t, err)
@@ -119,23 +117,19 @@ grpc:
           - trace:
 `)
 	cfg := conf.NewFromBytes(b)
-	srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")), grpcx.UseLogger())
-	go func() {
+	var srv, srv2 *grpcx.Server
+	err := wctest.RunWait(t, time.Second, func() error {
+		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")), grpcx.UseLogger())
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
-		if err := srv.Run(); err != nil {
-			assert.NoError(t, err)
-		}
-	}()
-	cfg2 := cfg.Sub("grpc")
-	cfg2.Parser().Set("server.addr", ":20013")
-	srv2 := grpcx.New(grpcx.WithConfiguration(cfg2), grpcx.UseLogger())
-	go func() {
+		return srv.Run()
+	}, func() error {
+		cfg2 := cfg.Sub("grpc")
+		cfg2.Parser().Set("server.addr", ":20013")
+		srv2 = grpcx.New(grpcx.WithConfiguration(cfg2), grpcx.UseLogger())
 		helloworld.RegisterGreeterServer(srv2.Engine(), &helloworld.Server{})
-		if err := srv2.Run(); err != nil {
-			assert.NoError(t, err)
-		}
-	}()
-	time.Sleep(time.Second * 2)
+		return srv2.Run()
+	})
+	require.NoError(t, err)
 	cli := client.New(client.Configuration(cfg.Sub("grpc")))
 	c, err := cli.Dial("")
 	if !assert.NoError(t, err) {
@@ -150,14 +144,14 @@ grpc:
 		assert.Equal(t, resp.Message, "Hello round robin")
 	}
 	{
-		srv.Stop()
+		srv.Stop(context.Background())
 		time.Sleep(time.Second * 2)
 		resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.Message, "Hello round robin")
 	}
 	{
-		srv2.Stop()
+		srv2.Stop(context.Background())
 		//sleep let unregistry work,the latency 500 work fine, below will failure
 		resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
 		assert.Nil(t, resp)

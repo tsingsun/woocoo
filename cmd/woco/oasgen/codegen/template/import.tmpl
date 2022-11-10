@@ -1,0 +1,19 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen/codegen.Graph */}}
+
+{{ define "import" }}
+import (
+    "fmt"
+    {{- range $.Config.Imports }}
+        "{{ . }}"
+    {{- end }}
+    {{- if not (eq $.Config.Package $.Package) }}
+        {{- template "import/tags" }}
+    {{- end }}
+)
+{{ end }}
+
+{{ define "import/tags" }}
+    {{- range $i, $tag := $.Nodes }}
+
+    {{- end }}
+{{ end }}

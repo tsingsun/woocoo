@@ -1,0 +1,20 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen/codegen.Graph */}}
+
+{{ define "interface" }}
+
+{{ $pkg := base $.Config.Package }}
+{{ template "header" $ }}
+
+{{ template "import" $ }}
+
+{{ range $n:=$.Nodes }}
+    {{ $serviceName := pascal $n.Name }}
+    // {{ $serviceName }}Server is the server API for {{ $serviceName }} service.
+    type {{ $serviceName }}Server interface {
+    {{- range $n.Operations }}
+    // ({{ .Method }} {{ .Path }})
+    {{ .Name }}(c *gin.Context{{ if .HasRequest }}, req {{ .RequestName }}{{ end }})({{ if .HasResponse}}{{ .ResponseOK.Schema.Type.String }}, {{ end }}error)
+    {{- end }}
+    }
+{{ end }}
+{{ end }}

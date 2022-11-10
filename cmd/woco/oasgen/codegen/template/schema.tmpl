@@ -1,0 +1,15 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen/codegen.Graph */}}
+{{ define "schema"}}
+
+{{ $pkg := base $.Config.Package }}
+{{ template "header" $ }}
+
+{{ template "import" $ }}
+{{ range $model:=$.Schemas}}
+        type {{ pascal $model.Name }} struct {
+                {{ range $field:=$model.Properties }}
+                {{ pascal $field.Name }} {{ $field.Type }} `json:"{{ $field.Name }}"`{{ end }}
+        }
+{{ end }}
+
+{{ end}}

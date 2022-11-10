@@ -1,0 +1,27 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen/codegen.Tag */}}
+{{ define "tag" }}
+    {{ $pkg := base $.Config.Package }}
+    {{ template "header" $ }}
+
+    {{ template "import" $ }}
+
+    {{ range .Operations }}
+        {{- if .HasRequest }}
+            type {{ .RequestName }} struct {
+            {{- range .Request }}
+                {{ pascal .Name }} {{ .Schema.Type.String }} `{{ .Schema.StructTag }}`{{ end }}
+            }
+        {{ end }}
+        {{- if .HasResponse}}
+            {{- with .ResponseOK}}
+                {{ if and (not .Schema.IsRef) .Schema.Name }}
+                    type {{ pascal .Schema.Name }} struct {
+                    {{- range .Schema.Properties }}
+                        {{ pascal .Name }} {{ .Type.String }} `{{ .StructTag }}`
+                    {{- end }}
+                    }
+                {{- end }}
+            {{ end }}
+        {{ end }}
+    {{ end }}
+{{ end }}

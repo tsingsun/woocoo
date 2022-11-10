@@ -18,12 +18,12 @@ The current features are as follows:
 
 # Features
 - [x] component configurable,easy to split multi environments
-- [X] logger and rotate support. [Detail](docs/logger.md),
-- [X] OpenTelemetry support. [Detail](docs/otel.md)
-- [X] built-in web router,supports GraphQL.
-- [X] built-in grpc server and easy to use grpc client.
-- [X] JWT-based validation
-- [X] microservice registry and discovery: 
+- [x] logger and rotate support. [Detail](docs/logger.md),
+- [x] OpenTelemetry support. [Detail](docs/otel.md)
+- [x] built-in web router,supports GraphQL.
+- [x] built-in grpc server and easy to use grpc client.
+- [x] JWT-based validation
+- [x] microservice registry and discovery: 
   - etcdv3: register and discovery services 
   - [Polaris](https://github.com/polarismesh/polaris): service discovery and governance
 
@@ -31,7 +31,8 @@ The current features are as follows:
 
 - woco-cli: command line tool. see [Detail](./cmd/woco/README.md)
 
-  generate code support: `Ent`
+  - [x] generate code support: `Ent`
+  - [x] generate web server code by openapi3.0 spec
 
 ## Work With
 

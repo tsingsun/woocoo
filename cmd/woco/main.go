@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/tsingsun/woocoo/cmd/woco/entimport"
+	"github.com/tsingsun/woocoo/cmd/woco/oasgen"
 	"github.com/urfave/cli/v2"
 	"log"
 	"os"
@@ -13,6 +14,7 @@ const WocoVersion = "0.0.1"
 
 var commands = []*cli.Command{
 	entimport.EntImportCmd,
+	oasgen.OasGenCmd,
 }
 
 func main() {

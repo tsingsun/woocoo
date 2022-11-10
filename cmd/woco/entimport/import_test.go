@@ -13,9 +13,11 @@ const (
 	ckDSN       = "clickhouse://localhost:9000/?debug=false&dial_timeout=5s"
 	myDSN       = "root@tcp(localhost:3306)/test?parseTime=true"
 	myCreateDSN = "root@tcp(localhost:3306)/?parseTime=true"
+	testTmp     = "../../../test/tmp"
 )
 
 func init() {
+
 	//createTestMysql()
 	//createTestCK()
 }
@@ -84,7 +86,7 @@ func Test_generateSchema(t *testing.T) {
 				opts: driver.ImportOptions{
 					Dialect:       "mysql",
 					DSN:           myDSN,
-					SchemaPath:    "./tmp",
+					SchemaPath:    testTmp,
 					Tables:        []string{"entimport"},
 					GenGraphql:    true,
 					GenProtoField: true,
@@ -96,7 +98,7 @@ func Test_generateSchema(t *testing.T) {
 				opts: driver.ImportOptions{
 					Dialect:       "clickhouse",
 					DSN:           ckDSN,
-					SchemaPath:    "./tmp",
+					SchemaPath:    testTmp,
 					Tables:        []string{"entimport"},
 					GenGraphql:    true,
 					GenProtoField: true,

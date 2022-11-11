@@ -8,7 +8,7 @@
 {{ range $model:=$.Schemas}}
         type {{ pascal $model.Name }} struct {
                 {{ range $field:=$model.Properties }}
-                {{ pascal $field.Name }} {{ $field.Type }} `json:"{{ $field.Name }}"`{{ end }}
+                {{ pascal $field.Name }} {{ $field.Type }} `{{ strJoin $field.StructTags " " }}`{{ end }}
         }
 {{ end }}
 

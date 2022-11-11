@@ -10,12 +10,10 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
-	"strings"
 )
 
-// Schema describes an OpenAPI Spec, with lots of helper fields to use in the
-// templating engine.
 type (
+	// Operation is for operation of openapi3
 	Operation struct {
 		*Config
 		Name         string
@@ -24,7 +22,7 @@ type (
 		Path         string
 		Spec         *openapi3.Operation
 		SpecPathItem *openapi3.PathItem // navigation to pathItem
-		Request      []*Parameter
+		Request      *Request
 		Responses    []*Response
 		ResponseOK   *Response
 	}
@@ -34,7 +32,14 @@ type (
 		Schema *Schema
 		Spec   *openapi3.Parameter
 	}
-
+	Request struct {
+		Parameters []*Parameter
+		BindUri    bool
+		BindHeader bool
+		BindCookie bool
+		Bind       bool
+	}
+	// Response is for response of openapi3
 	Response struct {
 		Name string
 		// http status
@@ -42,18 +47,18 @@ type (
 		Schema *Schema
 		Spec   *openapi3.Response
 	}
-
+	// Schema is for schema of openapi3
 	Schema struct {
 		Spec       *openapi3.SchemaRef // The original OpenAPIv3 Schema.
 		Name       string
 		Type       *code.TypeInfo
 		IsRef      bool
 		Required   bool
-		StructTag  string
+		StructTags []string
 		properties []*Schema
 		Properties map[string]*Schema
 	}
-
+	// Tag is for tag of openapi3
 	Tag struct {
 		*Config
 		Name       string
@@ -85,15 +90,28 @@ func genOperation(c *Config, schema *openapi3.T) (ops []*Operation) {
 				Spec:         specop,
 				SpecPathItem: pathItem,
 				Group:        tag,
+				Request:      &Request{},
 			}
 			ops = append(ops, op)
 			for _, p := range op.Spec.Parameters {
-				op.Request = append(op.Request, genParameter(c, p))
+				gp := genParameter(c, p)
+				op.AddParameter(gp)
+				switch gp.Spec.In {
+				case "path":
+					op.Request.BindUri = true
+				case "header":
+					op.Request.BindHeader = true
+				case "cookie":
+					op.Request.BindCookie = true
+				case "query", "form":
+					op.Request.Bind = true
+				}
 			}
 			if rb := op.Spec.RequestBody; rb != nil {
-				op.Request = append(op.Request,
-					genParameterFromContent(c, op.RequestName(), rb.Value.Content)...)
+				op.AddParameter(genParameterFromContent(c, op.RequestName(), rb.Value.Content)...)
+				op.Request.Bind = true
 			}
+
 			if rs := op.Spec.Responses; rs != nil {
 				for _, name := range sortSpecResponseKeys(rs) {
 					status := name
@@ -180,10 +198,17 @@ func genResponse(c *Config, codeStr string, response *openapi3.ResponseRef) *Res
 		r.Schema = genSchemaRef(c, "", mediaType.Schema)
 		break
 	}
+	if status == http.StatusOK {
+		switch r.Schema.Type.Type {
+		case code.TypeOther:
+			if r.Schema.Type.Ident != "" && !r.Schema.Type.Nillable {
+				r.Schema.Type.Ident = "*" + r.Schema.Type.Ident
+			}
+		}
+	}
 	if r.Name == "" {
 		r.Name = "data"
 	}
-	r.Schema.StructTag = fmt.Sprintf(`json:"%s"`, r.Name)
 	return r
 }
 
@@ -202,7 +227,6 @@ func genSchemaRef(c *Config, name string, schema *openapi3.SchemaRef) *Schema {
 	sc.IsRef = schema.Ref != ""
 	if sc.IsRef {
 		sc.Name = schemaNameFromRef(schema.Ref)
-		c.TypeMap[schema.Ref] = sc.Type
 	}
 	if sc.Type.Type == code.TypeOther {
 		// inline
@@ -217,15 +241,23 @@ func genSchemaRef(c *Config, name string, schema *openapi3.SchemaRef) *Schema {
 
 	for _, name := range sortPropertyKeys(sv.Properties) {
 		schemaRef := sv.Properties[name]
-		required := helper.InStrSlice(schema.Value.Required, name)
 		gs := genSchemaRef(c, name, schemaRef)
 		gs.Name = name
-		gs.Required = required
+		gs.Required = helper.InStrSlice(schema.Value.Required, name)
+		if !gs.Required {
+			if gs.Type.Type == code.TypeOther && !gs.Type.Nillable {
+				gs.Type.Ident = "*" + gs.Type.Ident
+			}
+		}
+		jsTag := fmt.Sprintf(`json:"%s"`, gs.Name)
+		if !gs.Required {
+			jsTag = fmt.Sprintf(`json:"%s,omitempty"`, gs.Name)
+		}
+		gs.StructTags = append(gs.StructTags, jsTag)
 
 		sc.Properties[name] = gs
 		sc.properties = append(sc.properties, gs)
 	}
-
 	return sc
 }
 
@@ -242,8 +274,9 @@ func schemaToType(c *Config, name string, schema *openapi3.SchemaRef) (info *cod
 	if schema == nil {
 		return
 	}
-	if c.TypeMap[schema.Ref] != nil {
-		return c.TypeMap[schema.Ref], nil
+	if tm := c.TypeMap[schema.Ref]; tm != nil {
+		info = tm.Clone()
+		return info, nil
 	}
 	sv := schema.Value
 	switch sv.Type {
@@ -325,23 +358,17 @@ func schemaToType(c *Config, name string, schema *openapi3.SchemaRef) (info *cod
 	case "binary":
 		info = &code.TypeInfo{Type: code.TypeBytes, Nillable: true}
 	case "object":
-		info = &code.TypeInfo{Type: code.TypeOther, Nillable: true}
+		info = &code.TypeInfo{Type: code.TypeOther}
 		if sv.AdditionalProperties != nil {
 			info.Ident = "any"
+			info.Nillable = true
 			break
 		}
 		ref := schema.Ref
-		if v, ok := c.TypeMap[ref]; ok {
-			info.PkgPath = v.PkgPath
-			info.Ident = v.Ident
-			info.PkgName = v.PkgName
-			info.RType = v.RType
-			break
-		}
 		// inline object,generate in package path
 		if ref != "" {
 			info.Ident = schemaNameFromRef(ref)
-			c.TypeMap[ref] = info
+			c.AddTypeMap(ref, info)
 		} else {
 			info.Ident = helper.Pascal(name)
 		}
@@ -350,25 +377,29 @@ func schemaToType(c *Config, name string, schema *openapi3.SchemaRef) (info *cod
 	default:
 		err = fmt.Errorf("unhandled OpenAPISchema type: %s", sv.Type)
 	}
-	if info != nil {
-		if schema.Value.Nullable && !info.Nillable {
-			info.Ident = "*" + info.Ident
-		} else {
-			// set by switch
-			info.Nillable = sv.Nullable
-		}
+	if info == nil {
+		return
+	}
+	if schema.Value.Nullable && !info.Nillable {
+		info.Ident = "*" + info.Ident
+		info.Nillable = true
 	}
 	return
 }
 
+func (o *Operation) AddParameter(params ...*Parameter) {
+	o.Request.Parameters = append(o.Request.Parameters, params...)
+}
+
 func (o Operation) HasRequest() bool {
-	return len(o.Request) > 0
+	return len(o.Request.Parameters) > 0
 }
 
 func (o Operation) HasResponse() bool {
 	return o.ResponseOK != nil
 }
 
+// RequestName returns the name of the request struct.
 func (o Operation) RequestName() string {
 	return o.Name + "Request"
 }
@@ -427,7 +458,7 @@ func (p *Parameter) initStructTag() {
 	if p.Schema.Required {
 		ts = append(ts, `binding:"required"`)
 	}
-	p.Schema.StructTag = strings.Join(ts, " ")
+	p.Schema.StructTags = ts
 }
 
 func sortSpecOperationKeys(spec map[string]*openapi3.Operation) []string {

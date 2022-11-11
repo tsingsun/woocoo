@@ -12,13 +12,13 @@ import (
 // RegisterPetHandlers creates http.Handler with routing matching OpenAPI spec.
 func RegisterPetHandlers(router *gin.Engine, si petstore.PetServer) *gin.Engine {
 	router.POST("/pet", wrapAddPet(si))
-	router.DELETE("/pet/{petId}", wrapDeletePet(si))
+	router.DELETE("/pet/:petId", wrapDeletePet(si))
 	router.GET("/pet/findByStatus", wrapFindPetsByStatus(si))
 	router.GET("/pet/findByTags", wrapFindPetsByTags(si))
-	router.GET("/pet/{petId}", wrapGetPetById(si))
+	router.GET("/pet/:petId", wrapGetPetById(si))
 	router.PUT("/pet", wrapUpdatePet(si))
-	router.POST("/pet/{petId}", wrapUpdatePetWithForm(si))
-	router.POST("/pet/{petId}/uploadImage", wrapUploadFile(si))
+	router.POST("/pet/:petId", wrapUpdatePetWithForm(si))
+	router.POST("/pet/:petId/uploadImage", wrapUploadFile(si))
 	return router
 }
 
@@ -29,7 +29,7 @@ func wrapAddPet(si petstore.PetServer) func(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		resp, err := si.AddPet(c, req)
+		resp, err := si.AddPet(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -41,11 +41,15 @@ func wrapAddPet(si petstore.PetServer) func(c *gin.Context) {
 func wrapDeletePet(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.DeletePetRequest
-		if err := c.ShouldBind(&req); err != nil {
+		if err := c.ShouldBindUri(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		err := si.DeletePet(c, req)
+		if err := c.ShouldBindHeader(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		err := si.DeletePet(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -61,7 +65,7 @@ func wrapFindPetsByStatus(si petstore.PetServer) func(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		resp, err := si.FindPetsByStatus(c, req)
+		resp, err := si.FindPetsByStatus(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -77,7 +81,7 @@ func wrapFindPetsByTags(si petstore.PetServer) func(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		resp, err := si.FindPetsByTags(c, req)
+		resp, err := si.FindPetsByTags(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -89,11 +93,11 @@ func wrapFindPetsByTags(si petstore.PetServer) func(c *gin.Context) {
 func wrapGetPetById(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.GetPetByIdRequest
-		if err := c.ShouldBind(&req); err != nil {
+		if err := c.ShouldBindUri(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		resp, err := si.GetPetById(c, req)
+		resp, err := si.GetPetById(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -109,7 +113,7 @@ func wrapUpdatePet(si petstore.PetServer) func(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		resp, err := si.UpdatePet(c, req)
+		resp, err := si.UpdatePet(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -121,11 +125,15 @@ func wrapUpdatePet(si petstore.PetServer) func(c *gin.Context) {
 func wrapUpdatePetWithForm(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.UpdatePetWithFormRequest
+		if err := c.ShouldBindUri(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		if err := c.ShouldBind(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		err := si.UpdatePetWithForm(c, req)
+		err := si.UpdatePetWithForm(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -137,11 +145,15 @@ func wrapUpdatePetWithForm(si petstore.PetServer) func(c *gin.Context) {
 func wrapUploadFile(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.UploadFileRequest
+		if err := c.ShouldBindUri(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		if err := c.ShouldBind(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		resp, err := si.UploadFile(c, req)
+		resp, err := si.UploadFile(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -152,9 +164,9 @@ func wrapUploadFile(si petstore.PetServer) func(c *gin.Context) {
 
 // RegisterStoreHandlers creates http.Handler with routing matching OpenAPI spec.
 func RegisterStoreHandlers(router *gin.Engine, si petstore.StoreServer) *gin.Engine {
-	router.DELETE("/store/order/{orderId}", wrapDeleteOrder(si))
+	router.DELETE("/store/order/:orderId", wrapDeleteOrder(si))
 	router.GET("/store/inventory", wrapGetInventory(si))
-	router.GET("/store/order/{orderId}", wrapGetOrderById(si))
+	router.GET("/store/order/:orderId", wrapGetOrderById(si))
 	router.POST("/store/order", wrapPlaceOrder(si))
 	return router
 }
@@ -162,11 +174,11 @@ func RegisterStoreHandlers(router *gin.Engine, si petstore.StoreServer) *gin.Eng
 func wrapDeleteOrder(si petstore.StoreServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.DeleteOrderRequest
-		if err := c.ShouldBind(&req); err != nil {
+		if err := c.ShouldBindUri(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		err := si.DeleteOrder(c, req)
+		err := si.DeleteOrder(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -189,11 +201,11 @@ func wrapGetInventory(si petstore.StoreServer) func(c *gin.Context) {
 func wrapGetOrderById(si petstore.StoreServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.GetOrderByIdRequest
-		if err := c.ShouldBind(&req); err != nil {
+		if err := c.ShouldBindUri(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		resp, err := si.GetOrderById(c, req)
+		resp, err := si.GetOrderById(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -209,7 +221,7 @@ func wrapPlaceOrder(si petstore.StoreServer) func(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		resp, err := si.PlaceOrder(c, req)
+		resp, err := si.PlaceOrder(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -223,11 +235,11 @@ func RegisterUserHandlers(router *gin.Engine, si petstore.UserServer) *gin.Engin
 	router.POST("/user", wrapCreateUser(si))
 	router.POST("/user/createWithArray", wrapCreateUsersWithArrayInput(si))
 	router.POST("/user/createWithList", wrapCreateUsersWithListInput(si))
-	router.DELETE("/user/{username}", wrapDeleteUser(si))
-	router.GET("/user/{username}", wrapGetUserByName(si))
+	router.DELETE("/user/:username", wrapDeleteUser(si))
+	router.GET("/user/:username", wrapGetUserByName(si))
 	router.GET("/user/login", wrapLoginUser(si))
 	router.GET("/user/logout", wrapLogoutUser(si))
-	router.PUT("/user/{username}", wrapUpdateUser(si))
+	router.PUT("/user/:username", wrapUpdateUser(si))
 	return router
 }
 
@@ -238,7 +250,7 @@ func wrapCreateUser(si petstore.UserServer) func(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		err := si.CreateUser(c, req)
+		err := si.CreateUser(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -272,11 +284,11 @@ func wrapCreateUsersWithListInput(si petstore.UserServer) func(c *gin.Context) {
 func wrapDeleteUser(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.DeleteUserRequest
-		if err := c.ShouldBind(&req); err != nil {
+		if err := c.ShouldBindUri(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		err := si.DeleteUser(c, req)
+		err := si.DeleteUser(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -288,11 +300,11 @@ func wrapDeleteUser(si petstore.UserServer) func(c *gin.Context) {
 func wrapGetUserByName(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.GetUserByNameRequest
-		if err := c.ShouldBind(&req); err != nil {
+		if err := c.ShouldBindUri(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		resp, err := si.GetUserByName(c, req)
+		resp, err := si.GetUserByName(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -308,7 +320,7 @@ func wrapLoginUser(si petstore.UserServer) func(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		resp, err := si.LoginUser(c, req)
+		resp, err := si.LoginUser(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -331,11 +343,15 @@ func wrapLogoutUser(si petstore.UserServer) func(c *gin.Context) {
 func wrapUpdateUser(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.UpdateUserRequest
+		if err := c.ShouldBindUri(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		if err := c.ShouldBind(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		err := si.UpdateUser(c, req)
+		err := si.UpdateUser(c, &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

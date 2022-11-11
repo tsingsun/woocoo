@@ -5,25 +5,34 @@ import (
 	"github.com/tsingsun/woocoo/cmd/woco/code"
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 )
 
 var (
+	pathParamRE *regexp.Regexp
+
 	Funcs = template.FuncMap{
-		"lower":     strings.ToLower,
-		"hasPrefix": strings.HasPrefix,
-		"hasSuffix": strings.HasSuffix,
-		"upper":     strings.ToUpper,
-		"trim":      strings.Trim,
-		"replace":   strings.ReplaceAll,
-		"hasField":  helper.HasField,
-		"pascal":    helper.Pascal,
-		"base":      filepath.Base,
-		"extend":    extend,
-		"pkgName":   code.PkgShortName,
+		"lower":          strings.ToLower,
+		"hasPrefix":      strings.HasPrefix,
+		"hasSuffix":      strings.HasSuffix,
+		"upper":          strings.ToUpper,
+		"trim":           strings.Trim,
+		"replace":        strings.ReplaceAll,
+		"hasField":       helper.HasField,
+		"pascal":         helper.Pascal,
+		"base":           filepath.Base,
+		"extend":         extend,
+		"pkgName":        code.PkgShortName,
+		"strJoin":        strings.Join,
+		"oasUriToGinUri": OasUriToGinUri,
 	}
 )
+
+func init() {
+	pathParamRE = regexp.MustCompile("{[.;?]?([^{}*]+)\\*?}")
+}
 
 // graphScope wraps the Graph object with extended scope.
 type graphScope struct {
@@ -54,7 +63,7 @@ func extend(v any, kv ...any) (any, error) {
 
 func schemaNameFromRef(ref string) string {
 	ss := strings.Split(ref, "/")
-	return helper.Pascal(ss[len(ss)-1])
+	return ss[len(ss)-1]
 }
 
 func ModelMapToTypeInfo(model map[string]*ModelMap) (map[string]*code.TypeInfo, error) {
@@ -69,4 +78,20 @@ func ModelMapToTypeInfo(model map[string]*ModelMap) (map[string]*code.TypeInfo, 
 		}
 	}
 	return m, nil
+}
+
+// OasUriToGinUri converts a swagger style path URI with parameters to a
+// Gin compatible path URI. We need to replace all Swagger parameters with
+// ":param". Valid input parameters are:
+//
+//	{param}
+//	{param*}
+//	{.param}
+//	{.param*}
+//	{;param}
+//	{;param*}
+//	{?param}
+//	{?param*}
+func OasUriToGinUri(uri string) string {
+	return pathParamRE.ReplaceAllString(uri, ":$1")
 }

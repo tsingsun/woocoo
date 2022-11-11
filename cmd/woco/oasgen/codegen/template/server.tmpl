@@ -16,7 +16,7 @@ import(
 // Register{{ $serviceName }}Handlers creates http.Handler with routing matching OpenAPI spec.
 func Register{{ $serviceName }}Handlers(router *gin.Engine, si {{$pkgName}}.{{ $serviceName }}Server) *gin.Engine {
     {{- range .Operations }}
-        router.{{ .Method }}("{{ .Path }}", wrap{{pascal .Name }}(si))
+        router.{{ .Method }}("{{ .Path | oasUriToGinUri }}", wrap{{pascal .Name }}(si))
     {{- end }}
     return router
 }
@@ -25,20 +25,34 @@ func wrap{{pascal .Name }}(si {{$pkgName}}.{{ $serviceName }}Server) func(c *gin
     return func(c *gin.Context) {
         {{- if .HasRequest }}
             var req {{$pkgName}}.{{ .RequestName }}
+            {{- if .Request.BindUri}}
+            if err := c.ShouldBindUri(&req); err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+            }
+            {{- end }}
+            {{- if .Request.BindHeader}}
+            if err := c.ShouldBindHeader(&req); err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+            }
+            {{- end }}
+            {{- if .Request.Bind}}
             if err := c.ShouldBind(&req); err != nil {
                 c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
                 return
             }
+            {{- end }}
         {{- end }}
         {{- if .HasResponse }}
-            resp, err := si.{{ .Name }}(c,{{ if .HasRequest }}req, {{ end }})
+            resp, err := si.{{ .Name }}(c,{{ if .HasRequest }}&req, {{ end }})
             if err != nil {
                 c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
                 return
             }
             c.JSON(http.StatusOK, resp)
         {{- else }}
-            err := si.{{ .Name }}(c,{{ if .HasRequest }}req, {{ end }})
+            err := si.{{ .Name }}(c,{{ if .HasRequest }}&req, {{ end }})
             if err != nil {
                 c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
                 return

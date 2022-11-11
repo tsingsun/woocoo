@@ -8,8 +8,8 @@
     {{ range .Operations }}
         {{- if .HasRequest }}
             type {{ .RequestName }} struct {
-            {{- range .Request }}
-                {{ pascal .Name }} {{ .Schema.Type.String }} `{{ .Schema.StructTag }}`{{ end }}
+            {{- range .Request.Parameters }}
+                {{ pascal .Name }} {{ .Schema.Type.String }} `{{ strJoin .Schema.StructTags " " }}`{{ end }}
             }
         {{ end }}
         {{- if .HasResponse}}
@@ -17,7 +17,7 @@
                 {{ if and (not .Schema.IsRef) .Schema.Name }}
                     type {{ pascal .Schema.Name }} struct {
                     {{- range .Schema.Properties }}
-                        {{ pascal .Name }} {{ .Type.String }} `{{ .StructTag }}`
+                        {{ pascal .Name }} {{ .Type.String }} `{{ strJoin .StructTags " " }}`
                     {{- end }}
                     }
                 {{- end }}

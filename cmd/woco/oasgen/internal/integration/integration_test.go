@@ -12,11 +12,10 @@ func TestGenerate(t *testing.T) {
 	path := "petstore.yaml"
 	cfg := &codegen.Config{
 		OpenAPISchema: path,
-		Package:       "petstore",
+		Target:        "petstore",
 		//PkgPath:       "github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration/petstore",
 	}
 	err := oasgen.LoadConfig(cfg, cfgPath)
-	cfg.Target = "petstore"
 	assert.NoError(t, err)
 	err = oasgen.Generate(path, cfg)
 	assert.NoError(t, err)

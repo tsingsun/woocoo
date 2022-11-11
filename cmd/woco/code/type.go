@@ -83,8 +83,34 @@ type TypeInfo struct {
 	Ident    string
 	PkgPath  string // import path.
 	PkgName  string // local package name.
-	Nillable bool   // slices or pointers.
+	Nillable bool   // slices,map or pointers.
 	RType    *RType
+}
+
+// GoType parse by the given Type and reflect.Type. original field will override.
+func (t *TypeInfo) GoType(typ any) {
+	typeOf := reflect.TypeOf(typ)
+	tv := Indirect(typeOf)
+	info := TypeInfo{
+		Type:    t.Type,
+		Ident:   typeOf.String(),
+		PkgPath: tv.PkgPath(),
+		PkgName: PkgName(tv.String()),
+		RType: &RType{
+			rtype:   typeOf,
+			Kind:    typeOf.Kind(),
+			Name:    tv.Name(),
+			Ident:   tv.String(),
+			PkgPath: tv.PkgPath(),
+			Methods: make(map[string]struct{ In, Out []*RType }, typeOf.NumMethod()),
+		},
+	}
+	methods(typeOf, info.RType)
+	switch typeOf.Kind() {
+	case reflect.Slice, reflect.Ptr, reflect.Map:
+		info.Nillable = true
+	}
+	*t = info
 }
 
 // String returns the string representation of a type.
@@ -127,6 +153,11 @@ func (t TypeInfo) Comparable() bool {
 	default:
 		return t.Numeric()
 	}
+}
+
+// Clone returns a copy.
+func (t TypeInfo) Clone() *TypeInfo {
+	return &t
 }
 
 var (

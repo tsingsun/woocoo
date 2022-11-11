@@ -90,6 +90,15 @@ func (c Config) Imports() []string {
 	return imp
 }
 
+func (c *Config) AddTypeMap(key string, t *code.TypeInfo) {
+	if c.TypeMap == nil {
+		c.TypeMap = make(map[string]*code.TypeInfo)
+	}
+	if _, ok := c.TypeMap[key]; !ok {
+		c.TypeMap[key] = t
+	}
+}
+
 // NewGraph creates a new Graph for the code generation from the given Spec definitions.
 // It fails if one of the schemas is invalid.
 func NewGraph(c *Config, schema *openapi3.T) (g *Graph, err error) {

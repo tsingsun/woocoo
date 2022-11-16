@@ -1,5 +1,7 @@
 spec: "petstore.yaml"
 target: "petstore"
+# external templates to execute
+templateDir: "template"
 models:
   UUID:
     model: github.com/google/uuid.UUID

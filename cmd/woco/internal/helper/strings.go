@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -277,4 +279,26 @@ func Receiver(s string, importPkg map[string]string) (r string) {
 		name = "_" + name
 	}
 	return name
+}
+
+// Quote only strings.
+func Quote(v any) any {
+	if s, ok := v.(string); ok {
+		return strconv.Quote(s)
+	}
+	return v
+}
+
+// Join is a wrapper around strings.Join to provide consistent output.
+func Join(a []string, sep string) string {
+	sort.Strings(a)
+	return strings.Join(a, sep)
+}
+
+func JoinQuote(a []string, sep string) string {
+	sort.Strings(a)
+	for i, s := range a {
+		a[i] = strconv.Quote(s)
+	}
+	return strings.Join(a, sep)
 }

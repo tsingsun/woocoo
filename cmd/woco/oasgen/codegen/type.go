@@ -3,6 +3,7 @@ package codegen
 import (
 	"fmt"
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/gin-gonic/gin/binding"
 	"github.com/google/uuid"
 	"github.com/tsingsun/woocoo/cmd/woco/code"
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
@@ -16,15 +17,16 @@ type (
 	// Operation is for operation of openapi3
 	Operation struct {
 		*Config
-		Name         string
-		Group        string // first tag name
-		Method       string // GET, POST, DELETE, etc.
-		Path         string
-		Spec         *openapi3.Operation
-		SpecPathItem *openapi3.PathItem // navigation to pathItem
-		Request      *Request
-		Responses    []*Response
-		ResponseOK   *Response
+		Name             string
+		Group            string // first tag name
+		Method           string // GET, POST, DELETE, etc.
+		Path             string
+		Spec             *openapi3.Operation
+		SpecPathItem     *openapi3.PathItem // navigation to pathItem
+		Request          *Request
+		Responses        []*Response
+		ResponseOK       *Response
+		ResponseNotFound *Response
 	}
 	// Parameter include parameter and requestBody
 	Parameter struct {
@@ -33,19 +35,26 @@ type (
 		Spec   *openapi3.Parameter
 	}
 	Request struct {
-		Parameters []*Parameter
-		BindUri    bool
-		BindHeader bool
-		BindCookie bool
-		Bind       bool
+		Parameters       []*Parameter
+		BindUri          bool
+		UriParameters    []*Parameter
+		BindHeader       bool
+		HeaderParameters []*Parameter
+		BindCookie       bool
+		CookieParameters []*Parameter
+		BindBody         bool
+		Body             []*Parameter
 	}
 	// Response is for response of openapi3
 	Response struct {
 		Name string
+		// return content type when response is not empty
+		ContentTypes []string
 		// http status
-		Status int
-		Schema *Schema
-		Spec   *openapi3.Response
+		Status      int
+		Schema      *Schema
+		Spec        *openapi3.Response
+		Description *string
 	}
 	// Schema is for schema of openapi3
 	Schema struct {
@@ -99,17 +108,23 @@ func genOperation(c *Config, schema *openapi3.T) (ops []*Operation) {
 				switch gp.Spec.In {
 				case "path":
 					op.Request.BindUri = true
+					op.Request.UriParameters = append(op.Request.UriParameters, gp)
 				case "header":
 					op.Request.BindHeader = true
+					op.Request.HeaderParameters = append(op.Request.HeaderParameters, gp)
 				case "cookie":
 					op.Request.BindCookie = true
+					op.Request.CookieParameters = append(op.Request.CookieParameters, gp)
 				case "query", "form":
-					op.Request.Bind = true
+					op.Request.BindBody = true
+					op.Request.Body = append(op.Request.Body, gp)
 				}
 			}
 			if rb := op.Spec.RequestBody; rb != nil {
-				op.AddParameter(genParameterFromContent(c, op.RequestName(), rb.Value.Content)...)
-				op.Request.Bind = true
+				gps := genParameterFromContent(c, op.RequestName(), rb.Value.Content)
+				op.AddParameter(gps...)
+				op.Request.BindBody = true
+				op.Request.Body = append(op.Request.Body, gps...)
 			}
 
 			if rs := op.Spec.Responses; rs != nil {
@@ -120,8 +135,11 @@ func genOperation(c *Config, schema *openapi3.T) (ops []*Operation) {
 					}
 					res := genResponse(c, status, rs[name])
 					op.Responses = append(op.Responses, res)
-					if res.Status == http.StatusOK {
+					switch res.Status {
+					case http.StatusOK:
 						op.ResponseOK = res
+					case http.StatusNotFound:
+						op.ResponseNotFound = res
 					}
 				}
 			}
@@ -157,21 +175,39 @@ func genParameter(c *Config, p *openapi3.ParameterRef) *Parameter {
 }
 
 func genParameterFromContent(c *Config, name string, content openapi3.Content) (params []*Parameter) {
-	for _, mediaType := range content {
-		ps := genSchemaRef(c, name, mediaType.Schema)
-		if mediaType.Schema.Ref == "" { // from independent Spec
-			for _, property := range ps.properties {
-				param := newParameterFromSchema(c, property)
-				param.initStructTag()
+	var schema *Schema
+	contentTypes := make([]string, 0, len(content))
+	for ct, mediaType := range content {
+		contentTypes = append(contentTypes, ct)
+		if schema == nil {
+			schema = genSchemaRef(c, name, mediaType.Schema)
+			if mediaType.Schema.Ref == "" { // from independent Spec
+				for _, property := range schema.properties {
+					param := newParameterFromSchema(c, property)
+					params = append(params, param)
+				}
+			} else {
+				// from reference Spec
+				param := newParameterFromSchema(c, schema)
 				params = append(params, param)
 			}
-			return
 		}
-		// from reference Spec
-		param := newParameterFromSchema(c, ps)
+	}
+	for _, param := range params {
 		param.initStructTag()
-		params = append(params, param)
-		break
+		for _, contentType := range contentTypes {
+			AppendContentTypeStructTag(param.Name, contentType, param.Schema)
+			if param.Schema.IsRef {
+				for _, s := range c.Schemas {
+					if s.Name == param.Name {
+						for _, prop := range s.Properties {
+							AppendContentTypeStructTag(prop.Name, contentType, prop)
+						}
+						break
+					}
+				}
+			}
+		}
 	}
 	return
 }
@@ -184,19 +220,21 @@ func genResponse(c *Config, codeStr string, response *openapi3.ResponseRef) *Res
 	if err != nil {
 		panic(fmt.Errorf("response status code must be int:%s", codeStr))
 	}
-	if response.Value.Content == nil {
-		return &Response{
-			Status: status,
-		}
-	}
 	r := &Response{
-		Status: status,
-		Spec:   response.Value,
+		Status:      status,
+		Spec:        response.Value,
+		Description: response.Value.Description,
+	}
+	if response.Value.Content == nil {
+		return r
 	}
 	// use first content type
-	for _, mediaType := range response.Value.Content {
-		r.Schema = genSchemaRef(c, "", mediaType.Schema)
-		break
+	for _, name := range sortSpecMediaTypeKeys(response.Value.Content) {
+		mediaType := response.Value.Content[name]
+		r.ContentTypes = append(r.ContentTypes, name)
+		if r.Schema == nil {
+			r.Schema = genSchemaRef(c, "", mediaType.Schema)
+		}
 	}
 	if status == http.StatusOK {
 		switch r.Schema.Type.Type {
@@ -206,9 +244,8 @@ func genResponse(c *Config, codeStr string, response *openapi3.ResponseRef) *Res
 			}
 		}
 	}
-	if r.Name == "" {
-		r.Name = "data"
-	}
+	// all response object is pointer
+	r.Schema.Type.Nillable = true
 	return r
 }
 
@@ -226,7 +263,7 @@ func genSchemaRef(c *Config, name string, schema *openapi3.SchemaRef) *Schema {
 	sc.Type = st
 	sc.IsRef = schema.Ref != ""
 	if sc.IsRef {
-		sc.Name = schemaNameFromRef(schema.Ref)
+		sc.Name = helper.Camel(schemaNameFromRef(schema.Ref))
 	}
 	if sc.Type.Type == code.TypeOther {
 		// inline
@@ -441,6 +478,9 @@ func (p *Parameter) initStructTag() {
 	tagName := p.Name
 	ts := make([]string, 0, 2)
 	switch p.Spec.In {
+	case "":
+		// from content
+		break
 	case "path":
 		// {:id}
 		ts = append(ts, fmt.Sprintf(`uri:"%s"`, tagName))
@@ -459,6 +499,40 @@ func (p *Parameter) initStructTag() {
 		ts = append(ts, `binding:"required"`)
 	}
 	p.Schema.StructTags = ts
+}
+
+func AppendContentTypeStructTag(tagName, contentType string, schema *Schema) {
+	switch contentType {
+	case binding.MIMEJSON:
+		if HasTag(schema.StructTags, "json") {
+			break
+		}
+		if schema.Required {
+			schema.StructTags = append(schema.StructTags, fmt.Sprintf(`json:"%s"`, tagName))
+		} else {
+			schema.StructTags = append(schema.StructTags, fmt.Sprintf(`json:"%s,omitempty"`, tagName))
+		}
+	case binding.MIMEPOSTForm:
+		if HasTag(schema.StructTags, "form") {
+			break
+		}
+		schema.StructTags = append(schema.StructTags, fmt.Sprintf(`form:"%s"`, tagName))
+	case binding.MIMEXML, binding.MIMEXML2:
+		if HasTag(schema.StructTags, "xml") {
+			break
+		}
+		schema.StructTags = append(schema.StructTags, fmt.Sprintf(`xml:"%s"`, tagName))
+	case binding.MIMEMSGPACK2:
+		if HasTag(schema.StructTags, "msgpack") {
+			break
+		}
+		schema.StructTags = append(schema.StructTags, fmt.Sprintf(`msgpack:"%s"`, tagName))
+	default:
+		if HasTag(schema.StructTags, "form") {
+			break
+		}
+		schema.StructTags = append(schema.StructTags, fmt.Sprintf(`form:"%s"`, tagName))
+	}
 }
 
 func sortSpecOperationKeys(spec map[string]*openapi3.Operation) []string {
@@ -482,6 +556,15 @@ func sortPropertyKeys(spec openapi3.Schemas) []string {
 func sortSpecResponseKeys(rs openapi3.Responses) []string {
 	keys := make([]string, 0, len(rs))
 	for k := range rs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func sortSpecMediaTypeKeys(ps openapi3.Content) []string {
+	keys := make([]string, 0, len(ps))
+	for k := range ps {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)

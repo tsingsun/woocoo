@@ -3,38 +3,60 @@
 package petstore
 
 type AddPetRequest struct {
-	Pet Pet `form:"Pet"`
+	Body struct {
+		Pet Pet `json:"pet,omitempty" xml:"pet"`
+	}
 }
 
 type DeletePetRequest struct {
-	APIKey string `header:"api_key"`
-	PetId  int64  `uri:"petId" binding:"required"`
+	UriParams struct {
+		PetId int64 `binding:"required" uri:"petId"`
+	}
+	HeaderParams struct {
+		APIKey string `header:"api_key"`
+	}
 }
 
 type FindPetsByStatusRequest struct {
-	Status []string `form:"status" binding:"required"`
+	Body struct {
+		Status []string `binding:"required" form:"status"`
+	}
 }
 
 type FindPetsByTagsRequest struct {
-	Tags []string `form:"tags" binding:"required"`
+	Body struct {
+		Tags []string `binding:"required" form:"tags"`
+	}
 }
 
 type GetPetByIdRequest struct {
-	PetId int64 `uri:"petId" binding:"required"`
+	UriParams struct {
+		PetId int64 `binding:"required" uri:"petId"`
+	}
 }
 
 type UpdatePetRequest struct {
-	Pet Pet `form:"Pet"`
+	Body struct {
+		Pet Pet `json:"pet,omitempty" xml:"pet"`
+	}
 }
 
 type UpdatePetWithFormRequest struct {
-	PetId  int64  `uri:"petId" binding:"required"`
-	Name   string `form:"name"`
-	Status string `form:"status"`
+	UriParams struct {
+		PetId int64 `binding:"required" uri:"petId"`
+	}
+	Body struct {
+		Name   string `form:"name"`
+		Status string `form:"status"`
+	}
 }
 
 type UploadFileRequest struct {
-	PetId              int64  `uri:"petId" binding:"required"`
-	AdditionalMetadata string `form:"additionalMetadata"`
-	File               string `form:"file"`
+	UriParams struct {
+		PetId int64 `binding:"required" uri:"petId"`
+	}
+	Body struct {
+		AdditionalMetadata string `form:"additionalMetadata"`
+		File               string `form:"file"`
+	}
 }

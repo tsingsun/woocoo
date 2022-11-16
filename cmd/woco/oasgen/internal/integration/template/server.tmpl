@@ -63,9 +63,7 @@
                         return
                     }
                 {{- end }}
-                {{- if .ResponseOK.ContentTypes }}
-                    handler.NegotiateResponse(c, http.StatusOK, resp, []string{{"{"}}{{joinQuote .ResponseOK.ContentTypes ","}}{{"}"}})
-                {{- end}}
+                handler.ResponsiveWriter(c, http.StatusOK,resp)
             {{- else }}
                 err := si.{{ .Name }}(c,{{ if .HasRequest }}&req, {{ end }})
                 if err != nil {
@@ -78,4 +76,6 @@
         }
         {{ end }}
     {{ end }}
+    func additionalTemplate(){
+    }
 {{ end }}

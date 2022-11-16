@@ -17,6 +17,24 @@ import (
 	"strings"
 )
 
+type Option func(*codegen.Config) error
+
+// TemplateDir parses the template definitions from the files in the directory
+// and associates the resulting templates with codegen templates.
+func TemplateDir(path string) Option {
+	return templateOption(func(t *codegen.Template) (*codegen.Template, error) {
+		return t.ParseDir(path)
+	})
+}
+
+// TemplateFiles parses the named files and associates the resulting templates
+// with codegen templates.
+func TemplateFiles(filenames ...string) Option {
+	return templateOption(func(t *codegen.Template) (*codegen.Template, error) {
+		return t.ParseFiles(filenames...)
+	})
+}
+
 func loadSwagger(filePath string) (oas *openapi3.T, err error) {
 	loader := openapi3.NewLoader()
 	loader.IsExternalRefsAllowed = true
@@ -76,7 +94,12 @@ func LoadGraph(schemaPath string, cfg *codegen.Config) (*codegen.Graph, error) {
 	return codegen.NewGraph(cfg, spec)
 }
 
-func Generate(schemaPath string, cfg *codegen.Config) error {
+func Generate(schemaPath string, cfg *codegen.Config, options ...Option) error {
+	for _, opt := range options {
+		if err := opt(cfg); err != nil {
+			return err
+		}
+	}
 	undo, err := codegen.PrepareEnv(cfg)
 	if err != nil {
 		return err
@@ -87,6 +110,19 @@ func Generate(schemaPath string, cfg *codegen.Config) error {
 		}
 	}()
 	return generate(schemaPath, cfg)
+}
+
+// templateOption ensures the template instantiate
+// once for config and execute the given Option.
+func templateOption(next func(t *codegen.Template) (*codegen.Template, error)) Option {
+	return func(cfg *codegen.Config) (err error) {
+		tmpl, err := next(codegen.NewTemplate("external"))
+		if err != nil {
+			return err
+		}
+		cfg.Templates = append(cfg.Templates, tmpl)
+		return nil
+	}
 }
 
 // generate loads the given schema and run codegen.

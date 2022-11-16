@@ -3,23 +3,35 @@
 package petstore
 
 type CreateUserRequest struct {
-	User User `form:"User"`
+	Body struct {
+		User User `json:"user,omitempty"`
+	}
 }
 
 type DeleteUserRequest struct {
-	Username string `uri:"username" binding:"required"`
+	UriParams struct {
+		Username string `binding:"required" uri:"username"`
+	}
 }
 
 type GetUserByNameRequest struct {
-	Username string `uri:"username" binding:"required"`
+	UriParams struct {
+		Username string `binding:"required" uri:"username"`
+	}
 }
 
 type LoginUserRequest struct {
-	Username string `form:"username" binding:"required"`
-	Password string `form:"password" binding:"required"`
+	Body struct {
+		Username string `binding:"required" form:"username"`
+		Password string `binding:"required" form:"password"`
+	}
 }
 
 type UpdateUserRequest struct {
-	Username string `uri:"username" binding:"required"`
-	User     User   `form:"User"`
+	UriParams struct {
+		Username string `binding:"required" uri:"username"`
+	}
+	Body struct {
+		User User `json:"user,omitempty"`
+	}
 }

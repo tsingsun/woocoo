@@ -38,6 +38,8 @@ type (
 
 		Models  map[string]*ModelMap `json:"models,omitempty"`
 		TypeMap map[string]*code.TypeInfo
+		// Schemas is the list of all schemas reference in the spec.
+		Schemas []*Schema
 	}
 
 	ModelMap struct {
@@ -46,11 +48,9 @@ type (
 
 	Graph struct {
 		*Config
-		Nodes     []*Tag
-		nodes     map[string]*Tag
-		Templates []*Template
-		Schemas   []*Schema
-		Spec      *openapi3.T
+		Nodes []*Tag
+		nodes map[string]*Tag
+		Spec  *openapi3.T
 	}
 
 	Generator interface {

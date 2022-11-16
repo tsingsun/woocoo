@@ -25,8 +25,10 @@ var (
 		"base":           filepath.Base,
 		"extend":         extend,
 		"pkgName":        code.PkgShortName,
-		"strJoin":        strings.Join,
+		"join":           helper.Join,
+		"joinQuote":      helper.JoinQuote,
 		"oasUriToGinUri": OasUriToGinUri,
+		"ginReturnType":  GinReturnType,
 	}
 )
 
@@ -94,4 +96,29 @@ func ModelMapToTypeInfo(model map[string]*ModelMap) (map[string]*code.TypeInfo, 
 //	{?param*}
 func OasUriToGinUri(uri string) string {
 	return pathParamRE.ReplaceAllString(uri, ":$1")
+}
+
+// GinReturnType returns the which gin call for the incoming content type
+func GinReturnType(httpContent string) string {
+	switch httpContent {
+	case "application/json":
+		return "JSON"
+	case "application/xml":
+		return "XML"
+	case "text/plain":
+		return "String"
+	case "text/html":
+		return "HTML"
+	default:
+		return "String"
+	}
+}
+
+func HasTag(src []string, tag string) bool {
+	for _, v := range src {
+		if strings.HasPrefix(v, tag) {
+			return true
+		}
+	}
+	return false
 }

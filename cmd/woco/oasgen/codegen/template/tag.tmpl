@@ -8,8 +8,30 @@
     {{ range .Operations }}
         {{- if .HasRequest }}
             type {{ .RequestName }} struct {
-            {{- range .Request.Parameters }}
-                {{ pascal .Name }} {{ .Schema.Type.String }} `{{ strJoin .Schema.StructTags " " }}`{{ end }}
+            {{- if .Request.BindUri }}
+                UriParams struct {
+                {{- range .Request.UriParameters }}
+                    {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
+                }
+            {{- end }}
+            {{- if .Request.BindHeader }}
+                HeaderParams struct {
+                {{- range .Request.HeaderParameters }}
+                    {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
+                }
+            {{- end }}
+            {{- if .Request.BindCookie }}
+                CookieParams struct {
+                {{- range .Request.CookieParameters }}
+                    {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
+                }
+            {{- end }}
+            {{- if .Request.BindBody }}
+                Body struct {
+                {{- range .Request.Body }}
+                    {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
+                }
+            {{- end }}
             }
         {{ end }}
         {{- if .HasResponse}}
@@ -17,7 +39,7 @@
                 {{ if and (not .Schema.IsRef) .Schema.Name }}
                     type {{ pascal .Schema.Name }} struct {
                     {{- range .Schema.Properties }}
-                        {{ pascal .Name }} {{ .Type.String }} `{{ strJoin .StructTags " " }}`
+                        {{ pascal .Name }} {{ .Type.String }} `{{ join .StructTags " " }}`
                     {{- end }}
                     }
                 {{- end }}

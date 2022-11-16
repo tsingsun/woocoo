@@ -13,7 +13,6 @@ func TestGenerate(t *testing.T) {
 	cfg := &codegen.Config{
 		OpenAPISchema: path,
 		Target:        "petstore",
-		//PkgPath:       "github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration/petstore",
 	}
 	err := oasgen.LoadConfig(cfg, cfgPath)
 	assert.NoError(t, err)

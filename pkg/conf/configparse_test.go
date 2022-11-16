@@ -67,6 +67,20 @@ func TestParser_Unmarshal(t *testing.T) {
 			},
 		},
 		{
+			name:   "sliceMerge",
+			fields: fields{parser: NewParserFromStringMap(map[string]interface{}{"slice": []string{"a", "b", "c"}})},
+			args: args{
+				key: "slice",
+				dst: []string{"c", "d", "e", "f"},
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				assert.NoError(t, err)
+				assert.Len(t, i[1].([]string), 4)
+				assert.Equal(t, []string{"a", "b", "c", "f"}, i[1])
+				return false
+			},
+		},
+		{
 			name:   "sliceStruct",
 			fields: fields{parser: NewParserFromStringMap(map[string]interface{}{"struct": map[string]interface{}{"a": 1, "b": "string", "c": []string{"c1", "c2"}}})},
 			args: args{

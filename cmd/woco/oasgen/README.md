@@ -42,11 +42,26 @@ models:
 
 ### 请求及响应
 
-默认生成代码,使用了gin的验证方式.
+### 请求
+
+根据Sepc的设定,默认生成的请求代码按Path分成Uri,Header,Cookie,Body等,然后分别对各部分字段验证,在此采用了gin使用的[validator](github.com/go-playground/validator).
+一般不需要另行再编写针对请求的代码.
+
+- Auth验证:(TODO)
+
+### 响应
+
+在Server端代码中,Handler同样根据Spec定义响应结果.
+
+- 200: 以200为成功的响应,返回的数据按http accept进行序列化.
+- 错误: 错误处理采用ErrorHandler,只是封装了错误信息进行返回.
+
+> 支持的序列化格式: json,xml,yaml,toml
 
 ## 编写服务端代码
 
-通过实现interface.go中定义的接口实现服务端代码.然后注册到路由中即可.
+1. 通过实现interface.go中定义的接口实现服务端代码.
+2. 将服务实现注册至路由,由于每个系统的错误代码并不相同,因此.生成的代码并不定义错误格式. 可自行实现. 如例子使用WooCoo Web内置的`ErrorHandler`来处理错误.
 
 ```
 type Server struct {
@@ -57,6 +72,7 @@ type Server struct {
 
 func main() {
 	router := gin.Default()
+	router.Use(handler.ErrorHandle().ApplyFunc(nil))
 	imp := &Server{}
 	server.RegisterUserHandlers(router, imp)
 	server.RegisterStoreHandlers(router, imp)
@@ -64,6 +80,17 @@ func main() {
 }	
 ```
 
+## 自定义模板
+
+本包支持自定义模板,通过`-t`参数指定模板目录,模板目录下的文件会覆盖默认模板.参数格式:
+
+```shell
+../woco oasgen -c ./internal/integration/config.yaml -t ./internal/integration/template
+```
+```shell
+../woco oasgen -c ./internal/integration/config.yaml -t \
+  file=./internal/integration/template/server.tmpl,dir=./oasgen/internal/integration/template2
+```
 ## 开发测试
 
 测试工具采用[swagger-editor](https://github.com/swagger-api/swagger-editor)来做为客户端UI.

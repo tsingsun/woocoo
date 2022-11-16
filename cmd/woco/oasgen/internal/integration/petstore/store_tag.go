@@ -3,13 +3,19 @@
 package petstore
 
 type DeleteOrderRequest struct {
-	OrderId string `uri:"orderId" binding:"required"`
+	UriParams struct {
+		OrderId string `binding:"required" uri:"orderId"`
+	}
 }
 
 type GetOrderByIdRequest struct {
-	OrderId int64 `uri:"orderId" binding:"required"`
+	UriParams struct {
+		OrderId int64 `binding:"required" uri:"orderId"`
+	}
 }
 
 type PlaceOrderRequest struct {
-	Order Order `form:"Order"`
+	Body struct {
+		Order Order `json:"order,omitempty"`
+	}
 }

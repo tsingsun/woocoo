@@ -277,7 +277,7 @@ func (c *Configuration) Version() string {
 	return c.String("version")
 }
 
-// Unmarshal map data of config into a struct.
+// Unmarshal map data of config into a struct, values are merged.
 //
 // Tags on the fields of the structure must be properly set.
 func (c *Configuration) Unmarshal(dst interface{}) (err error) {

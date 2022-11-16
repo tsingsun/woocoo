@@ -127,7 +127,7 @@ func newGraphqlServer(routerGroup *web.RouterGroup, schema graphql.ExecutableSch
 		routerGroup.Group.GET(opt.DocPath, DocHandler)
 	}
 
-	server.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
+	server.SetRecoverFunc(func(ctx context.Context, err any) error {
 		gctx, e := FromIncomingContext(ctx)
 		if e != nil {
 			return e

@@ -137,7 +137,7 @@ func (h *Handler) shouldCompress(req *http.Request, opt Config) bool {
 
 func gzipCompressPool() sync.Pool {
 	return sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return &ResponseWriter{}
 		},
 	}

@@ -6,7 +6,7 @@ package handler
 // you need register the middleware again if you use MiddlewareOption to change the middleware behavior.
 // example:
 //
-//	middleware := handler.JWT(handler.WithMiddlewareConfig(func() interface{} { return &jwt.Config{...} }))
+//	middleware := handler.JWT(handler.WithMiddlewareConfig(func() any { return &jwt.Config{...} }))
 //	web.RegisterMiddleware(middleware)
 type middlewareOptions struct {
 	// set the function that get the default middleware config,so you can change the default config
@@ -20,7 +20,7 @@ type MiddlewareOption func(o *middlewareOptions)
 // if you want the middleware config pass to the middleware,you can use this function. for example:
 // in Middleware.ApplyFunc, the config is set up by the configuration,you can not change it.in this case,you can use this function.
 // function return value is the pointer of the middleware config.
-type MiddlewareDefaultConfigFunc func() interface{}
+type MiddlewareDefaultConfigFunc func() any
 
 // WithMiddlewareConfig use to change the default middleware config
 func WithMiddlewareConfig(configFunc MiddlewareDefaultConfigFunc) MiddlewareOption {

@@ -9,7 +9,7 @@ type Client struct {
 	ClientType string
 	redis.Cmdable
 	closeFunc func() error
-	option    interface{}
+	option    any
 }
 
 func NewClient(cfg *conf.Configuration) *Client {

@@ -228,7 +228,7 @@ func file_testproto_test_proto_rawDescGZIP() []byte {
 }
 
 var file_testproto_test_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_testproto_test_proto_goTypes = []interface{}{
+var file_testproto_test_proto_goTypes = []any{
 	(*Empty)(nil),        // 0: Empty
 	(*PingRequest)(nil),  // 1: PingRequest
 	(*PingResponse)(nil), // 2: PingResponse

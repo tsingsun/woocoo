@@ -22,7 +22,7 @@ func TestNewTimeWheel(t *testing.T) {
 func TestTimeWheel_AddTimerOnce(t *testing.T) {
 	ticker := time.NewTicker(waitTime)
 	tw, _ := NewTimeWheel(defaultTickerDuration, 10)
-	var cb = func(k, v interface{}) {
+	var cb = func(k, v any) {
 		assert.Equal(t, "any", k)
 		assert.Equal(t, 3, v.(int))
 		ticker.Stop()

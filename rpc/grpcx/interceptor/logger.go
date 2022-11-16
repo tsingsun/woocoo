@@ -39,7 +39,7 @@ func (o *LoggerOptions) Apply(cnf *conf.Configuration) {
 func LoggerUnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInterceptor {
 	o := defaultLoggerOptions
 	o.Apply(cnf)
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		start := time.Now()
 		newCtx := newLoggerForCall(ctx, info.FullMethod, start, o.TimestampFormat)
 		resp, err := handler(newCtx, req)
@@ -70,7 +70,7 @@ func loggerOutPut(l log.ComponentLogger, ctx context.Context, method string, lat
 func LoggerStreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerInterceptor {
 	o := defaultLoggerOptions
 	o.Apply(cnf)
-	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		start := time.Now()
 		newCtx := newLoggerForCall(stream.Context(), info.FullMethod, start, o.TimestampFormat)
 		wrapped := WrapServerStream(stream)

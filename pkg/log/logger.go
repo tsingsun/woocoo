@@ -141,73 +141,73 @@ func Sync() error {
 }
 
 // Debug uses fmt.Sprint to construct and log a message.
-func Debug(args ...interface{}) {
+func Debug(args ...any) {
 	global.Logger.Sugar().Debug(args...)
 }
 
 // Info uses fmt.Sprint to construct and log a message.
-func Info(args ...interface{}) {
+func Info(args ...any) {
 	global.Logger.Sugar().Info(args...)
 }
 
 // Warn uses fmt.Sprint to construct and log a message.
-func Warn(args ...interface{}) {
+func Warn(args ...any) {
 	global.Logger.Sugar().Warn(args...)
 }
 
 // Error uses fmt.Sprint to construct and log a message.
-func Error(args ...interface{}) {
+func Error(args ...any) {
 	global.Logger.Sugar().Error(args...)
 }
 
 // DPanic uses fmt.Sprint to construct and log a message. In development, the
 // logger then panics. (See DPanicLevel for details.)
-func DPanic(args ...interface{}) {
+func DPanic(args ...any) {
 	global.Logger.Sugar().DPanic(args...)
 }
 
 // Panic uses fmt.Sprint to construct and log a message, then panics.
-func Panic(args ...interface{}) {
+func Panic(args ...any) {
 	global.Logger.Sugar().Panic(args...)
 }
 
 // Fatal uses fmt.Sprint to construct and log a message, then calls os.Exit.
-func Fatal(args ...interface{}) {
+func Fatal(args ...any) {
 	global.Logger.Sugar().Fatal(args...)
 }
 
 // Debugf uses fmt.Sprintf to log a templated message.
-func Debugf(template string, args ...interface{}) {
+func Debugf(template string, args ...any) {
 	global.Logger.Sugar().Debugf(template, args...)
 }
 
 // Infof uses fmt.Sprintf to log a templated message.
-func Infof(template string, args ...interface{}) {
+func Infof(template string, args ...any) {
 	global.Logger.Sugar().Infof(template, args...)
 }
 
 // Warnf uses fmt.Sprintf to log a templated message.
-func Warnf(template string, args ...interface{}) {
+func Warnf(template string, args ...any) {
 	global.Logger.Sugar().Warnf(template, args...)
 }
 
 // Errorf uses fmt.Sprintf to log a templated message.
-func Errorf(template string, args ...interface{}) {
+func Errorf(template string, args ...any) {
 	global.Logger.Sugar().Errorf(template, args...)
 }
 
 // DPanicf uses fmt.Sprintf to log a templated message. In development, the
 // logger then panics. (See DPanicLevel for details.)
-func DPanicf(template string, args ...interface{}) {
+func DPanicf(template string, args ...any) {
 	global.Logger.Sugar().DPanicf(template, args...)
 }
 
 // Panicf uses fmt.Sprintf to log a templated message, then panics.
-func Panicf(template string, args ...interface{}) {
+func Panicf(template string, args ...any) {
 	global.Logger.Sugar().Panicf(template, args...)
 }
 
 // Fatalf uses fmt.Sprintf to log a templated message, then calls os.Exit.
-func Fatalf(template string, args ...interface{}) {
+func Fatalf(template string, args ...any) {
 	global.Logger.Sugar().Fatalf(template, args...)
 }

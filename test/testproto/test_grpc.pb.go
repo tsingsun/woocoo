@@ -181,7 +181,7 @@ func RegisterTestServiceServer(s grpc.ServiceRegistrar, srv TestServiceServer) {
 	s.RegisterService(&TestService_ServiceDesc, srv)
 }
 
-func _TestService_PingEmpty_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _TestService_PingEmpty_Handler(srv any, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err

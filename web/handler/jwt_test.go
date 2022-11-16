@@ -56,7 +56,7 @@ func TestJWTMiddleware_ApplyFunc(t *testing.T) {
 				"signingKey": "secret",
 			}),
 				opts: []handler.MiddlewareOption{
-					handler.WithMiddlewareConfig(func() interface{} {
+					handler.WithMiddlewareConfig(func() any {
 						nc := &handler.JWTConfig{
 							JWTOptions: *auth.NewJWT(),
 						}
@@ -68,7 +68,7 @@ func TestJWTMiddleware_ApplyFunc(t *testing.T) {
 			token: func() string {
 				return tokens.String("secretToken")
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				r := i[0].(*httptest.ResponseRecorder)
 				return assert.Equal(t, http.StatusOK, r.Code)
 			},
@@ -111,7 +111,7 @@ ZwIDAQAB
 			token: func() string {
 				return tokens.String("secretToken")
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				r := i[0].(*httptest.ResponseRecorder)
 				return !assert.Equal(t, http.StatusUnauthorized, r.Code)
 			},
@@ -123,14 +123,14 @@ ZwIDAQAB
 			})},
 			token: func() string {
 				tstr := tokens.String("secretToken")
-				token, err := jwt.Parse(tstr, func(token *jwt.Token) (interface{}, error) {
+				token, err := jwt.Parse(tstr, func(token *jwt.Token) (any, error) {
 					return []byte("secret"), nil
 				})
 				require.NoError(t, err)
 				require.NoError(t, mredis.Set(token.Claims.(jwt.MapClaims)["jti"].(string), tstr))
 				return tstr
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				r := i[0].(*httptest.ResponseRecorder)
 				return assert.Equal(t, http.StatusOK, r.Code)
 			},

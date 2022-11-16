@@ -92,7 +92,7 @@ func (ab *AtlasBase) BuildSchema(tables []*schema.Table) ([]*gen.Type, error) {
 func (ab *AtlasBase) TableToGenType(table *schema.Table) (*gen.Type, error) {
 	entSchema := &load.Schema{
 		Name:        TypeName(table.Name),
-		Annotations: make(map[string]interface{}),
+		Annotations: make(map[string]any),
 	}
 	if entSchema.Name != table.Name {
 		ta := entsql.Annotation{Table: table.Name}

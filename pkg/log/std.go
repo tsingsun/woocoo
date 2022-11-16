@@ -12,11 +12,11 @@ ____/|__/ \____/\____/\___/ \____/\____/
 `
 
 // StdPrintln use native log.Println
-func StdPrintln(v ...interface{}) {
+func StdPrintln(v ...any) {
 	log.Println(v...)
 }
 
-func StdPrintf(format string, v ...interface{}) {
+func StdPrintf(format string, v ...any) {
 	log.Printf(format, v...)
 }
 

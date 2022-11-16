@@ -103,7 +103,7 @@ development: true
 		{
 			name: "new from bytes",
 			newFunc: func() (*Configuration, error) {
-				return NewFromStringMap(map[string]interface{}{
+				return NewFromStringMap(map[string]any{
 					"appName":     "woocoo",
 					"version":     "1.0.0",
 					"development": true,
@@ -117,7 +117,7 @@ development: true
 				p, err := NewParserFromFile("err")
 				return NewFromParse(p), err
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				assert.Error(t, err)
 				return false
 			},
@@ -177,7 +177,7 @@ func TestConfiguration_Load(t *testing.T) {
 		{
 			name: "attach error",
 			fields: fields{
-				cnf: NewFromStringMap(map[string]interface{}{
+				cnf: NewFromStringMap(map[string]any{
 					"includeFiles": []string{"err"},
 				}),
 			},
@@ -204,7 +204,7 @@ func TestConfiguration_Unmarshal(t *testing.T) {
 	}
 	type args struct {
 		key string
-		dst interface{}
+		dst any
 	}
 	tests := []struct {
 		name    string
@@ -214,9 +214,9 @@ func TestConfiguration_Unmarshal(t *testing.T) {
 	}{
 		{
 			name:   "slice",
-			fields: fields{parser: NewParserFromStringMap(map[string]interface{}{"slice": []string{"a", "b", "c"}})},
+			fields: fields{parser: NewParserFromStringMap(map[string]any{"slice": []string{"a", "b", "c"}})},
 			args:   args{key: "slice", dst: []string{}},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				assert.NoError(t, err)
 				assert.Len(t, i[0], 3)
 				return false
@@ -252,10 +252,10 @@ func TestConfiguration_Merge(t *testing.T) {
 		{
 			name: "merge",
 			fields: fields{
-				cnf: NewFromStringMap(map[string]interface{}{
+				cnf: NewFromStringMap(map[string]any{
 					"appName": "woocoo",
 					"slice":   []string{"a", "b", "c"},
-					"map":     map[string]interface{}{"a": "a", "b": "b"},
+					"map":     map[string]any{"a": "a", "b": "b"},
 				}),
 			},
 			args: args{
@@ -271,12 +271,12 @@ map:
 		{
 			name: "error",
 			fields: fields{
-				cnf: NewFromStringMap(map[string]interface{}{}),
+				cnf: NewFromStringMap(map[string]any{}),
 			},
 			args: args{
 				b: []byte(`\t`),
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				assert.Error(t, err)
 				return false
 			},
@@ -301,7 +301,7 @@ func TestConfiguration_Static(t *testing.T) {
 	t.Run("values", func(t *testing.T) {
 		tm, err := time.Parse("2006-01-02 15:04:05", "2006-01-02 15:04:05")
 		require.NoError(t, err)
-		setting := map[string]interface{}{
+		setting := map[string]any{
 			"appName":     "woocoo",
 			"StringSlice": []string{"a", "b", "c"},
 			"Int":         1,

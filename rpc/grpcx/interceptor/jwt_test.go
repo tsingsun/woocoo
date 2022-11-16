@@ -28,7 +28,7 @@ func TestJWTUnaryServerInterceptor(t *testing.T) {
 	zgl := zapgrpc.NewLogger(logger)
 	grpclog.SetLoggerV2(zgl)
 
-	acfg := conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+	acfg := conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
 		"signingKey":  "secret",
 		"tokenLookup": "authorization",
 	}))

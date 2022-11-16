@@ -30,7 +30,7 @@ func TestMiddleware_NewConfig(t *testing.T) {
 			args: args{
 				cfg: conf.NewFromStringMap(map[string]any{
 					"appName": "gin-web",
-					"otel": map[string]interface{}{
+					"otel": map[string]any{
 						"traceExporterEndpoint":  "stdout",
 						"metricExporterEndpoint": "stdout",
 					},
@@ -77,7 +77,7 @@ func TestPropagationWithGlobalPropagators(t *testing.T) {
 	otelwoocoo.SetGlobalConfig(nil)
 	provider := trace.NewNoopTracerProvider()
 	otel.SetTextMapPropagator(b3prop.New())
-	cnf := conf.NewFromStringMap(map[string]interface{}{
+	cnf := conf.NewFromStringMap(map[string]any{
 		"appName": "foobar",
 	})
 	otelcfg := otelwoocoo.NewConfig(cnf, otelwoocoo.WithTracerProvider(provider, nil))
@@ -109,7 +109,7 @@ func TestPropagationWithCustomPropagators(t *testing.T) {
 	otelwoocoo.SetGlobalConfig(nil)
 	provider := trace.NewNoopTracerProvider()
 	b3 := b3prop.New()
-	cnf := conf.NewFromStringMap(map[string]interface{}{
+	cnf := conf.NewFromStringMap(map[string]any{
 		"appName": "foobar",
 	})
 	otelcfg := otelwoocoo.NewConfig(cnf, otelwoocoo.WithTracerProvider(provider, nil), otelwoocoo.WithPropagator(b3))

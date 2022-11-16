@@ -92,7 +92,7 @@ func NewFromBytes(b []byte, opts ...Option) *Configuration {
 }
 
 // NewFromStringMap create from string map
-func NewFromStringMap(data map[string]interface{}, opts ...Option) *Configuration {
+func NewFromStringMap(data map[string]any, opts ...Option) *Configuration {
 	p := NewParserFromStringMap(data)
 	return NewFromParse(p, opts...)
 }
@@ -163,8 +163,8 @@ func (c *Configuration) loadInternal() (err error) {
 // Merge an input config stream,parameter b is YAML stream
 //
 // types operation:
-//   - map[string]interface{}: merge
-//   - []interface{}: override
+//   - map[string]any: merge
+//   - []any: override
 func (c *Configuration) Merge(b []byte) error {
 	p, err := NewParserFromBuffer(bytes.NewReader(b))
 	if err != nil {
@@ -280,7 +280,7 @@ func (c *Configuration) Version() string {
 // Unmarshal map data of config into a struct, values are merged.
 //
 // Tags on the fields of the structure must be properly set.
-func (c *Configuration) Unmarshal(dst interface{}) (err error) {
+func (c *Configuration) Unmarshal(dst any) (err error) {
 	return c.parser.Unmarshal("", dst)
 }
 
@@ -293,9 +293,9 @@ func (c *Configuration) Abs(path string) string {
 	}
 	return filepath.Join(c.GetBaseDir(), path)
 }
-func Get(path string) interface{} { return global.Get(path) }
+func Get(path string) any { return global.Get(path) }
 
-func (c *Configuration) Get(key string) interface{} {
+func (c *Configuration) Get(key string) any {
 	return c.parser.Get(key)
 }
 func Bool(path string) bool { return global.Bool(path) }
@@ -357,9 +357,9 @@ func (c *Configuration) IsSet(path string) bool {
 }
 
 // AllSettings return all settings
-func AllSettings() map[string]interface{} { return global.AllSettings() }
+func AllSettings() map[string]any { return global.AllSettings() }
 
-func (c *Configuration) AllSettings() map[string]interface{} {
+func (c *Configuration) AllSettings() map[string]any {
 	return c.parser.k.All()
 }
 

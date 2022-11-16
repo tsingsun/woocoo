@@ -52,7 +52,7 @@ func JWTUnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerIntercep
 	interceptor := JWT()
 	interceptor.Apply(cfg)
 	var extractor = createExtractor(interceptor)
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		// The keys within metadata.MD are normalized to lowercase.
 		// See: https://godoc.org/google.golang.org/grpc/metadata#New
 		authstr, err := extractor(ctx)
@@ -85,7 +85,7 @@ func JWTSteamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterce
 	interceptor := JWT()
 	interceptor.Apply(cfg)
 	var extractor = createExtractor(interceptor)
-	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		authstr, err := extractor(ss.Context())
 		if err != nil {
 			return auth.ErrJWTMissing

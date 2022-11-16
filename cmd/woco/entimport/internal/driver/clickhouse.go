@@ -99,7 +99,7 @@ func (ck *ckDriver) InspectRealm(ctx context.Context, opts *schema.InspectRealmO
 
 func (ck *ckDriver) schemas(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
 	var (
-		args  []interface{}
+		args  []any
 		query = schemasQuery
 	)
 	if opts != nil {
@@ -159,7 +159,7 @@ func nArgs(start, end int) string {
 
 func (ck *ckDriver) tables(ctx context.Context, realm *schema.Realm, opts *schema.InspectOptions) error {
 	var (
-		args  []interface{}
+		args  []any
 		query = fmt.Sprintf(tablesQuery, nArgs(1, len(realm.Schemas)))
 	)
 	for _, s := range realm.Schemas {
@@ -207,7 +207,7 @@ func (ck *ckDriver) tables(ctx context.Context, realm *schema.Realm, opts *schem
 
 // columns queries and appends the columns of the given table.
 func (ck *ckDriver) columns(ctx context.Context, s *schema.Schema) error {
-	args := []interface{}{s.Name}
+	args := []any{s.Name}
 	for _, t := range s.Tables {
 		args = append(args, t.Name)
 	}
@@ -225,7 +225,7 @@ func (ck *ckDriver) columns(ctx context.Context, s *schema.Schema) error {
 }
 
 func (ck *ckDriver) querySchema(ctx context.Context, query string, s *schema.Schema) (*sql.Rows, error) {
-	args := []interface{}{s.Name}
+	args := []any{s.Name}
 	for _, t := range s.Tables {
 		args = append(args, t.Name)
 	}

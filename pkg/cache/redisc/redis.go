@@ -74,12 +74,12 @@ func (c *Redisc) Apply(cfg *conf.Configuration) {
 }
 
 // Get returns the value associated with the given key.
-func (c *Redisc) Get(key string, v interface{}) error {
+func (c *Redisc) Get(key string, v any) error {
 	return c.operator.Get(context.Background(), key, v)
 }
 
 // Set sets the value associated with the given key.
-func (c *Redisc) Set(key string, v interface{}, ttl time.Duration) error {
+func (c *Redisc) Set(key string, v any, ttl time.Duration) error {
 	return c.operator.Set(&Item{
 		Key:   key,
 		Value: v,
@@ -98,7 +98,7 @@ func (c *Redisc) Del(key string) error {
 }
 
 // Take returns the value associated with the given key.
-func (c *Redisc) Take(v interface{}, key string, ttl time.Duration, query func() (interface{}, error)) error {
+func (c *Redisc) Take(v any, key string, ttl time.Duration, query func() (any, error)) error {
 	item := &Item{
 		Key:   key,
 		Value: v,

@@ -153,7 +153,7 @@ func file_grpc_helloworld_proto_rawDescGZIP() []byte {
 }
 
 var file_grpc_helloworld_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_grpc_helloworld_proto_goTypes = []interface{}{
+var file_grpc_helloworld_proto_goTypes = []any{
 	(*HelloRequest)(nil), // 0: helloworld.HelloRequest
 	(*HelloReply)(nil),   // 1: helloworld.HelloReply
 }

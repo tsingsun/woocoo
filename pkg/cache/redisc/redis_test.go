@@ -46,7 +46,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "local",
 			args: args{
-				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
 					"local": map[string]interface{}{
 						"size": 1000,
 						"ttl":  "60s",

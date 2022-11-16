@@ -22,7 +22,7 @@ func RecoveryUnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInt
 	if err := cnf.Unmarshal(&defaultRecoveryOptions); err != nil {
 		panic(err)
 	}
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		panicked := true
 		defer func() {
 			if r := recover(); r != nil || panicked {
@@ -41,7 +41,7 @@ func RecoveryStreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerI
 		panic(err)
 	}
 
-	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+	return func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 		panicked := true
 		defer func() {
 			if r := recover(); r != nil || panicked {
@@ -64,12 +64,12 @@ func RecoveryStreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerI
 //				err = interceptor.HandleRecoverError(ctx, r)
 //			}
 //		}()
-func HandleRecoverError(ctx context.Context, p interface{}) error {
+func HandleRecoverError(ctx context.Context, p any) error {
 	return handleRecoverError(defaultRecoveryOptions, ctx, p, 2)
 }
 
 // if use logger,let it log the stack trace
-func handleRecoverError(_ RecoveryOptions, ctx context.Context, p interface{}, stackSkip int) (err error) {
+func handleRecoverError(_ RecoveryOptions, ctx context.Context, p any, stackSkip int) (err error) {
 	err, ok := p.(error)
 	if !ok {
 		err = status.Errorf(codes.Internal, "%v", p)

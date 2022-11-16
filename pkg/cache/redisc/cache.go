@@ -49,9 +49,9 @@ func (f SkipMode) Is(mode SkipMode) bool {
 }
 
 type rediser interface {
-	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) *redis.StatusCmd
-	SetXX(ctx context.Context, key string, value interface{}, ttl time.Duration) *redis.BoolCmd
-	SetNX(ctx context.Context, key string, value interface{}, ttl time.Duration) *redis.BoolCmd
+	Set(ctx context.Context, key string, value any, ttl time.Duration) *redis.StatusCmd
+	SetXX(ctx context.Context, key string, value any, ttl time.Duration) *redis.BoolCmd
+	SetNX(ctx context.Context, key string, value any, ttl time.Duration) *redis.BoolCmd
 
 	Get(ctx context.Context, key string) *redis.StringCmd
 	Del(ctx context.Context, keys ...string) *redis.IntCmd
@@ -61,14 +61,14 @@ type Item struct {
 	Ctx context.Context
 
 	Key   string
-	Value interface{}
+	Value any
 
 	// TTL is the cache expiration time.
 	// Default TTL is 1 hour.
 	TTL time.Duration
 
 	// Do returns value to be cached.
-	Do func(*Item) (interface{}, error)
+	Do func(*Item) (any, error)
 
 	// SetXX only sets the key if it already exists.
 	SetXX bool
@@ -87,7 +87,7 @@ func (item *Item) Context() context.Context {
 	return item.Ctx
 }
 
-func (item *Item) value() (interface{}, error) {
+func (item *Item) value() (any, error) {
 	if item.Do != nil {
 		return item.Do(item)
 	}

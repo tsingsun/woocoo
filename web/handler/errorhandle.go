@@ -20,7 +20,7 @@ type (
 	}
 
 	// ErrorParser is the error parser
-	ErrorParser func(c *gin.Context) (int, interface{})
+	ErrorParser func(c *gin.Context) (int, any)
 )
 
 var defaultErrorHandleConfig = ErrorHandleConfig{
@@ -28,7 +28,7 @@ var defaultErrorHandleConfig = ErrorHandleConfig{
 	ErrorParser:     defaultErrorParser,
 }
 
-func defaultErrorParser(c *gin.Context) (int, interface{}) {
+func defaultErrorParser(c *gin.Context) (int, any) {
 	var errs = make([]gin.H, len(c.Errors))
 	var code = c.Writer.Status()
 	for i, e := range c.Errors {

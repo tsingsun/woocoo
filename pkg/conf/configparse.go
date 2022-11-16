@@ -49,8 +49,8 @@ func NewParserFromBuffer(buf io.Reader) (*Parser, error) {
 	return p, nil
 }
 
-// NewParserFromStringMap creates a parser from a map[string]interface{}.
-func NewParserFromStringMap(data map[string]interface{}) *Parser {
+// NewParserFromStringMap creates a parser from a map[string]any.
+func NewParserFromStringMap(data map[string]any) *Parser {
 	p := NewParser()
 	// Cannot return error because the koanf instance is empty.
 	_ = p.k.Load(confmap.Provider(data, KeyDelimiter), nil)
@@ -70,8 +70,8 @@ func (l *Parser) AllKeys() []string {
 
 // Unmarshal specified path config into a struct.
 // Tags on the fields of the structure must be properly set.
-func (l *Parser) Unmarshal(key string, dst interface{}) (err error) {
-	var input interface{}
+func (l *Parser) Unmarshal(key string, dst any) (err error) {
+	var input any
 	if key == "" {
 		input = l.ToStringMap()
 	} else {
@@ -86,7 +86,7 @@ func (l *Parser) Unmarshal(key string, dst interface{}) (err error) {
 }
 
 // UnmarshalExact unmarshals the config into a struct, erroring if a field is nonexistent.
-func (l *Parser) UnmarshalExact(key string, intoCfg interface{}) (err error) {
+func (l *Parser) UnmarshalExact(key string, intoCfg any) (err error) {
 	var s *Parser
 	if key == "" {
 		s = l
@@ -106,15 +106,15 @@ func (l *Parser) UnmarshalExact(key string, intoCfg interface{}) (err error) {
 }
 
 // Get can retrieve any value given the key to use.
-func (l *Parser) Get(key string) interface{} {
+func (l *Parser) Get(key string) any {
 	return l.k.Get(key)
 }
 
 // Set sets the value for the key.
-func (l *Parser) Set(key string, value interface{}) {
+func (l *Parser) Set(key string, value any) {
 	// koanf doesn't offer a direct setting mechanism so merging is required.
 	merged := koanf.New(KeyDelimiter)
-	if err := merged.Load(confmap.Provider(map[string]interface{}{key: value}, KeyDelimiter), nil); err != nil {
+	if err := merged.Load(confmap.Provider(map[string]any{key: value}, KeyDelimiter), nil); err != nil {
 		panic(err)
 	}
 	if err := l.k.Merge(merged); err != nil {
@@ -130,7 +130,7 @@ func (l *Parser) IsSet(key string) bool {
 
 // MergeStringMap merges the configuration from the given map with the existing config.
 // Note that the given map may be modified.
-func (l *Parser) MergeStringMap(cfg map[string]interface{}) error {
+func (l *Parser) MergeStringMap(cfg map[string]any) error {
 	toMerge := koanf.New(KeyDelimiter)
 	if err := toMerge.Load(confmap.Provider(cfg, KeyDelimiter), nil); err != nil {
 		return err
@@ -157,8 +157,8 @@ func (l *Parser) Sub(key string) (*Parser, error) {
 	return subParser, nil
 }
 
-// ToStringMap creates a map[string]interface{} from a Parser.
-func (l *Parser) ToStringMap() map[string]interface{} {
+// ToStringMap creates a map[string]any from a Parser.
+func (l *Parser) ToStringMap() map[string]any {
 	return l.k.Raw()
 }
 
@@ -169,7 +169,7 @@ func (l *Parser) ToBytes(p koanf.Parser) ([]byte, error) {
 }
 
 func textUnmarshalHookFunc() mapstructure.DecodeHookFunc {
-	return func(from reflect.Value, to reflect.Value) (interface{}, error) {
+	return func(from reflect.Value, to reflect.Value) (any, error) {
 		if to.CanAddr() {
 			to = to.Addr()
 		}
@@ -208,7 +208,7 @@ func textUnmarshalHookFunc() mapstructure.DecodeHookFunc {
 // whose values are nil pointer structs resolved to the zero value of the target struct (see
 // expandNilStructPointers). A decoder created from this mapstructure.DecoderConfig will decode
 // its contents to the result argument.
-func decoderConfig(result interface{}) *mapstructure.DecoderConfig {
+func decoderConfig(result any) *mapstructure.DecoderConfig {
 	return &mapstructure.DecoderConfig{
 		Result:           result,
 		Metadata:         nil,
@@ -239,7 +239,7 @@ func decoderConfig(result interface{}) *mapstructure.DecoderConfig {
 // we want an unmarshalled Configuration to be equivalent to
 // Configuration{Thing: &SomeStruct{}} instead of Configuration{Thing: nil}
 func expandNilStructPointers() mapstructure.DecodeHookFunc {
-	return func(from reflect.Value, to reflect.Value) (interface{}, error) {
+	return func(from reflect.Value, to reflect.Value) (any, error) {
 		// ensure we are dealing with map to map comparison
 		if from.Kind() == reflect.Map && to.Kind() == reflect.Map {
 			toElem := to.Type().Elem()

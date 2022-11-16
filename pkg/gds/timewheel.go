@@ -25,7 +25,7 @@ type (
 		currentPos     uint16
 		slotNum        uint16
 		addTaskChan    chan timeWheelSlot
-		removeTaskChan chan interface{}
+		removeTaskChan chan any
 		moveTaskChan   chan baseSlot
 		stopChan       chan struct{}
 		// assigned by internal if not specify key

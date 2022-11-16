@@ -43,11 +43,11 @@ func GetCache(driver string) Cache {
 	return _manager.drivers[driver]
 }
 
-func Get(key string, v interface{}) error {
+func Get(key string, v any) error {
 	return _defaultDriver.Get(key, v)
 }
 
-func Set(key string, v interface{}, ttl time.Duration) error {
+func Set(key string, v any, ttl time.Duration) error {
 	return _defaultDriver.Set(key, v, ttl)
 }
 
@@ -59,7 +59,7 @@ func Del(key string) error {
 	return _defaultDriver.Del(key)
 }
 
-func Take(v interface{}, key string, ttl time.Duration, query func() (interface{}, error)) error {
+func Take(v any, key string, ttl time.Duration, query func() (any, error)) error {
 	return _defaultDriver.Take(v, key, ttl, query)
 }
 

@@ -34,13 +34,13 @@ type (
 		// This is one of the three options to provide a token validation key.
 		// The order of precedence is a user-defined KeyFunc, SigningKeys and SigningKey.
 		// Required if neither user-defined KeyFunc nor SigningKeys is provided.
-		SigningKey interface{}
+		SigningKey any
 
 		// Map of signing keys to validate token with kid field usage.
 		// This is one of the three options to provide a token validation key.
 		// The order of precedence is a user-defined KeyFunc, SigningKeys and SigningKey.
 		// Required if neither user-defined KeyFunc nor SigningKey is provided.
-		SigningKeys map[string]interface{}
+		SigningKeys map[string]any
 
 		// Signing method used to check the token's signing algorithm.
 		// Optional. Default value HS256.
@@ -135,7 +135,7 @@ func (opts *JWTOptions) defaultParseToken(ctx context.Context, authStr string) (
 }
 
 // defaultKeyFunc returns a signing key of the given token.
-func (opts *JWTOptions) defaultKeyFunc(t *jwt.Token) (interface{}, error) {
+func (opts *JWTOptions) defaultKeyFunc(t *jwt.Token) (any, error) {
 	// Check the signing method
 	if t.Method.Alg() != opts.SigningMethod {
 		return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
@@ -174,7 +174,7 @@ func parseKey(keyStr string) ([]byte, error) {
 // - file uri: "file:///path/to/key",such as rsa file
 // - string: "raw key",such as hs256 key or rsa rwa key string
 // private key: if need to use private key,such as rsa private key
-func ParseSigningKeyFromString(keystr, method string, privateKey bool) (interface{}, error) {
+func ParseSigningKeyFromString(keystr, method string, privateKey bool) (any, error) {
 	switch strings.ToUpper(method) {
 	case "RS256", "RS384", "RS512":
 		bt, err := parseKey(keystr)

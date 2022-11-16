@@ -18,7 +18,7 @@ func Example(){
     fmt.Println(err)
         return
     }
-	cb := func(taskID,data interface{}) {
+	cb := func(taskID,data any) {
 		// do something
     }
 	data := map[string]int{"uid": 100, "age": 16},

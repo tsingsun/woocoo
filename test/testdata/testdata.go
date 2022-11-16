@@ -25,7 +25,7 @@ func TestConfigFile() string {
 	return Path(DefaultConfigFile)
 }
 
-func TestStruct() interface{} {
+func TestStruct() any {
 	type test struct {
 		String string
 		Bool   bool

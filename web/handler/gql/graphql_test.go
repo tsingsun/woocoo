@@ -34,7 +34,7 @@ web:
 	cfg := conf.NewFromBytes([]byte(cfgStr))
 	srv := web.New(web.WithConfiguration(cfg.Sub("web")), web.RegisterMiddleware(New()))
 	gqlsrvList, err := RegisterSchema(srv, &graphql.ExecutableSchemaMock{
-		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]interface{}) (int, bool) {
+		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
 			panic("mock out the Complexity method")
 		},
 		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {
@@ -45,7 +45,7 @@ web:
 			return nil
 		},
 	}, &graphql.ExecutableSchemaMock{
-		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]interface{}) (int, bool) {
+		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
 			panic("mock out the Complexity method")
 		},
 		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {

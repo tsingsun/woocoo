@@ -73,7 +73,7 @@ func TestNewBuiltIn(t *testing.T) {
 		{
 			name: "miss config",
 			want: func() *Logger {
-				conf.NewFromStringMap(map[string]interface{}{}).AsGlobal()
+				conf.NewFromStringMap(map[string]any{}).AsGlobal()
 				return nil
 			},
 			wantErr: true,

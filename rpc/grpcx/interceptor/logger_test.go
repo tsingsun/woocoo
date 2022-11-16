@@ -15,7 +15,7 @@ import (
 )
 
 func applog() grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		log.AppendToIncomingContext(ctx, zap.String("logger_test", "test"))
 		return handler(ctx, req)
 	}
@@ -27,7 +27,7 @@ func TestGrpcContextLogger(t *testing.T) {
 
 	log.Component(ComponentKey).Logger().WithTraceID = true
 
-	clfg := conf.NewFromStringMap(map[string]interface{}{
+	clfg := conf.NewFromStringMap(map[string]any{
 		"TimestampFormat": "2006-01-02 15:04:05",
 	})
 	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(LoggerUnaryServerInterceptor(clfg), applog()))
@@ -66,11 +66,11 @@ func TestLoggerUnaryServerInterceptor(t *testing.T) {
 		{
 			name: "info",
 			args: args{
-				cfg: conf.NewFromStringMap(map[string]interface{}{}),
+				cfg: conf.NewFromStringMap(map[string]any{}),
 			},
 			fields: fields{
 				ctx: context.Background(),
-				handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				handler: func(ctx context.Context, req any) (any, error) {
 					log.AppendToIncomingContext(ctx, zap.String("woocoo", "test"))
 					return nil, nil
 				},
@@ -81,7 +81,7 @@ func TestLoggerUnaryServerInterceptor(t *testing.T) {
 				log.Component(AccessLogComponentName).SetLogger(log.New(logtest.NewBuffLogger(logdata)))
 				return logdata
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				logdata := i[0].(*logtest.Buffer)
 				lines := logdata.Lines()
 				assert.Len(t, lines, 1)

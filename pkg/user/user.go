@@ -13,7 +13,7 @@ type Identity interface {
 }
 
 type ContextUserTag struct{}
-type User map[string]interface{}
+type User map[string]any
 
 func (u User) ID() string {
 	return u[IDKey].(string)

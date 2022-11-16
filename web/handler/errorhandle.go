@@ -78,6 +78,9 @@ func (em *ErrorHandleMiddleware) Name() string {
 }
 
 func (em *ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
+	if em.config == nil {
+		em.config = new(ErrorHandleConfig)
+	}
 	*em.config = defaultErrorHandleConfig
 	if em.opts.configFunc != nil {
 		em.config = em.opts.configFunc().(*ErrorHandleConfig)
@@ -104,7 +107,7 @@ func (em *ErrorHandleMiddleware) Shutdown() {
 // NegotiateResponse calls different Render according to acceptably Accept format.
 //
 // no support format described:
-//     protobuf: gin.H is not protoreflect.ProtoMessage
+//   protobuf: gin.H is not protoreflect.ProtoMessage
 func NegotiateResponse(c *gin.Context, code int, data any, offered []string) {
 	switch c.NegotiateFormat(offered...) {
 	case binding.MIMEJSON:

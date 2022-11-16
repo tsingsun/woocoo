@@ -62,7 +62,9 @@ func TestErrorHandleMiddleware_ApplyFunc(t *testing.T) {
 }
 
 func TestSetContextError(t *testing.T) {
-	e := ErrorHandleMiddleware{}
+	e := ErrorHandleMiddleware{
+		config: new(ErrorHandleConfig),
+	}
 	eh := e.ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(nil)))
 	type args struct {
 		code int
@@ -143,8 +145,8 @@ func TestErrorResponse(t *testing.T) {
 				err:    fmt.Errorf("standError"),
 				accept: binding.MIMEPROTOBUF,
 			},
-			wantCode:        http.StatusInternalServerError,
-			wantContentType: binding.MIMEPROTOBUF,
+			wantCode:        http.StatusNotAcceptable,
+			wantContentType: "",
 		},
 	}
 	for _, tt := range tests {

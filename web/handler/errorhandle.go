@@ -35,7 +35,10 @@ func defaultErrorParser(c *gin.Context) (int, any) {
 		switch e.Type {
 		case gin.ErrorTypePrivate, gin.ErrorTypePublic:
 			errs[i] = FormatResponseError(0, e.Err)
-			code = 500
+			// if no error code set, use 500
+			if code == 200 {
+				code = 500
+			}
 		default:
 			errs[i] = FormatResponseError(int(e.Type), e.Err)
 		}

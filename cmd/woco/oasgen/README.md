@@ -3,11 +3,15 @@
 本包提供了基于[OpenAPI 3.0](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.0.md)生成Go代码的一系列工具,用于服务WooCoo的Web项目.
 来帮助开发者快速的生成基于OpenAPI 3.0的API服务.
 
+对于像支持partial class的语言(.Net/Go) ,开发者可以很方便的生成的代码中添加自己的代码.
+
 WooCoo选择Gin作为Web框架,因此本包生成的服务端代码也是基于Gin的,Gin项目也可以使用.
+
 
 ## 概览
 
 我们采用了OpenAPI 提供的例子`perstore.ymal`来演示本包的使用方法.[查看该文档](./internal/integration/petstore.yaml).
+> 在该文档之上加入一些以`x-go`为前缀的扩展属性
 
 安装woocoo cli
 ```
@@ -38,13 +42,15 @@ models:
 - interface.go: 根据Operation生成的接口定义,同时会生成一个未实现的结构体,用于快速的生成一个可运行的服务.
 - model.go: 根据Schema生成的数据模型定义
 - xx_tag.go: 以Tag为单位生成Operation的Reqeust和Response定义 
-- server/server.go: 生成的服务端代码
+- server目录: 服务端相关代码
+    server.go: 生成的服务端代码
+    validator.go: 生成的数据验证代码,针对OpenAPI的pattern正规做了自定义支持
 
 ### 请求及响应
 
 ### 请求
 
-根据Sepc的设定,默认生成的请求代码按Path分成Uri,Header,Cookie,Body等,然后分别对各部分字段验证,在此采用了gin使用的[validator](github.com/go-playground/validator).
+根据Sepc的设定,默认生成的请求代码按Path分成Uri,Header,Cookie,Body等,然后分别对各部分字段验证,在此采用了gin使用的[validator](https://github.com/go-playground/validator).
 一般不需要另行再编写针对请求的代码.
 
 - Auth验证:(TODO)

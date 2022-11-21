@@ -1,0 +1,43 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen/codegen.Graph */}}
+{{ define "validator"}}
+
+    {{- with extend $ "Package" "server" -}}
+        {{ template "header" . }}
+    {{ end }}
+
+    {{ template "import" $ }}
+    import (
+        "github.com/go-playground/validator/v10"
+    )
+    var (
+        {{- $pattern := len patternMap}}{{ $hasPattern := gt $pattern 0 }}
+        {{- if $hasPattern }}
+            patternMap = map[string]*regexp.Regexp{
+            {{- range $k, $v := patternMap }}
+                "{{$v}}": regexp.MustCompile({{quote $k}}),
+            {{- end }}
+            }
+        {{- end}}
+    )
+
+    func RegisterValidator() {
+        {{- if $hasPattern }}
+            if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+                v.RegisterValidation("regex", regexTag)
+            }
+        {{- end }}
+    }
+    {{- if $hasPattern }}
+        var regexTag validator.Func = func(fl validator.FieldLevel) bool {
+            field := fl.Field().String()
+            if field == "" {
+                return true
+            }
+            if regex,ok := patternMap[fl.Param()];ok{
+                match := regex.MatchString(field)
+                return match
+            }
+            return true
+        }
+    {{- end }}
+{{ end}}

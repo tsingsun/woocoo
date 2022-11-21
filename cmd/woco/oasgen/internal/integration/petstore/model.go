@@ -11,40 +11,40 @@ type ApiResponse struct {
 }
 
 type Category struct {
-	ID   int64  `json:"id,omitempty"`
-	Name string `json:"name,omitempty"`
+	ID   int64  `json:"id,omitempty" xml:"id"`
+	Name string `binding:"regex=oas_pattern_0" json:"name,omitempty" xml:"name"`
 }
 
 type Order struct {
-	Complete bool      `json:"complete,omitempty"`
-	ID       int64     `json:"id,omitempty"`
-	PetId    int64     `json:"petId,omitempty"`
-	Quantity int32     `json:"quantity,omitempty"`
-	ShipDate time.Time `json:"shipDate,omitempty"`
-	Status   string    `json:"status,omitempty"`
+	Complete bool      `json:"complete,omitempty" xml:"complete"`
+	ID       int64     `json:"id,omitempty" xml:"id"`
+	PetId    int64     `json:"petId,omitempty" xml:"petId"`
+	Quantity int32     `json:"quantity,omitempty" xml:"quantity"`
+	ShipDate time.Time `json:"shipDate,omitempty" xml:"shipDate"`
+	Status   string    `json:"status,omitempty" xml:"status"`
 }
 
 type Pet struct {
-	Category  *Category `json:"category,omitempty"`
-	ID        int64     `json:"id,omitempty"`
-	Name      string    `json:"name"`
-	PhotoUrls []string  `json:"photoUrls"`
-	Status    string    `json:"status,omitempty"`
-	Tags      []Tag     `json:"tags,omitempty"`
+	Category  *Category `json:"category,omitempty" xml:"Category"`
+	ID        int64     `json:"id,omitempty" xml:"id"`
+	Name      string    `binding:"required" json:"name" xml:"name"`
+	PhotoUrls []string  `binding:"required" json:"photoUrls" xml:"photoUrl"`
+	Status    string    `json:"status,omitempty" xml:"status"`
+	Tags      []Tag     `json:"tags,omitempty" xml:"tag"`
 }
 
 type Tag struct {
-	ID   int64  `json:"id,omitempty"`
-	Name string `json:"name,omitempty"`
+	ID   int64  `json:"id,omitempty" xml:"id"`
+	Name string `json:"name,omitempty" xml:"name"`
 }
 
 type User struct {
-	Email      string `json:"email,omitempty"`
-	FirstName  string `json:"firstName,omitempty"`
-	ID         int64  `json:"id,omitempty"`
-	LastName   string `json:"lastName,omitempty"`
-	Password   string `json:"password,omitempty"`
-	Phone      string `json:"phone,omitempty"`
-	UserStatus int32  `json:"userStatus,omitempty"`
-	Username   string `json:"username,omitempty"`
+	Email      string `json:"email,omitempty" xml:"email"`
+	FirstName  string `json:"firstName,omitempty" xml:"firstName"`
+	ID         int64  `json:"id,omitempty" xml:"id"`
+	LastName   string `json:"lastName,omitempty" xml:"lastName"`
+	Password   string `json:"password,omitempty" xml:"password"`
+	Phone      string `json:"phone,omitempty" xml:"phone"`
+	UserStatus int32  `json:"userStatus,omitempty" xml:"userStatus"`
+	Username   string `json:"username,omitempty" xml:"username"`
 }

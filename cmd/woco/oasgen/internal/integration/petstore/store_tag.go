@@ -10,12 +10,12 @@ type DeleteOrderRequest struct {
 
 type GetOrderByIdRequest struct {
 	UriParams struct {
-		OrderId int64 `binding:"required" uri:"orderId"`
+		OrderId int64 `binding:"required,lte=5,gte=1" uri:"orderId"`
 	}
 }
 
 type PlaceOrderRequest struct {
 	Body struct {
-		Order Order `json:"order,omitempty"`
+		Order Order `binding:"required" json:"order"`
 	}
 }

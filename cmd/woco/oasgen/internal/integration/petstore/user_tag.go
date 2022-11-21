@@ -4,7 +4,7 @@ package petstore
 
 type CreateUserRequest struct {
 	Body struct {
-		User User `json:"user,omitempty"`
+		User User `binding:"required" json:"user"`
 	}
 }
 
@@ -22,8 +22,8 @@ type GetUserByNameRequest struct {
 
 type LoginUserRequest struct {
 	Body struct {
-		Username string `binding:"required" form:"username"`
-		Password string `binding:"required" form:"password"`
+		Username string `binding:"required,regex=oas_pattern_0" form:"username"`
+		Password string `binding:"required" form:"password" password:"true"`
 	}
 }
 
@@ -32,6 +32,6 @@ type UpdateUserRequest struct {
 		Username string `binding:"required" uri:"username"`
 	}
 	Body struct {
-		User User `json:"user,omitempty"`
+		User User `binding:"required" json:"user"`
 	}
 }

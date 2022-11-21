@@ -21,6 +21,7 @@ func (s *ginTestSuite) SetupSuite() {
 	router := gin.Default()
 	router.Use(handler.ErrorHandle().ApplyFunc(nil))
 	imp := &Server{}
+	server.RegisterValidator()
 	server.RegisterUserHandlers(router, imp)
 	server.RegisterStoreHandlers(router, imp)
 	server.RegisterPetHandlers(router, imp)
@@ -58,11 +59,29 @@ func (s *ginTestSuite) TestUpdatePetWithForm() {
 
 func (s *ginTestSuite) TestLoginUser() {
 	r := httptest.NewRequest("GET", "/user/login?username=a&password=b", nil)
-	r.Header.Set("accept", binding.MIMEXML)
 	w := httptest.NewRecorder()
+	s.Router.ServeHTTP(w, r)
+	assert.Equal(s.T(), 400, w.Code)
+
+	r = httptest.NewRequest("GET", "/user/login?username=abc&password=b", nil)
+	r.Header.Set("accept", binding.MIMEXML)
+	w = httptest.NewRecorder()
 	s.Router.ServeHTTP(w, r)
 	assert.Equal(s.T(), 200, w.Code)
 	assert.Equal(s.T(), `<string>ok</string>`, w.Body.String())
+}
+
+func (s *ginTestSuite) TestGetOrderById() {
+	r := httptest.NewRequest("GET", "/store/order/1", nil)
+	w := httptest.NewRecorder()
+	s.Router.ServeHTTP(w, r)
+	assert.Equal(s.T(), 200, w.Code)
+
+	r = httptest.NewRequest("GET", "/store/order/6", nil)
+	w = httptest.NewRecorder()
+	s.Router.ServeHTTP(w, r)
+	assert.Equal(s.T(), 400, w.Code)
+
 }
 
 func TestGinTestSuite(t *testing.T) {

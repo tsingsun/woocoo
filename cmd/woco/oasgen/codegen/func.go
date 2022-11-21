@@ -12,6 +12,7 @@ import (
 
 var (
 	pathParamRE *regexp.Regexp
+	pattenMap   map[string]string
 
 	Funcs = template.FuncMap{
 		"lower":          strings.ToLower,
@@ -26,14 +27,27 @@ var (
 		"extend":         extend,
 		"pkgName":        code.PkgShortName,
 		"join":           helper.Join,
+		"quote":          helper.Quote,
 		"joinQuote":      helper.JoinQuote,
 		"oasUriToGinUri": OasUriToGinUri,
 		"ginReturnType":  GinReturnType,
+		"patternMap":     func() map[string]string { return pattenMap },
 	}
 )
 
 func init() {
 	pathParamRE = regexp.MustCompile("{[.;?]?([^{}*]+)\\*?}")
+	pattenMap = make(map[string]string)
+}
+
+func AddPattern(pattern string) (key string) {
+	if v, ok := pattenMap[pattern]; ok {
+		return v
+	}
+	l := len(pattenMap)
+	key = fmt.Sprintf("oas_pattern_%d", l)
+	pattenMap[pattern] = key
+	return key
 }
 
 // graphScope wraps the Graph object with extended scope.

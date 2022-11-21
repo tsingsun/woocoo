@@ -11,6 +11,11 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
+)
+
+const (
+	TagRegular = "regex"
 )
 
 type (
@@ -44,6 +49,7 @@ type (
 		CookieParameters []*Parameter
 		BindBody         bool
 		Body             []*Parameter
+		BodyContentTypes []string
 	}
 	// Response is for response of openapi3
 	Response struct {
@@ -62,6 +68,7 @@ type (
 		Name       string
 		Type       *code.TypeInfo
 		IsRef      bool
+		HasRegular bool // if schema has a pattern setting
 		Required   bool
 		StructTags []string
 		properties []*Schema
@@ -76,15 +83,15 @@ type (
 	}
 )
 
-func genOperation(c *Config, schema *openapi3.T) (ops []*Operation) {
+func genOperation(c *Config, spec *openapi3.T) (ops []*Operation) {
 	// sort Spec.Paths by path
-	keys := make([]string, 0, len(schema.Paths))
-	for k := range schema.Paths {
+	keys := make([]string, 0, len(spec.Paths))
+	for k := range spec.Paths {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		pathItem := schema.Paths[key]
+		pathItem := spec.Paths[key]
 		opmap := pathItem.Operations()
 		for _, method := range sortSpecOperationKeys(opmap) {
 			specop := opmap[method]
@@ -93,6 +100,7 @@ func genOperation(c *Config, schema *openapi3.T) (ops []*Operation) {
 				tag = specop.Tags[0]
 			}
 			op := &Operation{
+				Config:       c,
 				Name:         helper.Pascal(specop.OperationID),
 				Method:       method,
 				Path:         key,
@@ -102,47 +110,8 @@ func genOperation(c *Config, schema *openapi3.T) (ops []*Operation) {
 				Request:      &Request{},
 			}
 			ops = append(ops, op)
-			for _, p := range op.Spec.Parameters {
-				gp := genParameter(c, p)
-				op.AddParameter(gp)
-				switch gp.Spec.In {
-				case "path":
-					op.Request.BindUri = true
-					op.Request.UriParameters = append(op.Request.UriParameters, gp)
-				case "header":
-					op.Request.BindHeader = true
-					op.Request.HeaderParameters = append(op.Request.HeaderParameters, gp)
-				case "cookie":
-					op.Request.BindCookie = true
-					op.Request.CookieParameters = append(op.Request.CookieParameters, gp)
-				case "query", "form":
-					op.Request.BindBody = true
-					op.Request.Body = append(op.Request.Body, gp)
-				}
-			}
-			if rb := op.Spec.RequestBody; rb != nil {
-				gps := genParameterFromContent(c, op.RequestName(), rb.Value.Content)
-				op.AddParameter(gps...)
-				op.Request.BindBody = true
-				op.Request.Body = append(op.Request.Body, gps...)
-			}
-
-			if rs := op.Spec.Responses; rs != nil {
-				for _, name := range sortSpecResponseKeys(rs) {
-					status := name
-					if name == "default" {
-						status = "0"
-					}
-					res := genResponse(c, status, rs[name])
-					op.Responses = append(op.Responses, res)
-					switch res.Status {
-					case http.StatusOK:
-						op.ResponseOK = res
-					case http.StatusNotFound:
-						op.ResponseNotFound = res
-					}
-				}
-			}
+			op.GenParameters()
+			op.GenResponses()
 		}
 	}
 	sort.Slice(ops, func(i, j int) bool {
@@ -151,22 +120,22 @@ func genOperation(c *Config, schema *openapi3.T) (ops []*Operation) {
 	return
 }
 
-func genParameter(c *Config, p *openapi3.ParameterRef) *Parameter {
-	pv := p.Value
-	name := p.Value.Name
+func genParameter(c *Config, spec *openapi3.ParameterRef) *Parameter {
+	pv := spec.Value
+	name := spec.Value.Name
 	ep := &Parameter{
 		Name: name,
 		Spec: pv,
 	}
 	switch {
 	case pv.Schema != nil:
-		ep.Schema = genSchemaRef(c, name, pv.Schema)
+		ep.Schema = genSchemaRef(c, name, pv.Schema, ep.Spec.Required)
 	case pv.Content != nil:
 		mt, ok := pv.Content["application/json"]
 		if !ok {
 			return ep
 		}
-		ep.Schema = genSchemaRef(c, name, mt.Schema)
+		ep.Schema = genSchemaRef(c, name, mt.Schema, false)
 	default:
 		panic(fmt.Errorf("parameter %s must have Spec or content", pv.Name))
 	}
@@ -174,13 +143,13 @@ func genParameter(c *Config, p *openapi3.ParameterRef) *Parameter {
 	return ep
 }
 
-func genParameterFromContent(c *Config, name string, content openapi3.Content) (params []*Parameter) {
+func genParameterFromContent(c *Config, name string, content openapi3.Content, required bool) (params []*Parameter) {
 	var schema *Schema
 	contentTypes := make([]string, 0, len(content))
 	for ct, mediaType := range content {
 		contentTypes = append(contentTypes, ct)
 		if schema == nil {
-			schema = genSchemaRef(c, name, mediaType.Schema)
+			schema = genSchemaRef(c, name, mediaType.Schema, required)
 			if mediaType.Schema.Ref == "" { // from independent Spec
 				for _, property := range schema.properties {
 					param := newParameterFromSchema(c, property)
@@ -196,24 +165,14 @@ func genParameterFromContent(c *Config, name string, content openapi3.Content) (
 	for _, param := range params {
 		param.initStructTag()
 		for _, contentType := range contentTypes {
-			AppendContentTypeStructTag(param.Name, contentType, param.Schema)
-			if param.Schema.IsRef {
-				for _, s := range c.Schemas {
-					if s.Name == param.Name {
-						for _, prop := range s.Properties {
-							AppendContentTypeStructTag(prop.Name, contentType, prop)
-						}
-						break
-					}
-				}
-			}
+			param.Schema.AppendContentTypeStructTag(c, param.Name, contentType)
 		}
 	}
 	return
 }
 
-func genResponse(c *Config, codeStr string, response *openapi3.ResponseRef) *Response {
-	if response == nil {
+func genResponse(c *Config, codeStr string, spec *openapi3.ResponseRef) *Response {
+	if spec == nil {
 		return nil
 	}
 	status, err := strconv.Atoi(codeStr)
@@ -222,25 +181,27 @@ func genResponse(c *Config, codeStr string, response *openapi3.ResponseRef) *Res
 	}
 	r := &Response{
 		Status:      status,
-		Spec:        response.Value,
-		Description: response.Value.Description,
+		Spec:        spec.Value,
+		Description: spec.Value.Description,
 	}
-	if response.Value.Content == nil {
+	if spec.Value.Content == nil {
 		return r
 	}
 	// use first content type
-	for _, name := range sortSpecMediaTypeKeys(response.Value.Content) {
-		mediaType := response.Value.Content[name]
+	for _, name := range sortSpecMediaTypeKeys(spec.Value.Content) {
+		mediaType := spec.Value.Content[name]
 		r.ContentTypes = append(r.ContentTypes, name)
 		if r.Schema == nil {
-			r.Schema = genSchemaRef(c, "", mediaType.Schema)
+			r.Schema = genSchemaRef(c, "", mediaType.Schema, false)
 		}
 	}
 	if status == http.StatusOK {
-		switch r.Schema.Type.Type {
-		case code.TypeOther:
-			if r.Schema.Type.Ident != "" && !r.Schema.Type.Nillable {
-				r.Schema.Type.Ident = "*" + r.Schema.Type.Ident
+		if v, ok := c.schemas[r.Schema.Spec.Ref]; ok {
+			for _, contentType := range r.ContentTypes {
+				v.AppendContentTypeStructTag(c, v.Name, contentType)
+				//for _, prop := range v.Properties {
+				//	prop.AppendContentTypeStructTag(c,prop.Name, contentType)
+				//}
 			}
 		}
 	}
@@ -249,73 +210,75 @@ func genResponse(c *Config, codeStr string, response *openapi3.ResponseRef) *Res
 	return r
 }
 
-func genSchemaRef(c *Config, name string, schema *openapi3.SchemaRef) *Schema {
-	sv := schema.Value
+func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required bool) *Schema {
+	sv := spec.Value
 	sc := &Schema{
 		Name:       name,
-		Spec:       schema,
+		Spec:       spec,
 		Properties: make(map[string]*Schema),
+		Required:   required,
 	}
-	st, err := schemaToType(c, name, schema)
+	st, err := schemaToType(c, name, spec)
 	if err != nil {
 		panic(err)
 	}
 	sc.Type = st
-	sc.IsRef = schema.Ref != ""
+	sc.IsRef = spec.Ref != ""
 	if sc.IsRef {
-		sc.Name = helper.Camel(schemaNameFromRef(schema.Ref))
+		sc.Name = helper.Camel(schemaNameFromRef(spec.Ref))
 	}
-	if sc.Type.Type == code.TypeOther {
-		// inline
+	if sc.IsObjectArray() {
 		if sc.Name == "" {
-			switch sc.Spec.Value.Type {
-			case "array":
-				sc.Name = code.TypeName(sc.Type.Ident) + "List"
-				sc.IsRef = schema.Value.Items.Ref != ""
-			}
+			sc.Name = code.TypeName(sc.Type.Ident) + "List"
 		}
+		sc.IsRef = spec.Value.Items.Ref != ""
 	}
 
+	if !sc.Required {
+		if sc.Type.Type == code.TypeOther && !sc.Type.Nillable {
+			sc.Type.Ident = "*" + sc.Type.Ident
+		}
+	}
+	for k, v := range spec.Value.Extensions {
+		switch k {
+		case goTag:
+			s, err := extString(v)
+			if err != nil {
+				panic(err)
+			}
+			sc.StructTags = append(sc.StructTags, s)
+		}
+	}
+	sc.CollectTags()
 	for _, name := range sortPropertyKeys(sv.Properties) {
 		schemaRef := sv.Properties[name]
-		gs := genSchemaRef(c, name, schemaRef)
-		gs.Name = name
-		gs.Required = helper.InStrSlice(schema.Value.Required, name)
-		if !gs.Required {
-			if gs.Type.Type == code.TypeOther && !gs.Type.Nillable {
-				gs.Type.Ident = "*" + gs.Type.Ident
-			}
-		}
-		jsTag := fmt.Sprintf(`json:"%s"`, gs.Name)
-		if !gs.Required {
-			jsTag = fmt.Sprintf(`json:"%s,omitempty"`, gs.Name)
-		}
-		gs.StructTags = append(gs.StructTags, jsTag)
-
+		gs := genSchemaRef(c, name, schemaRef, helper.InStrSlice(spec.Value.Required, name))
 		sc.Properties[name] = gs
 		sc.properties = append(sc.properties, gs)
 	}
 	return sc
 }
 
-func genComponentSchemas(c *Config, schema *openapi3.T) (schemas []*Schema) {
-	for _, name := range sortPropertyKeys(schema.Components.Schemas) {
-		schemaRef := schema.Components.Schemas[name]
-		gs := genSchemaRef(c, name, schemaRef)
-		schemas = append(schemas, gs)
+func genComponentSchemas(c *Config, spec *openapi3.T) (schemas map[string]*Schema) {
+	schemas = make(map[string]*Schema)
+	for _, name := range sortPropertyKeys(spec.Components.Schemas) {
+		schemaRef := spec.Components.Schemas[name]
+		k := "#/components/schemas/" + name
+		gs := genSchemaRef(c, name, schemaRef, false)
+		schemas[k] = gs
 	}
 	return
 }
 
-func schemaToType(c *Config, name string, schema *openapi3.SchemaRef) (info *code.TypeInfo, err error) {
-	if schema == nil {
+func schemaToType(c *Config, name string, spec *openapi3.SchemaRef) (info *code.TypeInfo, err error) {
+	if spec == nil {
 		return
 	}
-	if tm := c.TypeMap[schema.Ref]; tm != nil {
+	if tm := c.TypeMap[spec.Ref]; tm != nil {
 		info = tm.Clone()
 		return info, nil
 	}
-	sv := schema.Value
+	sv := spec.Value
 	switch sv.Type {
 	case "array":
 		itemName := ""
@@ -401,7 +364,7 @@ func schemaToType(c *Config, name string, schema *openapi3.SchemaRef) (info *cod
 			info.Nillable = true
 			break
 		}
-		ref := schema.Ref
+		ref := spec.Ref
 		// inline object,generate in package path
 		if ref != "" {
 			info.Ident = schemaNameFromRef(ref)
@@ -417,35 +380,81 @@ func schemaToType(c *Config, name string, schema *openapi3.SchemaRef) (info *cod
 	if info == nil {
 		return
 	}
-	if schema.Value.Nullable && !info.Nillable {
+	if spec.Value.Nullable && !info.Nillable {
 		info.Ident = "*" + info.Ident
 		info.Nillable = true
 	}
 	return
 }
 
-func (o *Operation) AddParameter(params ...*Parameter) {
-	o.Request.Parameters = append(o.Request.Parameters, params...)
+func (op *Operation) GenParameters() {
+	for _, p := range op.Spec.Parameters {
+		gp := genParameter(op.Config, p)
+		op.AddParameter(gp)
+		switch gp.Spec.In {
+		case "path":
+			op.Request.BindUri = true
+			op.Request.UriParameters = append(op.Request.UriParameters, gp)
+		case "header":
+			op.Request.BindHeader = true
+			op.Request.HeaderParameters = append(op.Request.HeaderParameters, gp)
+		case "cookie":
+			op.Request.BindCookie = true
+			op.Request.CookieParameters = append(op.Request.CookieParameters, gp)
+		case "query", "form":
+			op.Request.BindBody = true
+			op.Request.Body = append(op.Request.Body, gp)
+		}
+	}
+	if rb := op.Spec.RequestBody; rb != nil {
+		gps := genParameterFromContent(op.Config, op.RequestName(), rb.Value.Content, rb.Value.Required)
+		op.AddParameter(gps...)
+		op.Request.BindBody = true
+		op.Request.Body = append(op.Request.Body, gps...)
+	}
 }
 
-func (o Operation) HasRequest() bool {
-	return len(o.Request.Parameters) > 0
+func (op *Operation) GenResponses() {
+	if rs := op.Spec.Responses; rs != nil {
+		for _, name := range sortSpecResponseKeys(rs) {
+			status := name
+			if name == "default" {
+				status = "0"
+			}
+			res := genResponse(op.Config, status, rs[name])
+			op.Responses = append(op.Responses, res)
+			switch res.Status {
+			case http.StatusOK:
+				op.ResponseOK = res
+			case http.StatusNotFound:
+				op.ResponseNotFound = res
+			}
+		}
+	}
 }
 
-func (o Operation) HasResponse() bool {
-	return o.ResponseOK != nil
+func (op *Operation) AddParameter(params ...*Parameter) {
+	op.Request.Parameters = append(op.Request.Parameters, params...)
+}
+
+func (op *Operation) HasRequest() bool {
+	return len(op.Request.Parameters) > 0
+}
+
+func (op *Operation) HasResponse() bool {
+	return op.ResponseOK != nil
 }
 
 // RequestName returns the name of the request struct.
-func (o Operation) RequestName() string {
-	return o.Name + "Request"
+func (op *Operation) RequestName() string {
+	return op.Name + "Request"
 }
 
-func (o *Tag) PackageDir() string {
-	if o.Name == defaultTagName {
+func (t *Tag) PackageDir() string {
+	if t.Name == defaultTagName {
 		return ""
 	}
-	return o.Name
+	return t.Name
 }
 
 // AddOperation adds an operation to the Tag.
@@ -494,44 +503,133 @@ func (p *Parameter) initStructTag() {
 		// query /id/ or form , body
 		ts = append(ts, fmt.Sprintf(`form:"%s"`, tagName))
 	}
-	p.Schema.Required = p.Spec.Required
-	if p.Schema.Required {
-		ts = append(ts, `binding:"required"`)
-	}
-	p.Schema.StructTags = ts
+	p.Schema.StructTags = append(p.Schema.StructTags, ts...)
 }
 
-func AppendContentTypeStructTag(tagName, contentType string, schema *Schema) {
+func (sch *Schema) GenSchemaType() {
+
+}
+
+func (sch *Schema) AppendContentTypeStructTag(c *Config, tagName, contentType string) {
 	switch contentType {
 	case binding.MIMEJSON:
-		if HasTag(schema.StructTags, "json") {
+		if HasTag(sch.StructTags, "json") {
 			break
 		}
-		if schema.Required {
-			schema.StructTags = append(schema.StructTags, fmt.Sprintf(`json:"%s"`, tagName))
+		if sch.Required {
+			sch.StructTags = append(sch.StructTags, fmt.Sprintf(`json:"%s"`, tagName))
 		} else {
-			schema.StructTags = append(schema.StructTags, fmt.Sprintf(`json:"%s,omitempty"`, tagName))
+			sch.StructTags = append(sch.StructTags, fmt.Sprintf(`json:"%s,omitempty"`, tagName))
 		}
 	case binding.MIMEPOSTForm:
-		if HasTag(schema.StructTags, "form") {
+		if HasTag(sch.StructTags, "form") {
 			break
 		}
-		schema.StructTags = append(schema.StructTags, fmt.Sprintf(`form:"%s"`, tagName))
+		sch.StructTags = append(sch.StructTags, fmt.Sprintf(`form:"%s"`, tagName))
 	case binding.MIMEXML, binding.MIMEXML2:
-		if HasTag(schema.StructTags, "xml") {
+		if HasTag(sch.StructTags, "xml") {
 			break
 		}
-		schema.StructTags = append(schema.StructTags, fmt.Sprintf(`xml:"%s"`, tagName))
+		if x := sch.Spec.Value.XML; x != nil {
+			tagName = ""
+			if x.Prefix != "" {
+				tagName = x.Prefix + ":"
+			}
+			tagName += x.Name
+			if x.Attribute {
+				tagName += ",attr"
+			}
+		}
+		sch.StructTags = append(sch.StructTags, fmt.Sprintf(`xml:"%s"`, tagName))
 	case binding.MIMEMSGPACK2:
-		if HasTag(schema.StructTags, "msgpack") {
+		if HasTag(sch.StructTags, "msgpack") {
 			break
 		}
-		schema.StructTags = append(schema.StructTags, fmt.Sprintf(`msgpack:"%s"`, tagName))
+		sch.StructTags = append(sch.StructTags, fmt.Sprintf(`msgpack:"%s"`, tagName))
 	default:
-		if HasTag(schema.StructTags, "form") {
+		if HasTag(sch.StructTags, "form") {
 			break
 		}
-		schema.StructTags = append(schema.StructTags, fmt.Sprintf(`form:"%s"`, tagName))
+		sch.StructTags = append(sch.StructTags, fmt.Sprintf(`form:"%s"`, tagName))
+	}
+
+	if sch.IsRef {
+		ref := sch.Spec.Ref
+		if sch.IsObjectArray() {
+			// array
+			ref = sch.Spec.Value.Items.Ref
+		}
+		if s, ok := c.schemas[ref]; ok {
+			s.AppendContentTypeStructTag(c, s.Name, contentType)
+		}
+	}
+	for _, property := range sch.properties {
+		property.AppendContentTypeStructTag(c, property.Name, contentType)
+	}
+}
+
+func (sch *Schema) IsObjectArray() bool {
+	if sch.Type.Type == code.TypeOther {
+		// inline
+		switch sch.Spec.Value.Type {
+		case "array":
+			return true
+		}
+	}
+	return false
+}
+
+func (sch *Schema) CollectTags() {
+	var bdex []string
+	if sch.Required {
+		bdex = append(bdex, "required")
+	}
+	specValue := sch.Spec.Value
+	if specValue.Pattern != "" {
+		sch.HasRegular = true
+		rName := AddPattern(specValue.Pattern)
+		pattenMap[specValue.Pattern] = rName
+		tn := fmt.Sprintf("%s=%s", TagRegular, rName)
+		bdex = append(bdex, tn)
+	}
+	if sch.Type.Numeric() {
+		if specValue.Max != nil {
+			op := "lte"
+			if specValue.ExclusiveMax {
+				op = "lt"
+			}
+			bdex = append(bdex, fmt.Sprintf("%s=%v", op, *specValue.Max))
+		}
+		if specValue.Min != nil {
+			op := "gte"
+			if specValue.ExclusiveMin {
+				op = "gt"
+			}
+			bdex = append(bdex, fmt.Sprintf("%s=%v", op, *specValue.Min))
+		}
+	}
+	if sch.Type.Stringer() {
+		if specValue.MaxLength != nil {
+			bdex = append(bdex, fmt.Sprintf("max=%d", *specValue.MaxLength))
+		}
+		if specValue.MinLength != 0 {
+			bdex = append(bdex, fmt.Sprintf("min=%d", specValue.MinLength))
+		}
+	}
+	if sch.Spec.Value.Type == "array" {
+		if specValue.MaxItems != nil {
+			bdex = append(bdex, fmt.Sprintf("max=%d", specValue.MaxItems))
+		}
+		if specValue.MinItems != 0 {
+			bdex = append(bdex, fmt.Sprintf("min=%d", specValue.MinItems))
+		}
+		if specValue.UniqueItems {
+			bdex = append(bdex, "unique")
+		}
+	}
+
+	if len(bdex) > 0 {
+		sch.StructTags = append(sch.StructTags, fmt.Sprintf(`binding:"%s"`, strings.Join(bdex, ",")))
 	}
 }
 

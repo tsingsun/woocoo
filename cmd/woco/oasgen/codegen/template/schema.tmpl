@@ -1,15 +1,15 @@
 {{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen/codegen.Graph */}}
 {{ define "schema"}}
 
-{{ $pkg := base $.Config.Package }}
-{{ template "header" $ }}
+    {{ $pkg := base $.Config.Package }}
+    {{ template "header" $ }}
 
-{{ template "import" $ }}
-{{ range $model:=$.Schemas}}
+    {{ template "import" $ }}
+    {{ range $model:=$.Schemas}}
         type {{ pascal $model.Name }} struct {
-                {{ range $field:=$model.Properties }}
-                {{ pascal $field.Name }} {{ $field.Type }} `{{ join $field.StructTags " " }}`{{ end }}
+        {{ range $field:=$model.Properties }}
+            {{ pascal $field.Name }} {{ $field.Type }} `{{ join $field.StructTags " " }}`{{ end }}
         }
-{{ end }}
+    {{ end }}
 
 {{ end}}

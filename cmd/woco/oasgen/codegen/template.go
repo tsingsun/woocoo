@@ -50,6 +50,10 @@ var (
 			Name:   "server",
 			Format: "server/server.go",
 		},
+		{
+			Name:   "validator",
+			Format: "server/validator.go",
+		},
 	}
 	partialPatterns = [...]string{
 		"additional/*",
@@ -67,6 +71,7 @@ var (
 		"math":    "math",
 		"strings": "strings",
 		"time":    "time",
+		"regexp":  "regexp",
 	}
 )
 

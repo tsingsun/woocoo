@@ -2,80 +2,80 @@
 
 {{ define "server" }}
 
-    {{- with extend $ "Package" "server" -}}
-        {{ template "header" . }}
-    {{ end }}
+{{- with extend $ "Package" "server" -}}
+    {{ template "header" . }}
+{{ end }}
 
-    {{ template "import" $ }}
-    import(
-        "{{ .Config.Package }}"
-        "github.com/gin-gonic/gin/binding"
-        "github.com/tsingsun/woocoo/web/handler"
-    )
-    {{ range .Nodes }}
-        {{ $serviceName := pascal .Name }}
-        {{ $pkgName := pkgName .Config.Package}}
-        // Register{{ $serviceName }}Handlers creates http.Handler with routing matching OpenAPI spec.
-        func Register{{ $serviceName }}Handlers(router *gin.Engine, si {{$pkgName}}.{{ $serviceName }}Server) *gin.Engine {
-        {{- range .Operations }}
-            router.{{ .Method }}("{{ .Path | oasUriToGinUri }}", wrap{{pascal .Name }}(si))
+{{ template "import" $ }}
+import(
+    "{{ .Config.Package }}"
+    "github.com/gin-gonic/gin/binding"
+    "github.com/tsingsun/woocoo/web/handler"
+)
+{{ range .Nodes }}
+    {{ $serviceName := pascal .Name }}
+    {{ $pkgName := pkgName .Config.Package}}
+    // Register{{ $serviceName }}Handlers creates http.Handler with routing matching OpenAPI spec.
+    func Register{{ $serviceName }}Handlers(router *gin.Engine, si {{$pkgName}}.{{ $serviceName }}Server) *gin.Engine {
+    {{- range .Operations }}
+        router.{{ .Method }}("{{ .Path | oasUriToGinUri }}", wrap{{pascal .Name }}(si))
+    {{- end }}
+        return router
+    }
+    {{ range .Operations }}
+    func wrap{{pascal .Name }}(si {{$pkgName}}.{{ $serviceName }}Server) func(c *gin.Context) {
+        return func(c *gin.Context) {
+        {{- if .HasRequest }}
+            var req {{$pkgName}}.{{ .RequestName }}
+            {{- if .Request.BindUri}}
+                if err := c.ShouldBindUri(&req.UriParams); err != nil {
+                    c.Status(http.StatusBadRequest)
+                    c.Error(err)
+                    return
+                }
+            {{- end }}
+            {{- if .Request.BindHeader }}
+                if err := c.ShouldBindHeader(&req.HeaderParams); err != nil {
+                    c.Status(http.StatusBadRequest)
+                    c.Error(err)
+                    return
+                }
+            {{- end }}
+            {{- if .Request.BindBody }}
+                if err := c.ShouldBind(&req.Body); err != nil {
+                    c.Status(http.StatusBadRequest)
+                    c.Error(err)
+                    return
+                }
+            {{- end }}
         {{- end }}
-            return router
-        }
-        {{ range .Operations }}
-        func wrap{{pascal .Name }}(si {{$pkgName}}.{{ $serviceName }}Server) func(c *gin.Context) {
-            return func(c *gin.Context) {
-            {{- if .HasRequest }}
-                var req {{$pkgName}}.{{ .RequestName }}
-                {{- if .Request.BindUri}}
-                    if err := c.ShouldBindUri(&req.UriParams); err != nil {
-                        c.Status(http.StatusBadRequest)
-                        c.Error(err)
-                        return
-                    }
-                {{- end }}
-                {{- if .Request.BindHeader }}
-                    if err := c.ShouldBindHeader(&req.HeaderParams); err != nil {
-                        c.Status(http.StatusBadRequest)
-                        c.Error(err)
-                        return
-                    }
-                {{- end }}
-                {{- if .Request.BindBody }}
-                    if err := c.ShouldBind(&req.Body); err != nil {
-                        c.Status(http.StatusBadRequest)
-                        c.Error(err)
-                        return
-                    }
-                {{- end }}
-            {{- end }}
-            {{- if .HasResponse }}
-                resp, err := si.{{ .Name }}(c,{{ if .HasRequest }}&req, {{ end }})
-                if err != nil {
-                    c.Status(http.StatusInternalServerError)
-                    c.Error(err)
-                    return
-                }
-                {{- if and .ResponseNotFound .ResponseOK.Schema.Type.Nillable }}
-                    if resp == nil {
-                        c.Status(http.StatusNotFound)
-                        c.Error(errors.New("{{ .ResponseNotFound.Description }}"))
-                        return
-                    }
-                {{- end }}
-                {{- if .ResponseOK.ContentTypes }}
-                    handler.NegotiateResponse(c, http.StatusOK, resp, []string{{"{"}}{{joinQuote .ResponseOK.ContentTypes ","}}{{"}"}})
-                {{- end}}
-            {{- else }}
-                err := si.{{ .Name }}(c,{{ if .HasRequest }}&req, {{ end }})
-                if err != nil {
-                    c.Status(http.StatusInternalServerError)
-                    c.Error(err)
-                    return
-                }
-            {{- end }}
+        {{- if .HasResponse }}
+            resp, err := si.{{ .Name }}(c,{{ if .HasRequest }}&req, {{ end }})
+            if err != nil {
+                c.Status(http.StatusInternalServerError)
+                c.Error(err)
+                return
             }
+            {{- if and .ResponseNotFound .ResponseOK.Schema.Type.Nillable }}
+                if resp == nil {
+                    c.Status(http.StatusNotFound)
+                    c.Error(errors.New("{{ .ResponseNotFound.Description }}"))
+                    return
+                }
+            {{- end }}
+            {{- if .ResponseOK.ContentTypes }}
+                handler.NegotiateResponse(c, http.StatusOK, resp, []string{{"{"}}{{joinQuote .ResponseOK.ContentTypes ","}}{{"}"}})
+            {{- end}}
+        {{- else }}
+            err := si.{{ .Name }}(c,{{ if .HasRequest }}&req, {{ end }})
+            if err != nil {
+                c.Status(http.StatusInternalServerError)
+                c.Error(err)
+                return
+            }
+        {{- end }}
         }
-        {{ end }}
+    }
     {{ end }}
+{{ end }}
 {{ end }}

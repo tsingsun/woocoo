@@ -40,6 +40,7 @@ type (
 		TypeMap map[string]*code.TypeInfo
 		// Schemas is the list of all schemas reference in the spec.
 		Schemas []*Schema
+		schemas map[string]*Schema
 	}
 
 	ModelMap struct {
@@ -113,7 +114,9 @@ func NewGraph(c *Config, schema *openapi3.T) (g *Graph, err error) {
 	g.addModels(schema)
 	// gen operations
 	g.addNode(schema)
-
+	for _, schema := range g.Schemas {
+		g.modelXmlTag(schema)
+	}
 	return
 }
 
@@ -239,7 +242,12 @@ func (g *Graph) addTag(schema *openapi3.T) {
 	}
 }
 func (g *Graph) addModels(schema *openapi3.T) {
-	sc := genComponentSchemas(g.Config, schema)
+	g.schemas = genComponentSchemas(g.Config, schema)
+	var sc []*Schema
+	// map to list
+	for _, s := range g.schemas {
+		sc = append(sc, s)
+	}
 	sort.Slice(sc, func(i, j int) bool {
 		return sc[i].Name < sc[j].Name
 	})
@@ -276,6 +284,27 @@ func (g *Graph) findTag(name string) *Tag {
 		}
 	}
 	return nil
+}
+
+func (g *Graph) modelXmlTag(schema *Schema) {
+	if x := schema.Spec.Value.XML; x != nil {
+		for i, tag := range schema.StructTags {
+			if strings.HasPrefix(tag, "xml") {
+				var t string
+				if x.Prefix != "" {
+					t += x.Prefix + ":"
+				}
+				t += x.Name
+				if x.Attribute {
+					t += ",attr"
+				}
+				schema.StructTags[i] = fmt.Sprintf("xml:\"%s\"", t)
+			}
+		}
+	}
+	for _, property := range schema.properties {
+		g.modelXmlTag(property)
+	}
 }
 
 // PrepareEnv makes sure the generated directory (environment)

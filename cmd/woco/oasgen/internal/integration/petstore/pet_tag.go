@@ -4,7 +4,7 @@ package petstore
 
 type AddPetRequest struct {
 	Body struct {
-		Pet Pet `json:"pet,omitempty" xml:"pet"`
+		Pet Pet `binding:"required" json:"pet" xml:"Pet"`
 	}
 }
 
@@ -37,7 +37,7 @@ type GetPetByIdRequest struct {
 
 type UpdatePetRequest struct {
 	Body struct {
-		Pet Pet `json:"pet,omitempty" xml:"pet"`
+		Pet Pet `binding:"required" json:"pet" xml:"Pet"`
 	}
 }
 

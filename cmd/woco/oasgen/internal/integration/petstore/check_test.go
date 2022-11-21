@@ -16,38 +16,69 @@ func TestGenerateAfter(t *testing.T) {
 		pet := Pet{}
 		petType := reflect.TypeOf(pet)
 		petValue := reflect.ValueOf(pet)
-		assert.EqualValues(t, `category,omitempty`, petType.Field(0).Tag.Get("json"))
-		assert.EqualValues(t, `*petstore.Category`, petType.Field(0).Type.String())
+
+		category := petType.Field(0)
+		assert.EqualValues(t, `category,omitempty`, category.Tag.Get("json"))
+		assert.EqualValues(t, `Category`, category.Tag.Get("xml"))
+		assert.EqualValues(t, `*petstore.Category`, category.Type.String())
 		assert.True(t, petValue.Field(0).IsNil())
-		assert.EqualValues(t, "ID", petType.Field(1).Name)
-		assert.EqualValues(t, `id,omitempty`, petType.Field(1).Tag.Get("json"))
-		assert.EqualValues(t, `int64`, petType.Field(1).Type.String())
-		assert.EqualValues(t, "Name", petType.Field(2).Name)
-		assert.EqualValues(t, `name`, petType.Field(2).Tag.Get("json"))
-		assert.EqualValues(t, `string`, petType.Field(2).Type.String())
-		assert.EqualValues(t, "PhotoUrls", petType.Field(3).Name)
-		assert.EqualValues(t, `photoUrls`, petType.Field(3).Tag.Get("json"))
-		assert.EqualValues(t, `[]string`, petType.Field(3).Type.String())
-		assert.EqualValues(t, "Tags", petType.Field(5).Name)
-		assert.EqualValues(t, `tags,omitempty`, petType.Field(5).Tag.Get("json"))
-		assert.EqualValues(t, `[]petstore.Tag`, petType.Field(5).Type.String())
+
+		id := petType.Field(1)
+		assert.EqualValues(t, "ID", id.Name)
+		assert.EqualValues(t, `id,omitempty`, id.Tag.Get("json"))
+		assert.EqualValues(t, `int64`, id.Type.String())
+
+		name := petType.Field(2)
+		assert.EqualValues(t, "Name", name.Name)
+		assert.EqualValues(t, `name`, name.Tag.Get("json"))
+		assert.EqualValues(t, `string`, name.Type.String())
+
+		photoUrls := petType.Field(3)
+		assert.EqualValues(t, "PhotoUrls", photoUrls.Name)
+		assert.EqualValues(t, `photoUrls`, photoUrls.Tag.Get("json"))
+		assert.EqualValues(t, `photoUrl`, photoUrls.Tag.Get("xml"))
+		assert.EqualValues(t, `[]string`, photoUrls.Type.String())
+
+		tags := petType.Field(5)
+		assert.EqualValues(t, "Tags", tags.Name)
+		assert.EqualValues(t, `tags,omitempty`, tags.Tag.Get("json"))
+		assert.EqualValues(t, `tag`, tags.Tag.Get("xml"))
+		assert.EqualValues(t, `[]petstore.Tag`, tags.Type.String())
+
+		tag := reflect.TypeOf(Tag{})
+		assert.EqualValues(t, "id,omitempty", tag.Field(0).Tag.Get("json"))
+
+		categoryS := Category{}
+		categoryType := reflect.TypeOf(categoryS)
+		assert.EqualValues(t, `id,omitempty`, categoryType.Field(0).Tag.Get("json"))
 
 		order := Order{}
 		orderType := reflect.TypeOf(order)
 		orderValue := reflect.ValueOf(order)
-		assert.EqualValues(t, `complete,omitempty`, orderType.Field(0).Tag.Get("json"))
-		assert.EqualValues(t, `bool`, orderType.Field(0).Type.String())
+		complete := orderType.Field(0)
+		assert.EqualValues(t, `complete,omitempty`, complete.Tag.Get("json"))
+		assert.EqualValues(t, `bool`, complete.Type.String())
 		assert.EqualValues(t, false, orderValue.Field(0).Bool())
-		assert.EqualValues(t, `id,omitempty`, orderType.Field(1).Tag.Get("json"))
-		assert.EqualValues(t, `int64`, orderType.Field(1).Type.String())
-		assert.EqualValues(t, `petId,omitempty`, orderType.Field(2).Tag.Get("json"))
-		assert.EqualValues(t, `int64`, orderType.Field(2).Type.String())
-		assert.EqualValues(t, `quantity,omitempty`, orderType.Field(3).Tag.Get("json"))
-		assert.EqualValues(t, `int32`, orderType.Field(3).Type.String())
-		assert.EqualValues(t, `shipDate,omitempty`, orderType.Field(4).Tag.Get("json"))
-		assert.EqualValues(t, `time.Time`, orderType.Field(4).Type.String())
-		assert.EqualValues(t, `status,omitempty`, orderType.Field(5).Tag.Get("json"))
-		assert.EqualValues(t, `string`, orderType.Field(5).Type.String())
+
+		oid := orderType.Field(1)
+		assert.EqualValues(t, `id,omitempty`, oid.Tag.Get("json"))
+		assert.EqualValues(t, `int64`, oid.Type.String())
+
+		pid := orderType.Field(2)
+		assert.EqualValues(t, `petId,omitempty`, pid.Tag.Get("json"))
+		assert.EqualValues(t, `int64`, pid.Type.String())
+
+		quantity := orderType.Field(3)
+		assert.EqualValues(t, `quantity,omitempty`, quantity.Tag.Get("json"))
+		assert.EqualValues(t, `int32`, quantity.Type.String())
+
+		shipDate := orderType.Field(4)
+		assert.EqualValues(t, `shipDate,omitempty`, shipDate.Tag.Get("json"))
+		assert.EqualValues(t, `time.Time`, shipDate.Type.String())
+
+		status := orderType.Field(5)
+		assert.EqualValues(t, `status,omitempty`, status.Tag.Get("json"))
+		assert.EqualValues(t, `string`, status.Type.String())
 	})
 	t.Run("checkRequest", func(t *testing.T) {
 		drHeader := reflect.TypeOf(DeletePetRequest{}.HeaderParams)
@@ -61,5 +92,11 @@ func TestGenerateAfter(t *testing.T) {
 		urBody := reflect.TypeOf(UpdatePetWithFormRequest{}.Body)
 		assert.EqualValues(t, `name`, urBody.Field(0).Tag.Get("form"))
 		assert.EqualValues(t, `status`, urBody.Field(1).Tag.Get("form"))
+		upBOdy := reflect.TypeOf(UpdateUserRequest{}.Body)
+		assert.EqualValues(t, `user`, upBOdy.Field(0).Tag.Get("json"))
+		assert.NotEqual(t, upBOdy.Field(0).Type.Kind(), reflect.Ptr)
+
+		usBody := reflect.TypeOf(LoginUserRequest{}.Body)
+		assert.EqualValues(t, `true`, usBody.Field(1).Tag.Get("password"))
 	})
 }

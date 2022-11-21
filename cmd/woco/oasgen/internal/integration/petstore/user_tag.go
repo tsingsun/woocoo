@@ -22,7 +22,7 @@ type GetUserByNameRequest struct {
 
 type LoginUserRequest struct {
 	Body struct {
-		Username string `binding:"required,regex=oas_pattern_0" form:"username"`
+		Username string `binding:"regex=oas_pattern_0,required" form:"username"`
 		Password string `binding:"required" form:"password" password:"true"`
 	}
 }

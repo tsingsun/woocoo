@@ -53,6 +53,14 @@ models:
 根据Sepc的设定,默认生成的请求代码按Path分成Uri,Header,Cookie,Body等,然后分别对各部分字段验证,在此采用了gin使用的[validator](https://github.com/go-playground/validator).
 一般不需要另行再编写针对请求的代码.
 
+- 输入验证: 通过Request代码,已经内置了openapi3所描述的常用的格式验证.
+  - String/Number的最大值,最小值,长度等验证
+  - Dates, Times, and Duration
+  - Email Addresses
+  - Hostnames
+  - IP Addresses
+  - Regular Expressions
+  - 支持通过`x-go-tag-validator`扩展验证属性,具体可参考validator的表达式.
 - Auth验证:(TODO)
 
 ### 响应

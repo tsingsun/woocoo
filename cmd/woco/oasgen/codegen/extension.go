@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	goTag = "x-go-tag"
+	goTag          = "x-go-tag"
+	goTagValidator = "x-go-tag-validator"
 )
 
 func extString(extPropValue interface{}) (string, error) {

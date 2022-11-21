@@ -12,7 +12,7 @@ type ApiResponse struct {
 
 type Category struct {
 	ID   int64  `json:"id,omitempty" xml:"id"`
-	Name string `binding:"regex=oas_pattern_0" json:"name,omitempty" xml:"name"`
+	Name string `binding:"regex=oas_pattern_0,omitempty" json:"name,omitempty" xml:"name"`
 }
 
 type Order struct {
@@ -20,7 +20,7 @@ type Order struct {
 	ID       int64     `json:"id,omitempty" xml:"id"`
 	PetId    int64     `json:"petId,omitempty" xml:"petId"`
 	Quantity int32     `json:"quantity,omitempty" xml:"quantity"`
-	ShipDate time.Time `json:"shipDate,omitempty" xml:"shipDate"`
+	ShipDate time.Time `binding:"datetime=2006-01-02T15:04:05Z07:00,omitempty" json:"shipDate,omitempty" xml:"shipDate"`
 	Status   string    `json:"status,omitempty" xml:"status"`
 }
 
@@ -39,7 +39,7 @@ type Tag struct {
 }
 
 type User struct {
-	Email      string `json:"email,omitempty" xml:"email"`
+	Email      string `binding:"email,omitempty" json:"email,omitempty" xml:"email"`
 	FirstName  string `json:"firstName,omitempty" xml:"firstName"`
 	ID         int64  `json:"id,omitempty" xml:"id"`
 	LastName   string `json:"lastName,omitempty" xml:"lastName"`

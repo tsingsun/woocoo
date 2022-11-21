@@ -54,3 +54,7 @@ func (s Server) GetPetById(c *gin.Context, req *petstore.GetPetByIdRequest) (_ *
 		Tags: []petstore.Tag{{ID: 1, Name: "blue"}},
 	}, nil
 }
+
+func (Server) UpdateUser(c *gin.Context, req *petstore.UpdateUserRequest) (err error) {
+	return nil
+}

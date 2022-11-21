@@ -10,7 +10,7 @@ type DeleteOrderRequest struct {
 
 type GetOrderByIdRequest struct {
 	UriParams struct {
-		OrderId int64 `binding:"required,lte=5,gte=1" uri:"orderId"`
+		OrderId int64 `binding:"lte=5,gte=1,required" uri:"orderId"`
 	}
 }
 

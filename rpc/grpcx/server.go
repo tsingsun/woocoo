@@ -92,12 +92,16 @@ func (s *Server) ListenAndServe() error {
 	}
 	// registry run
 	if s.registry != nil {
-		port := lis.Addr().(*net.TCPAddr).Port
-
+		tcpaddr := lis.Addr().(*net.TCPAddr)
+		port := tcpaddr.Port
+		host := conf.GetIP(s.opts.UseIPv6)
+		if tcpaddr.IP.IsLoopback() {
+			host = tcpaddr.IP.String()
+		}
 		for name := range s.engine.GetServiceInfo() {
 			nd := &registry.ServiceInfo{
 				Name:      name,
-				Host:      conf.GetIP(s.opts.UseIPv6),
+				Host:      host,
 				Port:      port,
 				Namespace: s.opts.Namespace,
 				Version:   s.opts.Version,

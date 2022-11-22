@@ -77,7 +77,7 @@ func (s *TestPingService) PingStream(stream TestService_PingStreamServer) error 
 }
 
 func NewPingGrpcService(t *testing.T, opts ...grpc.ServerOption) (server *grpc.Server, addr string) {
-	addr = "localhost:50053"
+	addr = "127.0.0.1:50053"
 	ch := make(chan struct{})
 	go func() {
 		server = grpc.NewServer(opts...)

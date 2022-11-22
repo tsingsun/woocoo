@@ -18,7 +18,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"net"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 )
@@ -29,7 +28,7 @@ func TestRegistry_Apply(t *testing.T) {
 	b := []byte(`
 grpc:
   server:
-    addr: :20000
+    addr: 127.0.0.1:20000
     nameSpace: /woocoo/service
     version: "1.0"
     ipv6: true
@@ -114,8 +113,6 @@ func TestRegisterResolver(t *testing.T) {
 	_, _ = reg.client.Delete(ctx, sn, clientv3.WithPrefix())
 	defer cxl()
 
-	var wg sync.WaitGroup
-	wg.Add(2)
 	runfunc := func(namespace, name, host string, port int, listen bool) {
 		service := &registry.ServiceInfo{
 			Namespace: namespace,
@@ -134,17 +131,17 @@ func TestRegisterResolver(t *testing.T) {
 		assert.NoError(t, err)
 		srv := grpc.NewServer()
 		helloworld.RegisterGreeterServer(srv, &helloworld.Server{})
-		wg.Done()
 		assert.NoError(t, srv.Serve(l))
 	}
 	t.Run("1-grpc-cluster", func(t *testing.T) {
-		go func() {
-			runfunc(sn, "grpc1", "localhost", 9999, true)
-		}()
-		go func() {
-			runfunc(sn, "grpc2", "localhost", 9998, true)
-		}()
-		wg.Wait()
+		wctest.RunWait(t, time.Second*2, func() error {
+			runfunc(sn, "grpc1", "127.0.0.1", 9999, true)
+			return nil
+		}, func() error {
+			runfunc(sn, "grpc2", "127.0.0.1", 9998, true)
+			return nil
+		})
+
 		res, err := reg.client.Get(context.Background(), sn, clientv3.WithPrefix())
 		assert.NoError(t, err)
 		assert.EqualValues(t, res.Count, 2)
@@ -166,7 +163,7 @@ func TestRegisterResolver(t *testing.T) {
 			TTL:        10 * time.Minute,
 		})
 		require.NoError(t, err)
-		runfunc(sn, "grpc2", "localhost", 9998, false)
+		runfunc(sn, "grpc2", "127.0.0.1", 9998, false)
 	})
 }
 
@@ -184,21 +181,23 @@ func TestRegistryGrpcx(t *testing.T) {
 	err = wctest.RunWait(t, time.Second, func() error {
 		cfg := testcnf.Sub("grpc")
 		cfg.Parser().Set("server.namespace", sn)
-		cfg.Parser().Set("server.addr", ":50053")
+		cfg.Parser().Set("server.addr", "127.0.0.1:50053")
 		srv = grpcx.New(grpcx.WithConfiguration(cfg))
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		return srv.Run()
 	}, func() error {
 		cfg := testcnf.Sub("grpc")
 		cfg.Parser().Set("server.namespace", sn)
-		cfg.Parser().Set("server.addr", ":50054")
+		cfg.Parser().Set("server.addr", "127.0.0.1:50054")
 		srv2 = grpcx.New(grpcx.WithConfiguration(cfg))
 		helloworld.RegisterGreeterServer(srv2.Engine(), &helloworld.Server{})
 		return srv2.Run()
 	})
 	require.NoError(t, err)
 	RegisterResolver(etcdConfg)
-	c, err := grpc.Dial(fmt.Sprintf("etcd://%s/", sn), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
+	c, err := grpc.Dial(fmt.Sprintf("etcd://%s/", sn),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
 	assert.NoError(t, err)
 	assert.NotNil(t, c)
 	defer c.Close()

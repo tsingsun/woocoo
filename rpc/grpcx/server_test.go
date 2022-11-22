@@ -13,7 +13,7 @@ func TestNew(t *testing.T) {
 	b := []byte(`
 grpc:
   server:
-    addr: :20000
+    addr: 127.0.0.1:20000
     namespace: /woocoo/service
     version: "1.0"
     registryMeta:

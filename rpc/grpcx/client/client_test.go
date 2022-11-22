@@ -16,7 +16,7 @@ func TestClient_DialRegistry(t *testing.T) {
 	b := []byte(`
 service:
   server:
-    addr: :20005
+    addr: 127.0.0.1:20005
     namespace: woocoo
     version: "1.0"
     engine:
@@ -30,7 +30,7 @@ service:
         sslCertificate: ""
         sslCertificateKey: ""
       endpoints:
-        - localhost:2379
+        - 127.0.0.1:2379
       dial-timeout: 3s
       dial-keep-alive-time: 1h
   client:
@@ -68,7 +68,7 @@ func TestClient_DialNaming(t *testing.T) {
 	b := []byte(`
 grpc:
   server:
-    addr: :20001
+    addr: 127.0.0.1:20001
     namespace: woocoo
     version: "1.0"
     engine:

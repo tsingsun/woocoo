@@ -29,7 +29,7 @@ func TestServer_Apply(t *testing.T) {
 	cfgStr := `
 web:
   server:
-    addr: 0.0.0.0:33333
+    addr: 127.0.0.1:33333
     sslCertificate: ""
     sslCertificateKey: ""
   engine:
@@ -97,7 +97,7 @@ func TestServer_Run(t *testing.T) {
 	cfgStr := `
 web:
   server:
-    addr: 0.0.0.0:33333
+    addr: 127.0.0.1:33333
     sslCertificate: ""
     sslCertificateKey: ""
 `

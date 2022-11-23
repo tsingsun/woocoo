@@ -135,5 +135,6 @@ func (r *Registry) Apply(cfg *conf.Configuration) {
 	if nil != err {
 		panic(err)
 	}
+	r.opts.TTL = cfg.Duration("ttl")
 	r.registerContext.providerAPI = api.NewProviderAPIByContext(ctx)
 }

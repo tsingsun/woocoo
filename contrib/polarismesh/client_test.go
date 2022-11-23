@@ -25,7 +25,7 @@ func TestClient_Dial(t *testing.T) {
 	b := []byte(`
 grpc:
   server:
-    addr: :20011
+    addr: 0.0.0.0:20011
     namespace: woocoo
     version: "1.0"
     engine:
@@ -61,7 +61,7 @@ grpc:
           - trace:
 `)
 	cfg := conf.NewFromBytes(b)
-	err := wctest.RunWait(t, time.Second, func() error {
+	err := wctest.RunWait(t, time.Second*2, func() error {
 		srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		return srv.Run()
@@ -81,12 +81,11 @@ func TestClient_DialMultiServer(t *testing.T) {
 	b := []byte(`
 grpc:
   server:
-    addr: :20012
+    addr: 0.0.0.0:20012
     namespace: woocoo
     version: "1.0"
     engine:
-      - unaryInterceptors:
-          - trace:
+      - unaryInterceptors: 
           - accessLog:
               timestampFormat: "2006-01-02 15:04:05"
           - recovery:
@@ -112,13 +111,11 @@ grpc:
       - insecure:
       - block:
       - timeout: 30s
-      - defaultServiceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }'
-      - unaryInterceptors:
-          - trace:
+      - defaultServiceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }' 
 `)
 	cfg := conf.NewFromBytes(b)
 	var srv, srv2 *grpcx.Server
-	err := wctest.RunWait(t, time.Second, func() error {
+	err := wctest.RunWait(t, time.Second*5, func() error {
 		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")), grpcx.UseLogger())
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		return srv.Run()

@@ -38,8 +38,9 @@ func PolarisContext(cfg *conf.Configuration) (ctx api.SDKContext, err error) {
 
 // PolarisConfig get or init the global polaris configuration
 func PolarisConfig(cfg *conf.Configuration) config.Configuration {
+	pcfg := cfg.Sub("polaris")
 	oncePolarisConfig.Do(func() {
-		bts, err := cfg.Sub("polaris").Parser().ToBytes(yaml.Parser())
+		bts, err := pcfg.Parser().ToBytes(yaml.Parser())
 		if nil != err {
 			panic(err)
 		}

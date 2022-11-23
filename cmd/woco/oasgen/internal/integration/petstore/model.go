@@ -4,12 +4,6 @@ package petstore
 
 import "time"
 
-type ApiResponse struct {
-	Code    int32  `json:"code,omitempty"`
-	Message string `json:"message,omitempty"`
-	Type    string `json:"type,omitempty"`
-}
-
 type Category struct {
 	ID   int64  `json:"id,omitempty" xml:"id"`
 	Name string `binding:"regex=oas_pattern_0,omitempty" json:"name,omitempty" xml:"name"`
@@ -30,7 +24,7 @@ type Pet struct {
 	Name      string    `binding:"required" json:"name" xml:"name"`
 	PhotoUrls []string  `binding:"required" json:"photoUrls" xml:"photoUrl"`
 	Status    string    `json:"status,omitempty" xml:"status"`
-	Tags      []Tag     `json:"tags,omitempty" xml:"tag"`
+	Tags      []*Tag    `json:"tags,omitempty" xml:"tag"`
 }
 
 type Tag struct {

@@ -63,6 +63,9 @@ func CreateExtractors(lookups string, authScheme string) ([]ValuesExtractor, err
 			extractors = append(extractors, ValuesFromHeader(parts[1], prefix))
 		}
 	}
+	if len(extractors) == 0 {
+		return nil, fmt.Errorf("no extractors created from lookup sources: %s %s", lookups, authScheme)
+	}
 	return extractors, nil
 }
 

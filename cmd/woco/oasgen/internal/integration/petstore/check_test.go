@@ -8,11 +8,6 @@ import (
 
 func TestGenerateAfter(t *testing.T) {
 	t.Run("checkModel", func(t *testing.T) {
-		apiRes := reflect.TypeOf(ApiResponse{})
-		// check struct tag
-		assert.EqualValues(t, "Code", apiRes.Field(0).Name)
-		assert.EqualValues(t, `code,omitempty`, apiRes.Field(0).Tag.Get("json"))
-
 		pet := Pet{}
 		petType := reflect.TypeOf(pet)
 		petValue := reflect.ValueOf(pet)
@@ -43,7 +38,7 @@ func TestGenerateAfter(t *testing.T) {
 		assert.EqualValues(t, "Tags", tags.Name)
 		assert.EqualValues(t, `tags,omitempty`, tags.Tag.Get("json"))
 		assert.EqualValues(t, `tag`, tags.Tag.Get("xml"))
-		assert.EqualValues(t, `[]petstore.Tag`, tags.Type.String())
+		assert.EqualValues(t, `[]*petstore.Tag`, tags.Type.String())
 
 		tag := reflect.TypeOf(Tag{})
 		assert.EqualValues(t, "id,omitempty", tag.Field(0).Tag.Get("json"))

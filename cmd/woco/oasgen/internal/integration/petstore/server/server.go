@@ -12,7 +12,7 @@ import (
 )
 
 // RegisterPetHandlers creates http.Handler with routing matching OpenAPI spec.
-func RegisterPetHandlers(router *gin.Engine, si petstore.PetServer) *gin.Engine {
+func RegisterPetHandlers(router *gin.RouterGroup, si petstore.PetServer) {
 	router.POST("/pet", wrapAddPet(si))
 	router.DELETE("/pet/:petId", wrapDeletePet(si))
 	router.GET("/pet/findByStatus", wrapFindPetsByStatus(si))
@@ -21,7 +21,26 @@ func RegisterPetHandlers(router *gin.Engine, si petstore.PetServer) *gin.Engine 
 	router.PUT("/pet", wrapUpdatePet(si))
 	router.POST("/pet/:petId", wrapUpdatePetWithForm(si))
 	router.POST("/pet/:petId/uploadImage", wrapUploadFile(si))
-	return router
+}
+
+// RegisterStoreHandlers creates http.Handler with routing matching OpenAPI spec.
+func RegisterStoreHandlers(router *gin.RouterGroup, si petstore.StoreServer) {
+	router.DELETE("/store/order/:orderId", wrapDeleteOrder(si))
+	router.GET("/store/inventory", wrapGetInventory(si))
+	router.GET("/store/order/:orderId", wrapGetOrderById(si))
+	router.POST("/store/order", wrapPlaceOrder(si))
+}
+
+// RegisterUserHandlers creates http.Handler with routing matching OpenAPI spec.
+func RegisterUserHandlers(router *gin.RouterGroup, si petstore.UserServer) {
+	router.POST("/user", wrapCreateUser(si))
+	router.POST("/user/createWithArray", wrapCreateUsersWithArrayInput(si))
+	router.POST("/user/createWithList", wrapCreateUsersWithListInput(si))
+	router.DELETE("/user/:username", wrapDeleteUser(si))
+	router.GET("/user/:username", wrapGetUserByName(si))
+	router.GET("/user/login", wrapLoginUser(si))
+	router.GET("/user/logout", wrapLogoutUser(si))
+	router.PUT("/user/:username", wrapUpdateUser(si))
 }
 
 func wrapAddPet(si petstore.PetServer) func(c *gin.Context) {
@@ -191,15 +210,6 @@ func wrapUploadFile(si petstore.PetServer) func(c *gin.Context) {
 	}
 }
 
-// RegisterStoreHandlers creates http.Handler with routing matching OpenAPI spec.
-func RegisterStoreHandlers(router *gin.Engine, si petstore.StoreServer) *gin.Engine {
-	router.DELETE("/store/order/:orderId", wrapDeleteOrder(si))
-	router.GET("/store/inventory", wrapGetInventory(si))
-	router.GET("/store/order/:orderId", wrapGetOrderById(si))
-	router.POST("/store/order", wrapPlaceOrder(si))
-	return router
-}
-
 func wrapDeleteOrder(si petstore.StoreServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.DeleteOrderRequest
@@ -268,19 +278,6 @@ func wrapPlaceOrder(si petstore.StoreServer) func(c *gin.Context) {
 		}
 		handler.NegotiateResponse(c, http.StatusOK, resp, []string{"application/json", "application/xml"})
 	}
-}
-
-// RegisterUserHandlers creates http.Handler with routing matching OpenAPI spec.
-func RegisterUserHandlers(router *gin.Engine, si petstore.UserServer) *gin.Engine {
-	router.POST("/user", wrapCreateUser(si))
-	router.POST("/user/createWithArray", wrapCreateUsersWithArrayInput(si))
-	router.POST("/user/createWithList", wrapCreateUsersWithListInput(si))
-	router.DELETE("/user/:username", wrapDeleteUser(si))
-	router.GET("/user/:username", wrapGetUserByName(si))
-	router.GET("/user/login", wrapLoginUser(si))
-	router.GET("/user/logout", wrapLogoutUser(si))
-	router.PUT("/user/:username", wrapUpdateUser(si))
-	return router
 }
 
 func wrapCreateUser(si petstore.UserServer) func(c *gin.Context) {

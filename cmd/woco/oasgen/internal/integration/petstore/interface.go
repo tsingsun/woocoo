@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration/extra"
 )
 
 // PetServer is the server API for Pet service.
@@ -15,9 +16,9 @@ type PetServer interface {
 	// (DELETE /pet/{petId})
 	DeletePet(c *gin.Context, req *DeletePetRequest) error
 	// (GET /pet/findByStatus)
-	FindPetsByStatus(c *gin.Context, req *FindPetsByStatusRequest) ([]Pet, error)
+	FindPetsByStatus(c *gin.Context, req *FindPetsByStatusRequest) ([]*Pet, error)
 	// (GET /pet/findByTags)
-	FindPetsByTags(c *gin.Context, req *FindPetsByTagsRequest) ([]Pet, error)
+	FindPetsByTags(c *gin.Context, req *FindPetsByTagsRequest) ([]*Pet, error)
 	// (GET /pet/{petId})
 	GetPetById(c *gin.Context, req *GetPetByIdRequest) (*Pet, error)
 	// (PUT /pet)
@@ -25,7 +26,39 @@ type PetServer interface {
 	// (POST /pet/{petId})
 	UpdatePetWithForm(c *gin.Context, req *UpdatePetWithFormRequest) error
 	// (POST /pet/{petId}/uploadImage)
-	UploadFile(c *gin.Context, req *UploadFileRequest) (*ApiResponse, error)
+	UploadFile(c *gin.Context, req *UploadFileRequest) (*extra.ApiResponse, error)
+}
+
+// StoreServer is the server API for Store service.
+type StoreServer interface {
+	// (DELETE /store/order/{orderId})
+	DeleteOrder(c *gin.Context, req *DeleteOrderRequest) error
+	// (GET /store/inventory)
+	GetInventory(c *gin.Context) (any, error)
+	// (GET /store/order/{orderId})
+	GetOrderById(c *gin.Context, req *GetOrderByIdRequest) (*Order, error)
+	// (POST /store/order)
+	PlaceOrder(c *gin.Context, req *PlaceOrderRequest) (*Order, error)
+}
+
+// UserServer is the server API for User service.
+type UserServer interface {
+	// (POST /user)
+	CreateUser(c *gin.Context, req *CreateUserRequest) error
+	// (POST /user/createWithArray)
+	CreateUsersWithArrayInput(c *gin.Context) error
+	// (POST /user/createWithList)
+	CreateUsersWithListInput(c *gin.Context) error
+	// (DELETE /user/{username})
+	DeleteUser(c *gin.Context, req *DeleteUserRequest) error
+	// (GET /user/{username})
+	GetUserByName(c *gin.Context, req *GetUserByNameRequest) (*User, error)
+	// (GET /user/login)
+	LoginUser(c *gin.Context, req *LoginUserRequest) (string, error)
+	// (GET /user/logout)
+	LogoutUser(c *gin.Context) error
+	// (PUT /user/{username})
+	UpdateUser(c *gin.Context, req *UpdateUserRequest) error
 }
 
 type UnimplementedPetServer struct {
@@ -41,12 +74,12 @@ func (UnimplementedPetServer) DeletePet(c *gin.Context, req *DeletePetRequest) (
 	return
 }
 
-func (UnimplementedPetServer) FindPetsByStatus(c *gin.Context, req *FindPetsByStatusRequest) (_ []Pet, err error) {
+func (UnimplementedPetServer) FindPetsByStatus(c *gin.Context, req *FindPetsByStatusRequest) (_ []*Pet, err error) {
 	err = fmt.Errorf("method FindPetsByStatus not implemented")
 	return
 }
 
-func (UnimplementedPetServer) FindPetsByTags(c *gin.Context, req *FindPetsByTagsRequest) (_ []Pet, err error) {
+func (UnimplementedPetServer) FindPetsByTags(c *gin.Context, req *FindPetsByTagsRequest) (_ []*Pet, err error) {
 	err = fmt.Errorf("method FindPetsByTags not implemented")
 	return
 }
@@ -66,21 +99,9 @@ func (UnimplementedPetServer) UpdatePetWithForm(c *gin.Context, req *UpdatePetWi
 	return
 }
 
-func (UnimplementedPetServer) UploadFile(c *gin.Context, req *UploadFileRequest) (_ *ApiResponse, err error) {
+func (UnimplementedPetServer) UploadFile(c *gin.Context, req *UploadFileRequest) (_ *extra.ApiResponse, err error) {
 	err = fmt.Errorf("method UploadFile not implemented")
 	return
-}
-
-// StoreServer is the server API for Store service.
-type StoreServer interface {
-	// (DELETE /store/order/{orderId})
-	DeleteOrder(c *gin.Context, req *DeleteOrderRequest) error
-	// (GET /store/inventory)
-	GetInventory(c *gin.Context) (any, error)
-	// (GET /store/order/{orderId})
-	GetOrderById(c *gin.Context, req *GetOrderByIdRequest) (*Order, error)
-	// (POST /store/order)
-	PlaceOrder(c *gin.Context, req *PlaceOrderRequest) (*Order, error)
 }
 
 type UnimplementedStoreServer struct {
@@ -104,26 +125,6 @@ func (UnimplementedStoreServer) GetOrderById(c *gin.Context, req *GetOrderByIdRe
 func (UnimplementedStoreServer) PlaceOrder(c *gin.Context, req *PlaceOrderRequest) (_ *Order, err error) {
 	err = fmt.Errorf("method PlaceOrder not implemented")
 	return
-}
-
-// UserServer is the server API for User service.
-type UserServer interface {
-	// (POST /user)
-	CreateUser(c *gin.Context, req *CreateUserRequest) error
-	// (POST /user/createWithArray)
-	CreateUsersWithArrayInput(c *gin.Context) error
-	// (POST /user/createWithList)
-	CreateUsersWithListInput(c *gin.Context) error
-	// (DELETE /user/{username})
-	DeleteUser(c *gin.Context, req *DeleteUserRequest) error
-	// (GET /user/{username})
-	GetUserByName(c *gin.Context, req *GetUserByNameRequest) (*User, error)
-	// (GET /user/login)
-	LoginUser(c *gin.Context, req *LoginUserRequest) (string, error)
-	// (GET /user/logout)
-	LogoutUser(c *gin.Context) error
-	// (PUT /user/{username})
-	UpdateUser(c *gin.Context, req *UpdateUserRequest) error
 }
 
 type UnimplementedUserServer struct {

@@ -13,12 +13,13 @@ func main() {
 	// implement your server
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
+	router.Group("/")
 	router.Use(handler.ErrorHandle().ApplyFunc(nil))
 	imp := &Server{}
 	server.RegisterValidator()
-	server.RegisterUserHandlers(router, imp)
-	server.RegisterStoreHandlers(router, imp)
-	server.RegisterPetHandlers(router, imp)
+	server.RegisterUserHandlers(&router.RouterGroup, imp)
+	server.RegisterStoreHandlers(&router.RouterGroup, imp)
+	server.RegisterPetHandlers(&router.RouterGroup, imp)
 	router.Run(":18080")
 }
 
@@ -28,8 +29,8 @@ type Server struct {
 	petstore.UnimplementedUserServer
 }
 
-func (s Server) FindPetsByTags(c *gin.Context, req *petstore.FindPetsByTagsRequest) ([]petstore.Pet, error) {
-	return []petstore.Pet{
+func (s Server) FindPetsByTags(c *gin.Context, req *petstore.FindPetsByTagsRequest) ([]*petstore.Pet, error) {
+	return []*petstore.Pet{
 		{ID: 1, Name: "dog"},
 	}, nil
 }
@@ -51,7 +52,7 @@ func (s Server) GetOrderById(c *gin.Context, req *petstore.GetOrderByIdRequest) 
 func (s Server) GetPetById(c *gin.Context, req *petstore.GetPetByIdRequest) (_ *petstore.Pet, err error) {
 	return &petstore.Pet{
 		ID: 1, Name: "dog", PhotoUrls: []string{"http://github.com"},
-		Tags: []petstore.Tag{{ID: 1, Name: "blue"}},
+		Tags: []*petstore.Tag{{ID: 1, Name: "blue"}},
 	}, nil
 }
 

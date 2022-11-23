@@ -150,7 +150,7 @@ ZwIDAQAB
 			token := tt.token()
 			switch tt.args.cfg.String("lookupToken") {
 			case "query:token":
-				r = httptest.NewRequest("GET", "http://localhost?token="+token, nil)
+				r = httptest.NewRequest("GET", "http://127.0.0.1?token="+token, nil)
 			default:
 				r = httptest.NewRequest("GET", "/", nil)
 				r.Header.Set("Authorization", "Bearer "+token)

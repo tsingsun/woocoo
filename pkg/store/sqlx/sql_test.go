@@ -22,7 +22,7 @@ func TestNewBuiltInDB(t *testing.T) {
 store:
   testDriver:
     driverName: testDriver
-    dsn: root:123456@tcp(localhost:3306)
+    dsn: root:123456@tcp(127.0.0.1:3306)
 `
 	cfg := conf.NewFromBytes([]byte(config)).Load()
 	type args struct {

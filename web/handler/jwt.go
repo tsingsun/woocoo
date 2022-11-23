@@ -26,8 +26,6 @@ type (
 		// ErrorHandler defines a function which is executed for an invalid token.
 		// It may be used to define a custom JWT error.
 		ErrorHandler JWTErrorHandler
-		// ErrorHandlerWithContext is almost identical to ErrorHandler, but it's passed the current context.
-		ErrorHandlerWithContext JWTErrorHandlerWithContext
 		// TokenStoreKey is the name of the cache driver,default is "redis".
 		// When this option is used, requirements : token cache KEY that uses the JWT ID.
 		TokenStoreKey string `json:"tokenStoreKey" yaml:"TokenStoreKey"`
@@ -37,10 +35,7 @@ type (
 	JWTSuccessHandler func(c *gin.Context)
 
 	// JWTErrorHandler defines a function which is executed for an invalid token.
-	JWTErrorHandler func(err error) error
-
-	// JWTErrorHandlerWithContext is almost identical to JWTErrorHandler, but it's passed the current context.
-	JWTErrorHandlerWithContext func(err error, c *gin.Context) error
+	JWTErrorHandler func(c *gin.Context, err error) error
 )
 
 // JWTMiddleware provides a Json-Web-Token authentication implementation. On failure, a 401 HTTP response
@@ -146,26 +141,21 @@ func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
 				return
 			}
 		}
-		// we are here only when we did not successfully extract or parse any of the tokens
 		err := lastTokenErr
-		if err == nil { // prioritize token errors over extracting errors
+		if err == nil {
 			err = lastExtractorErr
 		}
 		if opts.ErrorHandler != nil {
-			opts.ErrorHandler(err) //nolint:errcheck
-			return
-		}
-		if opts.ErrorHandlerWithContext != nil {
-			tmpErr := opts.ErrorHandlerWithContext(err, c)
-			if opts.ContinueOnIgnoredError && tmpErr == nil {
+			err = opts.ErrorHandler(c, err)
+			if err == nil {
 				c.Next()
 				return
 			}
 		}
 
-		// backwards compatible errors codes
-		if lastTokenErr != nil {
-			c.JSON(http.StatusUnauthorized, FormatResponseError(http.StatusUnauthorized, lastTokenErr))
+		if err != nil {
+			c.Error(err) //nolint:errcheck
+			c.AbortWithStatus(http.StatusUnauthorized)
 		}
 	}
 }

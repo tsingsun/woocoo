@@ -23,13 +23,6 @@ var (
 
 type (
 	JWTOptions struct {
-		// ContinueOnIgnoredError allows the next middleware/handler to be called when ErrorHandlerWithContext decides to
-		// ignore the error (by returning `nil`).
-		// This is useful when parts of your site/api allow public access and some authorized routes provide extra functionality.
-		// In that case you can use ErrorHandlerWithContext to set a default public JWT token value in the request context
-		// and continue. Some logic down the remaining execution chain needs to check that (public) token value then.
-		ContinueOnIgnoredError bool
-
 		// Signing key to validate token.
 		// This is one of the three options to provide a token validation key.
 		// The order of precedence is a user-defined KeyFunc, SigningKeys and SigningKey.

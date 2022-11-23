@@ -23,9 +23,9 @@ func (s *ginTestSuite) SetupSuite() {
 	router.Use(handler.ErrorHandle().ApplyFunc(nil))
 	imp := &Server{}
 	server.RegisterValidator()
-	server.RegisterUserHandlers(router, imp)
-	server.RegisterStoreHandlers(router, imp)
-	server.RegisterPetHandlers(router, imp)
+	server.RegisterUserHandlers(&router.RouterGroup, imp)
+	server.RegisterStoreHandlers(&router.RouterGroup, imp)
+	server.RegisterPetHandlers(&router.RouterGroup, imp)
 	s.Router = router
 }
 

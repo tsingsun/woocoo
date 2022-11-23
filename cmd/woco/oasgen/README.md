@@ -27,10 +27,15 @@ spec: "petstore.yaml"
 target: "petstore"
 # 期望的包路径,默认同target,可指定相对路径或go包名全路径
 package: "petstore"
+# 外部模板文件,用于一般存放自定义的模板文件
+templateDir: "template"
 # 类型映射,
 models:
   UUID:
     model: github.com/google/uuid.UUID
+  # 映射至其他包,使用ref为key,被映射的将不会被生成Struct  
+  '#/components/schemas/ApiResponseXX':
+    model: github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration.ApiResponse
 ```
 
 生成的代码例子可以参考[petstore](./internal/integration/petstore)
@@ -61,7 +66,9 @@ models:
   - IP Addresses
   - Regular Expressions
   - 支持通过`x-go-tag-validator`扩展验证属性,具体可参考validator的表达式.
-- Auth验证:(TODO)
+- Auth验证: 这部分的未做过多的代码生成,需要结合中间件配置.
+  内置支持的JWT,KeyAuth验证.要将不验证路径配置入`exclude`中
+  
 
 ### 响应
 

@@ -83,7 +83,7 @@ func TestRegistry_Register(t *testing.T) {
 				serviceInfo: &registry.ServiceInfo{
 					Name:      "test",
 					Namespace: "woocoo",
-					Host:      "localhost",
+					Host:      "127.0.0.1",
 					Port:      8080,
 					Metadata: map[string]string{
 						"version": "1.0.0",
@@ -104,7 +104,7 @@ func TestRegistry_Register(t *testing.T) {
 				serviceInfo: &registry.ServiceInfo{
 					Name:      "test",
 					Namespace: "woocoo",
-					Host:      "localhost",
+					Host:      "127.0.0.1",
 					Port:      8080,
 					Metadata: map[string]string{
 						"version": "1.0.0",

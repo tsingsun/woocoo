@@ -1,6 +1,7 @@
 package redisc_test
 
 import (
+	"context"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
@@ -142,7 +143,7 @@ func TestCache_Take(t *testing.T) {
 	defer mr.Close()
 	got := "string"
 	want := "abc"
-	err := cache.Take(&got, "string", time.Minute, func() (interface{}, error) {
+	err := cache.Take(context.Background(), &got, "string", time.Minute, func() (interface{}, error) {
 		return want, nil
 	})
 	assert.NoError(t, err)
@@ -155,11 +156,11 @@ func TestCache_Set(t *testing.T) {
 	cache, mr := initStandaloneCache(t)
 	defer mr.Close()
 	got := "string"
-	if err := cache.Set("string", got, time.Hour); err != nil {
+	if err := cache.Set(context.Background(), "string", got, time.Hour); err != nil {
 		t.Error(err)
 	}
 	var want string
-	if err := cache.Get("string", &want); err != nil {
+	if err := cache.Get(context.Background(), "string", &want); err != nil {
 		t.Error(err)
 	}
 	if got != want {

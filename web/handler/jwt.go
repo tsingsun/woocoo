@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/tsingsun/woocoo/pkg/auth"
@@ -24,7 +25,8 @@ type (
 		// middleware or handler.
 		SuccessHandler JWTSuccessHandler
 		// ErrorHandler defines a function which is executed for an invalid token.
-		// It may be used to define a custom JWT error.
+		// It may be used to define a custom JWT error and abort the request.like use:
+		//  c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 		ErrorHandler JWTErrorHandler
 		// TokenStoreKey is the name of the cache driver,default is "redis".
 		// When this option is used, requirements : token cache KEY that uses the JWT ID.
@@ -84,7 +86,8 @@ func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 }
 
 // Shutdown no need to do anything
-func (mw *JWTMiddleware) Shutdown() {
+func (mw *JWTMiddleware) Shutdown(_ context.Context) error {
+	return nil
 }
 
 func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
@@ -123,7 +126,7 @@ func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
 				}
 				if store != nil {
 					if rjwt, ok := token.Claims.(*jwt.RegisteredClaims); ok {
-						if exists := store.Has(rjwt.ID); !exists {
+						if exists := store.Has(c, rjwt.ID); !exists {
 							lastTokenErr = jwt.ErrTokenUnverifiable
 							continue
 						}
@@ -151,11 +154,11 @@ func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
 				c.Next()
 				return
 			}
+			return
 		}
 
 		if err != nil {
-			c.Error(err) //nolint:errcheck
-			c.AbortWithStatus(http.StatusUnauthorized)
+			c.AbortWithError(http.StatusUnauthorized, err) //nolint:errcheck
 		}
 	}
 }

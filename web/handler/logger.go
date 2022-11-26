@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
@@ -71,11 +72,12 @@ type LoggerMiddleware struct {
 
 // AccessLog a new LoggerMiddleware,it is for handler registry
 func AccessLog() *LoggerMiddleware {
-	al := &LoggerMiddleware{}
-	operator := logger.Logger().WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
+	operator := logger.Logger(log.WithOriginalLogger()).WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
 	logger := log.Component(AccessLogComponentName)
 	logger.SetLogger(operator)
-	al.logger = logger
+	al := &LoggerMiddleware{
+		logger: logger,
+	}
 	return al
 }
 
@@ -227,7 +229,8 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 }
 
 // Shutdown does nothing for logger
-func (h *LoggerMiddleware) Shutdown() {
+func (h *LoggerMiddleware) Shutdown(_ context.Context) error {
+	return nil
 }
 
 func GetLogCarrierFromGinContext(c *gin.Context) *log.FieldCarrier {

@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"context"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
@@ -18,7 +20,7 @@ type Middleware interface {
 	// ApplyFunc return a gin's handler function by a configuration
 	ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc
 	// Shutdown the handler,usually call in server quit. some base on file,network may need release the resource
-	Shutdown()
+	Shutdown(ctx context.Context) error
 }
 
 type MiddlewareApplyFunc func(cfg *conf.Configuration) gin.HandlerFunc
@@ -49,7 +51,8 @@ func (s *SimpleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	return s.applyFunc(cfg)
 }
 
-func (s *SimpleMiddleware) Shutdown() {
+func (s *SimpleMiddleware) Shutdown(_ context.Context) error {
+	return nil
 }
 
 // Skipper defines a function to skip middleware. Returning true skips processing
@@ -80,7 +83,7 @@ func NewManager() *Manager {
 // you can override exists handler
 func (m *Manager) RegisterHandlerFunc(name string, handler Middleware) {
 	if _, ok := m.middlewares[name]; ok {
-		log.Infof("handler override:%s", name)
+		logger.Warn(fmt.Sprintf("handler override:%s", name))
 	}
 	m.middlewares[name] = handler
 }
@@ -97,12 +100,14 @@ func integration() map[string]Middleware {
 	acclog := AccessLog()
 	errhandle := ErrorHandle()
 	gz := gzip.Gzip()
+	ka := KeyAuth()
 	var handlerMap = map[string]Middleware{
 		reco.Name():      reco,
 		jwt.Name():       jwt,
 		acclog.Name():    acclog,
 		errhandle.Name(): errhandle,
 		gz.Name():        gz,
+		ka.Name():        ka,
 	}
 	return handlerMap
 }
@@ -114,8 +119,9 @@ func (m *Manager) registerIntegrationHandler() {
 }
 
 // Shutdown a handler if handler base on file,net such as need to release resource
-func (m *Manager) Shutdown() {
+func (m *Manager) Shutdown(ctx context.Context) error {
 	for _, handler := range m.middlewares {
-		handler.Shutdown()
+		handler.Shutdown(ctx) // lint:ignore
 	}
+	return nil
 }

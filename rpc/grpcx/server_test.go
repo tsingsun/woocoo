@@ -1,13 +1,45 @@
-package grpcx_test
+package grpcx
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/rpc/grpcx"
+	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"google.golang.org/grpc"
 	"testing"
+	"time"
 )
+
+type MockRegistry struct {
+}
+
+// Register a service node
+func (mr *MockRegistry) Register(serviceInfo *registry.ServiceInfo) error {
+	if serviceInfo.Name == "test" {
+		return nil
+	}
+	return errors.New("register error")
+}
+
+// Unregister a service node
+func (mr *MockRegistry) Unregister(serviceInfo *registry.ServiceInfo) error {
+	if serviceInfo.Name == "test" {
+		return nil
+	}
+	return errors.New("unregister error")
+}
+
+// TTL returns the time to live of the service node, if it is not available, return 0.
+// every tick will call Register function to refresh.
+func (mr *MockRegistry) TTL() time.Duration {
+	return 0
+}
+func (mr *MockRegistry) Close() {
+
+}
 
 func TestNew(t *testing.T) {
 	b := []byte(`
@@ -29,20 +61,80 @@ grpc:
     - accessLog:
         timestampFormat: "2006-01-02 15:04:05"
     - recovery:
-    - auth:
-        signingAlgorithm: HS256
-        realm: woocoo
-        secret: 123456
-        privKey: config/privKey.pem
-        pubKey: config/pubKey.pem
-        tenantHeader: Qeelyn-Org-Id
 `)
 	// testdata.Path("x509/test.pem"), testdata.Path("x509/test.key")
 	cfg := conf.NewFromBytes(b)
 	cfg.SetBaseDir(testdata.BaseDir())
 	cfg.Load()
-	s := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")),
-		grpcx.WithGracefulStop(),
-		grpcx.WithGrpcOption(grpc.ConnectionTimeout(1000)))
+	s := New(WithConfiguration(cfg.Sub("grpc")),
+		WithGracefulStop(),
+		WithGrpcOption(grpc.ConnectionTimeout(1000)),
+		UseLogger(),
+	)
 	assert.NotNil(t, s)
+}
+
+func TestServer_Run(t *testing.T) {
+	type fields struct {
+		opts         serverOptions
+		engine       *grpc.Server
+		exit         chan chan error
+		registry     registry.Registry
+		ServiceInfos []*registry.ServiceInfo
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "test",
+			fields: fields{
+				opts: serverOptions{
+					Addr: "127.0.0.1:11000",
+				},
+				engine:   grpc.NewServer(),
+				registry: &MockRegistry{},
+				exit:     make(chan chan error),
+				ServiceInfos: []*registry.ServiceInfo{
+					{
+						Name: "test",
+					},
+				},
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "test registry error",
+			fields: fields{
+				opts: serverOptions{
+					Addr: "127.0.0.1:11001",
+				},
+				engine:   grpc.NewServer(),
+				registry: &MockRegistry{},
+				exit:     make(chan chan error),
+				ServiceInfos: []*registry.ServiceInfo{
+					{
+						Name: "register error",
+					},
+				},
+			},
+			wantErr: assert.Error,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Server{
+				opts:         tt.fields.opts,
+				engine:       tt.fields.engine,
+				exit:         tt.fields.exit,
+				registry:     tt.fields.registry,
+				ServiceInfos: tt.fields.ServiceInfos,
+			}
+			time.AfterFunc(time.Second*2, func() {
+				s.Stop(context.Background())
+			})
+			tt.wantErr(t, s.Run(), fmt.Sprintf("Run()"))
+		})
+	}
 }

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"net/http"
@@ -60,6 +61,11 @@ func KeyAuth(opts ...MiddlewareOption) *KeyAuthMiddleware {
 
 func (mw *KeyAuthMiddleware) Name() string {
 	return "keyAuth"
+}
+
+// Shutdown nothing to do
+func (mw *KeyAuthMiddleware) Shutdown(_ context.Context) error {
+	return nil
 }
 
 func (mw *KeyAuthMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {

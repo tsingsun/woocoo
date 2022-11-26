@@ -115,7 +115,7 @@ func (s *Server) Stop(ctx context.Context) error {
 		logger.Error("web Server close err", zap.Error(err))
 	}
 	if hm := s.opts.handlerManager; hm != nil {
-		hm.Shutdown()
+		hm.Shutdown(ctx) //nolint:errcheck
 	}
 	// ignore error handling,see https://github.com/uber-go/zap/issues/880
 	log.Sync() //nolint:errcheck
@@ -145,16 +145,20 @@ func (s *Server) ListenAndServe() (err error) {
 // you can process whole yourself
 func (s *Server) Run() error {
 	ch := make(chan error)
-	defer func() {
+	quitFunc := func() {
 		// The context is used to inform the server it has 5 seconds to finish
 		// the request it is currently handling
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		s.Stop(ctx) //nolint:errcheck
-	}()
+	}
 	go func() {
 		err := s.Start(context.Background())
-		ch <- err
+		if err != nil {
+			ch <- err
+			return
+		}
+		close(ch)
 	}()
 	// Wait for interrupt signal to gracefully runAndClose the server with
 	// a timeout of 5 seconds.
@@ -166,8 +170,12 @@ func (s *Server) Run() error {
 	select {
 	case <-quit:
 		logger.Info(fmt.Sprintf("web server on %s shutdown", s.opts.Addr))
+		defer quitFunc()
 	case err := <-ch:
-		return err
+		if err != nil {
+			defer quitFunc()
+			return err
+		}
 	}
 	return nil
 }

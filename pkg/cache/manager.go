@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
@@ -43,24 +44,24 @@ func GetCache(driver string) Cache {
 	return _manager.drivers[driver]
 }
 
-func Get(key string, v any) error {
-	return _defaultDriver.Get(key, v)
+func Get(ctx context.Context, key string, v any) error {
+	return _defaultDriver.Get(ctx, key, v)
 }
 
-func Set(key string, v any, ttl time.Duration) error {
-	return _defaultDriver.Set(key, v, ttl)
+func Set(ctx context.Context, key string, v any, ttl time.Duration) error {
+	return _defaultDriver.Set(ctx, key, v, ttl)
 }
 
-func Has(key string) bool {
-	return _defaultDriver.Has(key)
+func Has(ctx context.Context, key string) bool {
+	return _defaultDriver.Has(ctx, key)
 }
 
-func Del(key string) error {
-	return _defaultDriver.Del(key)
+func Del(ctx context.Context, key string) error {
+	return _defaultDriver.Del(ctx, key)
 }
 
-func Take(v any, key string, ttl time.Duration, query func() (any, error)) error {
-	return _defaultDriver.Take(v, key, ttl, query)
+func Take(ctx context.Context, v any, key string, ttl time.Duration, query func() (any, error)) error {
+	return _defaultDriver.Take(ctx, v, key, ttl, query)
 }
 
 func IsNotFound(err error) bool {

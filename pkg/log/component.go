@@ -8,26 +8,51 @@ import (
 )
 
 // ComponentLogger is sample and base using for component that also carries a context.Context. It uses the global logger.
-type ComponentLogger interface {
-	Logger() *Logger
-	SetLogger(logger *Logger)
-	Debug(msg string, fields ...zap.Field)
-	Info(msg string, fields ...zap.Field)
-	Warn(msg string, fields ...zap.Field)
-	Error(msg string, fields ...zap.Field)
-	DPanic(msg string, fields ...zap.Field)
-	Panic(msg string, fields ...zap.Field)
-	Fatal(msg string, fields ...zap.Field)
-	Ctx(ctx context.Context) *LoggerWithCtx
+type (
+	ComponentLogger interface {
+		// Logger return component's logger,if withFields is true,return logger with build in fields
+		Logger(opts ...GetComponentLoggerOption) *Logger
+		SetLogger(logger *Logger)
+		Debug(msg string, fields ...zap.Field)
+		Info(msg string, fields ...zap.Field)
+		Warn(msg string, fields ...zap.Field)
+		Error(msg string, fields ...zap.Field)
+		DPanic(msg string, fields ...zap.Field)
+		Panic(msg string, fields ...zap.Field)
+		Fatal(msg string, fields ...zap.Field)
+		Ctx(ctx context.Context) *LoggerWithCtx
+	}
+
+	GetComponentLoggerOption func(*GetComponentLoggerOptions)
+
+	GetComponentLoggerOptions struct {
+		originalLogger bool // if true,return logger without build in fields
+		ctxLogger      bool // if true,return logger with context
+	}
+
+	component struct {
+		name          string
+		logger        *Logger
+		l             *Logger
+		cl            *Logger
+		builtInFields []zap.Field
+		// useGlobal is true if the component is using the global logger.
+		useGlobal bool
+	}
+)
+
+// WithOriginalLogger returns the original logger in the ComponentLogger.
+func WithOriginalLogger() GetComponentLoggerOption {
+	return func(options *GetComponentLoggerOptions) {
+		options.originalLogger = true
+	}
 }
 
-type component struct {
-	name          string
-	l             *Logger
-	cl            *Logger
-	builtInFields []zap.Field
-	// useGlobal is true if the component is using the global logger.
-	useGlobal bool
+// WithContextLogger returns the logger with context in the ComponentLogger.
+func WithContextLogger() GetComponentLoggerOption {
+	return func(options *GetComponentLoggerOptions) {
+		options.ctxLogger = true
+	}
 }
 
 // Component return a logger with name option base on a logger.
@@ -47,9 +72,19 @@ func Component(name string, fields ...zap.Field) ComponentLogger {
 }
 
 // Logger return component's logger
-func (c *component) Logger() *Logger {
-	if c.l == nil {
+func (c *component) Logger(opts ...GetComponentLoggerOption) *Logger {
+	if c.logger == nil {
 		c.SetLogger(global)
+	}
+	options := GetComponentLoggerOptions{}
+	for _, opt := range opts {
+		opt(&options)
+	}
+	if options.ctxLogger {
+		return c.cl
+	}
+	if options.originalLogger {
+		return c.logger
 	}
 	return c.l
 }
@@ -57,44 +92,44 @@ func (c *component) Logger() *Logger {
 // SetLogger replace logger, by default component use global logger
 func (c *component) SetLogger(logger *Logger) {
 	c.useGlobal = logger == global
-	if c.l != logger {
-		c.l = logger
+	if c.logger != logger {
+		c.logger = logger
+		c.l = logger.With(c.builtInFields...)
 		c.cl = c.l.WithOptions(zap.AddCallerSkip(CallerSkip + 1))
 	}
 }
 
 func (c *component) Debug(msg string, fields ...zap.Field) {
-	c.l.Debug(msg, append(fields, c.builtInFields...)...)
+	c.l.Debug(msg, fields...)
 }
 
 func (c *component) Info(msg string, fields ...zap.Field) {
-	c.l.Info(msg, append(fields, c.builtInFields...)...)
+	c.l.Info(msg, fields...)
 }
 
 func (c *component) Warn(msg string, fields ...zap.Field) {
-	c.l.Warn(msg, append(fields, c.builtInFields...)...)
+	c.l.Warn(msg, fields...)
 }
 
 func (c *component) Error(msg string, fields ...zap.Field) {
-	c.l.Error(msg, append(fields, c.builtInFields...)...)
+	c.l.Error(msg, fields...)
 }
 
 func (c *component) DPanic(msg string, fields ...zap.Field) {
-	c.l.DPanic(msg, append(fields, c.builtInFields...)...)
+	c.l.DPanic(msg, fields...)
 }
 
 func (c *component) Panic(msg string, fields ...zap.Field) {
-	c.l.Panic(msg, append(fields, c.builtInFields...)...)
+	c.l.Panic(msg, fields...)
 }
 
 func (c *component) Fatal(msg string, fields ...zap.Field) {
-	c.l.Fatal(msg, append(fields, c.builtInFields...)...)
+	c.l.Fatal(msg, fields...)
 }
 
 // Ctx returns a new logger with the context.
 func (c *component) Ctx(ctx context.Context) *LoggerWithCtx {
 	lc := NewLoggerWithCtx(ctx, c.cl)
-	lc.fields = c.builtInFields
 	return lc
 }
 
@@ -120,9 +155,8 @@ var (
 
 // LoggerWithCtx is a wrapper for Logger that also carries a context.Context.
 type LoggerWithCtx struct {
-	ctx    context.Context
-	l      *Logger
-	fields []zapcore.Field
+	ctx context.Context
+	l   *Logger
 }
 
 // WithOptions reset the logger with options.
@@ -165,9 +199,6 @@ func (c *LoggerWithCtx) Log(lvl zapcore.Level, msg string, fields []zap.Field) {
 
 func (c *LoggerWithCtx) logFields(ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) {
 	defer PutLoggerWithCtx(c)
-	if len(c.fields) != 0 {
-		fields = append(fields, c.fields...)
-	}
 	c.l.contextLogger.LogFields(c.l, ctx, lvl, msg, fields)
 }
 

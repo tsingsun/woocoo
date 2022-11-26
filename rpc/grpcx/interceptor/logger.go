@@ -30,7 +30,7 @@ func (o *LoggerOptions) Apply(cnf *conf.Configuration) {
 		panic(err)
 	}
 	logger := log.Component(AccessLogComponentName)
-	operator := logger.Logger().WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
+	operator := logger.Logger(log.WithOriginalLogger()).WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
 	logger.SetLogger(operator)
 	o.logger = logger
 }

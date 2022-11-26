@@ -41,7 +41,8 @@ type Server struct {
 	engine *grpc.Server
 	exit   chan chan error
 
-	registry registry.Registry
+	registry       registry.Registry
+	registryTicker *time.Ticker
 	// ServiceInfos is for service discovery,it converts from grpc service info
 	ServiceInfos []*registry.ServiceInfo
 }
@@ -118,16 +119,16 @@ func (s *Server) ListenAndServe() error {
 		}
 
 		go func() {
-			t := new(time.Ticker)
+			s.registryTicker = new(time.Ticker)
 			// only process if it exists
 			if s.registry.TTL() > time.Duration(0) {
 				// new ticker
-				t = time.NewTicker(s.registry.TTL())
+				s.registryTicker = time.NewTicker(s.registry.TTL())
 			}
 			var ch chan error
 			for {
 				select {
-				case <-t.C:
+				case <-s.registryTicker.C:
 					for _, serviceInfo := range s.ServiceInfos {
 						go func(info *registry.ServiceInfo) {
 							if err := s.registry.Register(info); err != nil {
@@ -137,7 +138,7 @@ func (s *Server) ListenAndServe() error {
 						}(serviceInfo)
 					}
 				case ch = <-s.exit:
-					t.Stop()
+					s.registryTicker.Stop()
 					s.deregisterServices()
 					ch <- err
 					return
@@ -173,7 +174,7 @@ func (s *Server) Start(ctx context.Context) error {
 }
 
 func (s *Server) Stop(ctx context.Context) (err error) {
-	if s.registry != nil {
+	if s.registry != nil && s.registryTicker != nil {
 		ch := make(chan error)
 		s.exit <- ch
 		err = <-ch
@@ -188,15 +189,19 @@ func (s *Server) Stop(ctx context.Context) (err error) {
 
 // Run is a sample way to start the grpc server with gracefulStop stop
 func (s *Server) Run() error {
-	defer func() {
+	quitFunc := func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		s.Stop(ctx) //nolint:errcheck
-	}()
+		s.Stop(ctx)
+	}
 	ch := make(chan error)
 	go func() {
 		err := s.Start(context.Background())
-		ch <- err
+		if err != nil {
+			ch <- err
+			return
+		}
+		close(ch) // normal stop
 	}()
 
 	// Wait for interrupt signal to gracefully runAndClose the server with
@@ -209,8 +214,13 @@ func (s *Server) Run() error {
 	select {
 	case <-quit:
 		grpclog.Infof("grpc server on %s shutdown", s.opts.Addr)
+		defer quitFunc()
 		return nil
 	case err := <-ch:
-		return err
+		if err != nil {
+			defer quitFunc()
+			return err
+		}
 	}
+	return nil
 }

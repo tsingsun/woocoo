@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -34,7 +35,8 @@ func (h *RecoveryMiddleware) ApplyFunc(_ *conf.Configuration) gin.HandlerFunc {
 	})
 }
 
-func (h *RecoveryMiddleware) Shutdown() {
+func (h *RecoveryMiddleware) Shutdown(_ context.Context) error {
+	return nil
 }
 
 func HandleRecoverError(c *gin.Context, p any, stackSkip int) {

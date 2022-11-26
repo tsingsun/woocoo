@@ -15,7 +15,8 @@ func TestApp(t *testing.T) {
 	app := New(WithAppConfiguration(cnf))
 	websrv := web.New(web.WithConfiguration(app.AppConfiguration().Sub("web")))
 	grpcsrv := grpcx.New(grpcx.WithConfiguration(app.AppConfiguration().Sub("grpc")), grpcx.UseLogger())
-	time.AfterFunc(time.Second*1, func() {
+	time.AfterFunc(time.Second*5, func() {
+		t.Log("stop")
 		app.Stop()
 	})
 	app.RegisterServer(websrv, grpcsrv)

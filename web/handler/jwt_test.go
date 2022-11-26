@@ -1,6 +1,8 @@
 package handler_test
 
 import (
+	"context"
+	"errors"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
@@ -37,10 +39,11 @@ func TestJWTMiddleware_ApplyFunc(t *testing.T) {
 		opts []handler.MiddlewareOption
 	}
 	tests := []struct {
-		name    string
-		args    args
-		token   func() string
-		wantErr assert.ErrorAssertionFunc
+		name         string
+		args         args
+		token        func() string
+		errorHandler gin.HandlerFunc
+		wantErr      assert.ErrorAssertionFunc
 	}{
 		{
 			name: "default", args: args{cfg: conf.NewFromStringMap(map[string]any{
@@ -104,16 +107,33 @@ ZwIDAQAB
 			wantErr: assert.NoError,
 		},
 		{
-			name: "tokenStore Token no exist", args: args{cfg: conf.NewFromStringMap(map[string]any{
-				"signingKey":    "secret",
-				"tokenStoreKey": "tokenStore",
-			})},
+			name: "tokenStore Token no exist",
+			args: args{
+				cfg: conf.NewFromStringMap(map[string]any{
+					"signingKey":    "secret",
+					"tokenStoreKey": "tokenStore",
+				}),
+				opts: []handler.MiddlewareOption{
+					handler.WithMiddlewareConfig(func() any {
+						nc := &handler.JWTConfig{
+							JWTOptions: *auth.NewJWT(),
+							ErrorHandler: func(c *gin.Context, err error) error {
+								c.AbortWithStatusJSON(http.StatusNotAcceptable, 1)
+								return errors.New("error")
+							},
+						}
+						return nc
+					}),
+				},
+			},
 			token: func() string {
 				return tokens.String("secretToken")
 			},
 			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				r := i[0].(*httptest.ResponseRecorder)
-				return !assert.Equal(t, http.StatusUnauthorized, r.Code)
+				assert.Equal(t, http.StatusNotAcceptable, r.Code)
+				assert.Equal(t, "1", r.Body.String())
+				return false
 			},
 		},
 		{
@@ -139,7 +159,7 @@ ZwIDAQAB
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw := handler.JWT(tt.args.opts...)
-			defer mw.Shutdown()
+			defer mw.Shutdown(context.Background())
 			srv := web.New()
 			srv.Router().Engine.Use(mw.ApplyFunc(tt.args.cfg))
 			srv.Router().Engine.NoRoute(func(c *gin.Context) {
@@ -156,7 +176,6 @@ ZwIDAQAB
 				r.Header.Set("Authorization", "Bearer "+token)
 			}
 			srv.Router().ServeHTTP(w, r)
-
 			if !tt.wantErr(t, nil, w) {
 				return
 			}

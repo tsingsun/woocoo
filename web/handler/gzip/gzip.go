@@ -1,6 +1,7 @@
 package gzip
 
 import (
+	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/klauspost/compress/gzhttp"
@@ -121,7 +122,9 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 }
 
 // Shutdown gzip noting to do here
-func (h *Handler) Shutdown() {}
+func (h *Handler) Shutdown(_ context.Context) error {
+	return nil
+}
 
 // shouldCompress returns true if the given HTTP request indicates that it will
 // accept a gzipped response.

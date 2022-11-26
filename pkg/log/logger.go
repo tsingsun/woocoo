@@ -106,6 +106,14 @@ func (l *Logger) Apply(cfg *conf.Configuration) {
 	l.WithTraceID = config.WithTraceID
 }
 
+// With creates a child logger and adds structured context to it. Fields added
+// to the child don't affect the parent, and vice versa.
+func (l *Logger) With(fields ...zap.Field) *Logger {
+	clone := *l
+	clone.Logger = l.Logger.With(fields...)
+	return &clone
+}
+
 // WithOptions clones the current Logger, applies the supplied Options,
 // and returns the resulting Logger. It's safe to use concurrently.
 func (l *Logger) WithOptions(opts ...zap.Option) *Logger {

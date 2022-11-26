@@ -56,6 +56,7 @@ func TestRegistryMultiService(t *testing.T) {
 	sn := "/woocoo/multi"
 	cfg := testcnf.Sub("grpc")
 	cfg.Parser().Set("server.namespace", sn)
+	cfg.Parser().Set("server.addr", "127.0.0.1:20010")
 	// Don't UseLogger to avoid grpclog.SetLoggerV2 caused data race
 	srv := grpcx.New(grpcx.WithConfiguration(cfg))
 
@@ -69,7 +70,7 @@ func TestRegistryMultiService(t *testing.T) {
 	defer cxl()
 	_, err = etcdCli.Delete(ctx, sn, clientv3.WithPrefix())
 	require.NoError(t, err)
-	err = wctest.RunWait(t, time.Second, func() error {
+	err = wctest.RunWait(t, time.Second*2, func() error {
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		testproto.RegisterTestServiceServer(srv.Engine(), &testproto.TestPingService{})
 		return srv.Run()

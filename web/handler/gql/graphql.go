@@ -65,7 +65,9 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	}
 }
 
-func (h *Handler) Shutdown() {
+// Shutdown noting to do
+func (h *Handler) Shutdown(_ context.Context) error {
+	return nil
 }
 
 // RegisterSchema is builder for initializing graphql schemas,initialize order is based on the router group order

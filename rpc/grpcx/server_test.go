@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/tsingsun/woocoo/internal/mock/helloworld"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"github.com/tsingsun/woocoo/test/testdata"
@@ -18,24 +19,24 @@ type MockRegistry struct {
 
 // Register a service node
 func (mr *MockRegistry) Register(serviceInfo *registry.ServiceInfo) error {
-	if serviceInfo.Name == "test" {
-		return nil
+	if serviceInfo.Name == "error" {
+		return errors.New("register error")
 	}
-	return errors.New("register error")
+	return nil
 }
 
 // Unregister a service node
 func (mr *MockRegistry) Unregister(serviceInfo *registry.ServiceInfo) error {
-	if serviceInfo.Name == "test" {
-		return nil
+	if serviceInfo.Name == "error" {
+		return errors.New("unregister error")
 	}
-	return errors.New("unregister error")
+	return nil
 }
 
 // TTL returns the time to live of the service node, if it is not available, return 0.
 // every tick will call Register function to refresh.
 func (mr *MockRegistry) TTL() time.Duration {
-	return 0
+	return time.Second
 }
 func (mr *MockRegistry) Close() {
 
@@ -85,6 +86,7 @@ func TestServer_Run(t *testing.T) {
 	tests := []struct {
 		name    string
 		fields  fields
+		service bool
 		wantErr assert.ErrorAssertionFunc
 	}{
 		{
@@ -96,12 +98,8 @@ func TestServer_Run(t *testing.T) {
 				engine:   grpc.NewServer(),
 				registry: &MockRegistry{},
 				exit:     make(chan chan error),
-				ServiceInfos: []*registry.ServiceInfo{
-					{
-						Name: "test",
-					},
-				},
 			},
+			service: true,
 			wantErr: assert.NoError,
 		},
 		{
@@ -115,7 +113,7 @@ func TestServer_Run(t *testing.T) {
 				exit:     make(chan chan error),
 				ServiceInfos: []*registry.ServiceInfo{
 					{
-						Name: "register error",
+						Name: "error",
 					},
 				},
 			},
@@ -130,6 +128,9 @@ func TestServer_Run(t *testing.T) {
 				exit:         tt.fields.exit,
 				registry:     tt.fields.registry,
 				ServiceInfos: tt.fields.ServiceInfos,
+			}
+			if tt.service {
+				helloworld.RegisterGreeterServer(s.Engine(), &helloworld.Server{})
 			}
 			time.AfterFunc(time.Second*2, func() {
 				s.Stop(context.Background())

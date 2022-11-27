@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -41,10 +42,12 @@ type Server struct {
 	engine *grpc.Server
 	exit   chan chan error
 
-	registry       registry.Registry
-	registryTicker *time.Ticker
+	registry     registry.Registry
+	registryDone bool
 	// ServiceInfos is for service discovery,it converts from grpc service info
 	ServiceInfos []*registry.ServiceInfo
+
+	mu sync.RWMutex
 }
 
 func (s *Server) Apply(cfg *conf.Configuration) {
@@ -113,22 +116,25 @@ func (s *Server) ListenAndServe() error {
 		}
 		for _, serviceInfo := range s.ServiceInfos {
 			if err := s.registry.Register(serviceInfo); err != nil {
-				s.deregisterServices()
+				s.deregisterServices() // deregister all services if one fails
 				return err
 			}
 		}
 
 		go func() {
-			s.registryTicker = new(time.Ticker)
+			t := new(time.Ticker)
 			// only process if it exists
 			if s.registry.TTL() > time.Duration(0) {
 				// new ticker
-				s.registryTicker = time.NewTicker(s.registry.TTL())
+				t = time.NewTicker(s.registry.TTL())
+				s.mu.Lock()
+				s.registryDone = true
+				s.mu.Unlock()
 			}
 			var ch chan error
 			for {
 				select {
-				case <-s.registryTicker.C:
+				case <-t.C:
 					for _, serviceInfo := range s.ServiceInfos {
 						go func(info *registry.ServiceInfo) {
 							if err := s.registry.Register(info); err != nil {
@@ -138,7 +144,7 @@ func (s *Server) ListenAndServe() error {
 						}(serviceInfo)
 					}
 				case ch = <-s.exit:
-					s.registryTicker.Stop()
+					t.Stop()
 					s.deregisterServices()
 					ch <- err
 					return
@@ -174,10 +180,14 @@ func (s *Server) Start(ctx context.Context) error {
 }
 
 func (s *Server) Stop(ctx context.Context) (err error) {
-	if s.registry != nil && s.registryTicker != nil {
-		ch := make(chan error)
-		s.exit <- ch
-		err = <-ch
+	if s.registry != nil {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		if s.registryDone {
+			ch := make(chan error)
+			s.exit <- ch
+			err = <-ch
+		}
 	}
 	if s.opts.gracefulStop {
 		s.engine.GracefulStop()

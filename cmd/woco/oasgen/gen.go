@@ -9,12 +9,9 @@ import (
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"github.com/tsingsun/woocoo/cmd/woco/oasgen/codegen"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"go/token"
 	"golang.org/x/tools/go/packages"
 	"net/url"
-	"path"
 	"path/filepath"
-	"strings"
 )
 
 type Option func(*codegen.Config) error
@@ -22,7 +19,7 @@ type Option func(*codegen.Config) error
 // TemplateDir parses the template definitions from the files in the directory
 // and associates the resulting templates with codegen templates.
 func TemplateDir(path string) Option {
-	return templateOption(func(t *codegen.Template) (*codegen.Template, error) {
+	return templateOption(func(t *helper.Template) (*helper.Template, error) {
 		return t.ParseDir(path)
 	})
 }
@@ -30,7 +27,7 @@ func TemplateDir(path string) Option {
 // TemplateFiles parses the named files and associates the resulting templates
 // with codegen templates.
 func TemplateFiles(filenames ...string) Option {
-	return templateOption(func(t *codegen.Template) (*codegen.Template, error) {
+	return templateOption(func(t *helper.Template) (*helper.Template, error) {
 		return t.ParseFiles(filenames...)
 	})
 }
@@ -114,7 +111,7 @@ func Generate(schemaPath string, cfg *codegen.Config, options ...Option) error {
 
 // templateOption ensures the template instantiate
 // once for config and execute the given Option.
-func templateOption(next func(t *codegen.Template) (*codegen.Template, error)) Option {
+func templateOption(next func(t *helper.Template) (*helper.Template, error)) Option {
 	return func(cfg *codegen.Config) (err error) {
 		tmpl, err := next(codegen.NewTemplate("external"))
 		if err != nil {
@@ -136,9 +133,11 @@ func generate(schemaPath string, cfg *codegen.Config) error {
 			return err
 		}
 	}
-	if err := normalizePkg(cfg); err != nil {
+	np, err := helper.NormalizePkg(cfg.Package)
+	if err != nil {
 		return err
 	}
+	cfg.Package = np
 	return graph.Gen()
 }
 
@@ -149,18 +148,6 @@ func mayRecover(err error, schemaPath string, cfg *codegen.Config) error {
 	// If the build error comes from the schema package.
 	if err := helper.CheckDir(schemaPath); err != nil {
 		return fmt.Errorf("schema failure: %w", err)
-	}
-	return nil
-}
-
-func normalizePkg(c *codegen.Config) error {
-	base := path.Base(c.Package)
-	if strings.ContainsRune(base, '-') {
-		base = strings.ReplaceAll(base, "-", "_")
-		c.Package = path.Join(path.Dir(c.Package), base)
-	}
-	if !token.IsIdentifier(base) {
-		return fmt.Errorf("invalid package identifier: %q", base)
 	}
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"net/url"
 	"os"
+	"path"
 	"reflect"
 	"sort"
 	"strconv"
@@ -301,4 +302,18 @@ func JoinQuote(a []string, sep string) string {
 		a[i] = strconv.Quote(s)
 	}
 	return strings.Join(a, sep)
+}
+
+func NormalizePkg(pkg string) (nlpkg string, err error) {
+	nlpkg = pkg
+	base := path.Base(pkg)
+	if strings.ContainsRune(base, '-') {
+		base = strings.ReplaceAll(base, "-", "_")
+		nlpkg = path.Join(path.Dir(nlpkg), base)
+	}
+	if !token.IsIdentifier(base) {
+		err = fmt.Errorf("invalid package identifier: %q", base)
+		return
+	}
+	return
 }

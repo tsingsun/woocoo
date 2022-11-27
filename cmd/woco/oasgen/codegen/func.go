@@ -3,8 +3,6 @@ package codegen
 import (
 	"fmt"
 	"github.com/tsingsun/woocoo/cmd/woco/code"
-	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"text/template"
@@ -14,21 +12,8 @@ var (
 	pathParamRE *regexp.Regexp
 	pattenMap   map[string]string
 
-	Funcs = template.FuncMap{
-		"lower":          strings.ToLower,
-		"hasPrefix":      strings.HasPrefix,
-		"hasSuffix":      strings.HasSuffix,
-		"upper":          strings.ToUpper,
-		"trim":           strings.Trim,
-		"replace":        strings.ReplaceAll,
-		"hasField":       helper.HasField,
-		"pascal":         helper.Pascal,
-		"base":           filepath.Base,
+	funcs = template.FuncMap{
 		"extend":         extend,
-		"pkgName":        code.PkgShortName,
-		"join":           helper.Join,
-		"quote":          helper.Quote,
-		"joinQuote":      helper.JoinQuote,
 		"oasUriToGinUri": OasUriToGinUri,
 		"ginReturnType":  GinReturnType,
 		"patternMap":     func() map[string]string { return pattenMap },

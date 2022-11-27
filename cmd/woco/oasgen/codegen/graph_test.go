@@ -23,10 +23,10 @@ func TestNewGraph(t *testing.T) {
 			name: "petstore",
 			args: args{
 				c: &Config{
-					OpenAPISchema: "../testdata/petstore.yaml",
+					OpenAPISchema: "../internal/integration/petstore.yaml",
 				},
 				schema: func() *openapi3.T {
-					s, err := openapi3.NewLoader().LoadFromFile("../testdata/petshop.yaml")
+					s, err := openapi3.NewLoader().LoadFromFile("../internal/integration/petstore.yaml")
 					require.NoError(t, err)
 					return s
 				}(),
@@ -41,7 +41,7 @@ func TestNewGraph(t *testing.T) {
 					OpenAPISchema: "../testdata/multi-file/openapi.yaml",
 				},
 				schema: func() *openapi3.T {
-					s, err := openapi3.NewLoader().LoadFromFile("../testdata/multi-file/openapi.yaml")
+					s, err := openapi3.NewLoader().LoadFromFile("../internal/integration/multi-file/openapi.yaml")
 					require.NoError(t, err)
 					return s
 				}(),

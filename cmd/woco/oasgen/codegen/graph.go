@@ -8,7 +8,6 @@ import (
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"go/parser"
 	"go/token"
-	"golang.org/x/tools/imports"
 	"log"
 	"os"
 	"path/filepath"
@@ -32,7 +31,7 @@ type (
 		//
 		// Note that, additional templates are executed on the Graph object and
 		// the execution output is stored in a file derived by the template name.
-		Templates []*Template
+		Templates []*helper.Template
 		// Hooks holds an optional list of Hooks to apply on the graph before/after the code-generation.
 		Hooks []Hook
 
@@ -103,7 +102,7 @@ func (c *Config) AddTypeMap(key string, t *code.TypeInfo) {
 // NewGraph creates a new Graph for the code generation from the given Spec definitions.
 // It fails if one of the schemas is invalid.
 func NewGraph(c *Config, schema *openapi3.T) (g *Graph, err error) {
-	defer catch(&err)
+	defer helper.CatchGraphError(&err)
 	g = &Graph{
 		Config: c,
 		Nodes:  make([]*Tag, 0, len(schema.Paths)),
@@ -132,12 +131,12 @@ func (g *Graph) Gen() error {
 // generate is the default Generator implementation.
 func generate(g *Graph) error {
 	var (
-		assets   assets
+		assets   helper.Assets
 		external []GraphTemplate
 	)
 	templates, external = g.templates()
 	pkg := g.Package
-	assets.addDir(filepath.Join(g.Config.Target))
+	assets.AddDir(filepath.Join(g.Config.Target))
 	for _, n := range g.Nodes {
 		//npkg := n.PackageDir()
 		//if npkg == "" {
@@ -150,7 +149,7 @@ func generate(g *Graph) error {
 			if err := templates.ExecuteTemplate(b, tmpl.Name, n); err != nil {
 				return fmt.Errorf("execute template %q: %w", tmpl.Name, err)
 			}
-			assets.add(filepath.Join(g.Config.Target, tmpl.Format(n)), b.Bytes())
+			assets.Add(filepath.Join(g.Config.Target, tmpl.Format(n)), b.Bytes())
 		}
 	}
 	g.Package = pkg
@@ -159,30 +158,30 @@ func generate(g *Graph) error {
 			continue
 		}
 		if dir := filepath.Dir(tmpl.Format); dir != "." {
-			assets.addDir(filepath.Join(g.Config.Target, dir))
+			assets.AddDir(filepath.Join(g.Config.Target, dir))
 		}
 		b := bytes.NewBuffer(nil)
 		if err := templates.ExecuteTemplate(b, tmpl.Name, g); err != nil {
 			return fmt.Errorf("execute template %q: %w", tmpl.Name, err)
 		}
-		assets.add(filepath.Join(g.Config.Target, tmpl.Format), b.Bytes())
+		assets.Add(filepath.Join(g.Config.Target, tmpl.Format), b.Bytes())
 	}
-	// Write and format assets only if template execution
+	// Write and Format Assets only if template execution
 	// finished successfully.
-	if err := assets.write(); err != nil {
+	if err := assets.Write(); err != nil {
 		return err
 	}
-	// cleanup assets that are not needed anymore.
+	// cleanup Assets that are not needed anymore.
 	cleanOldNodes(assets, g.Config.Target)
 	// We can't run "imports" on files when the state is not completed.
 	// Because, "goimports" will drop undefined package. Therefore, it
 	// is suspended to the end of the writing.
-	return assets.format()
+	return assets.Format()
 }
 
 // templates returns the Template to execute on the Graph,
 // and a list of optional external templates if provided.
-func (g *Graph) templates() (*Template, []GraphTemplate) {
+func (g *Graph) templates() (*helper.Template, []GraphTemplate) {
 	initTemplates()
 	var (
 		roots    = make(map[string]struct{})
@@ -198,7 +197,7 @@ func (g *Graph) templates() (*Template, []GraphTemplate) {
 			name := tmpl.Name()
 			switch {
 			// Helper templates can be either global (prefixed with "helper/"),
-			// or local, where their names follow the format: "<root-tmpl>/helper/.+").
+			// or local, where their names follow the Format: "<root-tmpl>/helper/.+").
 			case strings.HasPrefix(name, "helper/"):
 			case strings.Contains(name, "/helper/"):
 				helpers[name] = struct{}{}
@@ -208,11 +207,10 @@ func (g *Graph) templates() (*Template, []GraphTemplate) {
 				external = append(external, GraphTemplate{
 					Name:   name,
 					Format: helper.Snake(name) + ".go",
-					Skip:   rootT.condition,
 				})
 				roots[name] = struct{}{}
 			}
-			templates = MustParse(templates.AddParseTree(name, tmpl.Tree))
+			templates = helper.MustParse(templates.AddParseTree(name, tmpl.Tree))
 		}
 	}
 	for name := range helpers {
@@ -337,7 +335,7 @@ func PrepareEnv(c *Config) (undo func() error, err error) {
 
 // cleanOldNodes removes all files that were generated
 // for nodes that were removed from the Spec.
-func cleanOldNodes(assets assets, target string) {
+func cleanOldNodes(assets helper.Assets, target string) {
 	d, err := os.ReadDir(target)
 	if err != nil {
 		return
@@ -352,7 +350,7 @@ func cleanOldNodes(assets assets, target string) {
 		return
 		//typ := &Operation{}
 		//path := filepath.Join(target, typ.PackageDir())
-		//if _, ok := assets.dirs[path]; ok {
+		//if _, ok := Assets.dirs[path]; ok {
 		//	continue
 		//}
 		//// If it is a node, it must have a model file and a dir (e.g. ent/t.go, ent/t).
@@ -373,84 +371,6 @@ func cleanOldNodes(assets assets, target string) {
 		if err != nil && !os.IsNotExist(err) {
 			log.Printf("remove old dir %s: %s\n", filepath.Join(target, typ.PackageDir()), err)
 		}
-	}
-}
-
-type assets struct {
-	dirs  map[string]struct{}
-	files map[string][]byte
-}
-
-func (a *assets) add(path string, content []byte) {
-	if a.files == nil {
-		a.files = make(map[string][]byte)
-	}
-	a.files[path] = content
-}
-
-func (a *assets) addDir(path string) {
-	if a.dirs == nil {
-		a.dirs = make(map[string]struct{})
-	}
-	a.dirs[path] = struct{}{}
-}
-
-// write files and dirs in the assets.
-func (a assets) write() error {
-	for dir := range a.dirs {
-		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-			return fmt.Errorf("create dir %q: %w", dir, err)
-		}
-	}
-	for path, content := range a.files {
-		if err := os.WriteFile(path, content, 0644); err != nil {
-			return fmt.Errorf("write file %q: %w", path, err)
-		}
-	}
-	return nil
-}
-
-// format runs "goimports" on all assets.
-func (a assets) format() error {
-	for path, content := range a.files {
-		src, err := imports.Process(path, content, nil)
-		if err != nil {
-			return fmt.Errorf("format file %s: %w", path, err)
-		}
-		if err := os.WriteFile(path, src, 0644); err != nil {
-			return fmt.Errorf("write file %s: %w", path, err)
-		}
-	}
-	return nil
-}
-
-// expect panics if the condition is false.
-func expect(cond bool, msg string, args ...any) {
-	if !cond {
-		panic(graphError{fmt.Sprintf(msg, args...)})
-	}
-}
-
-func check(err error, msg string, args ...any) {
-	if err != nil {
-		args = append(args, err)
-		panic(graphError{fmt.Sprintf(msg+": %s", args...)})
-	}
-}
-
-type graphError struct {
-	msg string
-}
-
-func (p graphError) Error() string { return fmt.Sprintf("entc/gen: %s", p.msg) }
-
-func catch(err *error) {
-	if e := recover(); e != nil {
-		gerr, ok := e.(graphError)
-		if !ok {
-			panic(e)
-		}
-		*err = gerr
 	}
 }
 

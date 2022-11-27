@@ -302,7 +302,7 @@ func (sch *Schema) CollectTags() {
 	if sch.Required {
 		sch.validations = append(sch.validations, "required")
 	} else {
-		// if not required, add omitempty as needed
+		// if not required, Add omitempty as needed
 		if len(sch.validations) > 0 {
 			sch.validations = append(sch.validations, "omitempty")
 		}

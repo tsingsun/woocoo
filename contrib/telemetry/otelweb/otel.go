@@ -1,6 +1,7 @@
 package otelweb
 
 import (
+	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	otelwoocoo "github.com/tsingsun/woocoo/contrib/telemetry"
@@ -14,7 +15,7 @@ import (
 
 const (
 	tracerKey  = "otel-go-contrib-tracer"
-	tracerName = "go.opentelemetry.io/contrib/instrumentation/github.com/tsingsun/web/otelwoocoo"
+	tracerName = "go.opentelemetry.io/contrib/instrumentation/github.com/tsingsun/woocoo/contrib/telemetry/otelweb"
 )
 
 // Middleware returns middleware that will trace incoming requests.
@@ -39,7 +40,8 @@ func (h *Middleware) ApplyFunc(_ *conf.Configuration) gin.HandlerFunc {
 //
 // the middleware uses the global tracer provider, so this function is empty.you should call otelwoocoo.Shutdown() when
 // application shutdown.
-func (h *Middleware) Shutdown() {
+func (h *Middleware) Shutdown(_ context.Context) error {
+	return nil
 }
 
 // middleware returns middleware that will trace incoming requests.

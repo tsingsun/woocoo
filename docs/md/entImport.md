@@ -1,4 +1,8 @@
-# [WIP] EntImport
+---
+title: Ent Import
+---
+
+## [WIP] EntImport
 
 ent.io介绍的 [entimport](https://github.com/ariga/entimport) ,但发现如果按照该方式产生的代码,要修改的还是太多,因此从ent底层机制上发,基于模板实现类似的功能
 

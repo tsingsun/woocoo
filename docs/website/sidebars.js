@@ -20,16 +20,25 @@ const sidebars = {
       type: 'category',
       label: '启航',
       items: ['quickstart'],
+      collapsed: false,
     },
     {
       type: 'category',
       label: '乘风',
       items: ['install','conf','web','grpc'],
+      collapsed: false,
     },
     {
       type: 'category',
       label: '破浪',
       items: ['logger','otel','pkg-gds'],
+      collapsed: false,
+    },
+    {
+      type: 'category',
+      label: '沙滩美女',
+      items: ["codegen","cli-init","oasgen","entImport"],
+      collapsed: false,
     }
   ],
 };

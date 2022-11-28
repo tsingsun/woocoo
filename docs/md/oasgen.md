@@ -1,4 +1,8 @@
-# OpenAPI generator for woocoo
+---
+title: OpenAPI3导入
+---
+
+## OpenAPI3 generator for woocoo
 
 本包提供了基于[OpenAPI 3.0](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.0.md)生成Go代码的一系列工具,用于服务WooCoo的Web项目.
 来帮助开发者快速的生成基于OpenAPI 3.0的API服务.

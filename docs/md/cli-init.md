@@ -1,4 +1,7 @@
-# Initial Project Tool
+---
+title: 项目生成
+---
+## Initial Project Tool
 
 `woco init`是一个通过模板快速初始化项目的工具,可通过`woco init -h`查看
 

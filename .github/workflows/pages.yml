@@ -47,10 +47,9 @@ jobs:
         uses: actions/configure-pages@v2
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
-        working-directory: docs/website
         with:
           # Upload entire repository
-          path: 'build'
+          path: 'docs/website/build'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v1

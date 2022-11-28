@@ -14,7 +14,7 @@ WooCoo选择Gin作为Web框架,因此本包生成的服务端代码也是基于G
 
 ## 概览
 
-我们采用了OpenAPI 提供的例子`perstore.ymal`来演示本包的使用方法.[查看该文档](./internal/integration/petstore.yaml).
+我们采用了OpenAPI 提供的例子`perstore.ymal`来演示本包的使用方法.[查看该文档](https://github.com/tsingsun/woocoo/blob/master/cmd/woco/oasgen/internal/integration/petstore.yaml).
 > 在该文档之上加入一些以`x-go`为前缀的扩展属性
 
 安装woocoo cli
@@ -42,7 +42,7 @@ models:
     model: github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration.ApiResponse
 ```
 
-生成的代码例子可以参考[petstore](./internal/integration/petstore)
+生成的代码例子可以参考[petstore](https://github.com/tsingsun/woocoo/tree/master/cmd/woco/oasgen/internal/integration/petstore)
 
 ## 生成代码结构
 

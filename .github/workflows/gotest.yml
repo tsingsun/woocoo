@@ -8,6 +8,7 @@ on:
       - 'readme*.md'
       - 'contrib/**'
       - 'cmd/**'
+      - '.github/**'
   pull_request:
     branches: [ master ]
     paths-ignore:
@@ -15,6 +16,7 @@ on:
       - 'readme*.md'
       - 'contrib/**'
       - 'cmd/**'
+      - '.github/**'
 jobs:
 #  lint:
 #    runs-on: ubuntu-latest

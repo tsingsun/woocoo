@@ -16,14 +16,14 @@ on:
     branches: [ master ]
     paths-ignore:
       - 'docs/**'
-      - 'readme*.md'
+      - 'README.md'
       - '.github'
   pull_request:
     # The branches below must be a subset of the branches above
     branches: [ master ]
     paths-ignore:
       - 'docs/**'
-      - 'readme*.md'
+      - 'README*.md'
   schedule:
     - cron: '45 2 * * 1'
 

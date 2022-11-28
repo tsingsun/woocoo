@@ -1,13 +1,12 @@
 ---
-sidebar_label: 'QuickStart'
-sidebar_position: 1
+id: quickstart
 ---
 
 # 快速开始
 
 ## 安装
 
-woocoo需要使用go 1.18以上
+woocoo需要使用go 1.18以上,相信你已经安装完成了.
 
 ```shell
 $ mkdir myapp && cd myapp

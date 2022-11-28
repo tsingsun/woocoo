@@ -49,7 +49,7 @@ woocoo项目中的服务发现与治理目前是GRPC服务中使用.支持的服
 ### etcd
 
 实现了较基本的服务注册与发现功能.可通过woocoo直接使用
-  
+
 ```yaml
 grpc:
   server:
@@ -73,10 +73,10 @@ grpc:
       dial-keep-alive-time: 3s
 ```
 
-### polaris 
+### polaris
 
 腾讯开源的北极星是一个支持多语言、多框架的云原生服务发现和治理中心， 解决分布式和微服务架构中的服务可见、故障容错、流量控制和安全问题。
-  
+
 ```
 go get github.com/tsingsun/woocoo/polarismesh
 ```  

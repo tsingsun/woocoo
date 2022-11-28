@@ -1,0 +1,78 @@
+---
+title: 安装
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Golang
+
+可以依照[go官方站点](https://golang.google.cn/doc/install)上的详细安装说明来安装,最低要求是1.18版本. 
+
+## 环境设置
+
+```shell
+# 大陆用户配置加载镜像
+go env -w GOPROXY=https://goproxy.cn,direct
+```
+
+## WoCoCli安装
+
+woco cli是一个代码工具,希望能在项目开发中,减少一些重复的工作,提高开发效率.
+
+```shell
+go install github.com/tsingsun/woocoo/cmd/woco@latest
+```
+
+安装位置在`$GOPATH/bin`目录下,请确保该目录在`$PATH`或环境变量中.
+
+安装验证:
+```shell
+woco -v
+```
+
+## GRPC相关工具
+
+[protoc](https://github.com/protocolbuffers/protobuf)以及[protoc-gen-go](https://github.com/protocolbuffers/protobuf-go),
+可以通过各平台工具安装.
+
+<Tabs
+defaultValue="mac"
+values={[
+{label: 'mac', value: 'mac'},
+{label: 'windows', value: 'windows'},
+]}>
+<TabItem value="mac">
+
+```console
+brew install protobuf
+```
+
+</TabItem>
+<TabItem value="windows">
+
+```console
+choco install protobuf
+```
+
+</TabItem>
+</Tabs>
+
+下载安装 `protoc-gen-go`
+
+```console
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+```
+
+## 其他
+
+woocoo同样有为了接入优秀的环境生态而开发配套的客户端.根据需要安装对应的环境.
+
+- mysql
+- redis
+- polaris,etcd
+
+WooCoo建议使用ORM工具,在这边就不去讨论ORM的好坏了.
+
+我们推荐使用[ent](https://entgo.io/),因为它是一个非常优秀的ORM工具,并且支持GRPC,可以很好的和WooCoo配合使用.

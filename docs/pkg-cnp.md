@@ -1,4 +1,0 @@
-# concurrency and parallel
-
-## mapreduce
-

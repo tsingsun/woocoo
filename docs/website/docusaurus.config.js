@@ -23,8 +23,14 @@ const config = {
   // metadata like html lang. For example, if your site is Chinese, you may want
   // to replace "en" with "zh-Hans".
   i18n: {
-    defaultLocale: 'cn',
-    locales: ['cn'],
+    defaultLocale: 'zh',
+    locales: ['zh'],
+    localeConfigs: {
+        cn: {
+          label: '简体中文',
+          direction: 'ltr',
+        }
+    }
   },
 
   presets: [
@@ -38,14 +44,14 @@ const config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+            'https://github.com/tsingsun/woocoo/tree/master/docs/md/',
         },
         blog: {
           showReadingTime: true,
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+            'https://github.com/tsingsun/woocoo/tree/master/docs/website/blog/',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),

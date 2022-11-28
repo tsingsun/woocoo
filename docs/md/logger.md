@@ -1,3 +1,6 @@
+---
+title: 日志
+---
 ## 日志
 
 框架日志组件内置了[Uber Zap](http://go.uber.org/zap)+Rotate组合,采用文件流记录日志.

@@ -29,6 +29,7 @@ func TestGrpcContextLogger(t *testing.T) {
 
 	clfg := conf.NewFromStringMap(map[string]any{
 		"TimestampFormat": "2006-01-02 15:04:05",
+		"Format":          "request,response",
 	})
 	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(LoggerUnaryServerInterceptor(clfg), applog()))
 	assert.NotNil(t, gs)

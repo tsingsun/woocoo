@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -21,8 +22,11 @@ var defaultLoggerOptions = &LoggerOptions{
 
 type LoggerOptions struct {
 	TimestampFormat string `json:"timestampFormat" yaml:"timestampFormat"`
+	Format          string `json:"format" yaml:"format"`
+	logger          log.ComponentLogger
 
-	logger log.ComponentLogger
+	logRequest  bool
+	logResponse bool
 }
 
 func (o *LoggerOptions) Apply(cnf *conf.Configuration) {
@@ -33,6 +37,15 @@ func (o *LoggerOptions) Apply(cnf *conf.Configuration) {
 	operator := logger.Logger(log.WithOriginalLogger()).WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
 	logger.SetLogger(operator)
 	o.logger = logger
+	ts := strings.Split(o.Format, ",")
+	for _, tag := range ts {
+		switch tag {
+		case "request":
+			o.logRequest = true
+		case "response":
+			o.logResponse = true
+		}
+	}
 }
 
 // LoggerUnaryServerInterceptor returns a new unary server interceptors that adds a zap.Logger to the context.
@@ -45,22 +58,31 @@ func LoggerUnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInter
 		resp, err := handler(newCtx, req)
 
 		latency := time.Since(start)
-		loggerOutPut(o.logger, newCtx, info.FullMethod, latency, err)
+		code := status.Code(err)
+		fds := []zap.Field{
+			zap.Int("status", int(code)),
+			zap.Duration("latency", latency),
+		}
+		if o.logRequest {
+			fds = append(fds, zap.Any("request", req))
+		}
+		if o.logResponse {
+			fds = append(fds, zap.Any("response", resp))
+		}
+		if err != nil {
+			fds = append(fds, zap.Error(err))
+		}
+		level := DefaultCodeToLevel(code)
+		loggerOutPut(o.logger, newCtx, level, fds)
 		return resp, err
 	}
 }
 
-func loggerOutPut(l log.ComponentLogger, ctx context.Context, method string, latency time.Duration, err error) {
+func loggerOutPut(l log.ComponentLogger, ctx context.Context, level zapcore.Level, fields []zapcore.Field) {
 	// must be ok
 	carr, _ := log.FromIncomingContext(ctx)
-	code := status.Code(err)
-	level := DefaultCodeToLevel(code)
-	carr.Fields = append(carr.Fields,
-		zap.Int("status", int(code)),
-		zap.Duration("latency", latency),
-	)
-	if err != nil {
-		carr.Fields = append(carr.Fields, zap.Error(err))
+	if len(fields) > 0 {
+		carr.Fields = append(carr.Fields, fields...)
 	}
 	clog := l.Ctx(ctx)
 	clog.Log(level, "", carr.Fields)
@@ -77,7 +99,16 @@ func LoggerStreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerInt
 		wrapped.WrappedContext = newCtx
 		err := handler(srv, wrapped)
 		latency := time.Since(start)
-		loggerOutPut(o.logger, newCtx, info.FullMethod, latency, err)
+		code := status.Code(err)
+		fds := []zap.Field{
+			zap.Int("status", int(code)),
+			zap.Duration("latency", latency),
+		}
+		if err != nil {
+			fds = append(fds, zap.Error(err))
+		}
+		level := DefaultCodeToLevel(code)
+		loggerOutPut(o.logger, newCtx, level, fds)
 		return err
 	}
 }

@@ -23,6 +23,9 @@ store:
   testDriver:
     driverName: testDriver
     dsn: root:123456@tcp(127.0.0.1:3306)
+    maxIdleConns: 10
+    maxOpenConns: 100
+    connMaxLifetime: 1m
 `
 	cfg := conf.NewFromBytes([]byte(config)).Load()
 	type args struct {

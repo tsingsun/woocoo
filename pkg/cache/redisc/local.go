@@ -10,7 +10,8 @@ import (
 
 // LocalCache is a local cache to store a marshalled data in memory.
 type LocalCache interface {
-	Set(key string, data []byte)
+	// Set sets a value for a key. ttl maybe has a rule in Local Cache
+	Set(key string, data []byte, ttl time.Duration)
 	Get(key string) ([]byte, bool)
 	Del(key string)
 	// Clean removes all items from the cache in memory.
@@ -52,13 +53,15 @@ func (c *TinyLFU) UseRandomizedTTL(offset time.Duration) {
 	c.offset = offset
 }
 
-func (c *TinyLFU) Set(key string, b []byte) {
+func (c *TinyLFU) Set(key string, b []byte, ttl time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	ttl := c.ttl
-	if c.offset > 0 {
-		ttl += time.Duration(c.rand.Int63n(int64(c.offset)))
+	if ttl <= 0 {
+		ttl = c.ttl
+		if c.offset > 0 {
+			ttl += time.Duration(c.rand.Int63n(int64(c.offset)))
+		}
 	}
 
 	c.lfu.Set(&tinylfu.Item{

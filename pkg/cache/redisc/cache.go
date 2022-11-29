@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"github.com/tsingsun/woocoo/pkg/log"
 	"sync/atomic"
 	"time"
 
@@ -106,7 +106,7 @@ func (item *Item) ttl() time.Duration {
 
 	if item.TTL != 0 {
 		if item.TTL < time.Second {
-			log.Printf("too short TTL for key=%q: %s", item.Key, item.TTL)
+			log.Warn(fmt.Sprintf("cache: item TTL is too short key=%q %s", item.Key, item.TTL))
 			return defaultTTL
 		}
 		return item.TTL
@@ -162,6 +162,8 @@ func NewCache(opt *Options) *Cache {
 }
 
 // Set caches the item.
+// Notice: If you use SkipXXX flags, you must Use GetSkip() to get the value. once you use unmatched method such as
+// Get/Exists to get or check the value, the local cache don't know the flags and will cause mess .
 func (cd *Cache) Set(item *Item) error {
 	_, _, err := cd.set(item)
 	return err
@@ -180,8 +182,10 @@ func (cd *Cache) set(item *Item) ([]byte, bool, error) {
 	if item.Skip == SkipAll {
 		return b, true, nil
 	}
-	if cd.opt.LocalCache != nil && !item.Skip.Is(SkipLocal) {
-		cd.opt.LocalCache.Set(item.Key, b)
+
+	ttl := item.ttl() // repair ttl
+	if !item.Skip.Is(SkipLocal) && cd.opt.LocalCache != nil {
+		cd.opt.LocalCache.Set(item.Key, b, ttl)
 	}
 
 	if cd.opt.Redis == nil {
@@ -191,8 +195,7 @@ func (cd *Cache) set(item *Item) ([]byte, bool, error) {
 		return b, true, nil
 	}
 
-	ttl := item.ttl()
-	if ttl == 0 {
+	if ttl == 0 { // ttl < 0
 		return b, true, nil
 	}
 
@@ -210,8 +213,10 @@ func (cd *Cache) set(item *Item) ([]byte, bool, error) {
 }
 
 // Exists reports whether value for the given key exists.
+// exists call get ,ttl is unknown
 func (cd *Cache) Exists(ctx context.Context, key string) bool {
-	return cd.Get(ctx, key, nil) == nil
+	_, err := cd.getBytes(ctx, key, SkipMode(0))
+	return err == nil
 }
 
 // Get gets the value for the given key.
@@ -220,25 +225,16 @@ func (cd *Cache) Get(ctx context.Context, key string, value interface{}) error {
 }
 
 // GetSkip gets the value for the given key skipping by special.
-func (cd *Cache) GetSkip(
-	ctx context.Context, key string, value interface{}, mode SkipMode,
-) error {
+func (cd *Cache) GetSkip(ctx context.Context, key string, value interface{}, mode SkipMode) error {
 	return cd.get(ctx, key, value, mode)
 }
 
 // GetSkippingLocalCache gets the value for the given key skipping local cache.
-func (cd *Cache) GetSkippingLocalCache(
-	ctx context.Context, key string, value interface{},
-) error {
+func (cd *Cache) GetSkippingLocalCache(ctx context.Context, key string, value interface{}) error {
 	return cd.get(ctx, key, value, SkipLocal)
 }
 
-func (cd *Cache) get(
-	ctx context.Context,
-	key string,
-	value interface{},
-	mode SkipMode,
-) error {
+func (cd *Cache) get(ctx context.Context, key string, value interface{}, mode SkipMode) error {
 	b, err := cd.getBytes(ctx, key, mode)
 	if err != nil {
 		return err
@@ -257,52 +253,23 @@ func (cd *Cache) getBytes(ctx context.Context, key string, mode SkipMode) ([]byt
 		}
 	}
 
-	if !mode.Is(SkipRedis) && cd.opt.Redis == nil {
-		if cd.opt.LocalCache == nil {
-			return nil, errRedisLocalCacheNil
-		}
+	if mode.Is(SkipRedis) || cd.opt.Redis == nil {
 		return nil, ErrCacheMiss
 	}
 
 	b, err := cd.opt.Redis.Get(ctx, key).Bytes()
 	if err != nil {
-		if cd.opt.StatsEnabled {
-			atomic.AddUint64(&cd.misses, 1)
-		}
+		cd.addMiss()
 		if errors.Is(err, redis.Nil) {
 			return nil, ErrCacheMiss
 		}
 		return nil, err
 	}
-
-	if cd.opt.StatsEnabled {
-		atomic.AddUint64(&cd.hits, 1)
-	}
-
+	cd.addHit()
 	if !mode.Is(SkipLocal) && cd.opt.LocalCache != nil {
-		cd.opt.LocalCache.Set(key, b)
+		cd.opt.LocalCache.Set(key, b, 0)
 	}
 	return b, nil
-}
-
-func (cd *Cache) Take(item *Item) error {
-	b, cached, err := cd.getSetItemBytes(item, false)
-	if err != nil {
-		return err
-	}
-
-	if item.Value == nil || len(b) == 0 {
-		return nil
-	}
-
-	if err := cd.unmarshal(b, item.Value); err != nil {
-		if cached {
-			_ = cd.Delete(item.Context(), item.Key)
-			return cd.Take(item)
-		}
-		return err
-	}
-	return nil
 }
 
 // Once gets the item.Value for the given item.Key from the cache or
@@ -340,7 +307,7 @@ func (cd *Cache) getSetItemBytes(item *Item, once bool) (b []byte, cached bool, 
 	var v interface{}
 	if once {
 		v, err, _ = cd.group.Do(item.Key, func() (interface{}, error) {
-			b, cached, err = cd.getSetItem(item)
+			b, cached, err = cd.getSetItem(item, SkipLocal)
 			return b, err
 		})
 		if err != nil {
@@ -348,12 +315,12 @@ func (cd *Cache) getSetItemBytes(item *Item, once bool) (b []byte, cached bool, 
 		}
 		return v.([]byte), cached, nil
 	} else {
-		return cd.getSetItem(item)
+		return cd.getSetItem(item, item.Skip)
 	}
 }
 
-func (cd *Cache) getSetItem(item *Item) (b []byte, cached bool, err error) {
-	b, err = cd.getBytes(item.Context(), item.Key, item.Skip)
+func (cd *Cache) getSetItem(item *Item, mode SkipMode) (b []byte, cached bool, err error) {
+	b, err = cd.getBytes(item.Context(), item.Key, mode)
 	if err == nil {
 		return b, true, nil
 	}
@@ -473,6 +440,7 @@ func (cd *Cache) _unmarshal(b []byte, value interface{}) error {
 
 //------------------------------------------------------------------------------
 
+// Stats is the redis cache analyzer.
 type Stats struct {
 	Hits   uint64
 	Misses uint64
@@ -486,5 +454,17 @@ func (cd *Cache) Stats() *Stats {
 	return &Stats{
 		Hits:   atomic.LoadUint64(&cd.hits),
 		Misses: atomic.LoadUint64(&cd.misses),
+	}
+}
+
+func (cd *Cache) addHit() {
+	if cd.opt.StatsEnabled {
+		atomic.AddUint64(&cd.hits, 1)
+	}
+}
+
+func (cd *Cache) addMiss() {
+	if cd.opt.StatsEnabled {
+		atomic.AddUint64(&cd.misses, 1)
 	}
 }

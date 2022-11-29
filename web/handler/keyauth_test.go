@@ -23,7 +23,7 @@ func TestKeyAuth(t *testing.T) {
 		return redisc.New(conf.NewFromStringMap(map[string]any{
 			"type": "standalone",
 			"addr": mredis.Addr(),
-		}), nil)
+		}))
 	}())
 	require.NoError(t, err)
 	type args struct {

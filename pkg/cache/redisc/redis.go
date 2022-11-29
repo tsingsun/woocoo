@@ -10,19 +10,31 @@ import (
 	"time"
 )
 
-// Redisc implement github.com/tsingsun/woocoo/cache/Cache
-//
-// if you want to register to cache manager, set a `driverName` in configuration
-type Redisc struct {
-	operator   *Cache
-	client     redis.Cmdable
-	driverName string
+type (
+	// Redisc implement github.com/tsingsun/woocoo/cache/Cache
+	//
+	// if you want to register to cache manager, set a `driverName` in configuration
+	Redisc struct {
+		operator   *Cache
+		client     redis.Cmdable
+		driverName string
+	}
+
+	Option func(*Redisc)
+)
+
+func WithRedisClient(cli redis.Cmdable) Option {
+	return func(redisc *Redisc) {
+		redisc.client = cli
+	}
 }
 
-func New(cfg *conf.Configuration, cli redis.Cmdable) *Redisc {
+func New(cfg *conf.Configuration, opts ...Option) *Redisc {
 	c := &Redisc{
-		client:     cli,
 		driverName: "redis",
+	}
+	for _, opt := range opts {
+		opt(c)
 	}
 	c.Apply(cfg)
 	if cfg.IsSet("driverName") && cfg.String("driverName") != "" {
@@ -35,7 +47,7 @@ func New(cfg *conf.Configuration, cli redis.Cmdable) *Redisc {
 }
 
 func NewBuiltIn() *Redisc {
-	c := New(conf.Global().Sub("cache.redis"), nil)
+	c := New(conf.Global().Sub("cache.redis"))
 	return c
 }
 
@@ -79,6 +91,7 @@ func (c *Redisc) Get(ctx context.Context, key string, v any) error {
 }
 
 // Set sets the value associated with the given key.
+// if ttl < 0 ,will not save to redis,but save to local cache if enabled
 func (c *Redisc) Set(ctx context.Context, key string, v any, ttl time.Duration) error {
 	return c.operator.Set(&Item{
 		Ctx:   ctx,
@@ -98,7 +111,7 @@ func (c *Redisc) Del(ctx context.Context, key string) error {
 	return c.operator.Delete(ctx, key)
 }
 
-// Take returns the value associated with the given key.
+// Take returns the value associated with the given key. It Uses flight control to avoid concurrent requests.
 func (c *Redisc) Take(ctx context.Context, v any, key string, ttl time.Duration, query func() (any, error)) error {
 	item := &Item{
 		Ctx:   ctx,
@@ -109,7 +122,7 @@ func (c *Redisc) Take(ctx context.Context, v any, key string, ttl time.Duration,
 			return query()
 		},
 	}
-	return c.operator.Take(item)
+	return c.operator.Once(item)
 }
 
 // IsNotFound returns true if the error is cache.ErrCacheMiss.

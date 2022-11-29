@@ -22,7 +22,7 @@ func TestTinyLFU_Get_CorruptionOnExpiry(t *testing.T) {
 	// Put a bunch of stuff in the cache with a TTL of 1 second
 	for i := 0; i < size; i++ {
 		key := keyName(i)
-		mycache.Set(key, []byte(strFor(i)))
+		mycache.Set(key, []byte(strFor(i)), 0)
 	}
 
 	// Read stuff for a bit longer than the TTL - that's when the corruption occurs

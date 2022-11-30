@@ -132,6 +132,10 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	} else {
 		opts.Skipper = DefaultSkipper
 	}
+	traceIDKey := h.logger.Logger().TraceIDKey
+	if traceIDKey == "" {
+		traceIDKey = log.TraceIDKey
+	}
 	return func(c *gin.Context) {
 		start := time.Now()
 		logCarrier := log.NewCarrier()
@@ -154,7 +158,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			switch tag.v {
 			case "id":
 				id := req.Header.Get("X-Request-Id")
-				fields[i] = zap.String(log.TraceIDKey, id)
+				fields[i] = zap.String(traceIDKey, id)
 			case "remoteIp":
 				fields[i] = zap.String("remoteIp", c.ClientIP())
 			case "host":

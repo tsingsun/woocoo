@@ -122,7 +122,7 @@ func (c *Redisc) Take(ctx context.Context, v any, key string, ttl time.Duration,
 			return query()
 		},
 	}
-	return c.operator.Once(item)
+	return c.operator.Take(item)
 }
 
 // IsNotFound returns true if the error is cache.ErrCacheMiss.

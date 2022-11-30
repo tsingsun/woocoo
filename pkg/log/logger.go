@@ -44,8 +44,8 @@ func (n *DefaultContextLogger) LogFields(log *Logger, _ context.Context, lvl zap
 //   - grpc: from metadata key "trace_id"
 type Logger struct {
 	*zap.Logger
-	WithTraceID bool
-
+	WithTraceID   bool
+	TraceIDKey    string
 	contextLogger ContextLogger
 }
 
@@ -54,6 +54,7 @@ func New(zl *zap.Logger) *Logger {
 	return &Logger{
 		Logger:        zl,
 		contextLogger: &DefaultContextLogger{},
+		TraceIDKey:    TraceIDKey,
 	}
 }
 
@@ -104,6 +105,9 @@ func (l *Logger) Apply(cfg *conf.Configuration) {
 	}
 	l.Logger = zl
 	l.WithTraceID = config.WithTraceID
+	if config.TraceIDKey != "" {
+		l.TraceIDKey = config.TraceIDKey
+	}
 }
 
 // With creates a child logger and adds structured context to it. Fields added

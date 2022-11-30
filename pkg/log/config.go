@@ -24,8 +24,9 @@ const (
 
 	TraceIDKey = "trace_id"
 
-	ComponentKey     = "component"
-	WebComponentName = "web"
+	ComponentKey      = "component"
+	WebComponentName  = "web"
+	GrpcComponentName = "grpc"
 )
 
 var once sync.Once
@@ -45,7 +46,8 @@ type Config struct {
 	DisableErrorVerbose bool `json:"disableErrorVerbose" yaml:"disableErrorVerbose"`
 	// WithTraceID configures the logger to add `trace_id` field to structured log messages.
 	WithTraceID bool `json:"withTraceID" yaml:"withTraceID"`
-
+	// TraceIDKey is the key used to store the trace ID. defaults to "trace_id".
+	TraceIDKey string `json:"traceIDKey" yaml:"traceIDKey"`
 	callerSkip int
 	useRotate  bool
 	basedir    string
@@ -73,6 +75,7 @@ func NewConfig(cfg *conf.Configuration) (*Config, error) {
 		ZapConfigs: make([]zap.Config, coresl),
 		basedir:    cfg.Root().GetBaseDir(),
 		callerSkip: CallerSkip,
+		TraceIDKey: TraceIDKey,
 	}
 	if cfg.IsSet("callerSkip") {
 		v.callerSkip = cfg.Int("callerSkip")

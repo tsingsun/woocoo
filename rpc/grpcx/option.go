@@ -23,8 +23,7 @@ func WithConfiguration(cfg *conf.Configuration) Option {
 // UseLogger use component logger named "grpc" and set grpclog use zap logger.It is used by default.
 func UseLogger() Option {
 	return func(s *serverOptions) {
-		logger := log.Component("grpc")
-		lg := logger.Logger()
+		lg := log.Component(log.GrpcComponentName).Logger()
 		if _, ok := lg.ContextLogger().(*log.DefaultContextLogger); ok {
 			lg.SetContextLogger(interceptor.NewGrpcContextLogger())
 		}

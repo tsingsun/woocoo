@@ -40,6 +40,15 @@ func (uu users) MarshalLogArray(arr zapcore.ArrayEncoder) error {
 	return err
 }
 
+type tracerContextLogger struct{}
+
+func (n *tracerContextLogger) LogFields(log *Logger, _ context.Context, lvl zapcore.Level, msg string, fields []zap.Field) {
+	if log.WithTraceID {
+		fields = append(fields, zap.String(log.TraceIDKey, "123456"))
+	}
+	log.Log(lvl, msg, fields...)
+}
+
 func applyGlobal(disableStacktrace bool) {
 	glog := InitGlobalLogger()
 	glog.Apply(conf.NewFromBytes([]byte(fmt.Sprintf(`
@@ -188,6 +197,7 @@ func TestLogger_Ctx(t *testing.T) {
 	type fields struct {
 		Logger            *zap.Logger
 		WithTraceID       bool
+		TraceIDKey        string
 		DisableCaller     bool
 		DisableStacktrace bool
 		contextLogger     ContextLogger
@@ -210,6 +220,16 @@ func TestLogger_Ctx(t *testing.T) {
 				contextLogger:     &DefaultContextLogger{},
 			},
 		},
+		{
+			name: "with ctx and trace id",
+			fields: fields{
+				WithTraceID:       true,
+				TraceIDKey:        "traceId",
+				DisableCaller:     false,
+				DisableStacktrace: false,
+				contextLogger:     &tracerContextLogger{},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -221,6 +241,7 @@ func TestLogger_Ctx(t *testing.T) {
 			l := &Logger{
 				Logger:        zp,
 				WithTraceID:   tt.fields.WithTraceID,
+				TraceIDKey:    tt.fields.TraceIDKey,
 				contextLogger: tt.fields.contextLogger,
 			}
 			l.Ctx(tt.args.ctx).Debug("debug", zap.String("key", "value"))
@@ -231,7 +252,11 @@ func TestLogger_Ctx(t *testing.T) {
 			l.Ctx(tt.args.ctx).Log(zap.ErrorLevel, "log", []zap.Field{zap.String("key", "value")})
 			l.Ctx(tt.args.ctx).WithOptions(zap.AddCaller()).Info("addcaller", zap.String("key", "value"))
 			assert.Len(t, logdata.Lines(), 7)
-			assert.Contains(t, logdata.LastLine(), "log/logger.go")
+			if _, ok := l.contextLogger.(*tracerContextLogger); ok {
+				assert.Contains(t, logdata.LastLine(), l.TraceIDKey)
+			} else {
+				assert.Contains(t, logdata.LastLine(), "log/logger.go")
+			}
 		})
 	}
 }

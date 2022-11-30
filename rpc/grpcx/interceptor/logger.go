@@ -29,12 +29,15 @@ type LoggerOptions struct {
 	logResponse bool
 }
 
+// Apply set access log from grpc logger
 func (o *LoggerOptions) Apply(cnf *conf.Configuration) {
 	if err := cnf.Unmarshal(o); err != nil {
 		panic(err)
 	}
 	logger := log.Component(AccessLogComponentName)
 	operator := logger.Logger(log.WithOriginalLogger()).WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
+	cl := log.Component(log.GrpcComponentName).Logger()
+	operator.SetContextLogger(cl.ContextLogger())
 	logger.SetLogger(operator)
 	o.logger = logger
 	ts := strings.Split(o.Format, ",")
@@ -189,7 +192,7 @@ func (g *GrpcContextLogger) LogFields(logger *log.Logger, ctx context.Context, l
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
 			tid := md.Get(log.TraceIDKey)
 			if len(tid) != 0 {
-				fields = append(fields, zap.String(log.TraceIDKey, tid[0]))
+				fields = append(fields, zap.String(logger.TraceIDKey, tid[0]))
 			}
 		}
 	}

@@ -329,6 +329,46 @@ func TestCache_Once(t *testing.T) {
 				assert.True(t, rdb.Exists("key"))
 			},
 		},
+		{
+			name: "take",
+			do: func() {
+				cache, rdb := initStandaloneCache(t)
+				item := &Item{
+					Ctx:   context.Background(),
+					Key:   "key",
+					TTL:   time.Hour,
+					Value: "123",
+					Skip:  SkipLocal,
+				}
+				assert.NoError(t, cache.Set(item))
+				err := wctest.RunWait(t, time.Second, func() error {
+					want := ""
+					item := &Item{
+						Ctx:   context.Background(),
+						Key:   "key",
+						Value: &want,
+						Skip:  SkipLocal,
+					}
+					assert.NoError(t, cache.Take(item))
+					assert.Equal(t, "123", want)
+					return nil
+				}, func() error {
+					want := ""
+					item := &Item{
+						Ctx:   context.Background(),
+						Key:   "key",
+						Value: &want,
+						Skip:  SkipLocal,
+					}
+					assert.NoError(t, cache.Take(item))
+					assert.Equal(t, "123", want)
+					return nil
+				})
+				assert.NoError(t, err)
+				assert.EqualValues(t, cache.Stats().Hits, 2)
+				assert.True(t, rdb.Exists("key"))
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

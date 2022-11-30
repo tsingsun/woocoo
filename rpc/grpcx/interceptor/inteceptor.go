@@ -8,15 +8,14 @@ import (
 )
 
 const (
-	ComponentKey           = "grpc"
-	AccessLogComponentName = ComponentKey + ".accessLog"
+	AccessLogComponentName = log.GrpcComponentName + ".accessLog"
 )
 
 var (
 	// ServerField is used in every server-side log statement made through grpc_zap.Can be overwritten before initialization.
 	ServerField = zap.String("span.kind", "server")
 
-	logger = log.Component(ComponentKey, ServerField)
+	logger = log.Component(log.ComponentKey, ServerField)
 )
 
 // WrappedServerStream is a thin wrapper around grpc.ServerStream that allows modifying context.

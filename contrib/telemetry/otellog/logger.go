@@ -52,7 +52,7 @@ func (l *ContextLogger) LogFields(logger *log.Logger, ctx context.Context, lvl z
 	}
 	if logger.WithTraceID {
 		traceID := span.SpanContext().TraceID().String()
-		fields = append(fields, zap.String(log.TraceIDKey, traceID))
+		fields = append(fields, zap.String(logger.TraceIDKey, traceID))
 	}
 	ce.Write(fields...)
 }

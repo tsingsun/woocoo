@@ -25,7 +25,7 @@ func TestGrpcContextLogger(t *testing.T) {
 	logdata := wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 	// get the global logger
 	log.Global().Logger(log.WithOriginalLogger()).SetContextLogger(NewGrpcContextLogger())
-	log.Component(ComponentKey).Logger(log.WithOriginalLogger()).WithTraceID = true
+	log.Component(log.GrpcComponentName).Logger(log.WithOriginalLogger()).WithTraceID = true
 
 	clfg := conf.NewFromStringMap(map[string]any{
 		"TimestampFormat": "2006-01-02 15:04:05",

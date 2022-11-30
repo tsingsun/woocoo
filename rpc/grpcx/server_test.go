@@ -7,6 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/internal/mock/helloworld"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/log"
+	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"google.golang.org/grpc"
@@ -138,4 +140,25 @@ func TestServer_Run(t *testing.T) {
 			tt.wantErr(t, s.Run(), fmt.Sprintf("Run()"))
 		})
 	}
+}
+
+func TestServer_UseLogger(t *testing.T) {
+	b := []byte(`
+grpc:
+  server:
+    addr: 127.0.0.1:20000
+  engine:
+  - unaryInterceptors:
+    - accessLog:  
+`)
+	// testdata.Path("x509/test.pem"), testdata.Path("x509/test.key")
+	cfg := conf.NewFromBytes(b)
+	cfg.SetBaseDir(testdata.BaseDir())
+	cfg.Load()
+	s := New(WithConfiguration(cfg.Sub("grpc")),
+		UseLogger(),
+	)
+	assert.IsType(t, log.Component(log.GrpcComponentName).Logger().ContextLogger(), &interceptor.GrpcContextLogger{})
+	assert.IsType(t, log.Component(interceptor.AccessLogComponentName).Logger().ContextLogger(), &interceptor.GrpcContextLogger{})
+	assert.NotNil(t, s)
 }

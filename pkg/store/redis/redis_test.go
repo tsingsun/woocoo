@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"github.com/alicebob/miniredis/v2"
+	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"testing"
@@ -19,6 +20,7 @@ store:
     type: standalone
     addr: 127.0.0.1:6379
     db: 1
+    dialTimeout: 5s
   redisr:
     type: ring
     addrs: 
@@ -46,7 +48,9 @@ store:
 				rds := miniredis.RunT(t)
 				cfg := conf.NewFromBytes([]byte(b)).Load().Sub("store.redis")
 				cfg.Parser().Set("addr", rds.Addr())
-				return NewClient(cfg)
+				cli := NewClient(cfg)
+				assert.Equal(t, cli.option.(*redis.Options).DialTimeout, cfg.Duration("dialTimeout"))
+				return cli
 			},
 		},
 		{

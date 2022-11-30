@@ -278,7 +278,7 @@ func (cd *Cache) getBytes(ctx context.Context, key string, mode SkipMode) ([]byt
 // at a time. If a duplicate comes in, the duplicate caller waits for the
 // original to complete and receives the same results.
 func (cd *Cache) Once(item *Item) error {
-	b, cached, err := cd.getSetItemBytes(item, true)
+	b, cached, err := cd.getSetItemBytesOnce(item)
 	if err != nil {
 		return err
 	}
@@ -297,39 +297,31 @@ func (cd *Cache) Once(item *Item) error {
 	return nil
 }
 
-func (cd *Cache) getSetItemBytes(item *Item, once bool) (b []byte, cached bool, err error) {
+func (cd *Cache) getSetItemBytesOnce(item *Item) (b []byte, cached bool, err error) {
 	if !item.Skip.Is(SkipLocal) && cd.opt.LocalCache != nil {
 		b, ok := cd.opt.LocalCache.Get(item.Key)
 		if ok {
 			return b, true, nil
 		}
 	}
-	var v interface{}
-	if once {
-		v, err, _ = cd.group.Do(item.Key, func() (interface{}, error) {
-			b, cached, err = cd.getSetItem(item, SkipLocal)
-			return b, err
-		})
-		if err != nil {
-			return nil, false, err
+
+	v, err, _ := cd.group.Do(item.Key, func() (interface{}, error) {
+		b, err := cd.getBytes(item.Context(), item.Key, item.Skip)
+		if err == nil {
+			cached = true
+			return b, nil
 		}
-		return v.([]byte), cached, nil
-	} else {
-		return cd.getSetItem(item, item.Skip)
-	}
-}
 
-func (cd *Cache) getSetItem(item *Item, mode SkipMode) (b []byte, cached bool, err error) {
-	b, err = cd.getBytes(item.Context(), item.Key, mode)
-	if err == nil {
-		return b, true, nil
+		b, ok, err := cd.set(item)
+		if ok {
+			return b, nil
+		}
+		return nil, err
+	})
+	if err != nil {
+		return nil, false, err
 	}
-
-	b, ok, err := cd.set(item)
-	if ok {
-		return b, false, nil
-	}
-	return nil, false, err
+	return v.([]byte), cached, nil
 }
 
 func (cd *Cache) Delete(ctx context.Context, key string) error {

@@ -20,6 +20,8 @@ $ go get github.com/tsingsun/woocoo
 还可以通过cli工具快速创建一个项目来了解:
 
 ```
+go install github.com/tsingsun/woocoo/cmd/woco@master
+
 ./woco init -p github.com/tsingsun/woocoo/example -m cache,web,grpc,otel -t ./example
 cd example
 ```

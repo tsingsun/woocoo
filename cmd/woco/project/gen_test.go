@@ -21,11 +21,25 @@ func Test_generateWeb(t *testing.T) {
 				cfg: &Config{
 					Package: "github.com/tsingsun/woocoo/example",
 					Target: func() string {
-						fd, err := filepath.Abs("/Users/tsingsun/Projects/wocotest")
+						fd, err := filepath.Abs("../../../../wocotest")
 						require.NoError(t, err)
 						return fd
 					}(),
-					Modules: []string{"redis", "db", "otel", "web", "grpc"},
+					Modules: []string{"cache", "db", "otel", "web", "grpc"},
+				},
+			},
+		},
+		{
+			name: "empty-module",
+			args: args{
+				cfg: &Config{
+					Package: "github.com/tsingsun/woocoo/example",
+					Target: func() string {
+						fd, err := filepath.Abs("../../../../wocotest")
+						require.NoError(t, err)
+						return fd
+					}(),
+					Modules: []string{},
 				},
 			},
 		},

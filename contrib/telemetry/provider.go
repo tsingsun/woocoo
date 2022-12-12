@@ -61,12 +61,13 @@ func initMetric(c *Config, exporter sdkmetric.Exporter) (metric.MeterProvider, e
 }
 
 func NewOtlpTracer(c *Config) (tp trace.TracerProvider, shutdown func(ctx context.Context) error, err error) {
-	gclient := client.New(client.Configuration(c.cnf))
-	conn, err := gclient.Dial(c.TraceExporterEndpoint,
+	traceCfg := c.cnf.Sub(c.TraceExporter)
+	gclient := client.New(traceCfg)
+	conn, err := gclient.Dial(traceCfg.String("endpoint"),
 		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
 	)
 	if err != nil {
-		panic(err)
+		return
 	}
 
 	ctx := context.Background()
@@ -92,12 +93,13 @@ func NewOtlpTracer(c *Config) (tp trace.TracerProvider, shutdown func(ctx contex
 }
 
 func NewOtlpMetric(c *Config) (mp metric.MeterProvider, shutdown func(ctx context.Context) error, err error) {
-	gclient := client.New(client.Configuration(c.cnf))
-	conn, err := gclient.Dial(c.TraceExporterEndpoint,
+	metricCfg := c.cnf.Sub(c.MetricExporter)
+	gclient := client.New(metricCfg)
+	conn, err := gclient.Dial(metricCfg.String("endpoint"),
 		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
 	)
 	if err != nil {
-		panic(err)
+		return
 	}
 	exporter, err := otlpmetricgrpc.New(context.Background(),
 		otlpmetricgrpc.WithGRPCConn(conn),

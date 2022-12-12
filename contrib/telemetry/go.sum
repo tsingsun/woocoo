@@ -401,6 +401,8 @@ github.com/tsingsun/woocoo v0.0.4-0.20221130010142-db4340896ca4 h1:CTOD1iSKQUOF0
 github.com/tsingsun/woocoo v0.0.4-0.20221130010142-db4340896ca4/go.mod h1:GkrKpYzoE48Cybm4waLtbAhNjUaUWS6RvDqq8yOCI7k=
 github.com/tsingsun/woocoo v0.1.1-0.20221212030319-b531a30ea2a4 h1:hVMl/YWEISmpCbb9pgK3mI+ijcn1MgkL5GwgFy7o5gw=
 github.com/tsingsun/woocoo v0.1.1-0.20221212030319-b531a30ea2a4/go.mod h1:GkrKpYzoE48Cybm4waLtbAhNjUaUWS6RvDqq8yOCI7k=
+github.com/tsingsun/woocoo v0.1.1-0.20221212073015-127ea1288d52 h1:/yRIa2FLqO1VjmkW0aNvlrKJcw3rDAe7V1zr0OHc3Yg=
+github.com/tsingsun/woocoo v0.1.1-0.20221212073015-127ea1288d52/go.mod h1:GkrKpYzoE48Cybm4waLtbAhNjUaUWS6RvDqq8yOCI7k=
 github.com/ugorji/go v1.2.7/go.mod h1:nF9osbDWLy6bDVv/Rtoh6QgnvNDpmCalQV5urGCCS6M=
 github.com/ugorji/go/codec v1.2.7 h1:YPXUKf7fYbp/y8xloBqZOw2qaVggbfwMlI8WM3wZUJ0=
 github.com/ugorji/go/codec v1.2.7/go.mod h1:WGN1fab3R1fzQlVQTkfxVtIBhWDRqOviHU95kRgeqEY=

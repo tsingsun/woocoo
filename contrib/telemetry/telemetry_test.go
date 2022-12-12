@@ -44,8 +44,8 @@ func TestNewConfig(t *testing.T) {
 			want: &Config{
 				ServiceName:                  "test",
 				MetricPeriodicReaderInterval: time.Second * 30,
-				MetricExporterEndpoint:       "stdout",
-				TraceExporterEndpoint:        "stdout",
+				MetricExporter:               "stdout",
+				TraceExporter:                "stdout",
 				AttributesEnvKeys:            "WOOCOO_TEST_NAME|NOEXISTS",
 				resourceAttributes:           map[string]string{"WOOCOO_TEST_NAME": "woocoo"},
 				Resource: resource.NewSchemaless(
@@ -59,7 +59,7 @@ func TestNewConfig(t *testing.T) {
 				cnf: conf.NewFromStringMap(map[string]interface{}{
 					"appName": "test-with",
 					"otel": map[string]interface{}{
-						"traceExporterEndpoint": "",
+						"traceExporter": "",
 					},
 				}).Sub("otel"),
 				opts: func() (opts []Option) {
@@ -74,8 +74,8 @@ func TestNewConfig(t *testing.T) {
 			},
 			want: &Config{
 				ServiceName:                  "test-with",
+				TraceExporter:                "",
 				MetricPeriodicReaderInterval: time.Second * 30,
-				TraceExporterEndpoint:        "",
 				resourceAttributes: map[string]string{
 					"test": "test",
 				},
@@ -107,7 +107,7 @@ func TestNewConfig(t *testing.T) {
 			want: &Config{
 				ServiceName:                  "test-with",
 				MetricPeriodicReaderInterval: time.Second * 30,
-				TraceExporterEndpoint:        "",
+				TraceExporter:                "",
 				resourceAttributes: map[string]string{
 					"test": "test",
 				},
@@ -123,8 +123,8 @@ func TestNewConfig(t *testing.T) {
 			got := NewConfig(tt.args.cnf, tt.args.opts...)
 			assert.Equal(t, tt.want.ServiceName, got.ServiceName)
 			assert.Equal(t, tt.want.MetricPeriodicReaderInterval, got.MetricPeriodicReaderInterval)
-			assert.Equal(t, tt.want.MetricExporterEndpoint, got.MetricExporterEndpoint)
-			assert.Equal(t, tt.want.TraceExporterEndpoint, got.TraceExporterEndpoint)
+			assert.Equal(t, tt.want.MetricExporter, got.MetricExporter)
+			assert.Equal(t, tt.want.TraceExporter, got.TraceExporter)
 			assert.Equal(t, tt.want.AttributesEnvKeys, got.AttributesEnvKeys)
 			assert.Equal(t, tt.want.resourceAttributes, got.resourceAttributes)
 			assert.Subset(t, got.Resource.Attributes(), tt.want.Resource.Attributes())
@@ -184,15 +184,18 @@ func TestOtlp(t *testing.T) {
 				cnf: conf.NewFromStringMap(map[string]interface{}{
 					"appName": "test",
 					"otel": map[string]any{
-						"traceExporter":         "otlp",
-						"traceExporterEndpoint": "127.0.0.1:4317",
-						"client": map[string]any{
-							"grpcDialOption": []any{
-								map[string]any{"insecure": nil},
-								map[string]any{"block": nil},
-								map[string]any{"timeout": "5s"},
+						"traceExporter": "otlp",
+						"otlp": map[string]any{
+							"endpoint": "127.0.0.1:4317",
+							"client": map[string]any{
+								"grpcDialOption": []any{
+									map[string]any{"insecure": nil},
+									map[string]any{"block": nil},
+									map[string]any{"timeout": "5s"},
+								},
 							},
 						},
+						"metricExporter": "otlp",
 					},
 				}).Sub("otel"),
 			},

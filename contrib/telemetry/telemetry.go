@@ -63,15 +63,13 @@ func (o optionFunc) apply(c *Config) {
 
 // Config is the configuration for the opentelemetry instrumentation,Through it to set global tracer and meter provider.
 type Config struct {
-	cnf                    *conf.Configuration
-	ServiceName            string `json:"serviceName,omitempty" yaml:"serviceName"`
-	ServiceNamespace       string `json:"serviceNamespace,omitempty" yaml:"serviceNamespace"`
-	ServiceVersion         string `json:"serviceVersion,omitempty" yaml:"serviceVersion"`
-	AttributesEnvKeys      string `json:"attributesEnvKeys,omitempty" yaml:"attributesEnvKeys"`
-	TraceExporter          string `json:"traceExporter,omitempty" yaml:"traceExporter,omitempty"`
-	TraceExporterEndpoint  string `json:"traceExporterEndpoint,omitempty" yaml:"traceExporterEndpoint,omitempty"`
-	MetricExporter         string `json:"metricExport,omitempty" yaml:"metricExport,omitempty"`
-	MetricExporterEndpoint string `json:"metricExporterEndpoint,omitempty" yaml:"metricExporterEndpoint,omitempty"`
+	cnf               *conf.Configuration
+	ServiceName       string `json:"serviceName,omitempty" yaml:"serviceName"`
+	ServiceNamespace  string `json:"serviceNamespace,omitempty" yaml:"serviceNamespace"`
+	ServiceVersion    string `json:"serviceVersion,omitempty" yaml:"serviceVersion"`
+	AttributesEnvKeys string `json:"attributesEnvKeys,omitempty" yaml:"attributesEnvKeys"`
+	TraceExporter     string `json:"traceExporter,omitempty" yaml:"traceExporter,omitempty"`
+	MetricExporter    string `json:"metricExporter,omitempty" yaml:"metricExporter,omitempty"`
 	// the intervening time between exports for a PeriodicReader.
 	MetricPeriodicReaderInterval time.Duration `json:"metricReportingPeriod" yaml:"metricReportingPeriod"`
 
@@ -174,7 +172,7 @@ func (c *Config) applyTracerProvider() {
 		}
 	}
 	if err != nil {
-		panic(fmt.Errorf("failed to create %s tracer provider:%v", c.TraceExporterEndpoint, err))
+		panic(fmt.Errorf("failed to create %s tracer provider:%v", c.TraceExporter, err))
 	}
 	if shutdown != nil {
 		c.shutdowns = append(c.shutdowns, shutdown)
@@ -196,10 +194,9 @@ func (c *Config) applyMetricProvider() {
 		if c.MeterProvider == nil && len(c.mops) > 0 {
 			c.MeterProvider, shutdown, err = NewMetricInOption(c)
 		}
-
 	}
 	if err != nil {
-		panic(fmt.Errorf("failed to create %s metric provider:%v", c.MetricExporterEndpoint, err))
+		panic(fmt.Errorf("failed to create %s metric provider:%v", c.MetricExporter, err))
 	}
 	if shutdown != nil {
 		c.shutdowns = append(c.shutdowns, shutdown)

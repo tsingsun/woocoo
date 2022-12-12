@@ -67,7 +67,7 @@ grpc:
 		return srv.Run()
 	})
 	require.NoError(t, err)
-	cli := client.New(client.Configuration(cfg.Sub("grpc")))
+	cli := client.New(cfg.Sub("grpc"))
 	conn, err := cli.Dial("")
 	assert.NoError(t, err)
 	assert.NotNil(t, conn)
@@ -127,7 +127,7 @@ grpc:
 		return srv2.Run()
 	})
 	require.NoError(t, err)
-	cli := client.New(client.Configuration(cfg.Sub("grpc")))
+	cli := client.New(cfg.Sub("grpc"))
 	c, err := cli.Dial("")
 	if !assert.NoError(t, err) {
 		t.FailNow()

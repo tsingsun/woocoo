@@ -48,15 +48,44 @@ grpc:
 [OTEL Collector 安装](https://opentelemetry.io/docs/collector/getting-started/)
 [Jeager 安装](https://www.jaegertracing.io/docs/1.40/getting-started/)
 
-安装对接后,通过`http://localhost:16686`访问UI
+otel连接jeager配置如下:
+```yaml
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 127.0.0.1:4317
+  zipkin:
+processors:
+  batch:
+exporters:
+  jaeger:
+    endpoint: "127.0.0.1:14250"
+    tls:
+      insecure: true    
+service:
+  pipelines:
+    traces:
+      receivers: [otlp,zipkin]
+      processors: [batch]
+      exporters: [jaeger]    
+```
+启动otelcol和jeager后,我们可以通过`http://localhost:16686`访问UI,查看链路追踪.
 
-### 程序配置
+#### 程序配置
+
+在otel环境启动后,我们需要在我们的woocoo应用配置文件做相应的调整.
 
 ```yaml
   # otlp
   traceExporter: "otlp"
-  traceExporterEndpoint: ":4317"
+  otlp:
+    endpoint: "127.0.0.1:4317"  
+    client:
+      grpcDialOption:
+        - insecure: true
+        - block:
+        - timeout: 5s
   metricExporter: "otlp"
-  metricExporterEndpoint: ":4317"
-
 ```
+> metric如果同为otlp,则配置同trace,但在连接层面上为不同的连接.

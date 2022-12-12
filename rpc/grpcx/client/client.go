@@ -18,10 +18,16 @@ type ServerConfig struct {
 	Version   string `json:"version" yaml:"version"`
 }
 
+// Client is a grpc client helper,build a grpc client connection by configuration with registry.
+// the configuration is like this:
+//
+//	server:  for grpc server info
+//	registry:  for registry center info
+//	client:  for grpc client info
+//	  target:  for grpc service info using with registry or dial directly
 type Client struct {
-	dialOpts      registry.DialOptions
-	serverConfig  ServerConfig
-	configuration *conf.Configuration
+	dialOpts     registry.DialOptions
+	serverConfig ServerConfig
 
 	// for dialcontext
 	timeout time.Duration
@@ -29,12 +35,12 @@ type Client struct {
 	scheme string
 }
 
-func New(opts ...Option) *Client {
+func New(cfg *conf.Configuration, opts ...Option) *Client {
 	c := &Client{}
 	for _, o := range opts {
 		o(c)
 	}
-	c.Apply(c.configuration)
+	c.Apply(cfg)
 	return c
 }
 
@@ -42,8 +48,8 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 	if err := cfg.Parser().Unmarshal("server", &c.serverConfig); err != nil {
 		panic(err)
 	}
-	if k := strings.Join([]string{"registry"}, conf.KeyDelimiter); cfg.IsSet(k) {
-		c.scheme = cfg.String(strings.Join([]string{"registry", "scheme"}, conf.KeyDelimiter))
+	if k := "registry"; cfg.IsSet(k) {
+		c.scheme = cfg.String(k + ".scheme")
 		drv, ok := registry.GetRegistry(c.scheme)
 		if !ok {
 			panic(fmt.Errorf("registry driver not found:%s", c.scheme))
@@ -55,13 +61,13 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, grpc.WithResolvers(rb))
 	}
 	// target section is registry info for client
-	if k := strings.Join([]string{"client", "target"}, conf.KeyDelimiter); cfg.IsSet(k) {
+	if k := "client.target"; cfg.IsSet(k) {
 		if err := cfg.Sub(k).Unmarshal(&c.dialOpts); err != nil {
 			panic(err)
 		}
 	}
 	// grpc dial options
-	if k := strings.Join([]string{"client", "grpcDialOption"}, conf.KeyDelimiter); cfg.IsSet(k) {
+	if k := "client.grpcDialOption"; cfg.IsSet(k) {
 		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, grpcDialOptions.Apply(c, cfg, k)...)
 	}
 }

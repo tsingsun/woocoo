@@ -48,7 +48,7 @@ service:
           sslCertificate: "x509/test.pem"
           sslCertificateKey: "x509/test.key"
       - unaryInterceptors:
-          - trace:
+          - otel:
 `)
 	cfg := conf.NewFromBytes(b, conf.WithBaseDir(testdata.BaseDir()))
 	srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("service")))
@@ -59,7 +59,7 @@ service:
 		}
 	}()
 	time.Sleep(2000)
-	cli := New(Configuration(cfg.Sub("service")))
+	cli := New(cfg.Sub("service"))
 	assert.Equal(t, cli.dialOpts.Namespace, "woocoo")
 	assert.Equal(t, cli.dialOpts.ServiceName, "helloworld.Greeter")
 	assert.EqualValues(t, cli.dialOpts.Metadata, map[string]string{"version": "1.0"})
@@ -97,7 +97,7 @@ grpc:
       - timeout: 5s
       - defaultServiceConfig: '{ "loadBalancingConfig": [{"round_robin": {}}] }'
       - unaryInterceptors:
-          - trace:
+          - otel:
 `)
 	cfg := conf.NewFromBytes(b)
 	go func() {
@@ -109,7 +109,7 @@ grpc:
 		}
 	}()
 	time.Sleep(time.Second)
-	cli := New(Configuration(cfg.Sub("grpc")))
+	cli := New(cfg.Sub("grpc"))
 	conn, err := cli.Dial(cfg.String("grpc.server.addr"))
 	assert.NoError(t, err)
 	if conn.GetState() != connectivity.Ready {

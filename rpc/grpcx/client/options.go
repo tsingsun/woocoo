@@ -18,12 +18,6 @@ func init() {
 
 type Option func(client *Client)
 
-func Configuration(configuration *conf.Configuration) Option {
-	return func(c *Client) {
-		c.configuration = configuration
-	}
-}
-
 type configurableGrpcClientOptions struct {
 	do   map[string]func(*conf.Configuration) grpc.DialOption
 	ucit map[string]func(*conf.Configuration) grpc.UnaryClientInterceptor

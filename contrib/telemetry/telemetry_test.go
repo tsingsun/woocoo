@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"go.opentelemetry.io/contrib/propagators/b3"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/exporters/zipkin"
@@ -34,9 +35,9 @@ func TestNewConfig(t *testing.T) {
 				cnf: conf.NewFromStringMap(map[string]interface{}{
 					"appName": "test",
 					"otel": map[string]interface{}{
-						"traceExporterEndpoint":  "stdout",
-						"metricExporterEndpoint": "stdout",
-						"attributesEnvKeys":      "WOOCOO_TEST_NAME|NOEXISTS",
+						"traceExporter":     "stdout",
+						"metricExporter":    "stdout",
+						"attributesEnvKeys": "WOOCOO_TEST_NAME|NOEXISTS",
 					},
 				}).Sub("otel"),
 			},
@@ -90,7 +91,7 @@ func TestNewConfig(t *testing.T) {
 				cnf: conf.NewFromStringMap(map[string]interface{}{
 					"appName": "test-with",
 					"otel": map[string]interface{}{
-						"traceExporterEndpoint": "",
+						"traceExporter": "",
 					},
 				}).Sub("otel"),
 				opts: func() (opts []Option) {
@@ -166,4 +167,47 @@ func prometheusProvider(t *testing.T) (*sdkmetric.MeterProvider, func(ctx contex
 	mp := sdkmetric.NewMeterProvider(
 		sdkmetric.WithReader(exporter))
 	return mp, exporter.Shutdown
+}
+
+func TestOtlp(t *testing.T) {
+	type args struct {
+		cnf *conf.Configuration
+	}
+	tests := []struct {
+		name string
+		args args
+		do   func(t *testing.T, got *Config)
+	}{
+		{
+			name: "otlp",
+			args: args{
+				cnf: conf.NewFromStringMap(map[string]interface{}{
+					"appName": "test",
+					"otel": map[string]any{
+						"traceExporter":         "otlp",
+						"traceExporterEndpoint": "127.0.0.1:4317",
+						"client": map[string]any{
+							"grpcDialOption": []any{
+								map[string]any{"insecure": nil},
+								map[string]any{"block": nil},
+								map[string]any{"timeout": "5s"},
+							},
+						},
+					},
+				}).Sub("otel"),
+			},
+			do: func(t *testing.T, cfg *Config) {
+				tracer := otel.GetTracerProvider().Tracer("woocoo-otlp-test")
+				_, span := tracer.Start(context.Background(), "woocoo-otlp-test")
+				defer span.End()
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewConfig(tt.args.cnf)
+			tt.do(t, got)
+			got.Shutdown()
+		})
+	}
 }

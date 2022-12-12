@@ -13,10 +13,9 @@ import (
 )
 
 type ServerConfig struct {
-	Addr           string `json:"addr" yaml:"addr"`
-	SSLCertificate string `json:"sslCertificate" yaml:"sslCertificate"`
-	Namespace      string `json:"namespace" yaml:"namespace"`
-	Version        string `json:"version" yaml:"version"`
+	Addr      string `json:"addr" yaml:"addr"`
+	Namespace string `json:"namespace" yaml:"namespace"`
+	Version   string `json:"version" yaml:"version"`
 }
 
 type Client struct {
@@ -55,7 +54,7 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 		}
 		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, grpc.WithResolvers(rb))
 	}
-	// service info
+	// target section is registry info for client
 	if k := strings.Join([]string{"client", "target"}, conf.KeyDelimiter); cfg.IsSet(k) {
 		if err := cfg.Sub(k).Unmarshal(&c.dialOpts); err != nil {
 			panic(err)

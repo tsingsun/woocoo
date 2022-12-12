@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"encoding/json"
+	"github.com/tsingsun/woocoo/rpc/grpcx/client"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -13,7 +14,6 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding/gzip"
 	"os"
 	"time"
@@ -61,18 +61,18 @@ func initMetric(c *Config, exporter sdkmetric.Exporter) (metric.MeterProvider, e
 }
 
 func NewOtlpTracer(c *Config) (tp trace.TracerProvider, shutdown func(ctx context.Context) error, err error) {
-	ctx := context.Background()
-	traceSecureOption := otlptracegrpc.WithInsecure()
-	if c.TraceExporterEndpointInsecure {
-		traceSecureOption = otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
+	gclient := client.New(client.Configuration(c.cnf))
+	conn, err := gclient.Dial(c.TraceExporterEndpoint,
+		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
+	)
+	if err != nil {
+		panic(err)
 	}
 
+	ctx := context.Background()
 	// Set up a trace exporter
 	exporter, err := otlptracegrpc.New(ctx,
-		traceSecureOption,
-		otlptracegrpc.WithDialOption(grpc.WithBlock()),
-		otlptracegrpc.WithEndpoint(c.TraceExporterEndpoint),
-		otlptracegrpc.WithCompressor(gzip.Name),
+		otlptracegrpc.WithGRPCConn(conn),
 	)
 	if err != nil {
 		//log.Fatalf("%s: %v", "failed to create trace exporter", err)
@@ -92,15 +92,15 @@ func NewOtlpTracer(c *Config) (tp trace.TracerProvider, shutdown func(ctx contex
 }
 
 func NewOtlpMetric(c *Config) (mp metric.MeterProvider, shutdown func(ctx context.Context) error, err error) {
-	secureOption := otlpmetricgrpc.WithInsecure()
-	if c.MetricExporterEndpointInsecure {
-		secureOption = otlpmetricgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
+	gclient := client.New(client.Configuration(c.cnf))
+	conn, err := gclient.Dial(c.TraceExporterEndpoint,
+		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
+	)
+	if err != nil {
+		panic(err)
 	}
 	exporter, err := otlpmetricgrpc.New(context.Background(),
-		secureOption,
-		otlpmetricgrpc.WithDialOption(grpc.WithBlock()),
-		otlpmetricgrpc.WithEndpoint(c.MetricExporterEndpoint),
-		otlpmetricgrpc.WithCompressor(gzip.Name),
+		otlpmetricgrpc.WithGRPCConn(conn),
 	)
 	if err != nil {
 		return

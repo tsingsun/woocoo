@@ -3,7 +3,9 @@ package client
 import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"path/filepath"
 )
 
 var (
@@ -75,11 +77,26 @@ func RegisterStreamClientInterceptor(name string, f func(configuration *conf.Con
 }
 
 func registerInternal() {
-	RegisterDialOption("insecure", func(configuration *conf.Configuration) grpc.DialOption {
+	RegisterDialOption("insecure", func(cfg *conf.Configuration) grpc.DialOption {
 		return grpc.WithTransportCredentials(insecure.NewCredentials())
 	})
-	RegisterDialOption("block", func(configuration *conf.Configuration) grpc.DialOption { return grpc.WithBlock() })
-	RegisterDialOption("defaultServiceConfig", func(configuration *conf.Configuration) grpc.DialOption {
-		return grpc.WithDefaultServiceConfig(configuration.String("defaultServiceConfig"))
+	RegisterDialOption("tls", func(cfg *conf.Configuration) grpc.DialOption {
+		sslCertificate := cfg.String("sslCertificate")
+		sslCertificateKey := cfg.String("sslCertificateKey")
+		if !filepath.IsAbs(sslCertificate) {
+			sslCertificate = filepath.Join(cfg.GetBaseDir(), sslCertificate)
+		}
+		if !filepath.IsAbs(sslCertificateKey) {
+			sslCertificateKey = filepath.Join(cfg.GetBaseDir(), sslCertificateKey)
+		}
+		tc, err := credentials.NewServerTLSFromFile(sslCertificate, sslCertificateKey)
+		if err != nil {
+			panic(err)
+		}
+		return grpc.WithTransportCredentials(tc)
+	})
+	RegisterDialOption("block", func(cfg *conf.Configuration) grpc.DialOption { return grpc.WithBlock() })
+	RegisterDialOption("defaultServiceConfig", func(cfg *conf.Configuration) grpc.DialOption {
+		return grpc.WithDefaultServiceConfig(cfg.String("defaultServiceConfig"))
 	})
 }

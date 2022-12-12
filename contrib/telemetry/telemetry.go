@@ -63,14 +63,15 @@ func (o optionFunc) apply(c *Config) {
 
 // Config is the configuration for the opentelemetry instrumentation,Through it to set global tracer and meter provider.
 type Config struct {
-	ServiceName                    string `json:"serviceName,omitempty" yaml:"serviceName"`
-	ServiceNamespace               string `json:"serviceNamespace,omitempty" yaml:"serviceNamespace"`
-	ServiceVersion                 string `json:"serviceVersion,omitempty" yaml:"serviceVersion"`
-	AttributesEnvKeys              string `json:"attributesEnvKeys,omitempty" yaml:"attributesEnvKeys"`
-	TraceExporterEndpoint          string `json:"traceExporterEndpoint" yaml:"traceExporterEndpoint"`
-	TraceExporterEndpointInsecure  bool   `json:"traceExporterEndpointInsecure" yaml:"traceExporterEndpointInsecure"`
-	MetricExporterEndpoint         string `json:"metricExporterEndpoint" yaml:"metricExporterEndpoint"`
-	MetricExporterEndpointInsecure bool   `json:"metricExporterEndpointInsecure" yaml:"metricExporterEndpointInsecure"`
+	cnf                    *conf.Configuration
+	ServiceName            string `json:"serviceName,omitempty" yaml:"serviceName"`
+	ServiceNamespace       string `json:"serviceNamespace,omitempty" yaml:"serviceNamespace"`
+	ServiceVersion         string `json:"serviceVersion,omitempty" yaml:"serviceVersion"`
+	AttributesEnvKeys      string `json:"attributesEnvKeys,omitempty" yaml:"attributesEnvKeys"`
+	TraceExporter          string `json:"traceExporter,omitempty" yaml:"traceExporter,omitempty"`
+	TraceExporterEndpoint  string `json:"traceExporterEndpoint,omitempty" yaml:"traceExporterEndpoint,omitempty"`
+	MetricExporter         string `json:"metricExport,omitempty" yaml:"metricExport,omitempty"`
+	MetricExporterEndpoint string `json:"metricExporterEndpoint,omitempty" yaml:"metricExporterEndpoint,omitempty"`
 	// the intervening time between exports for a PeriodicReader.
 	MetricPeriodicReaderInterval time.Duration `json:"metricReportingPeriod" yaml:"metricReportingPeriod"`
 
@@ -92,16 +93,13 @@ type Config struct {
 
 func NewConfig(cnf *conf.Configuration, opts ...Option) *Config {
 	c := &Config{
-		ServiceName:                  cnf.Root().AppName(),
+		cnf:                          cnf,
 		MetricPeriodicReaderInterval: time.Second * 30,
 		asGlobal:                     true,
 		resourceAttributes:           make(map[string]string),
 	}
 	for _, opt := range opts {
 		opt.apply(c)
-	}
-	if c.ServiceName == "" {
-		c.ServiceName = defaultTracerName
 	}
 	c.Apply(cnf)
 	return c
@@ -111,19 +109,22 @@ func NewConfig(cnf *conf.Configuration, opts ...Option) *Config {
 //
 // if ServiceName and ServiceVersion and ServiceNameSpace is set in cfg, they will override before
 func (c *Config) Apply(cnf *conf.Configuration) {
+	if err := cnf.Unmarshal(&c); err != nil {
+		panic(err)
+	}
 	if c.ServiceName == "" {
 		c.ServiceName = cnf.Root().AppName()
 	}
 	if c.ServiceVersion == "" {
 		c.ServiceVersion = cnf.Root().Version()
 	}
+	if c.ServiceNamespace == "" {
+		c.ServiceNamespace = cnf.Root().Namespace()
+	}
 	if c.Resource == nil {
 		c.Resource = getDefaultResource(c)
 	}
 
-	if err := cnf.Unmarshal(&c); err != nil {
-		panic(err)
-	}
 	c.parseEnvKeys()
 	if err := c.mergeResource(); err != nil {
 		panic(err)
@@ -162,7 +163,7 @@ func (c *Config) applyTracerProvider() {
 		err      error
 	)
 	// trace
-	switch c.TraceExporterEndpoint {
+	switch c.TraceExporter {
 	case "otlp":
 		c.TracerProvider, shutdown, err = NewOtlpTracer(c)
 	case "stdout":
@@ -186,7 +187,7 @@ func (c *Config) applyMetricProvider() {
 		err      error
 	)
 	//metric
-	switch c.MetricExporterEndpoint {
+	switch c.MetricExporter {
 	case "otlp":
 		c.MeterProvider, shutdown, err = NewOtlpMetric(c)
 	case "stdout":

@@ -1,8 +1,6 @@
 package grpcx
 
 import (
-	"crypto/tls"
-	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor"
 	"google.golang.org/grpc"
@@ -70,11 +68,11 @@ func tlsHandler(cfg *conf.Configuration) grpc.ServerOption {
 	if !filepath.IsAbs(sslCertificateKey) {
 		sslCertificateKey = filepath.Join(cfg.GetBaseDir(), sslCertificateKey)
 	}
-	cert, err := tls.LoadX509KeyPair(sslCertificate, sslCertificateKey)
+	tc, err := credentials.NewServerTLSFromFile(sslCertificate, sslCertificateKey)
 	if err != nil {
-		panic(fmt.Errorf("tls.LoadX509KeyPair: %v", err))
+		panic(err)
 	}
-	return grpc.Creds(credentials.NewServerTLSFromCert(&cert))
+	return grpc.Creds(tc)
 }
 
 func (c configurableGrpcServerOptions) unaryInterceptorHandler(root string, cnf *conf.Configuration) grpc.ServerOption {

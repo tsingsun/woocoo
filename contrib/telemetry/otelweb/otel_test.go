@@ -31,8 +31,8 @@ func TestMiddleware_NewConfig(t *testing.T) {
 				cfg: conf.NewFromStringMap(map[string]any{
 					"appName": "gin-web",
 					"otel": map[string]any{
-						"traceExporterEndpoint":  "stdout",
-						"metricExporterEndpoint": "stdout",
+						"traceExporter":  "stdout",
+						"metricExporter": "stdout",
 					},
 				}),
 			},

@@ -263,6 +263,11 @@ func (c *Configuration) Root() *Configuration {
 	return c.root
 }
 
+// Namespace indicates the application's namespace
+func (c *Configuration) Namespace() string {
+	return c.String("nameSpace")
+}
+
 // AppName indicates the application's name
 //
 // return the path 'appName' value if exists

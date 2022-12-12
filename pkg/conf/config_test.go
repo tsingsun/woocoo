@@ -93,6 +93,7 @@ func TestNewFromX(t *testing.T) {
 			name: "new from bytes",
 			newFunc: func() (*Configuration, error) {
 				return NewFromBytes([]byte(`
+nameSpace: tsingsun
 appName: woocoo
 version: 1.0.0
 development: true
@@ -104,6 +105,7 @@ development: true
 			name: "new from bytes",
 			newFunc: func() (*Configuration, error) {
 				return NewFromStringMap(map[string]any{
+					"nameSpace":   "tsingsun",
 					"appName":     "woocoo",
 					"version":     "1.0.0",
 					"development": true,
@@ -130,6 +132,7 @@ development: true
 				return
 			}
 			got.Load()
+			assert.Equal(t, got.Namespace(), "tsingsun")
 			assert.Equal(t, got.AppName(), "woocoo")
 			assert.Equal(t, got.Version(), "1.0.0")
 			assert.Equal(t, got.Development, true)

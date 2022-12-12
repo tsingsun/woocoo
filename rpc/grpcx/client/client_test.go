@@ -7,6 +7,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	_ "github.com/tsingsun/woocoo/rpc/grpcx/registry/etcd3"
+	"github.com/tsingsun/woocoo/test/testdata"
 	"google.golang.org/grpc/connectivity"
 	"testing"
 	"time"
@@ -27,8 +28,8 @@ service:
     ttl: 600s
     etcd:
       tls:
-        sslCertificate: ""
-        sslCertificateKey: ""
+        sslCertificate: "x509/test.pem"
+        sslCertificateKey: "x509/test.key"
       endpoints:
         - 127.0.0.1:2379
       dial-timeout: 3s
@@ -43,10 +44,13 @@ service:
       - insecure:
       - block:
       - timeout: 5s
+      - tls:
+          sslCertificate: "x509/test.pem"
+          sslCertificateKey: "x509/test.key"
       - unaryInterceptors:
           - trace:
 `)
-	cfg := conf.NewFromBytes(b)
+	cfg := conf.NewFromBytes(b, conf.WithBaseDir(testdata.BaseDir()))
 	srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("service")))
 	go func() {
 		if err := srv.Run(); err != nil {

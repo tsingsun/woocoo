@@ -19,7 +19,7 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.1
 	github.com/vmihailenco/go-tinylfu v0.2.2
 	github.com/vmihailenco/msgpack/v5 v5.3.5
-	go.etcd.io/etcd/api/v3 v3.5.5
+	go.etcd.io/etcd/api/v3 v3.5.6
 	go.etcd.io/etcd/client/v3 v3.5.5
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/goleak v1.2.0

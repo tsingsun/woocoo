@@ -95,7 +95,8 @@ func TestServer_Run(t *testing.T) {
 			name: "test",
 			fields: fields{
 				opts: serverOptions{
-					Addr: "127.0.0.1:11000",
+					Addr:         "127.0.0.1:11000",
+					gracefulStop: true,
 				},
 				engine:   grpc.NewServer(),
 				registry: &MockRegistry{},

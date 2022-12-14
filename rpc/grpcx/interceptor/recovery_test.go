@@ -9,18 +9,14 @@ import (
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/test/testproto"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapgrpc"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/grpclog"
 	"strings"
 	"testing"
 )
 
 func TestRecoveryUnaryServerInterceptor(t *testing.T) {
 	wctest.InitGlobalLogger(false)
-	zgl := zapgrpc.NewLogger(log.Global().Logger().Logger)
-	grpclog.SetLoggerV2(zgl)
 	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(
 		LoggerUnaryServerInterceptor(conf.NewFromStringMap(map[string]any{})),
 		RecoveryUnaryServerInterceptor(conf.NewFromStringMap(map[string]any{})),

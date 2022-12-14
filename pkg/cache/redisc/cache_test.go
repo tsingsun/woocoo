@@ -301,7 +301,7 @@ func TestCache_Once(t *testing.T) {
 					Skip:  SkipLocal,
 				}
 				assert.NoError(t, cache.Set(item))
-				err := wctest.RunWait(t, time.Second, func() error {
+				err := wctest.RunWait(t, time.Second*2, func() error {
 					want := ""
 					item := &Item{
 						Ctx:   context.Background(),
@@ -325,7 +325,7 @@ func TestCache_Once(t *testing.T) {
 					return nil
 				})
 				assert.NoError(t, err)
-				assert.EqualValues(t, cache.Stats().Hits, 1)
+				assert.EqualValues(t, int(cache.Stats().Hits), 1)
 				assert.True(t, rdb.Exists("key"))
 			},
 		},

@@ -1,4 +1,4 @@
-module github.com/tsingsun/woocoo/polarismesh
+module github.com/tsingsun/woocoo/contrib/polarismesh
 
 go 1.18
 

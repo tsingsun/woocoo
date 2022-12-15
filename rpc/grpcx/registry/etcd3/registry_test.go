@@ -57,7 +57,7 @@ func TestRegistryMultiService(t *testing.T) {
 	cfg := testcnf.Sub("grpc")
 	cfg.Parser().Set("server.namespace", sn)
 	cfg.Parser().Set("server.addr", "127.0.0.1:20010")
-	// Don't UseLogger to avoid grpclog.SetLoggerV2 caused data race
+	// Don't WithGrpcLogger to avoid grpclog.SetLoggerV2 caused data race
 	srv := grpcx.New(grpcx.WithConfiguration(cfg))
 
 	etcdConfg := clientv3.Config{

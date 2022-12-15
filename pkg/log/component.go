@@ -59,6 +59,8 @@ func WithContextLogger() GetComponentLoggerOption {
 //
 // The logger will be lazy set up,Using the global logger by default.
 func Component(name string, fields ...zap.Field) ComponentLogger {
+	compoenetMu.Lock()
+	defer compoenetMu.Unlock()
 	if cData, ok := components[name]; ok {
 		return cData
 	}

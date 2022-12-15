@@ -82,7 +82,11 @@ func (w *etcdResolver) Close() {
 func (w *etcdResolver) Watch() {
 	defer w.wg.Done()
 	w.wg.Add(1)
-	w.key = strings.Join([]string{w.options.Namespace, w.options.ServiceName}, "/")
+	if w.options.Namespace != "" {
+		w.key = strings.Join([]string{w.options.Namespace, w.options.ServiceName}, "/")
+	} else {
+		w.key = w.options.ServiceName
+	}
 	if !strings.HasPrefix(w.key, "/") {
 		w.key = "/" + w.key
 	}

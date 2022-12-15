@@ -13,6 +13,7 @@ var (
 	global          *Logger
 	globalComponent ComponentLogger
 	builtin         sync.Once
+	compoenetMu     sync.RWMutex
 	components      = map[string]*component{}
 )
 

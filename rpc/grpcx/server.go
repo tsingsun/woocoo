@@ -78,6 +78,7 @@ func New(opts ...Option) *Server {
 		},
 		exit: make(chan chan error),
 	}
+	useContextLogger()
 	for _, o := range opts {
 		o(&s.opts)
 	}
@@ -120,16 +121,17 @@ func (s *Server) ListenAndServe() error {
 				return err
 			}
 		}
-
+		if len(s.ServiceInfos) > 0 {
+			s.mu.Lock()
+			s.registryDone = true
+			s.mu.Unlock()
+		}
 		go func() {
 			t := new(time.Ticker)
 			// only process if it exists
 			if s.registry.TTL() > time.Duration(0) {
 				// new ticker
 				t = time.NewTicker(s.registry.TTL())
-				s.mu.Lock()
-				s.registryDone = true
-				s.mu.Unlock()
 			}
 			var ch chan error
 			for {

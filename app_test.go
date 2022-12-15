@@ -14,7 +14,7 @@ func TestApp(t *testing.T) {
 	cnf := wctest.Configuration()
 	app := New(WithAppConfiguration(cnf))
 	websrv := web.New(web.WithConfiguration(app.AppConfiguration().Sub("web")))
-	grpcsrv := grpcx.New(grpcx.WithConfiguration(app.AppConfiguration().Sub("grpc")), grpcx.UseLogger())
+	grpcsrv := grpcx.New(grpcx.WithConfiguration(app.AppConfiguration().Sub("grpc")), grpcx.WithGrpcLogger())
 	time.AfterFunc(time.Second*5, func() {
 		t.Log("stop")
 		app.Stop()

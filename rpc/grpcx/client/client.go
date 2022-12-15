@@ -45,9 +45,17 @@ func New(cfg *conf.Configuration, opts ...Option) *Client {
 }
 
 func (c *Client) Apply(cfg *conf.Configuration) {
+	// server info
 	if err := cfg.Parser().Unmarshal("server", &c.serverConfig); err != nil {
 		panic(err)
 	}
+	// target info
+	if k := "client.target"; cfg.IsSet(k) {
+		if err := cfg.Sub(k).Unmarshal(&c.dialOpts); err != nil {
+			panic(err)
+		}
+	}
+	// if use registry
 	if k := "registry"; cfg.IsSet(k) {
 		c.scheme = cfg.String(k + ".scheme")
 		drv, ok := registry.GetRegistry(c.scheme)
@@ -59,12 +67,6 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 			panic(err)
 		}
 		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, grpc.WithResolvers(rb))
-	}
-	// target section is registry info for client
-	if k := "client.target"; cfg.IsSet(k) {
-		if err := cfg.Sub(k).Unmarshal(&c.dialOpts); err != nil {
-			panic(err)
-		}
 	}
 	// grpc dial options
 	if k := "client.grpcDialOption"; cfg.IsSet(k) {

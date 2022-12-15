@@ -72,7 +72,7 @@ grpc:
 	s := New(WithConfiguration(cfg.Sub("grpc")),
 		WithGracefulStop(),
 		WithGrpcOption(grpc.ConnectionTimeout(1000)),
-		UseLogger(),
+		WithGrpcLogger(),
 	)
 	assert.NotNil(t, s)
 }
@@ -157,7 +157,7 @@ grpc:
 	cfg.SetBaseDir(testdata.BaseDir())
 	cfg.Load()
 	s := New(WithConfiguration(cfg.Sub("grpc")),
-		UseLogger(),
+		WithGrpcLogger(),
 	)
 	assert.IsType(t, log.Component(log.GrpcComponentName).Logger().ContextLogger(), &interceptor.GrpcContextLogger{})
 	assert.IsType(t, log.Component(interceptor.AccessLogComponentName).Logger().ContextLogger(), &interceptor.GrpcContextLogger{})

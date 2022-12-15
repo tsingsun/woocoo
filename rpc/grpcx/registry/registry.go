@@ -62,11 +62,14 @@ type DialOptions struct {
 	GRPCDialOptions []grpc.DialOption `json:"-" yaml:"-"`
 	Namespace       string            `json:"namespace" yaml:"namespace"`
 	// ServiceName may omit leading slash
-	ServiceName string            `json:"serviceName" yaml:"serviceName"`
-	Metadata    map[string]string `json:"metadata" yaml:"metadata"`
+	ServiceName string `json:"serviceName" yaml:"serviceName"`
+	// Metadata holds the metadata of the service,registry driver parse it to match itself protocol
+	Metadata map[string]string `json:"metadata" yaml:"metadata"`
 }
 
 // TargetToOptions parse resolver target to DialOptions
+//
+// Deprecated: registry driver should provide a function to instead
 func TargetToOptions(target resolver.Target) (*DialOptions, error) {
 	options := &DialOptions{}
 	if len(target.URL.RawQuery) > 0 {
@@ -91,7 +94,11 @@ func TargetToOptions(target resolver.Target) (*DialOptions, error) {
 		}
 	} else {
 		options.Namespace = target.URL.Host
-		options.ServiceName = target.Endpoint
+		if target.URL.Opaque != "" {
+			options.ServiceName = target.URL.Opaque
+		} else {
+			options.ServiceName = target.URL.Path
+		}
 	}
 	return options, nil
 }

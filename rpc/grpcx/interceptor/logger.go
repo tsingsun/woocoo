@@ -20,14 +20,18 @@ var defaultLoggerOptions = &LoggerOptions{
 	TimestampFormat: time.RFC3339,
 }
 
-type LoggerOptions struct {
-	TimestampFormat string `json:"timestampFormat" yaml:"timestampFormat"`
-	Format          string `json:"format" yaml:"format"`
-	logger          log.ComponentLogger
+type (
+	LoggerOptions struct {
+		TimestampFormat string `json:"timestampFormat" yaml:"timestampFormat"`
+		Format          string `json:"format" yaml:"format"`
+		logger          log.ComponentLogger
 
-	logRequest  bool
-	logResponse bool
-}
+		logRequest  bool
+		logResponse bool
+	}
+	AccessLogger struct {
+	}
+)
 
 // Apply set access log from grpc logger
 func (o *LoggerOptions) Apply(cnf *conf.Configuration) {
@@ -51,8 +55,12 @@ func (o *LoggerOptions) Apply(cnf *conf.Configuration) {
 	}
 }
 
-// LoggerUnaryServerInterceptor returns a new unary server interceptors that adds a zap.Logger to the context.
-func LoggerUnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInterceptor {
+func (AccessLogger) Name() string {
+	return "accessLog"
+}
+
+// UnaryServerInterceptor returns a new unary server interceptors that adds a zap.Logger to the context.
+func (AccessLogger) UnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInterceptor {
 	o := defaultLoggerOptions
 	o.Apply(cnf)
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
@@ -91,8 +99,8 @@ func loggerOutPut(l log.ComponentLogger, ctx context.Context, level zapcore.Leve
 	clog.Log(level, "", carr.Fields)
 }
 
-// LoggerStreamServerInterceptor returns a new streaming server interceptors that adds a zap.Logger to the context.
-func LoggerStreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerInterceptor {
+// StreamServerInterceptor returns a new streaming server interceptors that adds a zap.Logger to the context.
+func (AccessLogger) StreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerInterceptor {
 	o := defaultLoggerOptions
 	o.Apply(cnf)
 	return func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {

@@ -36,7 +36,7 @@ func TestJWTUnaryServerInterceptor(t *testing.T) {
 	cert, err := tls.LoadX509KeyPair(testdata.Path("x509/test.pem"), testdata.Path("x509/test.key"))
 	require.NoError(t, err)
 	gs, addr := testproto.NewPingGrpcService(t,
-		grpc.UnaryInterceptor(JWTUnaryServerInterceptor(acfg)),
+		grpc.UnaryInterceptor(JWT{}.UnaryServerInterceptor(acfg)),
 		grpc.Creds(credentials.NewServerTLSFromCert(&cert)))
 	assert.NotNil(t, gs)
 	defer gs.Stop()

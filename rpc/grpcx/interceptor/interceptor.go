@@ -2,6 +2,7 @@ package interceptor
 
 import (
 	"context"
+	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -15,8 +16,17 @@ var (
 	// ServerField is used in every server-side log statement made through grpc_zap.Can be overwritten before initialization.
 	ServerField = zap.String("span.kind", "server")
 
-	logger = log.Component(log.ComponentKey, ServerField)
+	logger = log.Component(log.GrpcComponentName, ServerField)
 )
+
+type Interceptor interface {
+	Name() string
+	UnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInterceptor
+	StreamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterceptor
+	UnaryClientInterceptor(cfg *conf.Configuration) grpc.UnaryClientInterceptor
+	StreamClientInterceptor(cfg *conf.Configuration) grpc.StreamClientInterceptor
+	Shutdown(ctx context.Context) error
+}
 
 // WrappedServerStream is a thin wrapper around grpc.ServerStream that allows modifying context.
 type WrappedServerStream struct {

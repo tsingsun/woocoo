@@ -1,11 +1,10 @@
-package client
+package grpcx
 
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/internal/mock/helloworld"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/rpc/grpcx"
 	_ "github.com/tsingsun/woocoo/rpc/grpcx/registry/etcd3"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"google.golang.org/grpc/connectivity"
@@ -28,8 +27,8 @@ service:
     ttl: 600s
     etcd:
       tls:
-        sslCertificate: "x509/test.pem"
-        sslCertificateKey: "x509/test.key"
+        cert: "x509/test.pem"
+        key: "x509/test.key"
       endpoints:
         - 127.0.0.1:2379
       dial-timeout: 3s
@@ -45,13 +44,12 @@ service:
       - block:
       - timeout: 5s
       - tls:
-          sslCertificate: "x509/test.pem"
-          sslCertificateKey: "x509/test.key"
+          cert: "x509/test.pem" 
       - unaryInterceptors:
           - otel:
 `)
 	cfg := conf.NewFromBytes(b, conf.WithBaseDir(testdata.BaseDir()))
-	srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("service")))
+	srv := New(WithConfiguration(cfg.Sub("service")))
 	go func() {
 		if err := srv.Run(); err != nil {
 			t.Error(err)
@@ -59,7 +57,7 @@ service:
 		}
 	}()
 	time.Sleep(2000)
-	cli := New(cfg.Sub("service"))
+	cli := NewClient(cfg.Sub("service"))
 	assert.Equal(t, cli.dialOpts.Namespace, "woocoo")
 	assert.Equal(t, cli.dialOpts.ServiceName, "helloworld.Greeter")
 	assert.EqualValues(t, cli.dialOpts.Metadata, map[string]string{"version": "1.0"})
@@ -92,7 +90,7 @@ grpc:
         src_tag: tag1
         headerPrefix: "head1,head2"
     grpcDialOption:
-      - insecure:
+      - tls:
       - block:
       - timeout: 5s
       - defaultServiceConfig: '{ "loadBalancingConfig": [{"round_robin": {}}] }'
@@ -101,7 +99,7 @@ grpc:
 `)
 	cfg := conf.NewFromBytes(b)
 	go func() {
-		srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
+		srv := New(WithConfiguration(cfg.Sub("grpc")))
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		if err := srv.Run(); err != nil {
 			t.Error(err)
@@ -109,7 +107,7 @@ grpc:
 		}
 	}()
 	time.Sleep(time.Second)
-	cli := New(cfg.Sub("grpc"))
+	cli := NewClient(cfg.Sub("grpc"))
 	conn, err := cli.Dial(cfg.String("grpc.server.addr"))
 	assert.NoError(t, err)
 	if conn.GetState() != connectivity.Ready {

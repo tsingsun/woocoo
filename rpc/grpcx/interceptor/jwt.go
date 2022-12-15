@@ -14,13 +14,18 @@ import (
 // ValuesExtractor defines a function for extracting values (keys/tokens) from the given context.
 type ValuesExtractor func(ctx context.Context) ([]string, error)
 
-type jwtKey struct{}
+type (
+	jwtKey struct{}
+	// JWTOptions is the options for JWT interceptor.
+	JWTOptions struct {
+		auth.JWTOptions `json:",squash" yaml:",squash"`
+	}
+	// JWT is the interceptor for JWT.
+	JWT struct {
+	}
+)
 
-type JWTOptions struct {
-	auth.JWTOptions `json:",squash" yaml:",squash"`
-}
-
-func JWT() *JWTOptions {
+func NewJWTOptions() *JWTOptions {
 	return &JWTOptions{
 		JWTOptions: *auth.NewJWT(),
 	}
@@ -44,12 +49,50 @@ func JWTFromIncomingContext(ctx context.Context) (*jwt.Token, bool) {
 	return token, true
 }
 
-// JWTUnaryServerInterceptor ensures a valid token exists within a request's metadata. If
+// Name returns the name of the interceptor.
+func (JWT) Name() string {
+	return "jwt"
+}
+
+// SteamServerInterceptor jwt ServerInterceptor for stream server.
+func (JWT) SteamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterceptor {
+	options := NewJWTOptions()
+	options.Apply(cfg)
+	var extractor = createExtractor(options)
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		authstr, err := extractor(ss.Context())
+		if err != nil {
+			return auth.ErrJWTMissing
+		}
+		var lastTokenErr error
+		for _, s := range authstr {
+			token, err := options.ParseTokenFunc(ss.Context(), s)
+			if err != nil {
+				lastTokenErr = err
+				continue
+			}
+			newctx := context.WithValue(ss.Context(), jwtKey{}, token)
+			ws := WrapServerStream(ss)
+			ws.WrappedContext = newctx
+			return handler(srv, ws)
+		}
+		if err != nil {
+			return err
+		}
+		if lastTokenErr != nil {
+			return err
+		}
+		// Continue execution of handler after ensuring a valid token.
+		return auth.ErrJWTMissing
+	}
+}
+
+// UnaryServerInterceptor ensures a valid token exists within a request's metadata. If
 // the token is missing or invalid, the interceptor blocks execution of the
 // handler and returns an error. Otherwise, the interceptor invokes the unary
 // handler.
-func JWTUnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInterceptor {
-	interceptor := JWT()
+func (JWT) UnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInterceptor {
+	interceptor := NewJWTOptions()
 	interceptor.Apply(cfg)
 	var extractor = createExtractor(interceptor)
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
@@ -77,39 +120,6 @@ func JWTUnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerIntercep
 		}
 		// Continue execution of handler after ensuring a valid token.
 		return nil, auth.ErrJWTMissing
-	}
-}
-
-// JWTSteamServerInterceptor jwt ServerInterceptor for stream server.
-func JWTSteamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterceptor {
-	interceptor := JWT()
-	interceptor.Apply(cfg)
-	var extractor = createExtractor(interceptor)
-	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		authstr, err := extractor(ss.Context())
-		if err != nil {
-			return auth.ErrJWTMissing
-		}
-		var lastTokenErr error
-		for _, s := range authstr {
-			token, err := interceptor.ParseTokenFunc(ss.Context(), s)
-			if err != nil {
-				lastTokenErr = err
-				continue
-			}
-			newctx := context.WithValue(ss.Context(), jwtKey{}, token)
-			ws := WrapServerStream(ss)
-			ws.WrappedContext = newctx
-			return handler(srv, ws)
-		}
-		if err != nil {
-			return err
-		}
-		if lastTokenErr != nil {
-			return err
-		}
-		// Continue execution of handler after ensuring a valid token.
-		return auth.ErrJWTMissing
 	}
 }
 

@@ -3,108 +3,176 @@ package grpcx
 import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor"
+	"github.com/tsingsun/woocoo/rpc/grpcx/option"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/keepalive"
-	"path/filepath"
 )
 
 var (
-	cGrpcServerOptions = newConfigurableGrpcOptions()
+	optionsManager = newGrpcOptionManager()
 )
 
 func init() {
-	RegisterGrpcServerOption("keepalive", keepaliveHandler)
-	RegisterGrpcServerOption("tls", tlsHandler)
-	RegisterGrpcUnaryInterceptor("jwt", interceptor.JWTUnaryServerInterceptor)
-	RegisterGrpcUnaryInterceptor("accessLog", interceptor.LoggerUnaryServerInterceptor)
-	RegisterGrpcUnaryInterceptor("recovery", interceptor.RecoveryUnaryServerInterceptor)
-	RegisterGrpcStreamInterceptor("jwt", interceptor.JWTSteamServerInterceptor)
-	RegisterGrpcStreamInterceptor("accessLog", interceptor.LoggerStreamServerInterceptor)
-	RegisterGrpcStreamInterceptor("recovery", interceptor.RecoveryStreamServerInterceptor)
-
+	registryIntegration()
 }
 
-type configurableGrpcServerOptions struct {
-	ms   map[string]func(*conf.Configuration) grpc.ServerOption
-	usit map[string]func(*conf.Configuration) grpc.UnaryServerInterceptor
-	ssit map[string]func(*conf.Configuration) grpc.StreamServerInterceptor
-}
+type (
+	grpcOptionManager struct {
+		so map[string]ServerOptionFunc
+		su map[string]UnaryServerInterceptorFunc
+		ss map[string]StreamServerInterceptorFunc
 
-func newConfigurableGrpcOptions() *configurableGrpcServerOptions {
-	return &configurableGrpcServerOptions{
-		ms:   make(map[string]func(*conf.Configuration) grpc.ServerOption),
-		usit: make(map[string]func(*conf.Configuration) grpc.UnaryServerInterceptor),
-		ssit: make(map[string]func(*conf.Configuration) grpc.StreamServerInterceptor),
+		cd map[string]DialOptionFunc
+		cu map[string]UnaryClientInterceptorFunc
+		cs map[string]StreamClientInterceptorFunc
+
+		mid map[string]interceptor.Interceptor
+	}
+	// server side
+	ServerOptionFunc            func(*conf.Configuration) grpc.ServerOption
+	UnaryServerInterceptorFunc  func(*conf.Configuration) grpc.UnaryServerInterceptor
+	StreamServerInterceptorFunc func(*conf.Configuration) grpc.StreamServerInterceptor
+	// client side
+	DialOptionFunc              func(*conf.Configuration) grpc.DialOption
+	UnaryClientInterceptorFunc  func(*conf.Configuration) grpc.UnaryClientInterceptor
+	StreamClientInterceptorFunc func(*conf.Configuration) grpc.StreamClientInterceptor
+)
+
+func newGrpcOptionManager() *grpcOptionManager {
+	return &grpcOptionManager{
+		so: make(map[string]ServerOptionFunc),
+		su: make(map[string]UnaryServerInterceptorFunc),
+		ss: make(map[string]StreamServerInterceptorFunc),
+		cd: make(map[string]DialOptionFunc),
+		cu: make(map[string]UnaryClientInterceptorFunc),
+		cs: make(map[string]StreamClientInterceptorFunc),
 	}
 }
 
-func RegisterGrpcServerOption(name string, handler func(cnf *conf.Configuration) grpc.ServerOption) {
-	cGrpcServerOptions.ms[name] = handler
-}
-
-func RegisterGrpcUnaryInterceptor(name string, handler func(*conf.Configuration) grpc.UnaryServerInterceptor) {
-	cGrpcServerOptions.usit[name] = handler
-}
-
-func RegisterGrpcStreamInterceptor(name string, handler func(*conf.Configuration) grpc.StreamServerInterceptor) {
-	cGrpcServerOptions.ssit[name] = handler
-}
-
-func keepaliveHandler(cfg *conf.Configuration) grpc.ServerOption {
-	sp := keepalive.ServerParameters{}
-	if err := cfg.Unmarshal(&sp); err != nil {
-		panic(err)
+func registryIntegration() {
+	ka := option.KeepAliveOption{}
+	tls := option.TLSOption{}
+	jwt := interceptor.JWT{}
+	aclog := interceptor.AccessLogger{}
+	recovery := interceptor.Recovery{}
+	optionsManager.so = map[string]ServerOptionFunc{
+		ka.Name():  ka.ServerOption,
+		tls.Name(): tls.ServerOption,
 	}
-	return grpc.KeepaliveParams(sp)
+	optionsManager.su = map[string]UnaryServerInterceptorFunc{
+		jwt.Name():      jwt.UnaryServerInterceptor,
+		aclog.Name():    aclog.UnaryServerInterceptor,
+		recovery.Name(): recovery.UnaryServerInterceptor,
+	}
+	optionsManager.ss = map[string]StreamServerInterceptorFunc{
+		jwt.Name():      jwt.SteamServerInterceptor,
+		aclog.Name():    aclog.StreamServerInterceptor,
+		recovery.Name(): recovery.StreamServerInterceptor,
+	}
+	optionsManager.cd = map[string]DialOptionFunc{
+		ka.Name():  ka.DialOption,
+		tls.Name(): tls.DialOption,
+		"block": func(configuration *conf.Configuration) grpc.DialOption {
+			return grpc.WithBlock()
+		},
+		"defaultServiceConfig": func(cfg *conf.Configuration) grpc.DialOption {
+			return grpc.WithDefaultServiceConfig(cfg.String("defaultServiceConfig"))
+		},
+	}
 }
 
-func tlsHandler(cfg *conf.Configuration) grpc.ServerOption {
-	sslCertificate := cfg.String("sslCertificate")
-	sslCertificateKey := cfg.String("sslCertificateKey")
-	if !filepath.IsAbs(sslCertificate) {
-		sslCertificate = filepath.Join(cfg.GetBaseDir(), sslCertificate)
-	}
-	if !filepath.IsAbs(sslCertificateKey) {
-		sslCertificateKey = filepath.Join(cfg.GetBaseDir(), sslCertificateKey)
-	}
-	tc, err := credentials.NewServerTLSFromFile(sslCertificate, sslCertificateKey)
-	if err != nil {
-		panic(err)
-	}
-	return grpc.Creds(tc)
+// RegisterGrpcServerOption register grpc server option
+func RegisterGrpcServerOption(name string, handler ServerOptionFunc) {
+	optionsManager.so[name] = handler
 }
 
-func (c configurableGrpcServerOptions) unaryInterceptorHandler(root string, cnf *conf.Configuration) grpc.ServerOption {
+// RegisterGrpcUnaryInterceptor register grpc unary interceptor
+func RegisterGrpcUnaryInterceptor(name string, handler UnaryServerInterceptorFunc) {
+	optionsManager.su[name] = handler
+}
+
+// RegisterGrpcStreamInterceptor register grpc stream interceptor
+func RegisterGrpcStreamInterceptor(name string, handler StreamServerInterceptorFunc) {
+	optionsManager.ss[name] = handler
+}
+
+// RegisterDialOption register grpc dial option on client side
+func RegisterDialOption(name string, f func(configuration *conf.Configuration) grpc.DialOption) {
+	optionsManager.cd[name] = f
+}
+
+// RegisterUnaryClientInterceptor register grpc unary client interceptor
+func RegisterUnaryClientInterceptor(name string, f func(configuration *conf.Configuration) grpc.UnaryClientInterceptor) {
+	optionsManager.cu[name] = f
+}
+
+// RegisterStreamClientInterceptor register grpc stream client interceptor
+func RegisterStreamClientInterceptor(name string, f func(configuration *conf.Configuration) grpc.StreamClientInterceptor) {
+	optionsManager.cs[name] = f
+}
+func (c grpcOptionManager) buildServerChainUnary(root string, cnf *conf.Configuration) grpc.ServerOption {
 	var opts []grpc.UnaryServerInterceptor
 	cnf.Each(root, func(root string, sub *conf.Configuration) {
-		if handler, ok := c.usit[root]; ok {
+		if handler, ok := c.su[root]; ok {
 			opts = append(opts, handler(sub))
 		}
 	})
 	return grpc.ChainUnaryInterceptor(opts...)
 }
 
-func (c configurableGrpcServerOptions) streamServerInterceptorHandler(root string, cnf *conf.Configuration) grpc.ServerOption {
+func (c grpcOptionManager) streamServerInterceptorHandler(root string, cnf *conf.Configuration) grpc.ServerOption {
 	var opts []grpc.StreamServerInterceptor
 	cnf.Each(root, func(root string, sub *conf.Configuration) {
-		if handler, ok := c.ssit[root]; ok {
+		if handler, ok := c.ss[root]; ok {
 			opts = append(opts, handler(sub))
 		}
 	})
 	return grpc.ChainStreamInterceptor(opts...)
 }
 
-func (c configurableGrpcServerOptions) Apply(cnf *conf.Configuration, path string) (opts []grpc.ServerOption) {
+// BuildServerOptions build grpc server options by config. the path node is slice type
+// cnf format:
+//
+//	engine:
+//	  - keepalive:
+//	  - unaryInterceptors:
+func (c grpcOptionManager) BuildServerOptions(cnf *conf.Configuration, path string) (opts []grpc.ServerOption) {
 	cnf.Each(path, func(root string, sub *conf.Configuration) {
 		if root == "unaryInterceptors" {
-			opts = append(opts, c.unaryInterceptorHandler(root, sub))
+			opts = append(opts, c.buildServerChainUnary(root, sub))
 		} else if root == "streamInterceptors" {
 			opts = append(opts, c.streamServerInterceptorHandler(root, sub))
 		}
-		if handler, ok := c.ms[root]; ok {
+		if optionFunc, ok := c.so[root]; ok {
+			opts = append(opts, optionFunc(sub))
+		}
+	})
+	return
+}
+
+// BuildDialOption build grpc dial option by config. the path node is slice type
+func (c grpcOptionManager) BuildDialOption(client *Client, cnf *conf.Configuration, path string) (opts []grpc.DialOption) {
+	cnf.Each(path, func(root string, sub *conf.Configuration) {
+		if root == "timeout" {
+			client.timeout = sub.Duration(root)
+			return
+		}
+		if root == "unaryInterceptors" {
+			opts = append(opts, c.buildClientChainUnary(root, sub))
+		}
+		if handler, ok := c.cd[root]; ok {
 			opts = append(opts, handler(sub))
 		}
 	})
 	return
+
+}
+
+func (c grpcOptionManager) buildClientChainUnary(root string, cnf *conf.Configuration) grpc.DialOption {
+	var opts []grpc.UnaryClientInterceptor
+	cnf.Each(root, func(root string, sub *conf.Configuration) {
+		if handler, ok := c.cu[root]; ok {
+			opts = append(opts, handler(sub))
+		}
+	})
+	return grpc.WithChainUnaryInterceptor(opts...)
 }

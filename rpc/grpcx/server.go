@@ -66,7 +66,7 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 	}
 	// engine
 	if k := strings.Join([]string{"engine"}, conf.KeyDelimiter); cfg.IsSet(k) {
-		s.opts.grpcOptions = cGrpcServerOptions.Apply(cfg, k)
+		s.opts.grpcOptions = optionsManager.BuildServerOptions(cfg, k)
 	}
 }
 

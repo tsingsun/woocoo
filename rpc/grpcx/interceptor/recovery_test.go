@@ -18,8 +18,8 @@ import (
 func TestRecoveryUnaryServerInterceptor(t *testing.T) {
 	wctest.InitGlobalLogger(false)
 	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(
-		LoggerUnaryServerInterceptor(conf.NewFromStringMap(map[string]any{})),
-		RecoveryUnaryServerInterceptor(conf.NewFromStringMap(map[string]any{})),
+		AccessLogger{}.UnaryServerInterceptor(conf.NewFromStringMap(map[string]any{})),
+		Recovery{}.UnaryServerInterceptor(conf.NewFromStringMap(map[string]any{})),
 	))
 	require.NotNil(t, gs)
 	defer gs.Stop()
@@ -56,7 +56,7 @@ func TestRecoveryUnaryServerInterceptor(t *testing.T) {
 func TestRecoveryUnaryServerInterceptorWithoutLogger(t *testing.T) {
 	logdata := wctest.InitBuffWriteSyncer()
 	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(
-		RecoveryUnaryServerInterceptor(conf.NewFromStringMap(map[string]any{})),
+		Recovery{}.UnaryServerInterceptor(conf.NewFromStringMap(map[string]any{})),
 	))
 	require.NotNil(t, gs)
 	defer gs.Stop()
@@ -91,7 +91,7 @@ func TestHandleRecoverError(t *testing.T) {
 	log.New(logtest.NewBuffLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
 
 	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(
-		RecoveryUnaryServerInterceptor(conf.NewFromStringMap(map[string]any{})),
+		Recovery{}.UnaryServerInterceptor(conf.NewFromStringMap(map[string]any{})),
 		func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 			wg := new(errgroup.Group)
 			wg.Go(func() (err error) {

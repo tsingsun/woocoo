@@ -10,15 +10,25 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type RecoveryOptions struct {
-}
-
 var (
 	defaultRecoveryOptions = RecoveryOptions{}
 )
 
-// RecoveryUnaryServerInterceptor catches panics in processing unary requests and recovers.
-func RecoveryUnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInterceptor {
+type (
+	RecoveryOptions struct {
+	}
+
+	Recovery struct {
+	}
+)
+
+// Name return the name of recovery interceptor
+func (Recovery) Name() string {
+	return "recovery"
+}
+
+// UnaryServerInterceptor catches panics in processing unary requests and recovers.
+func (Recovery) UnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInterceptor {
 	if err := cnf.Unmarshal(&defaultRecoveryOptions); err != nil {
 		panic(err)
 	}
@@ -35,8 +45,8 @@ func RecoveryUnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInt
 	}
 }
 
-// RecoveryStreamServerInterceptor returns a new streaming server interceptor for panic recovery.
-func RecoveryStreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerInterceptor {
+// StreamServerInterceptor returns a new streaming server interceptor for panic recovery.
+func (Recovery) StreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerInterceptor {
 	if err := cnf.Unmarshal(&defaultRecoveryOptions); err != nil {
 		panic(err)
 	}

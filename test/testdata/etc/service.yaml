@@ -7,8 +7,6 @@ grpc:
       - keepalive:
           time: 1h
       - tls:
-          sslCertificate: ""
-          sslCertificateKey: ""
       - unaryInterceptors:
           - accessLog:
               timestampFormat: "2006-01-02 15:04:05"
@@ -26,8 +24,6 @@ grpc:
     ttl: 600s
     etcd:
       tls:
-        sslCertificate: ""
-        sslCertificateKey: ""
       endpoints:
         - 127.0.0.1:2379
       dial-timeout: 3s

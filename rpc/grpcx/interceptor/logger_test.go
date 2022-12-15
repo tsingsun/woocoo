@@ -24,14 +24,15 @@ func applog() grpc.UnaryServerInterceptor {
 func TestGrpcContextLogger(t *testing.T) {
 	logdata := wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 	// get the global logger
-	log.Global().Logger(log.WithOriginalLogger()).SetContextLogger(NewGrpcContextLogger())
+	log.Component(log.GrpcComponentName).Logger().SetContextLogger(NewGrpcContextLogger())
 	log.Component(log.GrpcComponentName).Logger(log.WithOriginalLogger()).WithTraceID = true
+	log.Component(log.GrpcComponentName).Logger().WithTraceID = true
 
 	clfg := conf.NewFromStringMap(map[string]any{
 		"TimestampFormat": "2006-01-02 15:04:05",
 		"Format":          "request,response",
 	})
-	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(LoggerUnaryServerInterceptor(clfg), applog()))
+	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(AccessLogger{}.UnaryServerInterceptor(clfg), applog()))
 	assert.NotNil(t, gs)
 	defer gs.Stop()
 
@@ -96,7 +97,7 @@ func TestLoggerUnaryServerInterceptor(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			want := tt.want()
 
-			unaryServerInterceptor := LoggerUnaryServerInterceptor(tt.args.cfg)
+			unaryServerInterceptor := AccessLogger{}.UnaryServerInterceptor(tt.args.cfg)
 			got, err := unaryServerInterceptor(tt.fields.ctx, nil, tt.fields.info, tt.fields.handler)
 			if !tt.wantErr(t, err, want) {
 				return

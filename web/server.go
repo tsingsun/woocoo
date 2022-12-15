@@ -25,8 +25,8 @@ var (
 
 type ServerOptions struct {
 	Addr              string              `json:"addr" yaml:"addr"`
-	SSLCertificate    string              `json:"sslCertificate" yaml:"sslCertificate"`
-	SSLCertificateKey string              `json:"sslCertificateKey" yaml:"sslCertificateKey"`
+	SSLCertificate    string              `json:"-" yaml:"-"`
+	SSLCertificateKey string              `json:"-" yaml:"-"`
 	configuration     *conf.Configuration // not root configuration
 	handlerManager    *handler.Manager    // middleware manager
 	gracefulStop      bool                // run with grace full shutdown
@@ -84,6 +84,10 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 		if err := cfg.Parser().Unmarshal("server", &s.opts); err != nil {
 			panic(err)
 		}
+	}
+	if cfg.IsSet("server.tls") {
+		s.opts.SSLCertificate = cfg.String("server.tls.cert")
+		s.opts.SSLCertificateKey = cfg.String("server.tls.key")
 	}
 	if cfg.IsSet("engine") {
 		if err := s.router.Apply(cfg.Sub("engine")); err != nil {

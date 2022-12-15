@@ -1,4 +1,4 @@
-package client
+package grpcx
 
 import (
 	"context"
@@ -35,11 +35,8 @@ type Client struct {
 	scheme string
 }
 
-func New(cfg *conf.Configuration, opts ...Option) *Client {
+func NewClient(cfg *conf.Configuration) *Client {
 	c := &Client{}
-	for _, o := range opts {
-		o(c)
-	}
 	c.Apply(cfg)
 	return c
 }
@@ -70,7 +67,7 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 	}
 	// grpc dial options
 	if k := "client.grpcDialOption"; cfg.IsSet(k) {
-		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, grpcDialOptions.Apply(c, cfg, k)...)
+		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, optionsManager.BuildDialOption(c, cfg, k)...)
 	}
 }
 

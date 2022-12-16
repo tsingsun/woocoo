@@ -37,6 +37,7 @@ type Client struct {
 
 func NewClient(cfg *conf.Configuration) *Client {
 	c := &Client{}
+	c.dialOpts.Namespace = cfg.Root().Namespace()
 	c.Apply(cfg)
 	return c
 }
@@ -47,14 +48,14 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 		panic(err)
 	}
 	// target info
-	if k := "client.target"; cfg.IsSet(k) {
+	if k := conf.Join("client", "target"); cfg.IsSet(k) {
 		if err := cfg.Sub(k).Unmarshal(&c.dialOpts); err != nil {
 			panic(err)
 		}
 	}
-	// if use registry
+	// if using registry
 	if k := "registry"; cfg.IsSet(k) {
-		c.scheme = cfg.String(k + ".scheme")
+		c.scheme = cfg.String(conf.Join(k, "scheme"))
 		drv, ok := registry.GetRegistry(c.scheme)
 		if !ok {
 			panic(fmt.Errorf("registry driver not found:%s", c.scheme))
@@ -66,7 +67,7 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, grpc.WithResolvers(rb))
 	}
 	// grpc dial options
-	if k := "client.grpcDialOption"; cfg.IsSet(k) {
+	if k := conf.Join("client", "grpcDialOption"); cfg.IsSet(k) {
 		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, optionsManager.BuildDialOption(c, cfg, k)...)
 	}
 }

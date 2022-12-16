@@ -93,7 +93,7 @@ func TestNewFromX(t *testing.T) {
 			name: "new from bytes",
 			newFunc: func() (*Configuration, error) {
 				return NewFromBytes([]byte(`
-nameSpace: tsingsun
+namespace: tsingsun
 appName: woocoo
 version: 1.0.0
 development: true
@@ -105,7 +105,7 @@ development: true
 			name: "new from bytes",
 			newFunc: func() (*Configuration, error) {
 				return NewFromStringMap(map[string]any{
-					"nameSpace":   "tsingsun",
+					"namespace":   "tsingsun",
 					"appName":     "woocoo",
 					"version":     "1.0.0",
 					"development": true,

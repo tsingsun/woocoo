@@ -43,6 +43,7 @@ type Options struct {
 	TTL        time.Duration   `json:"ttl" yaml:"ttl"`
 }
 
+// Registry is an etcd3 registry for service discovery.
 type Registry struct {
 	sync.RWMutex
 	opts     Options

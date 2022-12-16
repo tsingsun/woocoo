@@ -84,8 +84,8 @@ grpc:
     target:
       namespace: woocoo
       serviceName: helloworld.Greeter
-      metadata: 
-        version: "1.0"
+      version: "1.0"
+      metadata:  
         dst_location: amoy
         src_tag: tag1
         headerPrefix: "head1,head2"

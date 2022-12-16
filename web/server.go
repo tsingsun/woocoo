@@ -85,9 +85,9 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 			panic(err)
 		}
 	}
-	if cfg.IsSet("server.tls") {
-		s.opts.SSLCertificate = cfg.String("server.tls.cert")
-		s.opts.SSLCertificateKey = cfg.String("server.tls.key")
+	if k := conf.Join("server", "tls"); cfg.IsSet(k) {
+		s.opts.SSLCertificate = cfg.String(conf.Join(k, "cert"))
+		s.opts.SSLCertificateKey = cfg.String(conf.Join(k, "key"))
 	}
 	if cfg.IsSet("engine") {
 		if err := s.router.Apply(cfg.Sub("engine")); err != nil {

@@ -29,7 +29,7 @@ func TestRegistry_Apply(t *testing.T) {
 grpc:
   server:
     addr: 127.0.0.1:20000
-    nameSpace: /woocoo/service
+    namespace: /woocoo/service
     version: "1.0"
     ipv6: true
   registry:

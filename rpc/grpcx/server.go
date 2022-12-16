@@ -11,20 +11,16 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
 )
 
 type serverOptions struct {
-	Addr              string `json:"addr" yaml:"addr"`
-	UseIPv6           bool   `json:"ipv6" yaml:"ipv6"`
-	SSLCertificate    string `json:"sslCertificate" yaml:"sslCertificate"`
-	SSLCertificateKey string `json:"sslCertificateKey" yaml:"sslCertificateKey"`
-	// Namespace is the registry service prefix,when grpc register service,it will use namespace+service as service name
-	// so the Registry use the prefix to watch all services in grpc server
-	Namespace string `json:"namespace" yaml:"namespace"`
+	Addr    string `json:"addr" yaml:"addr"`
+	UseIPv6 bool   `json:"ipv6" yaml:"ipv6"`
+	// Namespace will pass to registry component.default is Application NameSpace
+	Namespace string `json:"namespace,omitempty" yaml:"namespace"`
 	// Version is the grpc server version,default is Application Version which is set in the Application level config file
 	Version string `json:"version" yaml:"version"`
 	// RegistryMeta is the metadata for the registry service
@@ -36,7 +32,7 @@ type serverOptions struct {
 	gracefulStop  bool
 }
 
-// Server is the grpcx server
+// Server is extended the native grpc server
 type Server struct {
 	opts   serverOptions
 	engine *grpc.Server
@@ -50,26 +46,7 @@ type Server struct {
 	mu sync.RWMutex
 }
 
-func (s *Server) Apply(cfg *conf.Configuration) {
-	err := cfg.Parser().Unmarshal("server", &s.opts)
-	if err != nil {
-		panic(err)
-	}
-	if k := strings.Join([]string{"registry"}, conf.KeyDelimiter); cfg.IsSet(k) {
-		drv, ok := registry.GetRegistry(cfg.String(strings.Join([]string{"registry", "scheme"}, conf.KeyDelimiter)))
-		if !ok {
-			panic(fmt.Errorf("registry driver not found"))
-		}
-		if s.registry, err = drv.CreateRegistry(cfg.Sub(k)); err != nil {
-			panic(err)
-		}
-	}
-	// engine
-	if k := strings.Join([]string{"engine"}, conf.KeyDelimiter); cfg.IsSet(k) {
-		s.opts.grpcOptions = optionsManager.BuildServerOptions(cfg, k)
-	}
-}
-
+// New creates a new grpc server.
 func New(opts ...Option) *Server {
 	s := &Server{
 		opts: serverOptions{
@@ -82,14 +59,37 @@ func New(opts ...Option) *Server {
 	for _, o := range opts {
 		o(&s.opts)
 	}
-	if s.opts.configuration != nil {
-		s.opts.Version = s.opts.configuration.Root().Version()
+	if cnf := s.opts.configuration; cnf != nil {
+		s.opts.Version = cnf.Root().Version()
+		s.opts.Namespace = cnf.Root().Namespace()
 		s.Apply(s.opts.configuration)
 	}
 	s.engine = grpc.NewServer(s.opts.grpcOptions...)
 	return s
 }
 
+// Apply the configuration to the server.
+func (s *Server) Apply(cfg *conf.Configuration) {
+	err := cfg.Parser().Unmarshal("server", &s.opts)
+	if err != nil {
+		panic(err)
+	}
+	if k := conf.Join("registry"); cfg.IsSet(k) {
+		drv, ok := registry.GetRegistry(cfg.String(conf.Join("registry", "scheme")))
+		if !ok {
+			panic(fmt.Errorf("registry driver not found"))
+		}
+		if s.registry, err = drv.CreateRegistry(cfg.Sub(k)); err != nil {
+			panic(err)
+		}
+	}
+	// engine
+	if k := conf.Join("engine"); cfg.IsSet(k) {
+		s.opts.grpcOptions = optionsManager.BuildServerOptions(cfg, k)
+	}
+}
+
+// ListenAndServe call net listen to start grpc server and registry service
 func (s *Server) ListenAndServe() error {
 	lis, err := net.Listen("tcp", s.opts.Addr)
 	if err != nil {

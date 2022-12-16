@@ -79,9 +79,8 @@ func (w *etcdResolver) Close() {
 	w.cancel()
 }
 
-func (w *etcdResolver) Watch() {
-	defer w.wg.Done()
-	w.wg.Add(1)
+// safeKey make sure the key is start and end with '/'. keep the watch key is exactly path in etcd.
+func (w *etcdResolver) safeKey() {
 	if w.options.Namespace != "" {
 		w.key = strings.Join([]string{w.options.Namespace, w.options.ServiceName}, "/")
 	} else {
@@ -90,6 +89,16 @@ func (w *etcdResolver) Watch() {
 	if !strings.HasPrefix(w.key, "/") {
 		w.key = "/" + w.key
 	}
+	if !strings.HasSuffix(w.key, "/") {
+		w.key = w.key + "/"
+	}
+}
+
+func (w *etcdResolver) Watch() {
+	defer w.wg.Done()
+	w.wg.Add(1)
+	w.safeKey()
+
 	for {
 		select {
 		case <-w.ctx.Done():

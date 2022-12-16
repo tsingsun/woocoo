@@ -8,7 +8,6 @@ import (
 	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
-	"github.com/tsingsun/woocoo/rpc/grpcx/client"
 	"google.golang.org/grpc/grpclog"
 	"io/ioutil"
 	"os"
@@ -28,13 +27,10 @@ grpc:
     addr: 0.0.0.0:20011
     namespace: woocoo
     version: "1.0"
-    engine:
-      - unaryInterceptors:
-          - trace:
-          - accessLog:
-              timestampFormat: "2006-01-02 15:04:05"
-          - recovery:
-      - streamInterceptors:
+  engine:
+    - unaryInterceptors:
+      - recovery:
+    - streamInterceptors:
   registry:
     scheme: polaris
     ttl: 600s
@@ -53,7 +49,7 @@ grpc:
         src_tag: tag1
         headerPrefix: "head1,head2"
     grpcDialOption:
-      - insecure:
+      - tls:
       - block:
       - timeout: 5s
       - defaultServiceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }'
@@ -67,10 +63,10 @@ grpc:
 		return srv.Run()
 	})
 	require.NoError(t, err)
-	cli := client.New(cfg.Sub("grpc"))
+	cli := grpcx.NewClient(cfg.Sub("grpc"))
 	conn, err := cli.Dial("")
-	assert.NoError(t, err)
-	assert.NotNil(t, conn)
+	require.NoError(t, err)
+	require.NotNil(t, conn)
 	gclient := helloworld.NewGreeterClient(conn)
 	resp, err := gclient.SayHello(context.Background(), &helloworld.HelloRequest{Name: "world"})
 	assert.NoError(t, err)
@@ -81,13 +77,12 @@ func TestClient_DialMultiServer(t *testing.T) {
 	b := []byte(`
 grpc:
   server:
-    addr: 0.0.0.0:20012
+    addr: 127.0.0.1:20012
     namespace: woocoo
     version: "1.0"
     engine:
-      - unaryInterceptors: 
-          - accessLog:
-              timestampFormat: "2006-01-02 15:04:05"
+      - unaryInterceptors:
+          - rateLimit:
           - recovery:
       - streamInterceptors:
   registry:
@@ -108,26 +103,26 @@ grpc:
         src_tag: tag1
         headerPrefix: "head1,head2"
     grpcDialOption:
-      - insecure:
+      - tls:
       - block:
-      - timeout: 30s
+      - timeout: 1s
       - defaultServiceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }' 
 `)
 	cfg := conf.NewFromBytes(b)
 	var srv, srv2 *grpcx.Server
 	err := wctest.RunWait(t, time.Second*5, func() error {
-		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")), grpcx.UseLogger())
+		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")), grpcx.WithGrpcLogger())
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		return srv.Run()
 	}, func() error {
 		cfg2 := cfg.Sub("grpc")
-		cfg2.Parser().Set("server.addr", ":20013")
-		srv2 = grpcx.New(grpcx.WithConfiguration(cfg2), grpcx.UseLogger())
+		cfg2.Parser().Set("server.addr", "127.0.0.1:20013")
+		srv2 = grpcx.New(grpcx.WithConfiguration(cfg2), grpcx.WithGrpcLogger())
 		helloworld.RegisterGreeterServer(srv2.Engine(), &helloworld.Server{})
 		return srv2.Run()
 	})
 	require.NoError(t, err)
-	cli := client.New(cfg.Sub("grpc"))
+	cli := grpcx.NewClient(cfg.Sub("grpc"))
 	c, err := cli.Dial("")
 	if !assert.NoError(t, err) {
 		t.FailNow()

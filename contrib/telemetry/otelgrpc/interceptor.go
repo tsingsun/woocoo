@@ -3,7 +3,6 @@ package otelgrpc
 import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
-	"github.com/tsingsun/woocoo/rpc/grpcx/client"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 )
@@ -13,8 +12,8 @@ const interceptorName = "otel"
 func init() {
 	grpcx.RegisterGrpcUnaryInterceptor(interceptorName, UnaryServerInterceptor)
 	grpcx.RegisterGrpcStreamInterceptor(interceptorName, StreamServerInterceptor)
-	client.RegisterUnaryClientInterceptor(interceptorName, UnaryClientInterceptor)
-	client.RegisterStreamClientInterceptor(interceptorName, StreamClientInterceptor)
+	grpcx.RegisterUnaryClientInterceptor(interceptorName, UnaryClientInterceptor)
+	grpcx.RegisterStreamClientInterceptor(interceptorName, StreamClientInterceptor)
 }
 
 func UnaryServerInterceptor(_ *conf.Configuration) grpc.UnaryServerInterceptor {

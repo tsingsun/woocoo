@@ -15,14 +15,13 @@ func TestRegistry_Apply(t *testing.T) {
 grpc:
   server:
     addr: 127.0.0.1:20000
-    nameSpace: /woocoo/service
+    namespace: /woocoo/service
     version: "1.0"
     ipv6: true
   registry:
     scheme: polaris
     ttl: 600s
-    polaris:
-      configFile: etc/polaris/config.yaml
+    polaris: 
       global:
         serverConnector:
           addresses:
@@ -42,7 +41,13 @@ grpc:
 		fields fields
 		args   args
 	}{
-		{name: "ok", fields: fields{registerContext: &RegisterContext{}}, args: args{cfg: cfg.Sub("grpc.registry")}},
+		{name: "in", fields: fields{registerContext: &RegisterContext{}}, args: args{cfg: cfg.Sub("grpc.registry")}},
+		{name: "file", fields: fields{registerContext: &RegisterContext{}}, args: args{
+			cfg: func() *conf.Configuration {
+				c := cfg.Sub("grpc.registry")
+				c.Parser().Set("polaris.configFile", "etc/polaris/polaris.yaml")
+				return c
+			}()}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -68,7 +73,7 @@ func TestRegistry_Register(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		wantErr bool
+		wantErr assert.ErrorAssertionFunc
 	}{
 		{
 			name: "registerAndUnregister",
@@ -89,7 +94,7 @@ func TestRegistry_Register(t *testing.T) {
 						"version": "1.0.0",
 					},
 				},
-			}, wantErr: false,
+			}, wantErr: assert.NoError,
 		},
 		{
 			name: "onlyUnregister",
@@ -111,7 +116,7 @@ func TestRegistry_Register(t *testing.T) {
 					},
 				},
 				testType: 1,
-			}, wantErr: false,
+			}, wantErr: assert.Error,
 		},
 	}
 	for _, tt := range tests {
@@ -121,13 +126,10 @@ func TestRegistry_Register(t *testing.T) {
 				registerContext: tt.fields.registerContext,
 			}
 			if tt.args.testType == 0 {
-				if err := r.Register(tt.args.serviceInfo); (err != nil) != tt.wantErr {
-					t.Errorf("Register() error = %v, wantErr %v", err, tt.wantErr)
-				}
+				tt.wantErr(t, r.Register(tt.args.serviceInfo))
 			}
-			if err := r.Unregister(tt.args.serviceInfo); (err != nil) != tt.wantErr {
-				t.Errorf("Unregister() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			tt.wantErr(t, r.Unregister(tt.args.serviceInfo))
+
 		})
 	}
 }

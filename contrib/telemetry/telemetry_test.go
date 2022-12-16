@@ -189,7 +189,7 @@ func TestOtlp(t *testing.T) {
 							"endpoint": "127.0.0.1:4317",
 							"client": map[string]any{
 								"grpcDialOption": []any{
-									map[string]any{"insecure": nil},
+									map[string]any{"tls": nil},
 									map[string]any{"block": nil},
 									map[string]any{"timeout": "5s"},
 								},

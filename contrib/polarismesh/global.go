@@ -12,8 +12,6 @@ import (
 var (
 	// DefaultNamespace default namespace when namespace is not set
 	DefaultNamespace = "default"
-	// DefaultTTL default ttl value when ttl is not set
-	DefaultTTL = 20
 	// LoadBalanceConfig config for do the balance
 	LoadBalanceConfig = fmt.Sprintf("{\n  \"loadBalancingConfig\": [ { \"%s\": {} } ]}", scheme)
 )
@@ -26,28 +24,48 @@ var (
 )
 
 // PolarisContext get or init the global polaris context
-func PolarisContext(cfg *conf.Configuration) (ctx api.SDKContext, err error) {
+func PolarisContext() (ctx api.SDKContext, err error) {
 	mutexPolarisContext.Lock()
 	defer mutexPolarisContext.Unlock()
-	if nil != polarisContext {
+	if polarisContext != nil {
 		return polarisContext, nil
 	}
-	polarisContext, err = api.InitContextByConfig(PolarisConfig(cfg))
+	polarisContext, err = api.InitContextByConfig(PolarisConfig())
 	return polarisContext, err
 }
 
 // PolarisConfig get or init the global polaris configuration
-func PolarisConfig(cfg *conf.Configuration) config.Configuration {
-	pcfg := cfg.Sub("polaris")
-	oncePolarisConfig.Do(func() {
-		bts, err := pcfg.Parser().ToBytes(yaml.Parser())
-		if nil != err {
-			panic(err)
-		}
-		polarisConfig, err = config.LoadConfiguration(bts)
-		if nil != err {
-			panic(err)
-		}
-	})
+func PolarisConfig() config.Configuration {
+	if polarisConfig == nil {
+		oncePolarisConfig.Do(func() {
+			polarisConfig = api.NewConfiguration()
+		})
+	}
 	return polarisConfig
+}
+
+// SetPolarisConfig set the global polaris configuration
+func SetPolarisConfig(cfg *conf.Configuration) error {
+	var (
+		parser *conf.Parser
+		err    error
+	)
+	pcfg := cfg.Sub("polaris")
+	if pcfg.IsSet("configFile") {
+		parser, err = conf.NewParserFromFile(cfg.Abs(pcfg.String("configFile")))
+		if err != nil {
+			return err
+		}
+	} else {
+		parser = pcfg.Parser()
+	}
+	bts, err := parser.ToBytes(yaml.Parser())
+	if err != nil {
+		return err
+	}
+	polarisConfig, err = config.LoadConfiguration(bts)
+	if err != nil {
+		return err
+	}
+	return nil
 }

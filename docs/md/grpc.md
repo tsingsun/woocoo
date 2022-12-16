@@ -17,8 +17,8 @@ grpc:
       - keepalive:
           time: 1h
       - tls:
-          sslCertificate: ""
-          sslCertificateKey: ""
+          cert: "" # 文件地址,可相当程序启动目录的相对地址
+          key: "" # 文件地址,可相当程序启动目录的相对地址
       - unaryInterceptors:          
           - accessLog:
               timestampFormat: "2006-01-02 15:04:05"

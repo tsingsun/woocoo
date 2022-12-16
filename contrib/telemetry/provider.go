@@ -3,7 +3,7 @@ package telemetry
 import (
 	"context"
 	"encoding/json"
-	"github.com/tsingsun/woocoo/rpc/grpcx/client"
+	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -62,7 +62,7 @@ func initMetric(c *Config, exporter sdkmetric.Exporter) (metric.MeterProvider, e
 
 func NewOtlpTracer(c *Config) (tp trace.TracerProvider, shutdown func(ctx context.Context) error, err error) {
 	traceCfg := c.cnf.Sub(c.TraceExporter)
-	gclient := client.New(traceCfg)
+	gclient := grpcx.NewClient(traceCfg)
 	conn, err := gclient.Dial(traceCfg.String("endpoint"),
 		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
 	)
@@ -94,7 +94,7 @@ func NewOtlpTracer(c *Config) (tp trace.TracerProvider, shutdown func(ctx contex
 
 func NewOtlpMetric(c *Config) (mp metric.MeterProvider, shutdown func(ctx context.Context) error, err error) {
 	metricCfg := c.cnf.Sub(c.MetricExporter)
-	gclient := client.New(metricCfg)
+	gclient := grpcx.NewClient(metricCfg)
 	conn, err := gclient.Dial(metricCfg.String("endpoint"),
 		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
 	)

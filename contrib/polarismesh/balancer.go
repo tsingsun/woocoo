@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"strings"
 	"sync"
 	"time"
@@ -57,7 +56,7 @@ type polarisNamingBalancer struct {
 	v2Picker    balancer.Picker
 	consumerAPI api.ConsumerAPI
 
-	options *registry.DialOptions
+	options *dialOptions
 
 	resolverErr error // the last error reported by the resolver; cleared on successful resolution
 	connErr     error // the last connection error; cleared upon leaving TransientFailure
@@ -125,7 +124,7 @@ func (p *polarisNamingBalancer) UpdateClientConnState(state balancer.ClientConnS
 		return balancer.ErrBadResolverState
 	}
 	if nil == p.consumerAPI {
-		sdkCtx, err := PolarisContext(nil)
+		sdkCtx, err := PolarisContext()
 		if nil != err {
 			return err
 		}
@@ -137,7 +136,7 @@ func (p *polarisNamingBalancer) UpdateClientConnState(state balancer.ClientConnS
 	addrsSet := make(map[resolver.Address]struct{})
 	for _, a := range state.ResolverState.Addresses {
 		if nil == p.options {
-			p.options = a.Attributes.Value(keyDialOptions).(*registry.DialOptions)
+			p.options = a.Attributes.Value(keyDialOptions).(*dialOptions)
 		}
 		addrsSet[a] = struct{}{}
 		p.createSubConnection(a)
@@ -232,7 +231,7 @@ func (p *polarisNamingBalancer) UpdateSubConnState(sc balancer.SubConn, state ba
 // from it. The picker is
 //   - errPicker if the balancer is in TransientFailure,
 //   - built by the pickerBuilder with all READY SubConns otherwise.
-func (p *polarisNamingBalancer) regeneratePicker(options *registry.DialOptions) {
+func (p *polarisNamingBalancer) regeneratePicker(options *dialOptions) {
 	if p.state == connectivity.TransientFailure {
 		p.v2Picker = base.NewErrPicker(p.mergeErrors())
 		return
@@ -270,21 +269,18 @@ func (p *polarisNamingBalancer) mergeErrors() error {
 type polarisNamingPicker struct {
 	balancer *polarisNamingBalancer
 	readySCs map[string]balancer.SubConn
-	options  *registry.DialOptions
-
-	dstMetadata        map[string]string
-	hasInitdstMetadata bool
+	options  *dialOptions
 }
 
-func buildSourceInfo(options *registry.DialOptions) *model.ServiceInfo {
+func buildSourceInfo(options *dialOptions) *model.ServiceInfo {
 	var valueSet bool
 	svcInfo := &model.ServiceInfo{}
-	if options.ServiceName != "" {
-		svcInfo.Service = options.ServiceName
+	if options.SrcService != "" {
+		svcInfo.Service = options.SrcService
 		valueSet = true
 	}
-	if len(options.Metadata) > 0 {
-		svcInfo.Metadata = filterMetadata(options, "src_")
+	if len(options.SrcMetadata) > 0 {
+		svcInfo.Metadata = options.SrcMetadata
 		valueSet = true
 	}
 	if valueSet {
@@ -318,11 +314,8 @@ func (pnp *polarisNamingPicker) Pick(info balancer.PickInfo) (balancer.PickResul
 	request := &api.GetOneInstanceRequest{}
 	request.Namespace = getNamespace(pnp.options)
 	request.Service = pnp.balancer.target.URL.Host
-	if len(pnp.dstMetadata) > 0 && pnp.hasInitdstMetadata {
-		request.Metadata = pnp.dstMetadata
-	} else {
-		request.Metadata = filterMetadata(pnp.options, "dst_")
-		pnp.hasInitdstMetadata = true
+	if len(pnp.options.DstMetadata) > 0 {
+		request.Metadata = pnp.options.DstMetadata
 	}
 	sourceService := buildSourceInfo(pnp.options)
 	if sourceService != nil {
@@ -333,9 +326,9 @@ func (pnp *polarisNamingPicker) Pick(info balancer.PickInfo) (balancer.PickResul
 		if md, ok := metadata.FromOutgoingContext(info.Ctx); ok {
 			mp := make(map[string]string)
 			for kvs := range md {
-				if hp := pnp.options.Metadata["headerPrefix"]; hp != "" {
+				if pnp.options.HeaderPrefix != nil {
 					// 如果配置的前缀不为空，则要求header匹配前缀
-					for _, prefix := range strings.Split(hp, ",") {
+					for _, prefix := range pnp.options.HeaderPrefix {
 						if strings.HasPrefix(kvs, prefix) {
 							mp[strings.TrimPrefix(kvs, prefix)] = md[kvs][0]
 							break
@@ -397,15 +390,4 @@ func (r *resultReporter) report(info balancer.DoneInfo) {
 	callResult.SetDelay(time.Now().Sub(r.startTime))
 	callResult.SetRetCode(int32(code))
 	_ = r.consumerAPI.UpdateServiceCallResult(callResult)
-}
-
-// parse src metadata from registry dialoptions, example: src_key = value => key = value
-func filterMetadata(options *registry.DialOptions, prefix string) map[string]string {
-	var srcMetadata = make(map[string]string)
-	for k, v := range options.Metadata {
-		if strings.HasPrefix(k, prefix) {
-			srcMetadata[k[len(prefix)-1:]] = v
-		}
-	}
-	return srcMetadata
 }

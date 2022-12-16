@@ -7,7 +7,6 @@ import (
 	"github.com/polarismesh/polaris-go/api"
 	"github.com/polarismesh/polaris-go/pkg/model"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/attributes"
 	"google.golang.org/grpc/grpclog"
@@ -17,8 +16,6 @@ import (
 )
 
 type resolverBuilder struct {
-	// for the registry
-	configuration *conf.Configuration
 }
 
 // Scheme polaris scheme
@@ -30,19 +27,18 @@ func (rb *resolverBuilder) Scheme() string {
 // build a new Resolver resolution service address for the specified Target,
 // and pass the polaris information to the balancer through attr
 func (rb *resolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
-	options, err := registry.TargetToOptions(target)
+	options, err := targetToOptions(target)
 	if nil != err {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	d := &polarisNamingResolver{
-		ctx:           ctx,
-		cancel:        cancel,
-		cc:            cc,
-		rn:            make(chan struct{}, 1),
-		target:        target,
-		options:       options,
-		configuration: rb.configuration,
+		ctx:     ctx,
+		cancel:  cancel,
+		cc:      cc,
+		rn:      make(chan struct{}, 1),
+		target:  target,
+		options: options,
 	}
 	d.wg.Add(1)
 	go d.watcher()
@@ -57,7 +53,7 @@ type polarisNamingResolver struct {
 	// rn channel is used by ResolveNow() to force an immediate resolution of the target.
 	rn      chan struct{}
 	wg      sync.WaitGroup
-	options *registry.DialOptions
+	options *dialOptions
 	target  resolver.Target
 
 	configuration      *conf.Configuration
@@ -79,7 +75,7 @@ func (pr *polarisNamingResolver) resolveNow() {
 	}
 }
 
-func getNamespace(options *registry.DialOptions) string {
+func getNamespace(options *dialOptions) string {
 	namespace := DefaultNamespace
 	if len(options.Namespace) > 0 {
 		namespace = options.Namespace
@@ -90,7 +86,7 @@ func getNamespace(options *registry.DialOptions) string {
 const keyDialOptions = "options"
 
 func (pr *polarisNamingResolver) lookup() (*resolver.State, api.ConsumerAPI, error) {
-	sdkCtx, err := PolarisContext(pr.configuration)
+	sdkCtx, err := PolarisContext()
 	if nil != err {
 		return nil, nil, err
 	}
@@ -98,14 +94,9 @@ func (pr *polarisNamingResolver) lookup() (*resolver.State, api.ConsumerAPI, err
 	instancesRequest := &api.GetInstancesRequest{}
 	instancesRequest.Namespace = getNamespace(pr.options)
 	instancesRequest.Service = pr.target.URL.Host
-
-	if len(pr.dstMetadata) > 0 && pr.hasInitDstMetadata {
-		instancesRequest.Metadata = pr.dstMetadata
-	} else {
-		instancesRequest.Metadata = filterMetadata(pr.options, "dst_")
-		pr.hasInitDstMetadata = true
+	if len(pr.options.DstMetadata) > 0 {
+		instancesRequest.Metadata = pr.options.DstMetadata
 	}
-
 	sourceService := buildSourceInfo(pr.options)
 	if sourceService != nil {
 		// 如果在Conf中配置了SourceService，则优先使用配置

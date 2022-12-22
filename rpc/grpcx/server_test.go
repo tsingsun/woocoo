@@ -72,7 +72,6 @@ grpc:
 	s := New(WithConfiguration(cfg.Sub("grpc")),
 		WithGracefulStop(),
 		WithGrpcOption(grpc.ConnectionTimeout(1000)),
-		WithGrpcLogger(),
 	)
 	assert.NotNil(t, s)
 }

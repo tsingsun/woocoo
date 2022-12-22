@@ -91,4 +91,4 @@ web:
 
 各组件的配置将在对应组件文档中说明.
 
-- [日志](/docs/md/logger.md)
+- [日志](./logger.md)

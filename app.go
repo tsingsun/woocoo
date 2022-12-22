@@ -33,7 +33,9 @@ func New(opts ...Option) *App {
 	if app.opts.cnf == nil {
 		app.opts.cnf = &conf.AppConfiguration{Configuration: conf.New().Load()}
 	}
-	log.NewBuiltIn()
+	if app.opts.cnf.IsSet("log") {
+		log.NewBuiltIn()
+	}
 	app.ctx, app.cancel = context.WithCancel(context.Background())
 	return app
 }

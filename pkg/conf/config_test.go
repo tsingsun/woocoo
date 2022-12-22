@@ -46,21 +46,12 @@ func TestNew(t *testing.T) {
 		{
 			name: "attach",
 			args: args{opt: []Option{
-				WithLocalPath(testdata.Path(testdata.DefaultConfigFile)),
+				WithBaseDir(testdata.BaseDir()),
+				WithLocalPath(testdata.DefaultConfigFile),
 				WithIncludeFiles(testdata.Path("etc/attach.yaml"))}},
 			check: func(cnf *Configuration) {
 				assert.Equal(t, cnf.opts.localPath, testdata.Path(testdata.DefaultConfigFile))
 				assert.Equal(t, cnf.opts.includeFiles, []string{testdata.Path("etc/attach.yaml")})
-			},
-		},
-		{
-			name: "global but no parse",
-			args: args{opt: []Option{WithGlobal(true)}},
-			check: func(cnf *Configuration) {
-				cnf.SetBaseDir("none")
-				assert.Panics(t, func() {
-					assert.Equal(t, Global().Configuration, cnf)
-				})
 			},
 		},
 		{
@@ -511,6 +502,44 @@ path:
 		t.Run(tt.name, func(t *testing.T) {
 			c := tt.fields.cnf
 			c.Each(tt.args.path, tt.args.cb)
+		})
+	}
+}
+
+func TestGlobal(t *testing.T) {
+	tests := []struct {
+		name    string
+		want    func() *AppConfiguration
+		wantErr bool
+	}{
+		{
+			name: "global by conf new",
+			want: func() *AppConfiguration {
+				return &AppConfiguration{
+					Configuration: New(WithGlobal(false)),
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "global",
+			want: func() *AppConfiguration {
+				return &AppConfiguration{
+					Configuration: New(),
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			global.Configuration = nil
+			if tt.wantErr {
+				assert.Panics(t, func() {
+					Global()
+				})
+				return
+			}
+			assert.Equalf(t, tt.want(), Global(), "Global()")
 		})
 	}
 }

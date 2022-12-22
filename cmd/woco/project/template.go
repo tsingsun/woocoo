@@ -41,16 +41,24 @@ var (
 			Format: "cmd/etc/app.yaml",
 		},
 		{
-			Name:   "mod",
-			Format: "go.mod",
-		},
-		{
 			Name:   "main",
 			Format: "cmd/main.go",
 		},
 		{
+			Name:   "mod",
+			Format: "go.mod",
+		},
+		{
+			Name:   "makefile",
+			Format: "Makefile",
+		},
+		{
 			Name:   "readme",
 			Format: "README.md",
+		},
+		{
+			Name:   "gitignore",
+			Format: ".gitignore",
 		},
 	}
 )

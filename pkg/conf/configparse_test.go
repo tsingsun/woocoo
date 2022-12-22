@@ -8,6 +8,22 @@ import (
 	"testing"
 )
 
+type (
+	parseTarget struct {
+		A int
+		B string
+		C []string
+	}
+	parseTarget2 struct {
+		text string
+	}
+)
+
+func (p *parseTarget2) UnmarshalText(text []byte) error {
+	p.text = string(text)
+	return nil
+}
+
 func TestNewParserFromBuffer(t *testing.T) {
 	type args struct {
 		buf io.Reader
@@ -40,6 +56,135 @@ func TestNewParserFromBuffer(t *testing.T) {
 }
 
 func TestParser_Unmarshal(t *testing.T) {
+	type fields struct {
+		parser *Parser
+	}
+	type args struct {
+		key string
+		dst any
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "map",
+			fields: fields{parser: NewParserFromStringMap(map[string]any{"map": map[string]any{
+				"a": map[string]any{"a": 1}}})},
+			args: args{
+				key: "map",
+				dst: make(map[string]*parseTarget),
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				assert.NoError(t, err)
+				assert.Equal(t, map[string]*parseTarget{"a": {A: 1}}, i[1])
+				return false
+			},
+		},
+		{
+			name:   "sliceString",
+			fields: fields{parser: NewParserFromStringMap(map[string]any{"slice": []string{"a", "b", "c"}})},
+			args: args{
+				key: "slice",
+				dst: []string{},
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				assert.NoError(t, err)
+				assert.Len(t, i[1].([]string), 3)
+				return false
+			},
+		},
+		{
+			name:   "sliceMerge",
+			fields: fields{parser: NewParserFromStringMap(map[string]any{"slice": []string{"a", "b", "c"}})},
+			args: args{
+				key: "slice",
+				dst: []string{"c", "d", "e", "f"},
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				assert.NoError(t, err)
+				assert.Len(t, i[1].([]string), 4)
+				assert.Equal(t, []string{"a", "b", "c", "f"}, i[1])
+				return false
+			},
+		},
+		{
+			name:   "sliceStruct",
+			fields: fields{parser: NewParserFromStringMap(map[string]any{"struct": map[string]any{"a": 1, "b": "string", "c": []string{"c1", "c2"}}})},
+			args: args{
+				key: "struct",
+				dst: parseTarget{},
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				assert.NoError(t, err)
+				assert.EqualValues(t, parseTarget{
+					1, "string", []string{"c1", "c2"},
+				}, i[1])
+				return false
+			},
+		},
+		{
+			name:   "sliceStruct-all",
+			fields: fields{parser: NewParserFromStringMap(map[string]any{"structAll": map[string]any{"a": 1, "b": "string", "c": []string{"c1", "c2"}}})},
+			args: args{
+				key: "",
+				dst: struct {
+					StructAll parseTarget
+				}{},
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				assert.NoError(t, err)
+				assert.EqualValues(t, struct {
+					StructAll parseTarget
+				}{
+					StructAll: parseTarget{1, "string", []string{"c1", "c2"}},
+				}, i[1])
+				return false
+			},
+		},
+		{
+			name:   "pointer",
+			fields: fields{parser: NewParserFromStringMap(map[string]any{"struct": map[string]any{"a": 1, "b": "string", "c": []string{"c1", "c2"}}})},
+			args: args{
+				key: "struct",
+				dst: new(parseTarget),
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				assert.NoError(t, err)
+				assert.Equal(t, &parseTarget{
+					1, "string", []string{"c1", "c2"},
+				}, i[1])
+				return false
+			},
+		},
+		{
+			name:   "textUnmarshaler",
+			fields: fields{parser: NewParserFromStringMap(map[string]any{"struct": "text"})},
+			args: args{
+				key: "struct",
+				dst: (*parseTarget2)(nil),
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				tg := &parseTarget2{
+					text: "text",
+				}
+				assert.NoError(t, err)
+				assert.Equal(t, tg, i[1])
+				return false
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := tt.fields.parser
+			tt.wantErr(t, l.Unmarshal(tt.args.key, &tt.args.dst), tt.args.key, tt.args.dst)
+		})
+	}
+}
+
+func TestParser_UnmarshalExact(t *testing.T) {
 	type fields struct {
 		parser *Parser
 	}
@@ -103,11 +248,43 @@ func TestParser_Unmarshal(t *testing.T) {
 				return false
 			},
 		},
+		{
+			name: "sliceStruct-empty-key",
+			fields: fields{parser: NewParserFromStringMap(map[string]any{
+				"struct": map[string]any{"a": 1, "b": "string", "c": []string{"c1", "c2"}}})},
+			args: args{
+				key: "",
+				dst: struct {
+					A int
+					B string
+					C []string
+				}{},
+			},
+			wantErr: assert.Error,
+		},
+		{
+			name: "sliceStruct-err",
+			fields: fields{parser: NewParserFromStringMap(map[string]any{
+				"struct": map[string]any{
+					"a": 1, "b": "string",
+					"c": []string{"c1", "c2"},
+					"d": "string",
+				}})},
+			args: args{
+				key: "struct",
+				dst: struct {
+					A int
+					B string
+					C []string
+				}{},
+			},
+			wantErr: assert.Error,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			l := tt.fields.parser
-			tt.wantErr(t, l.Unmarshal(tt.args.key, &tt.args.dst), tt.args.key, tt.args.dst)
+			tt.wantErr(t, l.UnmarshalExact(tt.args.key, &tt.args.dst), tt.args.key, tt.args.dst)
 		})
 	}
 }

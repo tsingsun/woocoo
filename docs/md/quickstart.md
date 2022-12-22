@@ -33,7 +33,7 @@ example文件夹的目录结构:
 ```console
 cmd
 ├──etc
-│  └──config.yaml
+│  └──app.yaml
 ├──main.go
 go.mod
 go.sum

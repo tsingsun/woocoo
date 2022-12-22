@@ -59,6 +59,7 @@ func init() {
 	if bs := os.Getenv(baseDirEnv); bs != "" {
 		defaultOptions.basedir = bs
 	}
+	defaultOptions.localPath = filepath.Join(defaultOptions.basedir, defaultConfigFile)
 }
 
 // New create an application configuration instance.
@@ -69,7 +70,8 @@ func init() {
 //	cnf := conf.New().Load()
 func New(opts ...Option) *Configuration {
 	cnf := &Configuration{
-		opts: defaultOptions,
+		opts:   defaultOptions,
+		parser: NewParser(),
 	}
 	for _, o := range opts {
 		o(&cnf.opts)
@@ -121,10 +123,7 @@ func (c *Configuration) Load() *Configuration {
 // load configuration,if the RemoteProvider is set,will ignore local configuration
 func (c *Configuration) loadInternal() (err error) {
 	// if parser is nil, use default local config file
-	if c.parser == nil {
-		if c.opts.localPath == "" {
-			WithLocalPath(defaultConfigFile)(&c.opts)
-		}
+	if c.parser == nil || len(c.parser.AllKeys()) == 0 {
 		c.parser, err = NewParserFromFile(c.opts.localPath)
 		if err != nil {
 			return err
@@ -133,19 +132,14 @@ func (c *Configuration) loadInternal() (err error) {
 
 	if c.IsSet("includeFiles") {
 		for _, v := range c.StringSlice("includeFiles") {
-			if filepath.IsAbs(v) {
-				if _, err := os.Stat(v); err != nil {
-					panic(fmt.Errorf("config file no exists:%s,cause by:%s", v, err))
-				} else {
-					c.opts.includeFiles = append(c.opts.includeFiles, v)
-				}
+			path := v
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(c.GetBaseDir(), v)
+			}
+			if _, err := os.Stat(path); err != nil {
+				panic(fmt.Errorf("config file no exists:%s,cause by:%s", path, err))
 			} else {
-				path := filepath.Join(c.GetBaseDir(), v)
-				if _, err := os.Stat(path); err != nil {
-					panic(fmt.Errorf("config file no exists:%s,cause by:%s", path, err))
-				} else {
-					c.opts.includeFiles = append(c.opts.includeFiles, path)
-				}
+				c.opts.includeFiles = append(c.opts.includeFiles, path)
 			}
 		}
 	}
@@ -385,7 +379,6 @@ func Join(ps ...string) string {
 func Global() *AppConfiguration {
 	if global.Configuration == nil || global.parser == nil {
 		global.Configuration = New().Load()
-		// panic("global configuration has not initialed.")
 	}
 	return &global
 }

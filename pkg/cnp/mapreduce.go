@@ -1,6 +1,5 @@
-// Package cnp
+// Package cnp includes concurrence and parallel tools
 //
-// concurrence and parallel tools
 // mapreduce core source from go-zero
 package cnp
 

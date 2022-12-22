@@ -85,24 +85,21 @@ func (l *Parser) Unmarshal(key string, dst any) (err error) {
 	return decoder.Decode(input)
 }
 
-// UnmarshalExact unmarshals the config into a struct, erroring if a field is nonexistent.
+// UnmarshalExact unmarshals the config into a struct, error if a field is nonexistent.
 func (l *Parser) UnmarshalExact(key string, intoCfg any) (err error) {
-	var s *Parser
+	var input any
 	if key == "" {
-		s = l
+		input = l.ToStringMap()
 	} else {
-		if s, err = l.Sub(key); err != nil {
-			return
-		}
+		input = l.Get(key)
 	}
-
 	dc := decoderConfig(intoCfg)
 	dc.ErrorUnused = true
 	decoder, err := mapstructure.NewDecoder(dc)
 	if err != nil {
 		return err
 	}
-	return decoder.Decode(s.ToStringMap())
+	return decoder.Decode(input)
 }
 
 // Get can retrieve any value given the key to use.

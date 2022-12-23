@@ -16,8 +16,8 @@ The current features are as follows:
 
 # Features
 - [x] component configurable,easy to split multi environments
-- [x] logger and rotate support. [Detail](docs/logger.md),
-- [x] OpenTelemetry support. [Detail](docs/otel.md)
+- [x] logger and rotate support. [Detail](docs/md/logger.md),
+- [x] OpenTelemetry support. [Detail](docs/md/otel.md)
 - [x] built-in web router,supports GraphQL.
 - [x] built-in grpc server and easy to use grpc client.
 - [x] JWT-based validation
@@ -27,10 +27,10 @@ The current features are as follows:
 
 ## Tools
 
-- woco-cli: command line tool. see [Detail](./cmd/woco/README.md)
+- woco-cli: command line tool, include feature:
 
   - [x] generate code support: `Ent`
-  - [x] generate web server code by openapi3.0 spec
+  - [x] server code generator for openapi 3.0 spec. see[OpenApi3 Generator](docs/md/oasgen.md)
 
 ## Work With
 

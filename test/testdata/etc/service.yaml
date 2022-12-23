@@ -36,7 +36,7 @@ grpc:
       serviceName: helloworld.Greeter
       metadata:
         version: "1.0"
-    grpcDialOption:
+    dialOption:
       - insecure:
       - block:
       - timeout: 5s

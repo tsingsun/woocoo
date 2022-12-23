@@ -8,6 +8,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"strings"
 	"time"
 )
@@ -26,18 +27,20 @@ type ServerConfig struct {
 //	client:  for grpc client info
 //	  target:  for grpc service info using with registry or dial directly
 type Client struct {
-	dialOpts     registry.DialOptions
-	serverConfig ServerConfig
-
+	registryOptions registry.DialOptions
+	serverConfig    ServerConfig
+	dialOptions     []grpc.DialOption
 	// for dialcontext
 	timeout time.Duration
 	// registry scheme
 	scheme string
+	// if withSecure is false, auto client auto init with insecure
+	withSecure bool
 }
 
 func NewClient(cfg *conf.Configuration) *Client {
 	c := &Client{}
-	c.dialOpts.Namespace = cfg.Root().Namespace()
+	c.registryOptions.Namespace = cfg.Root().Namespace()
 	c.Apply(cfg)
 	return c
 }
@@ -49,7 +52,7 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 	}
 	// target info
 	if k := conf.Join("client", "target"); cfg.IsSet(k) {
-		if err := cfg.Sub(k).Unmarshal(&c.dialOpts); err != nil {
+		if err := cfg.Sub(k).Unmarshal(&c.registryOptions); err != nil {
 			panic(err)
 		}
 	}
@@ -64,11 +67,15 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 		if err != nil {
 			panic(err)
 		}
-		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, grpc.WithResolvers(rb))
+		c.dialOptions = append(c.dialOptions, grpc.WithResolvers(rb))
 	}
 	// grpc dial options
-	if k := conf.Join("client", "grpcDialOption"); cfg.IsSet(k) {
-		c.dialOpts.GRPCDialOptions = append(c.dialOpts.GRPCDialOptions, optionsManager.BuildDialOption(c, cfg, k)...)
+	if k := conf.Join("client", "dialOption"); cfg.IsSet(k) {
+		c.dialOptions = append(c.dialOptions, optionsManager.BuildDialOption(c, cfg, k)...)
+	}
+	if !c.withSecure {
+		c.dialOptions = append(c.dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		c.withSecure = true
 	}
 }
 
@@ -94,16 +101,16 @@ func (c *Client) Dial(target string, opts ...grpc.DialOption) (*grpc.ClientConn,
 // The target will be parsed as a URL.your resolver must parse the target.
 func (c *Client) DialContext(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	if target == "" {
-		target = c.targetPrefix() + c.dialOpts.ServiceName
+		target = c.targetPrefix() + c.registryOptions.ServiceName
 	} else if !strings.HasPrefix(target, c.targetPrefix()) {
-		return grpc.DialContext(ctx, target, append(c.dialOpts.GRPCDialOptions, opts...)...)
+		return grpc.DialContext(ctx, target, append(c.dialOptions, opts...)...)
 	}
 	// attach service info
-	jsonstr, err := json.Marshal(c.dialOpts)
+	jsonstr, err := json.Marshal(c.registryOptions)
 	if err != nil {
 		return nil, fmt.Errorf("DialContext:marshal dial options error:%v", err)
 	}
 	endpoint := base64.URLEncoding.EncodeToString(jsonstr)
 	target = fmt.Sprintf("%s?%s=%s", target, registry.OptionKey, endpoint)
-	return grpc.DialContext(ctx, target, append(c.dialOpts.GRPCDialOptions, opts...)...)
+	return grpc.DialContext(ctx, target, append(c.dialOptions, opts...)...)
 }

@@ -48,11 +48,11 @@ grpc:
         dst_location: amoy
         src_tag: tag1
         headerPrefix: "head1,head2"
-    grpcDialOption:
+    dialOption:
       - tls:
       - block:
       - timeout: 5s
-      - defaultServiceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }'
+      - serviceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }'
       - unaryInterceptors:
           - trace:
 `)
@@ -102,11 +102,11 @@ grpc:
         dst_location: amoy
         src_tag: tag1
         headerPrefix: "head1,head2"
-    grpcDialOption:
+    dialOption:
       - tls:
       - block:
       - timeout: 1s
-      - defaultServiceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }' 
+      - serviceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }' 
 `)
 	cfg := conf.NewFromBytes(b)
 	var srv, srv2 *grpcx.Server

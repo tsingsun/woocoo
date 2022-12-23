@@ -13,6 +13,7 @@ var (
 
 func init() {
 	registryIntegration()
+	registryWarp()
 }
 
 type (
@@ -54,9 +55,11 @@ func registryIntegration() {
 	jwt := interceptor.JWT{}
 	aclog := interceptor.AccessLogger{}
 	recovery := interceptor.Recovery{}
+	compress := option.CompressionOption{}
 	optionsManager.so = map[string]ServerOptionFunc{
-		ka.Name():  ka.ServerOption,
-		tls.Name(): tls.ServerOption,
+		ka.Name():       ka.ServerOption,
+		tls.Name():      tls.ServerOption,
+		compress.Name(): compress.ServerOption,
 	}
 	optionsManager.su = map[string]UnaryServerInterceptorFunc{
 		jwt.Name():      jwt.UnaryServerInterceptor,
@@ -69,15 +72,26 @@ func registryIntegration() {
 		recovery.Name(): recovery.StreamServerInterceptor,
 	}
 	optionsManager.cd = map[string]DialOptionFunc{
-		ka.Name():  ka.DialOption,
-		tls.Name(): tls.DialOption,
-		"block": func(configuration *conf.Configuration) grpc.DialOption {
-			return grpc.WithBlock()
-		},
-		"defaultServiceConfig": func(cfg *conf.Configuration) grpc.DialOption {
-			return grpc.WithDefaultServiceConfig(cfg.String("defaultServiceConfig"))
-		},
+		ka.Name():       ka.DialOption,
+		tls.Name():      tls.DialOption,
+		compress.Name(): compress.DialOption,
 	}
+}
+
+func registryWarp() {
+	RegisterDialOption("block", func(configuration *conf.Configuration) grpc.DialOption {
+		return grpc.WithBlock()
+	})
+	RegisterDialOption("serviceConfig", func(cfg *conf.Configuration) grpc.DialOption {
+		return grpc.WithDefaultServiceConfig(cfg.String("serviceConfig"))
+	})
+	RegisterDialOption("connectParams", func(cfg *conf.Configuration) grpc.DialOption {
+		var p grpc.ConnectParams
+		if err := cfg.Unmarshal(&p); err != nil {
+			panic(err)
+		}
+		return grpc.WithConnectParams(p)
+	})
 }
 
 // RegisterGrpcServerOption register grpc server option
@@ -137,13 +151,18 @@ func (c grpcOptionManager) streamServerInterceptorHandler(root string, cnf *conf
 //	  - unaryInterceptors:
 func (c grpcOptionManager) BuildServerOptions(cnf *conf.Configuration, path string) (opts []grpc.ServerOption) {
 	cnf.Each(path, func(root string, sub *conf.Configuration) {
-		if root == "unaryInterceptors" {
+		switch root {
+		case "unaryInterceptors":
 			opts = append(opts, c.buildServerChainUnary(root, sub))
-		} else if root == "streamInterceptors" {
+		case "streamInterceptors":
 			opts = append(opts, c.streamServerInterceptorHandler(root, sub))
-		}
-		if optionFunc, ok := c.so[root]; ok {
-			opts = append(opts, optionFunc(sub))
+		default:
+			if optionFunc, ok := c.so[root]; ok {
+				so := optionFunc(sub)
+				if so != nil {
+					opts = append(opts, so)
+				}
+			}
 		}
 	})
 	return
@@ -152,15 +171,21 @@ func (c grpcOptionManager) BuildServerOptions(cnf *conf.Configuration, path stri
 // BuildDialOption build grpc dial option by config. the path node is slice type
 func (c grpcOptionManager) BuildDialOption(client *Client, cnf *conf.Configuration, path string) (opts []grpc.DialOption) {
 	cnf.Each(path, func(root string, sub *conf.Configuration) {
-		if root == "timeout" {
-			client.timeout = sub.Duration(root)
-			return
-		}
-		if root == "unaryInterceptors" {
+		switch root {
+		case "unaryInterceptors":
 			opts = append(opts, c.buildClientChainUnary(root, sub))
-		}
-		if handler, ok := c.cd[root]; ok {
-			opts = append(opts, handler(sub))
+		case "timeout":
+			client.timeout = sub.Duration(root)
+		case "tls":
+			client.withSecure = true
+			fallthrough
+		default:
+			if handler, ok := c.cd[root]; ok {
+				do := handler(sub)
+				if do != nil {
+					opts = append(opts, do)
+				}
+			}
 		}
 	})
 	return

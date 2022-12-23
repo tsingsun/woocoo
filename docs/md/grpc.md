@@ -42,6 +42,32 @@ grpc:
 
 如果使用其他拦截器,可在代码中使用Option的方式传入.
 
+## 客户端
+
+```yaml
+  client:
+    target:
+      namespace: woocoo
+      serviceName: helloworld.Greeter
+      metadata: 
+        version: "1.0"
+    dialOption:
+      - insecure:
+      - block:
+      - timeout: 5s
+      - tls:
+          cert: "x509/test.pem" 
+      - unaryInterceptors:
+          - otel:
+```
+
+在 grpcx.Client 定义了grpc client工具.可以方便通过配置文件创建.但目前的功能还只是快速connection的创建
+
+```
+// 如果指定了service的配置,可自动获取
+grpcx.NewClient(cfg).Dial("127.0.0.1:8080")
+```
+
 ## 服务发现与治理
 
 woocoo项目中的服务发现与治理目前是GRPC服务中使用.支持的服务发现方式有:

@@ -82,8 +82,8 @@ service:
   otlp:
     endpoint: "127.0.0.1:4317"  
     client:
-      grpcDialOption:
-        - insecure: true
+      dialOption:
+        - tls: 
         - block:
         - timeout: 5s
   metricExporter: "otlp"

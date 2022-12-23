@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/attributes"
 	"google.golang.org/grpc/resolver"
 	"path/filepath"
@@ -60,8 +59,8 @@ type DialOption interface {
 // DialOptions is the options for client dial when using registry resolver.
 // it includes the common options for service discovery and grpc dial.
 type DialOptions struct {
-	GRPCDialOptions []grpc.DialOption `json:"-" yaml:"-"`
-	Namespace       string            `json:"namespace" yaml:"namespace"`
+	// namespace is the namespace of the service.
+	Namespace string `json:"namespace" yaml:"namespace"`
 	// ServiceName is the target server name, may omit leading slash
 	ServiceName string `json:"serviceName" yaml:"serviceName"`
 	// Version is the target server version, may omit leading slash

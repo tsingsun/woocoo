@@ -62,8 +62,7 @@ func initMetric(c *Config, exporter sdkmetric.Exporter) (metric.MeterProvider, e
 
 func NewOtlpTracer(c *Config) (tp trace.TracerProvider, shutdown func(ctx context.Context) error, err error) {
 	traceCfg := c.cnf.Sub(c.TraceExporter)
-	gclient := grpcx.NewClient(traceCfg)
-	conn, err := gclient.Dial(traceCfg.String("endpoint"),
+	conn, err := grpcx.NewClient(traceCfg).Dial(traceCfg.String("endpoint"),
 		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
 	)
 	if err != nil {

@@ -7,7 +7,7 @@ require (
 	github.com/knadh/koanf v1.4.4
 	github.com/polarismesh/polaris-go v1.2.0
 	github.com/stretchr/testify v1.8.1
-	github.com/tsingsun/woocoo v0.1.1-0.20221216025059-ae034209e8ba
+	github.com/tsingsun/woocoo v0.2.0
 	google.golang.org/grpc v1.51.0
 )
 

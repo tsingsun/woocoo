@@ -111,13 +111,13 @@ grpc:
 	cfg := conf.NewFromBytes(b)
 	var srv, srv2 *grpcx.Server
 	err := wctest.RunWait(t, time.Second*5, func() error {
-		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")), grpcx.WithGrpcLogger())
+		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		return srv.Run()
 	}, func() error {
 		cfg2 := cfg.Sub("grpc")
 		cfg2.Parser().Set("server.addr", "127.0.0.1:20013")
-		srv2 = grpcx.New(grpcx.WithConfiguration(cfg2), grpcx.WithGrpcLogger())
+		srv2 = grpcx.New(grpcx.WithConfiguration(cfg2))
 		helloworld.RegisterGreeterServer(srv2.Engine(), &helloworld.Server{})
 		return srv2.Run()
 	})

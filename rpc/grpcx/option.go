@@ -22,6 +22,8 @@ func WithConfiguration(cfg *conf.Configuration) Option {
 
 // WithGrpcLogger set grpclog.LoggerV2 with the component logger named "grpc".
 // if you need to see grpc log, you should call this option.
+//
+// notice: call this while go test may cause race condition.
 func WithGrpcLogger() Option {
 	return func(s *serverOptions) {
 		lg := log.Component(log.GrpcComponentName).Logger()

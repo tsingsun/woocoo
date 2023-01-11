@@ -31,7 +31,7 @@ const sidebars = {
     {
       type: 'category',
       label: '破浪',
-      items: ['logger','otel','pkg-gds'],
+      items: ['logger','otel','micro','pkg-gds'],
       collapsed: false,
     },
     {

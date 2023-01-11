@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
+	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -47,7 +48,7 @@ func GlobalMeter() metric.Meter {
 }
 
 func GetTextMapPropagator() propagation.TextMapPropagator {
-	return globalConfig.Propagator
+	return globalConfig.TextMapPropagator
 }
 
 // Option specifies instrumentation configuration options.
@@ -62,6 +63,8 @@ func (o optionFunc) apply(c *Config) {
 }
 
 // Config is the configuration for the opentelemetry instrumentation,Through it to set global tracer and meter provider.
+//
+// Propagator could be not set or b3. b3 is simple init without any option.
 type Config struct {
 	cnf               *conf.Configuration
 	ServiceName       string `json:"serviceName,omitempty" yaml:"serviceName"`
@@ -71,14 +74,14 @@ type Config struct {
 	TraceExporter     string `json:"traceExporter,omitempty" yaml:"traceExporter,omitempty"`
 	MetricExporter    string `json:"metricExporter,omitempty" yaml:"metricExporter,omitempty"`
 	// the intervening time between exports for a PeriodicReader.
-	MetricPeriodicReaderInterval time.Duration `json:"metricReportingPeriod" yaml:"metricReportingPeriod"`
-
-	Resource       *resource.Resource            `json:"-" yaml:"-"`
-	TracerProvider trace.TracerProvider          `json:"-" yaml:"-"`
-	Tracer         trace.Tracer                  `json:"-" yaml:"-"`
-	MeterProvider  metric.MeterProvider          `json:"-" yaml:"-"`
-	Meter          metric.Meter                  `json:"-" yaml:"-"`
-	Propagator     propagation.TextMapPropagator `json:"-" yaml:"-"`
+	MetricPeriodicReaderInterval time.Duration                 `json:"metricReportingPeriod" yaml:"metricReportingPeriod"`
+	Propagator                   string                        `json:"propagator,omitempty" yaml:"propagator,omitempty"`
+	Resource                     *resource.Resource            `json:"-" yaml:"-"`
+	TracerProvider               trace.TracerProvider          `json:"-" yaml:"-"`
+	Tracer                       trace.Tracer                  `json:"-" yaml:"-"`
+	MeterProvider                metric.MeterProvider          `json:"-" yaml:"-"`
+	Meter                        metric.Meter                  `json:"-" yaml:"-"`
+	TextMapPropagator            propagation.TextMapPropagator `json:"-" yaml:"-"`
 
 	resourceAttributes map[string]string
 	// with options
@@ -144,10 +147,13 @@ func (c *Config) Apply(cnf *conf.Configuration) {
 	}
 	c.Meter = c.MeterProvider.Meter(c.ServiceName)
 
-	if c.Propagator != nil {
-		otel.SetTextMapPropagator(c.Propagator)
+	if c.Propagator == "b3" {
+		c.TextMapPropagator = b3.New()
+	}
+	if c.TextMapPropagator != nil {
+		otel.SetTextMapPropagator(c.TextMapPropagator)
 	} else {
-		c.Propagator = otel.GetTextMapPropagator()
+		c.TextMapPropagator = otel.GetTextMapPropagator()
 	}
 
 	if globalConfig == nil {
@@ -327,7 +333,7 @@ func WithMeterProvider(provider metric.MeterProvider, shutdown func(ctx context.
 func WithPropagator(propagator propagation.TextMapPropagator) Option {
 	return optionFunc(func(cfg *Config) {
 		if propagator != nil {
-			cfg.Propagator = propagator
+			cfg.TextMapPropagator = propagator
 		}
 	})
 }

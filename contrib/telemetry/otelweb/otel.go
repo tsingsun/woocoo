@@ -48,7 +48,7 @@ func (h *Middleware) Shutdown(_ context.Context) error {
 // The service parameter should describe the name of the (virtual)
 // server handling the request.
 func middleware(cfg *otelwoocoo.Config) gin.HandlerFunc {
-	prop := cfg.Propagator
+	prop := cfg.TextMapPropagator
 	tracer := cfg.Tracer
 	return func(c *gin.Context) {
 		c.Set(tracerKey, tracer)

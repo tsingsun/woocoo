@@ -31,12 +31,14 @@ func init() {
 
 var (
 	once sync.Once
+	_    registry.Driver = (*Driver)(nil)
 )
 
 type (
+	// Driver implementation of registry.Driver
 	Driver struct {
 	}
-
+	// Options is the options for the polaris registry
 	Options struct {
 		TTL time.Duration `json:"ttl" yaml:"ttl"`
 	}
@@ -60,15 +62,10 @@ func (drv Driver) CreateRegistry(config *conf.Configuration) (registry.Registry,
 	return r, nil
 }
 
-func (r *Registry) ResolverBuilder(_ *conf.Configuration) resolver.Builder {
-	rb := &resolverBuilder{}
-	once.Do(func() {
-		balancer.Register(&balancerBuilder{})
-	})
-	return rb
-}
-
-func (drv Driver) ResolverBuilder(_ *conf.Configuration) (resolver.Builder, error) {
+func (drv Driver) ResolverBuilder(config *conf.Configuration) (resolver.Builder, error) {
+	if err := SetPolarisConfig(config); err != nil {
+		return nil, err
+	}
 	rb := &resolverBuilder{}
 	once.Do(func() {
 		balancer.Register(&balancerBuilder{})

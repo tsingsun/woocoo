@@ -1,11 +1,11 @@
 # gRPC
 
-woocoo提供了配置化的gRPC及相关组件，可以让你的服务更加灵活，更加简单。
+woocoo提供了配置化的gRPC及相关组件，可以让你的服务更加灵活简单,后以GRPC为基石来扩展整个微服务体系.
 
 ## 服务端
 
 ```yaml
-grpc:
+grpc: # 可选的顶级节点名
   server:
     addr: :20000
     namespace: woocoo # 命名空间,主要用于在服务发现使用
@@ -45,6 +45,7 @@ grpc:
 ## 客户端
 
 ```yaml
+grpc:
   client:
     target:
       namespace: woocoo
@@ -68,9 +69,9 @@ grpc:
 grpcx.NewClient(cfg).Dial("127.0.0.1:8080")
 ```
 
-## 服务发现与治理
+## 服务发现
 
-woocoo项目中的服务发现与治理目前是GRPC服务中使用.支持的服务发现方式有:
+woocoo项目中的可简单的使用服务发现:
 
 ### etcd
 
@@ -99,48 +100,5 @@ grpc:
       dial-keep-alive-time: 3s
 ```
 
-### polaris
+涉及到中型项目的微服务中可采用更加能力强大的服务治理来管理.可参考[服务治理](micro.md)
 
-腾讯开源的北极星是一个支持多语言、多框架的云原生服务发现和治理中心， 解决分布式和微服务架构中的服务可见、故障容错、流量控制和安全问题。
-
-```
-go get github.com/tsingsun/woocoo/polarismesh
-```  
-现使用polaris默认配置的话所需的配置项很少,因此直接在woocoo配置文件中集成了.
-
-```yaml
-grpc:
-  server:
-    addr: :20000
-    namespace: /woocoo/service
-    version: "1.0"
-    registryMeta:
-      key1: value1
-      key2: value2
-  registry:
-    scheme: polaris
-    ttl: 600s
-    polaris:
-      # 目前直接使用polaris自带的简易配置,后续如果配置复杂的话提供配置文件位置方式
-      global:
-        serverConnector:
-          addresses:
-            - 127.0.0.1:8091
-  client:
-    target:
-      namespace: woocoo
-      serviceName: helloworld.Greeter
-      metadata:
-        version: "1.0"
-        dst_location: amoy
-        src_tag: tag1
-        headerPrefix: "head1,head2"
-```
-
-#### 服务端与客户端配置
-
-在元数据节中,由于polaris区分SrcMetadata及DstMetadata,所以需要在客户端和服务端配置中分别配置.
-
-而在woocoo的Registry组件并未这样区分,因此在metadata中配置前缀来对应,使得可以使用Polaris的治理功能.
-
-`dst_`前缀=>对应DstMetadata;`src_`前缀=>对应SrcMetadata,`headerPrefix`=>对应Grpc HeaderPrefix

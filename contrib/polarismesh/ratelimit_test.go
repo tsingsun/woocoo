@@ -45,11 +45,11 @@ grpc:
       serviceName: helloworld.Greeter
       metadata:  
         src_rateLimit: 1
-    grpcDialOption:
+    dialOption:
       - tls:
       - block:
       - timeout: 1s
-      - defaultServiceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }' 
+      - serviceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }' 
 `)
 	cfg := conf.NewFromBytes(b)
 	var srv *grpcx.Server

@@ -27,7 +27,7 @@ grpc:
           addresses:
             - 127.0.0.1:8091
 `)
-	cfg := conf.NewFromBytes(b)
+	cfg := conf.NewFromBytes(b, conf.WithBaseDir(testdata.BaseDir()))
 
 	type fields struct {
 		opts            Options

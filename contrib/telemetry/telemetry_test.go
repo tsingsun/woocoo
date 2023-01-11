@@ -38,6 +38,7 @@ func TestNewConfig(t *testing.T) {
 						"traceExporter":     "stdout",
 						"metricExporter":    "stdout",
 						"attributesEnvKeys": "WOOCOO_TEST_NAME|NOEXISTS",
+						"propagators":       "b3",
 					},
 				}).Sub("otel"),
 			},
@@ -51,6 +52,7 @@ func TestNewConfig(t *testing.T) {
 				Resource: resource.NewSchemaless(
 					attribute.String("WOOCOO_TEST_NAME", "woocoo"),
 				),
+				TextMapPropagator: b3.New(),
 			},
 		},
 		{

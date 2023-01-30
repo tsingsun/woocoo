@@ -29,7 +29,7 @@ const (
 
 var (
 	global            AppConfiguration
-	defaultConfigFile = "etc/app.yaml"
+	defaultConfigFile = filepath.Join("etc", "app.yaml")
 )
 
 type (

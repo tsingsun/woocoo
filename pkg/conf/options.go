@@ -34,8 +34,8 @@ func WithLocalPath(s string) Option {
 	}
 }
 
-// WithBaseDir init base directory usually is the directory which application executable file is in
-// s can be an absolute path or relative path
+// WithBaseDir init base directory where configuration files location, usually is the directory which application executable file is in
+// parameter s can be an absolute path or relative path.
 func WithBaseDir(s string) Option {
 	return func(o *options) {
 		var err error
@@ -43,6 +43,7 @@ func WithBaseDir(s string) Option {
 		if err != nil {
 			panic(fmt.Sprintf("base dir '%s' is not exists", s))
 		}
+		o.localPath = filepath.Join(o.basedir, defaultConfigFile)
 	}
 }
 

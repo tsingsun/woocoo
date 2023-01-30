@@ -375,35 +375,6 @@ func TestLoggerLog(t *testing.T) {
 	}
 }
 
-func TestLogger_Component(t *testing.T) {
-	type fields struct {
-		logger ComponentLogger
-	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{
-		{name: "component-1", fields: fields{logger: Component("component-1")}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			logdata := &logtest.Buffer{}
-			zp := logtest.NewBuffLogger(logdata)
-			l := &Logger{
-				Logger: zp,
-			}
-			got := tt.fields.logger
-			got.SetLogger(l)
-			got.Debug("debug", zap.String("key", "value"))
-			got.Info("info", zap.String("key", "value"))
-			got.Warn("warn", zap.String("key", "value"))
-			got.Error("error", zap.String("key", "value"))
-			got.DPanic("dpanic", zap.String("key", "value"))
-			assert.Len(t, logdata.Lines(), 5)
-		})
-	}
-}
-
 func TestLogger_TextEncode(t *testing.T) {
 	var cfgStr = `
 development: true

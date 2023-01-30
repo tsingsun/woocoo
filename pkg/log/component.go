@@ -10,7 +10,11 @@ import (
 // ComponentLogger is sample and base using for component that also carries a context.Context. It uses the global logger.
 type (
 	ComponentLogger interface {
-		// Logger return component's logger,if withFields is true,return logger with build in fields
+		// Logger return component's logger.
+		// Notice GetComponentLoggerOption
+		//   if you want to get the original logger, you can use WithOriginalLogger() option.
+		//   If you want to get the logger with context, you can use WithContextLogger() option.
+		//   otherwise, you will get the logger with build in fields.
 		Logger(opts ...GetComponentLoggerOption) *Logger
 		SetLogger(logger *Logger)
 		Debug(msg string, fields ...zap.Field)

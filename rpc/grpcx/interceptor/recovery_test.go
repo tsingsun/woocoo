@@ -2,6 +2,7 @@ package interceptor
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/internal/logtest"
 	"github.com/tsingsun/woocoo/internal/wctest"
@@ -29,12 +30,14 @@ func TestRecoveryUnaryServerInterceptor(t *testing.T) {
 
 	t.Run("stacktrace", func(t *testing.T) {
 		logdata := wctest.InitBuffWriteSyncer()
-		log.Component(AccessLogComponentName).SetLogger(log.Global().Logger())
+		log.Component(AccessLogComponentName).SetLogger(log.Global().Logger(log.WithOriginalLogger()))
 		_, err := client.PingPanic(context.Background(), &testproto.PingRequest{
 			Value: t.Name(),
 		})
 		require.Error(t, err)
+		// only one component
 		last := logdata.LastLine()
+		assert.Equal(t, 1, strings.Count(last, `"component"`))
 		require.Contains(t, last, "grpc panic error")
 		line := strings.Split(last, "\\n\\t")[1]
 		require.Contains(t, line, "testproto/grpc_testing.go")
@@ -42,7 +45,7 @@ func TestRecoveryUnaryServerInterceptor(t *testing.T) {
 	t.Run("disableStacktrace", func(t *testing.T) {
 		wctest.InitGlobalLogger(true)
 		logdata := wctest.InitBuffWriteSyncer()
-		log.Component(AccessLogComponentName).SetLogger(log.Global().Logger())
+		log.Component(AccessLogComponentName).SetLogger(log.Global().Logger(log.WithOriginalLogger()))
 		_, err := client.PingPanic(context.Background(), &testproto.PingRequest{
 			Value: t.Name(),
 		})

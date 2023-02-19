@@ -23,7 +23,7 @@ func TestGetJtiFromToken(t *testing.T) {
 			name: "int jti",
 			args: args{
 				ctx: context.WithValue(context.Background(), "user", &jwt.Token{Claims: jwt.MapClaims{
-					"jti": 1,
+					"sub": 1,
 				}}),
 				key: "user",
 			},

@@ -7,6 +7,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/auth"
 	"github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/security"
 	"net/http"
 )
 
@@ -15,6 +16,8 @@ type (
 		auth.JWTOptions `json:",squash" yaml:",squash"`
 		Skipper         Skipper
 		// Exclude is a list of http paths to exclude from JWT auth
+		//
+		// path format must same as url.URL.Path started with "/" and ended with "/"
 		Exclude []string `json:"exclude" yaml:"exclude"`
 		// TokenLookupFuncs defines a list of user-defined functions that extract JWT token from the given context.
 		// This is one of the two options to provide a token extractor.
@@ -31,8 +34,11 @@ type (
 		// TokenStoreKey is the name of the cache driver,default is "redis".
 		// When this option is used, requirements : token cache KEY that uses the JWT ID.
 		TokenStoreKey string `json:"tokenStoreKey" yaml:"TokenStoreKey"`
+		// WithPrincipalContext defines a function which is Principal creator and store principal in context.
+		//
+		// Use GeneratePrincipal by default. You can use your own function to create principal.
+		WithPrincipalContext func(c *gin.Context, token *jwt.Token) error
 	}
-
 	// JWTSuccessHandler defines a function which is executed for a valid token.
 	JWTSuccessHandler func(c *gin.Context)
 
@@ -73,13 +79,18 @@ func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	}
 	if opts.Skipper == nil {
 		opts.Skipper = func(c *gin.Context) bool {
-			path := c.Request.URL.Path
-			for _, p := range opts.Exclude {
-				if p == path {
-					return true
-				}
+			return PathSkip(opts.Exclude, c.Request.URL)
+		}
+	}
+	if opts.WithPrincipalContext == nil {
+		opts.WithPrincipalContext = func(c *gin.Context, token *jwt.Token) error {
+			claims, ok := token.Claims.(jwt.MapClaims)
+			if !ok {
+				return auth.ErrJWTClaims
 			}
-			return false
+			prpl := security.NewGenericPrincipalByClaims(claims)
+			c.Request = c.Request.WithContext(security.WithContext(c.Request.Context(), prpl))
+			return nil
 		}
 	}
 	return jwtWithOption(opts)
@@ -125,8 +136,9 @@ func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
 					continue
 				}
 				if store != nil {
-					if rjwt, ok := token.Claims.(*jwt.RegisteredClaims); ok {
-						if exists := store.Has(c, rjwt.ID); !exists {
+					id, ok := opts.GetTokenIDFunc(token)
+					if ok {
+						if exists := store.Has(c, id); !exists {
 							lastTokenErr = jwt.ErrTokenUnverifiable
 							continue
 						}
@@ -136,7 +148,13 @@ func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
 					}
 				}
 				// Store user information from token into context.
-				c.Set(opts.ContextKey, token)
+				if opts.WithPrincipalContext != nil {
+					err = opts.WithPrincipalContext(c, token)
+					if err != nil {
+						lastTokenErr = err
+						continue
+					}
+				}
 				if opts.SuccessHandler != nil {
 					opts.SuccessHandler(c)
 				}

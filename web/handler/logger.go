@@ -121,13 +121,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			if len(c.Errors) > 0 {
 				return false
 			}
-			path := c.Request.URL.Path
-			for _, p := range opts.Exclude {
-				if path == p {
-					return true
-				}
-			}
-			return false
+			return PathSkip(opts.Exclude, c.Request.URL)
 		}
 	} else {
 		opts.Skipper = DefaultSkipper

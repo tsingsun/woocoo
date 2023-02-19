@@ -191,7 +191,9 @@ func (c *Configuration) ParserOperator() *koanf.Koanf {
 	return c.parser.k
 }
 
-// Sub return a new Configuration by a sub node
+// Sub return a new Configuration by a sub node.
+//
+// sub node keep the same root configuration of current node.
 func (c *Configuration) Sub(path string) *Configuration {
 	if path == "" {
 		return c
@@ -200,12 +202,13 @@ func (c *Configuration) Sub(path string) *Configuration {
 	if err != nil {
 		panic(err)
 	}
-	return &Configuration{
+	nc := &Configuration{
 		opts:        c.opts,
 		parser:      p,
 		Development: c.Development,
-		root:        c,
 	}
+	c.passRoot(nc)
+	return nc
 }
 
 // CutFromOperator return a new copied Configuration but replace the parser by koanf operator.

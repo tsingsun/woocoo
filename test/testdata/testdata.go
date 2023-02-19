@@ -2,6 +2,7 @@ package testdata
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"runtime"
 )
@@ -63,5 +64,8 @@ func Tmp(rel string) string {
 	}
 
 	tmpPath := filepath.Join(filepath.Dir(basedir), "tmp")
+	if err := os.MkdirAll(tmpPath, 0755); err != nil {
+		panic(err)
+	}
 	return filepath.Join(tmpPath, rel)
 }

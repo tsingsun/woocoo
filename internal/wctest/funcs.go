@@ -84,3 +84,8 @@ func RunWait(t *testing.T, timeout time.Duration, fns ...func() error) error {
 	}
 	return nil
 }
+
+// PtrOf Convert Value to Pointer,use generic
+func PtrOf[T any](v T) *T {
+	return &v
+}

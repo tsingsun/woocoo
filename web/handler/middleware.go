@@ -7,10 +7,13 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/web/handler/gzip"
+	"net/url"
+	"strings"
 )
 
 var (
-	logger = log.Component(log.WebComponentName)
+	AuthzContextKey = "_woocoo/authz/actions"
+	logger          = log.Component(log.WebComponentName)
 )
 
 // Middleware is an instance to build a echo middleware for web application.
@@ -61,6 +64,20 @@ type Skipper func(c *gin.Context) bool
 
 // DefaultSkipper returns false which processes the middleware.
 func DefaultSkipper(c *gin.Context) bool {
+	return false
+}
+
+// PathSkip returns a skipper function that skips middleware if the request path
+func PathSkip(list []string, url *url.URL) bool {
+	src := url.Path
+	if strings.HasSuffix(src, "/") {
+		src = url.Path[:len(url.Path)-1]
+	}
+	for _, skip := range list {
+		if skip == src {
+			return true
+		}
+	}
 	return false
 }
 

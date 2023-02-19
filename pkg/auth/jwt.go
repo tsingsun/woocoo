@@ -8,7 +8,6 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"net/url"
 	"os"
-	"reflect"
 	"strings"
 )
 
@@ -19,6 +18,7 @@ const (
 var (
 	ErrJWTMissing = errors.New("missing or malformed jwt")
 	ErrJWTInvalid = errors.New("invalid or expired jwt")
+	ErrJWTClaims  = errors.New("invalid jwt claims")
 )
 
 type (
@@ -38,10 +38,6 @@ type (
 		// Signing method used to check the token's signing algorithm.
 		// Optional. Default value HS256.
 		SigningMethod string
-
-		// Context key to store user information from the token into context.
-		// Optional. Default value "user".
-		ContextKey string
 
 		// Claims are extendable claims data defining token content. Used by default ParseTokenFunc implementation.
 		// Not used if custom ParseTokenFunc is set.
@@ -87,16 +83,18 @@ type (
 		// parsing fails or parsed token is invalid.
 		// Defaults to implementation using `github.com/golang-jwt/jwt` as JWT implementation library
 		ParseTokenFunc func(ctx context.Context, auth string) (*jwt.Token, error)
+
+		// GetTokenIDFunc is a function that returns the value of token id. default return jwt.RegisteredClaims ID
+		GetTokenIDFunc func(token *jwt.Token) (id string, exists bool)
 	}
 )
 
 var (
 	defaultJWTOptions = JWTOptions{
 		SigningMethod: AlgorithmHS256,
-		ContextKey:    "user",
 		TokenLookup:   "header:Authorization",
 		AuthScheme:    "Bearer",
-		Claims:        &jwt.RegisteredClaims{},
+		Claims:        jwt.MapClaims{},
 		KeyFunc:       nil,
 	}
 )
@@ -107,17 +105,8 @@ func NewJWT() *JWTOptions {
 }
 
 func (opts *JWTOptions) defaultParseToken(ctx context.Context, authStr string) (token *jwt.Token, err error) {
-	// Issue #647, #656
-	switch v := opts.Claims.(type) {
-	case *jwt.RegisteredClaims:
-		token, err = jwt.ParseWithClaims(authStr, v, opts.KeyFunc)
-	case jwt.MapClaims:
-		token, err = jwt.Parse(authStr, opts.KeyFunc)
-	default:
-		t := reflect.ValueOf(v).Type().Elem()
-		claims := reflect.New(t).Interface().(jwt.Claims)
-		token, err = jwt.ParseWithClaims(authStr, claims, opts.KeyFunc)
-	}
+	// jwt.Parse use jwt.MapClaims
+	token, err = jwt.Parse(authStr, opts.KeyFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -125,6 +114,14 @@ func (opts *JWTOptions) defaultParseToken(ctx context.Context, authStr string) (
 		return nil, ErrJWTInvalid
 	}
 	return token, nil
+}
+
+func (opts *JWTOptions) defaultGetTokenID(token *jwt.Token) (string, bool) {
+	c, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", false
+	}
+	return c["jti"].(string), true
 }
 
 // defaultKeyFunc returns a signing key of the given token.
@@ -202,6 +199,9 @@ func (opts *JWTOptions) Apply() (err error) {
 	}
 	if opts.ParseTokenFunc == nil {
 		opts.ParseTokenFunc = opts.defaultParseToken
+	}
+	if opts.GetTokenIDFunc == nil {
+		opts.GetTokenIDFunc = opts.defaultGetTokenID
 	}
 	return nil
 }

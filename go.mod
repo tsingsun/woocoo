@@ -3,7 +3,7 @@ module github.com/tsingsun/woocoo
 go 1.18
 
 require (
-	github.com/99designs/gqlgen v0.17.20
+	github.com/99designs/gqlgen v0.17.24
 	github.com/alicebob/miniredis/v2 v2.23.1
 	github.com/gin-gonic/gin v1.8.1
 	github.com/go-playground/validator/v10 v10.11.0 // indirect
@@ -36,7 +36,13 @@ require (
 )
 
 require (
+	github.com/casbin/casbin/v2 v2.60.0
+	github.com/casbin/redis-watcher/v2 v2.3.0
+)
+
+require (
 	cloud.google.com/go/compute/metadata v0.2.0 // indirect
+	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
@@ -53,6 +59,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect

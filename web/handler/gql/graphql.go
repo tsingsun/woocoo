@@ -9,10 +9,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
+	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/web"
 	"github.com/tsingsun/woocoo/web/handler"
+	"github.com/vektah/gqlparser/v2/ast"
 	"net/http"
 	"runtime/debug"
+	"strings"
 )
 
 const (
@@ -23,16 +26,24 @@ const (
 type Options struct {
 	QueryPath string
 	DocPath   string
-	// Group must the same as the base path of route group
-	Group     string
-	SubDomain string
-	Skip      bool
+	// Group is used to be found the matching group router,it must the same as the base path of route group.
+	Group string
+	// Endpoint is the URL to send GraphQL requests to in the playground.
+	EndPoint string
+	Skip     bool
+	// WithAction indicates whether parse graphql operations to resource-action data for default authorization.
+	//
+	// if you want to use custom authorization, you can set it to false, then after RegisterSchema return the graphql server,
+	// Example:
+	//   gqlServers,_ := gql.RegisterSchema(router, schema1, schema2)
+	//   gqlServers[0].AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {....})
+	WithAction bool
 }
 
 var defaultOptions = Options{
 	QueryPath: "/query",
 	DocPath:   "/",
-	Group:     "/graphql", // must the same as the base path of route group
+	Group:     "/", // must the same as the base path of route group
 }
 
 type graphqlContextKey struct{}
@@ -70,7 +81,8 @@ func (h *Handler) Shutdown(_ context.Context) error {
 	return nil
 }
 
-// RegisterSchema is builder for initializing graphql schemas,initialize order is based on the router group order
+// RegisterSchema is builder for initializing graphql schemas,initialize order is based on the router group order.
+// graphql middleware must registry to web server first though web.RegistryMiddleware(gql.New())
 func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss []*gqlgen.Server, err error) {
 	h, ok := websrv.HandlerManager().Get(graphqlHandlerName)
 	if !ok {
@@ -96,29 +108,20 @@ func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss
 // newGraphqlServer create a graphiql server
 func newGraphqlServer(routerGroup *web.RouterGroup, schema graphql.ExecutableSchema, opt *Options) *gqlgen.Server {
 	server := gqlgen.NewDefaultServer(schema)
-	server.AroundResponses(func(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
-		if gctx, err := FromIncomingContext(ctx); err == nil {
-			opctx := graphql.GetOperationContext(ctx)
-			if gctx.Request.Method == http.MethodPost {
-				rp := graphql.RawParams{
-					Query:         opctx.RawQuery,
-					Variables:     opctx.Variables,
-					OperationName: opctx.OperationName,
-				}
-				gctx.Set("gqlraw", rp)
-			}
-		}
-		return next(ctx)
-	})
-
+	if opt.WithAction {
+		server.AroundOperations(parsePermissions)
+	}
 	var QueryHandler = func(c *gin.Context) {
 		server.ServeHTTP(c.Writer, c.Request)
 	}
+	if opt.EndPoint == "" {
+		opt.EndPoint = opt.Group + opt.QueryPath
+	}
+	// set endpoint to graphql-playground used in playground UI
+	docHandler := playground.Handler("graphql", opt.EndPoint)
 
 	var DocHandler = func(c *gin.Context) {
-		// set endpoint to graphql-playground used in playground UI
-		h := playground.Handler("graphql", opt.SubDomain+opt.Group+opt.QueryPath)
-		h.ServeHTTP(c.Writer, c.Request)
+		docHandler.ServeHTTP(c.Writer, c.Request)
 	}
 
 	if routerGroup.Group == nil {
@@ -147,17 +150,31 @@ func newGraphqlServer(routerGroup *web.RouterGroup, schema graphql.ExecutableSch
 	return server
 }
 
+// FromIncomingContext retrieves the gin.Context from the context.Context
 func FromIncomingContext(ctx context.Context) (*gin.Context, error) {
 	ginContext := ctx.Value(graphqlContextKey{})
 	if ginContext == nil {
-		err := fmt.Errorf("could not retrieve gin.Context")
-		return nil, err
+		return nil, fmt.Errorf("could not retrieve gin.Context")
 	}
 
-	gc, ok := ginContext.(*gin.Context)
-	if !ok {
-		err := fmt.Errorf("gin.Context has wrong type")
-		return nil, err
+	return ginContext.(*gin.Context), nil
+}
+
+func parsePermissions(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
+	gctx, _ := FromIncomingContext(ctx)
+	// get operation name
+	op := graphql.GetOperationContext(ctx)
+	actions := make([]*security.PermissionItem, len(op.Operation.SelectionSet))
+	for i, op := range op.Operation.SelectionSet {
+		opf := op.(*ast.Field)
+		// remove the url path last slash
+		actions[i] = &security.PermissionItem{
+			Resource: strings.TrimRight(gctx.Request.URL.Path, "/") + "/" + opf.Name,
+			Action:   gctx.Request.Method,
+		}
 	}
-	return gc, nil
+	if len(actions) == 0 {
+		gctx.Set(handler.AuthzContextKey, actions)
+	}
+	return next(ctx)
 }

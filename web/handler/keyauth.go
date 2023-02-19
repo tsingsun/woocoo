@@ -80,13 +80,7 @@ func (mw *KeyAuthMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc 
 	}
 	if opts.Skipper == nil {
 		opts.Skipper = func(c *gin.Context) bool {
-			path := c.Request.URL.Path
-			for _, p := range opts.Exclude {
-				if p == path {
-					return true
-				}
-			}
-			return false
+			return PathSkip(opts.Exclude, c.Request.URL)
 		}
 	}
 	if opts.KeyLookup == "" {

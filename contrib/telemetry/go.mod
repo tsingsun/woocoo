@@ -8,7 +8,7 @@ require (
 	github.com/tsingsun/woocoo v0.2.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.39.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.39.0
-	go.opentelemetry.io/contrib/propagators/b3 v1.13.0
+	go.opentelemetry.io/contrib/propagators/b3 v1.14.0
 	go.opentelemetry.io/otel v1.13.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.13.0

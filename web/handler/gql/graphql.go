@@ -15,7 +15,6 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 	"net/http"
 	"runtime/debug"
-	"strings"
 )
 
 const (
@@ -38,6 +37,8 @@ type Options struct {
 	//   gqlServers,_ := gql.RegisterSchema(router, schema1, schema2)
 	//   gqlServers[0].AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {....})
 	WithAction bool
+	// AppCode is used to be found the matching app code in the authorization configuration.
+	AppCode string
 }
 
 var defaultOptions = Options{
@@ -109,7 +110,7 @@ func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss
 func newGraphqlServer(routerGroup *web.RouterGroup, schema graphql.ExecutableSchema, opt *Options) *gqlgen.Server {
 	server := gqlgen.NewDefaultServer(schema)
 	if opt.WithAction {
-		server.AroundOperations(parsePermissions)
+		server.AroundOperations(parsePermissions(opt.AppCode))
 	}
 	var QueryHandler = func(c *gin.Context) {
 		server.ServeHTTP(c.Writer, c.Request)
@@ -160,21 +161,24 @@ func FromIncomingContext(ctx context.Context) (*gin.Context, error) {
 	return ginContext.(*gin.Context), nil
 }
 
-func parsePermissions(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
-	gctx, _ := FromIncomingContext(ctx)
-	// get operation name
-	op := graphql.GetOperationContext(ctx)
-	actions := make([]*security.PermissionItem, len(op.Operation.SelectionSet))
-	for i, op := range op.Operation.SelectionSet {
-		opf := op.(*ast.Field)
-		// remove the url path last slash
-		actions[i] = &security.PermissionItem{
-			Resource: strings.TrimRight(gctx.Request.URL.Path, "/") + "/" + opf.Name,
-			Action:   gctx.Request.Method,
+func parsePermissions(appcode string) graphql.OperationMiddleware {
+	return func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
+		gctx, _ := FromIncomingContext(ctx)
+		// get operation name
+		op := graphql.GetOperationContext(ctx)
+		actions := make([]*security.PermissionItem, len(op.Operation.SelectionSet))
+		for i, op := range op.Operation.SelectionSet {
+			opf := op.(*ast.Field)
+			// remove the url path last slash
+			actions[i] = &security.PermissionItem{
+				AppCode:  appcode,
+				Action:   opf.Name,
+				Operator: gctx.Request.Method,
+			}
 		}
+		if len(actions) == 0 {
+			gctx.Set(handler.AuthzContextKey, actions)
+		}
+		return next(ctx)
 	}
-	if len(actions) == 0 {
-		gctx.Set(handler.AuthzContextKey, actions)
-	}
-	return next(ctx)
 }

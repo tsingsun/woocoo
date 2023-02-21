@@ -48,7 +48,7 @@ func (a *RestAuthorizer) CheckPermission(c *gin.Context) (allowed bool) {
 	pl, _ := c.Get(handler.AuthzContextKey)
 	if pl != nil {
 		for _, res := range pl.([]*security.PermissionItem) {
-			allowed, err = a.Authorization.Enforcer.Enforce(gp.Name(), res.Resource, res.Action)
+			allowed, err = a.Authorization.Enforcer.Enforce(gp.Name(), res.Action, res.Operator)
 		}
 	} else {
 		allowed, err = a.Authorization.Enforcer.Enforce(gp.Name(), c.Request.URL.Path, c.Request.Method)

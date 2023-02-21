@@ -19,8 +19,8 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.1
 	github.com/vmihailenco/go-tinylfu v0.2.2
 	github.com/vmihailenco/msgpack/v5 v5.3.5
-	go.etcd.io/etcd/api/v3 v3.5.5
-	go.etcd.io/etcd/client/v3 v3.5.5
+	go.etcd.io/etcd/api/v3 v3.5.7
+	go.etcd.io/etcd/client/v3 v3.5.7
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/goleak v1.2.0
 	go.uber.org/multierr v1.9.0
@@ -73,7 +73,7 @@ require (
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20220504180219-658193537a64 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.5.5 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.5.7 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect

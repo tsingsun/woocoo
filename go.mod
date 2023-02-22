@@ -36,7 +36,7 @@ require (
 )
 
 require (
-	github.com/casbin/casbin/v2 v2.60.0
+	github.com/casbin/casbin/v2 v2.63.0
 	github.com/casbin/redis-watcher/v2 v2.3.0
 )
 

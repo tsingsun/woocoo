@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/gin-gonic/gin v1.9.0
 	github.com/stretchr/testify v1.8.1
-	github.com/tsingsun/woocoo v0.2.0
+	github.com/tsingsun/woocoo v0.2.1
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.39.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.39.0
 	go.opentelemetry.io/contrib/propagators/b3 v1.14.0

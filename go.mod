@@ -10,7 +10,7 @@ require (
 	github.com/go-playground/validator/v10 v10.11.2 // indirect
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/klauspost/compress v1.15.13
+	github.com/klauspost/compress v1.15.15
 	github.com/knadh/koanf v1.4.4
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2
@@ -22,7 +22,7 @@ require (
 	go.etcd.io/etcd/api/v3 v3.5.7
 	go.etcd.io/etcd/client/v3 v3.5.7
 	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/goleak v1.2.0
+	go.uber.org/goleak v1.2.1
 	go.uber.org/multierr v1.9.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.5.0 // indirect
@@ -72,7 +72,6 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.7 // indirect
 	golang.org/x/arch v0.0.0-20210923205945-b76863e36670 // indirect
 	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

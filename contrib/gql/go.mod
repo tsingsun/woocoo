@@ -1,4 +1,4 @@
-module github.com/tsingsun/woocoo/graphql
+module github.com/tsingsun/woocoo/contrib/gql
 
 go 1.18
 

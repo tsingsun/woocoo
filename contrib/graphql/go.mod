@@ -6,7 +6,7 @@ require (
 	github.com/99designs/gqlgen v0.17.24
 	github.com/gin-gonic/gin v1.9.0
 	github.com/stretchr/testify v1.8.1
-	github.com/tsingsun/woocoo v0.2.2
+	github.com/tsingsun/woocoo v0.2.3-0.20230224054419-f116aada9120
 	github.com/vektah/gqlparser/v2 v2.5.1
 )
 
@@ -14,7 +14,7 @@ require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/bytedance/sonic v1.8.0 // indirect
-	github.com/casbin/casbin/v2 v2.60.0 // indirect
+	github.com/casbin/casbin/v2 v2.63.0 // indirect
 	github.com/casbin/redis-watcher/v2 v2.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
@@ -55,6 +55,6 @@ require (
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
-	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

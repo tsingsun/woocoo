@@ -1,6 +1,7 @@
 package authz
 
 import (
+	"context"
 	"errors"
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
@@ -9,23 +10,34 @@ import (
 	rediswatcher "github.com/casbin/redis-watcher/v2"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
+	"github.com/tsingsun/woocoo/pkg/security"
 	"strings"
-	"sync"
 )
 
 var (
 	defaultAdapter persist.Adapter
-	once           sync.Once
 
-	defaultAuthorization *Authorization
+	DefaultAuthorization *Authorization
 )
 
 type (
+	Option func(*Authorization)
 	// Authorization is an Authorization feature base on casbin.
 	Authorization struct {
 		Enforcer *casbin.Enforcer
+		Watcher  persist.Watcher
+		// RequestParser is the function to parse cashbin request according cashbin Model
+		RequestParser RequestParserFunc
 	}
+	RequestParserFunc func(ctx context.Context, identity security.Identity, item *security.PermissionItem) []any
 )
+
+// WithRequestParseFunc set the request parser function.
+func WithRequestParseFunc(f RequestParserFunc) Option {
+	return func(authorization *Authorization) {
+		authorization.RequestParser = f
+	}
+}
 
 // NewAuthorization returns a new authenticator by application configuration.
 // Configuration example:
@@ -37,25 +49,12 @@ type (
 //	      channel: "/casbin"
 //	  model: /path/to/model.conf
 //	  policy: /path/to/policy.csv
-func NewAuthorization(cnf *conf.Configuration) *Authorization {
-	opts := rediswatcher.WatcherOptions{}
-	if cnf.IsSet("watcherOptions") {
-		err := cnf.Sub("watcherOptions").Unmarshal(&opts)
-		if err != nil {
-			panic(err)
-		}
+func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorization, err error) {
+	au = &Authorization{
+		RequestParser: defaultRequestParserFunc,
 	}
-	var (
-		w   persist.Watcher
-		err error
-	)
-	if opts.Options.Addr != "" {
-		w, err = rediswatcher.NewWatcher(opts.Options.Addr, opts)
-	} else if opts.ClusterOptions.Addrs != nil {
-		w, err = rediswatcher.NewWatcherWithCluster(opts.Options.Addr, opts)
-	}
-	if err != nil {
-		panic(err)
+	for _, opt := range opts {
+		opt(au)
 	}
 	// model
 	var dsl, policy any
@@ -63,7 +62,7 @@ func NewAuthorization(cnf *conf.Configuration) *Authorization {
 	if strings.ContainsRune(m, '\n') {
 		dsl, err = model.NewModelFromString(m)
 		if err != nil {
-			panic(err)
+			return
 		}
 	} else {
 		dsl = cnf.String("model")
@@ -73,22 +72,42 @@ func NewAuthorization(cnf *conf.Configuration) *Authorization {
 		SetAdapter(fileadapter.NewAdapter(pv))
 	}
 	policy = defaultAdapter
-	enforer, err := casbin.NewEnforcer(dsl, policy)
+	au.Enforcer, err = casbin.NewEnforcer(dsl, policy)
 	if err != nil {
-		panic(err)
+		return
 	}
 
-	if w != nil { // enable watcher
-		if err := enforer.SetWatcher(w); err != nil {
+	au.Watcher, err = au.buildWatcher(cnf)
+	if err != nil {
+		return
+	}
+	if au.Watcher != nil { // enable watcher
+		if err := au.Enforcer.SetWatcher(au.Watcher); err != nil {
 			panic(err)
 		}
-		if err := w.SetUpdateCallback(defaultUpdateCallback(enforer)); err != nil {
+		if err := au.Watcher.SetUpdateCallback(defaultUpdateCallback(au.Enforcer)); err != nil {
 			panic(err)
 		}
 	}
-	return &Authorization{
-		Enforcer: enforer,
+	return
+}
+
+func (au *Authorization) buildWatcher(cnf *conf.Configuration) (w persist.Watcher, err error) {
+	if !cnf.IsSet("watcherOptions") {
+		return
 	}
+	watcherOptions := rediswatcher.WatcherOptions{}
+	err = cnf.Sub("watcherOptions").Unmarshal(&watcherOptions)
+	if err != nil {
+		return
+	}
+
+	if watcherOptions.Options.Addr != "" {
+		w, err = rediswatcher.NewWatcher(watcherOptions.Options.Addr, watcherOptions)
+	} else if watcherOptions.ClusterOptions.Addrs != nil {
+		w, err = rediswatcher.NewWatcherWithCluster(watcherOptions.Options.Addr, watcherOptions)
+	}
+	return
 }
 
 // SetAdapter sets the default adapter for the enforcer.
@@ -96,11 +115,13 @@ func SetAdapter(adapter persist.Adapter) {
 	defaultAdapter = adapter
 }
 
-func SetDefaultAuthorization(cnf *conf.Configuration) *Authorization {
-	once.Do(func() {
-		defaultAuthorization = NewAuthorization(cnf)
-	})
-	return defaultAuthorization
+func (au *Authorization) CheckPermission(ctx context.Context, identity security.Identity, item *security.PermissionItem) (bool, error) {
+	return au.Enforcer.Enforce(au.RequestParser(ctx, identity, item)...)
+}
+
+// SetDefaultAuthorization sets the default authorization.
+func SetDefaultAuthorization(au *Authorization) {
+	DefaultAuthorization = au
 }
 
 func defaultUpdateCallback(e casbin.IEnforcer) func(string) {
@@ -133,13 +154,17 @@ func defaultUpdateCallback(e casbin.IEnforcer) func(string) {
 		case rediswatcher.UpdateForUpdatePolicies:
 			res, err = e.SelfUpdatePolicies(msgStruct.Sec, msgStruct.Ptype, msgStruct.OldRules, msgStruct.NewRules)
 		default:
-			err = errors.New("unknown update type")
+			err = errors.New("[woocoo-authz]update callback unknown update type")
 		}
 		if err != nil {
 			log.Error(err)
 		}
 		if !res {
-			log.Error("callback update policy failed")
+			log.Error("[woocoo-authz]callback update policy failed")
 		}
 	}
+}
+
+func defaultRequestParserFunc(ctx context.Context, identity security.Identity, item *security.PermissionItem) []any {
+	return []any{identity.Name(), item.Action, item.Operator}
 }

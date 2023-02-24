@@ -2,7 +2,11 @@
 
 package petstore
 
-import "time"
+import (
+	"fmt"
+	"github.com/google/uuid"
+	"github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration/extra"
+)
 
 type Category struct {
 	ID   int64  `json:"id,omitempty" xml:"id"`

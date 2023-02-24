@@ -7,7 +7,7 @@ import (
 
 var (
 	// userContextKey is the key of context which store the user.
-	userContextKey = "_woocoo/security/usercontextkey"
+	userContextKey struct{}
 )
 
 type (
@@ -30,11 +30,6 @@ type (
 // WithContext Add user to context.
 func WithContext(ctx context.Context, user Principal) context.Context {
 	return context.WithValue(ctx, userContextKey, user)
-}
-
-// SetUserContextKey Set the key of context which store the user.
-func SetUserContextKey(name string) {
-	userContextKey = name
 }
 
 // GetSubjectFromToken Get Sub(User) from context with Jwt default token using jwt.MapClaims.

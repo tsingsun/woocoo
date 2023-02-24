@@ -3,8 +3,9 @@ module github.com/tsingsun/woocoo
 go 1.18
 
 require (
-	github.com/99designs/gqlgen v0.17.24
 	github.com/alicebob/miniredis/v2 v2.30.0
+	github.com/casbin/casbin/v2 v2.63.0
+	github.com/casbin/redis-watcher/v2 v2.3.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/go-playground/validator/v10 v10.11.2 // indirect
 	github.com/go-redis/redis/v8 v8.11.5
@@ -16,7 +17,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pelletier/go-toml v1.9.3 // indirect
 	github.com/stretchr/testify v1.8.1
-	github.com/vektah/gqlparser/v2 v2.5.1
 	github.com/vmihailenco/go-tinylfu v0.2.2
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	go.etcd.io/etcd/api/v3 v3.5.7
@@ -36,15 +36,9 @@ require (
 )
 
 require (
-	github.com/casbin/casbin/v2 v2.60.0
-	github.com/casbin/redis-watcher/v2 v2.3.0
-)
-
-require (
 	cloud.google.com/go/compute v1.15.1 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
-	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/bytedance/sonic v1.8.0 // indirect
@@ -62,8 +56,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect

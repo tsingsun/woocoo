@@ -12,8 +12,7 @@ import (
 )
 
 var (
-	AuthzContextKey = "_woocoo/authz/actions"
-	logger          = log.Component(log.WebComponentName)
+	logger = log.Component(log.WebComponentName)
 )
 
 // Middleware is an instance to build a echo middleware for web application.

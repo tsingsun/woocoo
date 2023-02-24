@@ -6,7 +6,6 @@ on:
     paths-ignore:
       - 'docs/**'
       - 'readme*.md'
-      - 'contrib/**'
       - 'cmd/**'
       - '.github/**'
   pull_request:
@@ -14,7 +13,6 @@ on:
     paths-ignore:
       - 'docs/**'
       - 'readme*.md'
-      - 'contrib/**'
       - 'cmd/**'
       - '.github/**'
 jobs:
@@ -41,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: ['1.18','1.19']
+        go: ['1.18','1.19','1.20']
     steps:
     - uses: actions/checkout@v3
 
@@ -56,9 +54,13 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Build
-      run: go build -v ./...
+      run: make build
 
     - name: Run coverage
-      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+      run: make test-coverage
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.txt
+        fail_ci_if_error: true
+        verbose: true

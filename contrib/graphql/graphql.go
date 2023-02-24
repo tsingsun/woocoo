@@ -7,12 +7,14 @@ import (
 	gqlgen "github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gin-gonic/gin"
+	"github.com/tsingsun/woocoo/pkg/authz"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/web"
 	"github.com/tsingsun/woocoo/web/handler"
 	"github.com/vektah/gqlparser/v2/ast"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 	"net/http"
 	"runtime/debug"
 )
@@ -30,15 +32,16 @@ type Options struct {
 	// Endpoint is the URL to send GraphQL requests to in the playground.
 	EndPoint string
 	Skip     bool
-	// WithAction indicates whether parse graphql operations to resource-action data for default authorization.
+	// WithAuthorization indicates whether parse graphql operations to resource-action data for default authorization.
 	//
 	// if you want to use custom authorization, you can set it to false, then after RegisterSchema return the graphql server,
 	// Example:
 	//   gqlServers,_ := gql.RegisterSchema(router, schema1, schema2)
 	//   gqlServers[0].AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {....})
-	WithAction bool
+	WithAuthorization bool
 	// AppCode is used to be found the matching app code in the authorization configuration.
-	AppCode string
+	AppCode       string
+	Authorization *authz.Authorization
 }
 
 var defaultOptions = Options{
@@ -65,9 +68,17 @@ func (h *Handler) Name() string {
 }
 
 func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
+	var err error
 	opt := defaultOptions
-	if err := cfg.Unmarshal(&opt); err != nil {
+	if err = cfg.Unmarshal(&opt); err != nil {
 		panic(err)
+	}
+	opt.Authorization = authz.DefaultAuthorization
+	if opt.WithAuthorization && opt.Authorization == nil {
+		opt.Authorization, err = authz.NewAuthorization(cfg.Root())
+		if err != nil {
+			panic(err)
+		}
 	}
 	h.opts = append(h.opts, opt)
 	return func(c *gin.Context) {
@@ -109,8 +120,8 @@ func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss
 // newGraphqlServer create a graphiql server
 func newGraphqlServer(routerGroup *web.RouterGroup, schema graphql.ExecutableSchema, opt *Options) *gqlgen.Server {
 	server := gqlgen.NewDefaultServer(schema)
-	if opt.WithAction {
-		server.AroundOperations(parsePermissions(opt.AppCode))
+	if opt.WithAuthorization {
+		server.AroundOperations(CheckPermissions(opt))
 	}
 	var QueryHandler = func(c *gin.Context) {
 		server.ServeHTTP(c.Writer, c.Request)
@@ -161,23 +172,37 @@ func FromIncomingContext(ctx context.Context) (*gin.Context, error) {
 	return ginContext.(*gin.Context), nil
 }
 
-func parsePermissions(appcode string) graphql.OperationMiddleware {
+// CheckPermissions check the graphql operation permissions base on the package authz
+func CheckPermissions(opt *Options) graphql.OperationMiddleware {
 	return func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
 		gctx, _ := FromIncomingContext(ctx)
 		// get operation name
 		op := graphql.GetOperationContext(ctx)
-		actions := make([]*security.PermissionItem, len(op.Operation.SelectionSet))
-		for i, op := range op.Operation.SelectionSet {
+		gp := security.GenericIdentityFromContext(ctx)
+		errList := gqlerror.List{}
+		for _, op := range op.Operation.SelectionSet {
 			opf := op.(*ast.Field)
 			// remove the url path last slash
-			actions[i] = &security.PermissionItem{
-				AppCode:  appcode,
+			pi := &security.PermissionItem{
+				AppCode:  opt.AppCode,
 				Action:   opf.Name,
 				Operator: gctx.Request.Method,
 			}
+			allowed, err := opt.Authorization.CheckPermission(gctx, gp, pi)
+			if err != nil {
+				errList = append(errList, gqlerror.Errorf("action %s authorization err:%s ", opf.Name, err.Error()))
+			}
+			if !allowed {
+				errList = append(errList, gqlerror.Errorf("action %s not allowed", opf.Name))
+			}
 		}
-		if len(actions) == 0 {
-			gctx.Set(handler.AuthzContextKey, actions)
+		if len(errList) > 0 {
+			gctx.Error(errList)
+			return func(ctx context.Context) *graphql.Response {
+				return &graphql.Response{
+					Errors: errList,
+				}
+			}
 		}
 		return next(ctx)
 	}

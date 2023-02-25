@@ -11,7 +11,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/klauspost/compress v1.15.15
-	github.com/knadh/koanf v1.4.4
+	github.com/knadh/koanf v1.5.0
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/mitchellh/mapstructure v1.5.0

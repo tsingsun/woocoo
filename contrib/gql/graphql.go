@@ -25,8 +25,12 @@ const (
 
 // Options handler option
 type Options struct {
+	// QueryPath is the path to register the graphql handler.default is "POST /query"
 	QueryPath string
-	DocPath   string
+	// WebSocketPath is the path to register the websocket handler.default is "GET /query"
+	WebSocketPath string
+	// DocPath is the path to register the playground handler.default is "GET /"
+	DocPath string
 	// Group is used to be found the matching group router,it must the same as the base path of route group.
 	Group string
 	// Endpoint is the URL to send GraphQL requests to in the playground.
@@ -45,9 +49,10 @@ type Options struct {
 }
 
 var defaultOptions = Options{
-	QueryPath: "/query",
-	DocPath:   "/",
-	Group:     "/", // must the same as the base path of route group
+	QueryPath:     "/query",
+	WebSocketPath: "/query",
+	DocPath:       "/",
+	Group:         "/", // must the same as the base path of route group
 }
 
 type graphqlContextKey struct{}
@@ -108,6 +113,9 @@ func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss
 		if opt.Skip {
 			continue
 		}
+		if opt.WithAuthorization && !websrv.Router().ContextWithFallback {
+			return nil, fmt.Errorf("configuration section 'web.engine.contextWithFallback must be true while using authorization")
+		}
 		var rg *web.RouterGroup
 		if rg = websrv.Router().FindGroup(opt.Group); rg == nil {
 			rg = &web.RouterGroup{Group: &websrv.Router().Engine.RouterGroup, Router: websrv.Router()}
@@ -138,9 +146,15 @@ func newGraphqlServer(routerGroup *web.RouterGroup, schema graphql.ExecutableSch
 
 	if routerGroup.Group == nil {
 		routerGroup.Router.Engine.POST(opt.QueryPath, QueryHandler)
+		if opt.WebSocketPath != "" {
+			routerGroup.Router.Engine.GET(opt.WebSocketPath, QueryHandler)
+		}
 		routerGroup.Router.Engine.GET(opt.DocPath, DocHandler)
 	} else {
 		routerGroup.Group.POST(opt.QueryPath, QueryHandler)
+		if opt.WebSocketPath != "" {
+			routerGroup.Group.GET(opt.WebSocketPath, QueryHandler)
+		}
 		routerGroup.Group.GET(opt.DocPath, DocHandler)
 	}
 

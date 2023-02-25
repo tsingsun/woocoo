@@ -52,7 +52,10 @@ type (
 // Users can get a token by posting a json request to LoginHandler. The token then needs to be passed in
 // the Authentication header. Example: Authorization:Bearer XXX_TOKEN_XXX
 type JWTMiddleware struct {
-	opts middlewareOptions
+	opts   middlewareOptions
+	Config *JWTConfig
+	// TokenStore is the cache for store token key.
+	TokenStore cache.Cache
 }
 
 func JWT(opts ...MiddlewareOption) *JWTMiddleware {
@@ -65,7 +68,7 @@ func (mw *JWTMiddleware) Name() string {
 	return "jwt"
 }
 
-func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
+func (mw *JWTMiddleware) build(cfg *conf.Configuration) {
 	var opts *JWTConfig
 	if mw.opts.configFunc != nil {
 		opts = mw.opts.configFunc().(*JWTConfig)
@@ -77,6 +80,10 @@ func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if err := cfg.Unmarshal(&opts); err != nil {
 		panic(err)
 	}
+	if err := opts.Apply(); err != nil {
+		panic(err)
+	}
+
 	if opts.Skipper == nil {
 		opts.Skipper = func(c *gin.Context) bool {
 			return PathSkip(opts.Exclude, c.Request.URL)
@@ -93,7 +100,16 @@ func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			return nil
 		}
 	}
-	return jwtWithOption(opts)
+	mw.Config = opts
+
+	if opts.TokenStoreKey != "" {
+		mw.TokenStore = cache.GetCache(opts.TokenStoreKey)
+	}
+}
+
+func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
+	mw.build(cfg)
+	return mw.middleware()
 }
 
 // Shutdown no need to do anything
@@ -101,24 +117,16 @@ func (mw *JWTMiddleware) Shutdown(_ context.Context) error {
 	return nil
 }
 
-func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
-	if err := opts.Apply(); err != nil {
-		panic(err)
-	}
-	extractors, err := CreateExtractors(opts.TokenLookup, opts.AuthScheme)
+func (mw *JWTMiddleware) middleware() gin.HandlerFunc {
+	extractors, err := CreateExtractors(mw.Config.TokenLookup, mw.Config.AuthScheme)
 	if err != nil {
 		panic(err)
 	}
-	if len(opts.TokenLookupFuncs) > 0 {
-		extractors = append(opts.TokenLookupFuncs, extractors...)
-	}
-	var store cache.Cache
-	if opts.TokenStoreKey != "" {
-		store = cache.GetCache(opts.TokenStoreKey)
+	if len(mw.Config.TokenLookupFuncs) > 0 {
+		extractors = append(mw.Config.TokenLookupFuncs, extractors...)
 	}
 	return func(c *gin.Context) {
-		if opts.Skipper(c) {
-			c.Next()
+		if mw.Config.Skipper(c) {
 			return
 		}
 		var lastExtractorErr error
@@ -130,15 +138,15 @@ func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
 				continue
 			}
 			for _, authStr := range auths {
-				token, err := opts.ParseTokenFunc(c, authStr)
+				token, err := mw.Config.ParseTokenFunc(c, authStr)
 				if err != nil {
 					lastTokenErr = err
 					continue
 				}
-				if store != nil {
-					id, ok := opts.GetTokenIDFunc(token)
+				if mw.TokenStore != nil {
+					id, ok := mw.Config.GetTokenIDFunc(token)
 					if ok {
-						if exists := store.Has(c, id); !exists {
+						if exists := mw.TokenStore.Has(c, id); !exists {
 							lastTokenErr = jwt.ErrTokenUnverifiable
 							continue
 						}
@@ -148,17 +156,16 @@ func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
 					}
 				}
 				// Store user information from token into context.
-				if opts.WithPrincipalContext != nil {
-					err = opts.WithPrincipalContext(c, token)
+				if mw.Config.WithPrincipalContext != nil {
+					err = mw.Config.WithPrincipalContext(c, token)
 					if err != nil {
 						lastTokenErr = err
 						continue
 					}
 				}
-				if opts.SuccessHandler != nil {
-					opts.SuccessHandler(c)
+				if mw.Config.SuccessHandler != nil {
+					mw.Config.SuccessHandler(c)
 				}
-				c.Next()
 				return
 			}
 		}
@@ -166,13 +173,8 @@ func jwtWithOption(opts *JWTConfig) gin.HandlerFunc {
 		if err == nil {
 			err = lastExtractorErr
 		}
-		if opts.ErrorHandler != nil {
-			err = opts.ErrorHandler(c, err)
-			if err == nil {
-				c.Next()
-				return
-			}
-			return
+		if mw.Config.ErrorHandler != nil {
+			err = mw.Config.ErrorHandler(c, err)
 		}
 
 		if err != nil {

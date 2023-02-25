@@ -106,7 +106,6 @@ func keyAuthWithOption(opts *KeyAuthConfig) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		if opts.Skipper(c) {
-			c.Next()
 			return
 		}
 		var lastExtractorErr error
@@ -124,9 +123,9 @@ func keyAuthWithOption(opts *KeyAuthConfig) gin.HandlerFunc {
 					continue
 				}
 				if ok {
-					c.Next()
+					return
 				}
-				return
+				continue
 			}
 		}
 		err := lastAuthErr
@@ -135,10 +134,6 @@ func keyAuthWithOption(opts *KeyAuthConfig) gin.HandlerFunc {
 		}
 		if opts.ErrorHandler != nil {
 			err = opts.ErrorHandler(c, err)
-			if err == nil {
-				c.Next()
-				return
-			}
 		}
 
 		if err != nil {

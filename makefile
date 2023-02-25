@@ -33,8 +33,8 @@ test-bench:   ARGS=-run=xxxxxMatchNothingxxxxx -test.benchtime=1ms -bench=
 test-short:   ARGS=-short
 test-verbose: ARGS=-v
 $(TEST_TARGETS): test
-test: $(GO_MOD_DIRS:%=test/%)
-test/%:
+test: test-root $(GO_MOD_DIRS:%=test/%)
+test-root:
 	@echo "$(GO) test -timeout $(TIMEOUT)s $(ARGS) ./..." \
 		&& cd ./ \
 		&& $(GO) test -timeout $(TIMEOUT)s $(ARGS) ./...

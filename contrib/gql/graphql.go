@@ -98,15 +98,14 @@ func (h *Handler) Shutdown(_ context.Context) error {
 	return nil
 }
 
-// RegisterSchema is builder for initializing graphql schemas,initialize order is based on the router group order.
-// graphql middleware must registry to web server first though web.RegistryMiddleware(gql.New())
-func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss []*gqlgen.Server, err error) {
+// RegisterGraphqlServer is builder for initializing graphql servers,initialize order is based on the router group order.
+func RegisterGraphqlServer(websrv *web.Server, servers ...*gqlgen.Server) error {
 	h, ok := websrv.HandlerManager().Get(graphqlHandlerName)
 	if !ok {
-		return nil, fmt.Errorf("handler %s not found", graphqlHandlerName)
+		return fmt.Errorf("handler %s not found", graphqlHandlerName)
 	}
-	for i, schema := range schemas {
-		if schema == nil {
+	for i, gqlserver := range servers {
+		if gqlserver == nil {
 			continue
 		}
 		opt := h.(*Handler).opts[i]
@@ -114,20 +113,35 @@ func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss
 			continue
 		}
 		if opt.WithAuthorization && !websrv.Router().ContextWithFallback {
-			return nil, fmt.Errorf("configuration section 'web.engine.contextWithFallback must be true while using authorization")
+			return fmt.Errorf("configuration section 'web.engine.contextWithFallback must be true while using authorization")
 		}
 		var rg *web.RouterGroup
 		if rg = websrv.Router().FindGroup(opt.Group); rg == nil {
 			rg = &web.RouterGroup{Group: &websrv.Router().Engine.RouterGroup, Router: websrv.Router()}
 		}
-		ss = append(ss, newGraphqlServer(rg, schema, &opt))
+		buildGraphqlServer(rg, gqlserver, &opt)
 	}
-	return
+	return nil
 }
 
-// newGraphqlServer create a graphiql server
-func newGraphqlServer(routerGroup *web.RouterGroup, schema graphql.ExecutableSchema, opt *Options) *gqlgen.Server {
-	server := gqlgen.NewDefaultServer(schema)
+// RegisterSchema is builder for initializing graphql schemas,initialize order is based on the router group order.
+// graphql middleware must registry to web server first though web.RegistryMiddleware(gql.New())
+//
+// it graphql pkg handler.NewDefaultServer to create a graphql server
+func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss []*gqlgen.Server, err error) {
+	ss = make([]*gqlgen.Server, len(schemas))
+	for i, schema := range schemas {
+		ss[i] = gqlgen.NewDefaultServer(schema)
+	}
+	err = RegisterGraphqlServer(websrv, ss...)
+	if err != nil {
+		return nil, err
+	}
+	return ss, err
+}
+
+// buildGraphqlServer create a graphiql server
+func buildGraphqlServer(routerGroup *web.RouterGroup, server *gqlgen.Server, opt *Options) *gqlgen.Server {
 	if opt.WithAuthorization {
 		server.AroundOperations(CheckPermissions(opt))
 	}

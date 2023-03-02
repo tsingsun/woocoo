@@ -84,6 +84,9 @@ func (r *Router) Apply(cnf *conf.Configuration) (err error) {
 //	- group:
 //	  basePath: "/auth"
 func (r *Router) FindGroup(basePath string) *RouterGroup {
+	if basePath == "" {
+		basePath = "/"
+	}
 	for _, group := range r.Groups {
 		if group.basePath == basePath {
 			return group

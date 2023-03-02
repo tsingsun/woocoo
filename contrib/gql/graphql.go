@@ -52,7 +52,7 @@ var defaultOptions = Options{
 	QueryPath:     "/query",
 	WebSocketPath: "/query",
 	DocPath:       "/",
-	Group:         "/", // must the same as the base path of route group
+	Group:         "", // must the same as the base path of route group
 }
 
 type graphqlContextKey struct{}

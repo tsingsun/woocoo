@@ -69,7 +69,7 @@ func DefaultSkipper(c *gin.Context) bool {
 // PathSkip returns a skipper function that skips middleware if the request path
 func PathSkip(list []string, url *url.URL) bool {
 	src := url.Path
-	if strings.HasSuffix(src, "/") {
+	if src != "/" && strings.HasSuffix(src, "/") {
 		src = url.Path[:len(url.Path)-1]
 	}
 	for _, skip := range list {

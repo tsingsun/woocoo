@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
@@ -15,6 +16,8 @@ import (
 	"syscall"
 	"time"
 )
+
+var logger = log.Component(log.GrpcComponentName)
 
 type serverOptions struct {
 	Addr    string `json:"addr" yaml:"addr"`
@@ -58,6 +61,9 @@ func New(opts ...Option) *Server {
 	useContextLogger()
 	for _, o := range opts {
 		o(&s.opts)
+	}
+	if s.opts.configuration == nil {
+		s.opts.configuration = conf.Global().Sub("grpc")
 	}
 	if cnf := s.opts.configuration; cnf != nil {
 		s.opts.Version = cnf.Root().Version()
@@ -177,7 +183,7 @@ func (s *Server) Engine() *grpc.Server {
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	grpclog.Infof("start grpc server on %s", s.opts.Addr)
+	logger.Info(fmt.Sprintf("start grpc server on %s", s.opts.Addr))
 	return s.ListenAndServe()
 }
 
@@ -225,7 +231,7 @@ func (s *Server) Run() error {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case <-quit:
-		grpclog.Infof("grpc server on %s shutdown", s.opts.Addr)
+		logger.Info(fmt.Sprintf("grpc server on %s shutdown", s.opts.Addr))
 		defer quitFunc()
 		return nil
 	case err := <-ch:

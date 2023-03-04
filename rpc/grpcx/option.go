@@ -26,7 +26,7 @@ func WithConfiguration(cfg *conf.Configuration) Option {
 // notice: call this while go test may cause race condition.
 func WithGrpcLogger() Option {
 	return func(s *serverOptions) {
-		lg := log.Component(log.GrpcComponentName).Logger()
+		lg := logger.Logger()
 		zgl := zapgrpc.NewLogger(lg.Operator())
 		once.Do(func() {
 			grpclog.SetLoggerV2(zgl)

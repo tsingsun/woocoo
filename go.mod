@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/alicebob/miniredis/v2 v2.30.0
-	github.com/casbin/casbin/v2 v2.63.0
+	github.com/casbin/casbin/v2 v2.65.1
 	github.com/casbin/redis-watcher/v2 v2.3.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/go-playground/validator/v10 v10.11.2 // indirect

@@ -3,6 +3,7 @@ package security
 import (
 	"context"
 	"github.com/golang-jwt/jwt/v4"
+	"strconv"
 )
 
 type (
@@ -23,6 +24,15 @@ func (p *GenericPrincipal) Identity() Identity {
 
 func (i *GenericIdentity) Name() string {
 	return i.claims["sub"].(string)
+}
+
+// NameIntX return the user id as int
+func (i *GenericIdentity) NameIntX() int {
+	v, err := strconv.Atoi(i.Name())
+	if err != nil {
+		panic(err)
+	}
+	return v
 }
 
 func (i *GenericIdentity) Claims() jwt.MapClaims {

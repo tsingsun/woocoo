@@ -31,7 +31,7 @@ require (
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
 	google.golang.org/grpc v1.53.0
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/protobuf v1.29.1
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 

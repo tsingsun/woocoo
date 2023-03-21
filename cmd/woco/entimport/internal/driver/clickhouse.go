@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -314,7 +315,7 @@ func baseType(raw string) string {
 // The raw value is expected to follow the format in MySQL information schema.
 func ParseType(raw string) (schema.Type, error) {
 	base := baseType(raw)
-	ckType, err := column.Type(base).Column()
+	ckType, err := column.Type(base).Column("", time.Local) // column's parameter is not used
 	if err != nil {
 		return nil, err
 	}

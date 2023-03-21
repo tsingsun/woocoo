@@ -4,7 +4,8 @@ package petstore
 
 import (
 	"fmt"
-	"github.com/google/uuid"
+
+	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration/extra"
 )
 
@@ -33,7 +34,7 @@ type StoreServer interface {
 	// (DELETE /store/order/{orderId})
 	DeleteOrder(c *gin.Context, req *DeleteOrderRequest) error
 	// (GET /store/inventory)
-	GetInventory(c *gin.Context) (any, error)
+	GetInventory(c *gin.Context) (map[string]int32, error)
 	// (GET /store/order/{orderId})
 	GetOrderById(c *gin.Context, req *GetOrderByIdRequest) (*Order, error)
 	// (POST /store/order)
@@ -111,7 +112,7 @@ func (UnimplementedStoreServer) DeleteOrder(c *gin.Context, req *DeleteOrderRequ
 	return
 }
 
-func (UnimplementedStoreServer) GetInventory(c *gin.Context) (_ any, err error) {
+func (UnimplementedStoreServer) GetInventory(c *gin.Context) (_ map[string]int32, err error) {
 	err = fmt.Errorf("method GetInventory not implemented")
 	return
 }

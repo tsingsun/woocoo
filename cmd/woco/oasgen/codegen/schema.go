@@ -5,6 +5,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/google/uuid"
+	"github.com/iancoleman/strcase"
 	"github.com/tsingsun/woocoo/cmd/woco/code"
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"reflect"
@@ -144,8 +145,14 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 		info = &code.TypeInfo{Type: code.TypeBytes, Nillable: true}
 	case "object":
 		info = &code.TypeInfo{Type: code.TypeOther}
-		if sv.AdditionalProperties != nil {
-			info.Ident = "any"
+		if sv.AdditionalProperties.Schema != nil {
+			itemName := ""
+			if sv.AdditionalProperties.Schema.Ref != "" {
+				itemName = schemaNameFromRef(sv.AdditionalProperties.Schema.Ref)
+			}
+
+			sch.GenSchemaType(c, itemName, sv.AdditionalProperties.Schema)
+			info.Ident = "map[string]" + sch.Type.String()
 			info.Nillable = true
 			break
 		}
@@ -180,6 +187,7 @@ func (sch *Schema) AppendContentTypeStructTag(c *Config, tagName, contentType st
 		if HasTag(sch.StructTags, "json") {
 			break
 		}
+		tagName = strcase.ToLowerCamel(tagName)
 		if sch.Required {
 			sch.StructTags = append(sch.StructTags, fmt.Sprintf(`json:"%s"`, tagName))
 		} else {
@@ -292,11 +300,7 @@ func (sch *Schema) CollectTags() {
 	for k, v := range specValue.Extensions {
 		switch k {
 		case goTagValidator:
-			s, err := extString(v)
-			if err != nil {
-				panic(err)
-			}
-			sch.validations = append(sch.validations, s)
+			sch.validations = append(sch.validations, v.(string))
 		}
 	}
 	if sch.Required {
@@ -322,8 +326,8 @@ func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required boo
 	}
 	sc.GenSchemaType(c, name, spec)
 	sc.IsRef = spec.Ref != ""
-	if sc.IsRef {
-		sc.Name = helper.Camel(schemaNameFromRef(spec.Ref))
+	if sc.IsRef { // if it's a ref, we need to get the name from the ref
+		sc.Name = schemaNameFromRef(spec.Ref)
 	}
 	if sc.IsObjectArray() {
 		if sc.Name == "" {
@@ -340,11 +344,7 @@ func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required boo
 	for k, v := range spec.Value.Extensions {
 		switch k {
 		case goTag:
-			s, err := extString(v)
-			if err != nil {
-				panic(err)
-			}
-			sc.StructTags = append(sc.StructTags, s)
+			sc.StructTags = append(sc.StructTags, v.(string))
 		}
 	}
 	sc.CollectTags()

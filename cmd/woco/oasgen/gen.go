@@ -32,18 +32,21 @@ func TemplateFiles(filenames ...string) Option {
 	})
 }
 
-func loadSwagger(filePath string) (oas *openapi3.T, err error) {
+func loadSwagger(path string) (oas *openapi3.T, err error) {
 	loader := openapi3.NewLoader()
 	loader.IsExternalRefsAllowed = true
 
-	u, err := url.Parse(filePath)
+	u, err := url.Parse(path)
 	if err != nil {
 		panic(err)
 	}
 	if u.Scheme != "" && u.Host != "" {
 		oas, err = loader.LoadFromURI(u)
 	} else {
-		oas, err = loader.LoadFromFile(filePath)
+		oas, err = loader.LoadFromFile(path)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to load swagger file: %w", err)
 	}
 	err = oas.Validate(context.Background())
 	return
@@ -58,16 +61,11 @@ func LoadConfig(cfg *codegen.Config, filename string) (err error) {
 	err = cnf.Unmarshal("", &cfg)
 	cfg.TypeMap, err = codegen.ModelMapToTypeInfo(cfg.Models)
 	dir := filepath.Dir(filename)
-	if !filepath.IsAbs(cfg.OpenAPISchema) {
-		cfg.OpenAPISchema = filepath.Join(dir, cfg.OpenAPISchema)
-	}
 
 	if cfg.Target == "" {
 		// default target-path for codegen is one dir above
 		// the schema.
 		cfg.Target = dir
-	} else if !filepath.IsAbs(cfg.Target) {
-		cfg.Target = filepath.Join(dir, cfg.Target)
 	}
 
 	if cfg.Package == "" {

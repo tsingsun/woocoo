@@ -138,14 +138,8 @@ func generate(g *Graph) error {
 	pkg := g.Package
 	assets.AddDir(filepath.Join(g.Config.Target))
 	for _, n := range g.Nodes {
-		//npkg := n.PackageDir()
-		//if npkg == "" {
-		//	npkg = pkg
-		//}
-		//npkg = strings.ToLower(n.PackageDir())
 		for _, tmpl := range Templates {
 			b := bytes.NewBuffer(nil)
-			//n.Package = npkg
 			if err := templates.ExecuteTemplate(b, tmpl.Name, n); err != nil {
 				return fmt.Errorf("execute template %q: %w", tmpl.Name, err)
 			}
@@ -235,7 +229,13 @@ func (g *Graph) addTag(schema *openapi3.T) {
 		g.nodes[t.Name] = tv
 	}
 	if len(g.Nodes) == 0 {
-		g.Nodes = append(g.Nodes, &Tag{Name: defaultTagName})
+		g.Nodes = append(g.Nodes, &Tag{
+			Config: g.Config,
+			Spec: &openapi3.Tag{
+				Name: defaultTagName,
+			},
+		},
+		)
 		g.nodes[defaultTagName] = g.Nodes[0]
 	}
 }
@@ -271,11 +271,8 @@ func (g *Graph) addNode(schema *openapi3.T) {
 	}
 }
 
-// find Tag by name
+// find Tag by name, name can be empty
 func (g *Graph) findTag(name string) *Tag {
-	if name == "" {
-		name = defaultTagName
-	}
 	for _, t := range g.Nodes {
 		if t.Name == name {
 			return t

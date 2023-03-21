@@ -180,11 +180,10 @@ func genResponse(c *Config, codeStr string, spec *openapi3.ResponseRef) *Respons
 			r.Schema = genSchemaRef(c, "", mediaType.Schema, false)
 		}
 	}
-	if status == http.StatusOK {
-		if v, ok := c.schemas[r.Schema.Spec.Ref]; ok {
-			for _, contentType := range r.ContentTypes {
-				v.AppendContentTypeStructTag(c, v.Name, contentType)
-			}
+
+	if v, ok := c.schemas[r.Schema.Spec.Ref]; ok {
+		for _, contentType := range r.ContentTypes {
+			v.AppendContentTypeStructTag(c, v.Name, contentType)
 		}
 	}
 	// response object is pointer

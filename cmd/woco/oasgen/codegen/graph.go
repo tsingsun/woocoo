@@ -99,6 +99,19 @@ func (c *Config) AddTypeMap(key string, t *code.TypeInfo) {
 	}
 }
 
+func (c *Config) AddSchema(schema *Schema) {
+	if c.schemas == nil {
+		c.schemas = make(map[string]*Schema)
+	}
+	for _, sche := range c.schemas {
+		if sche.Name == schema.Name {
+			return
+		}
+	}
+	c.schemas[schema.Name] = schema
+	c.Schemas = append(c.Schemas, schema)
+}
+
 // NewGraph creates a new Graph for the code generation from the given Spec definitions.
 // It fails if one of the schemas is invalid.
 func NewGraph(c *Config, schema *openapi3.T) (g *Graph, err error) {

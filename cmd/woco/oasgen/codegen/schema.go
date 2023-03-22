@@ -234,6 +234,11 @@ func (sch *Schema) AppendContentTypeStructTag(c *Config, tagName, contentType st
 		if s, ok := c.schemas[ref]; ok {
 			s.AppendContentTypeStructTag(c, s.Name, contentType)
 		}
+	} else {
+		if sch.Type.Type == code.TypeOther && !sch.Type.Nillable {
+			// nillable like slice map, pointer do not need to be added to the schema,those are inline or has added to the schema
+			c.AddSchema(sch)
+		}
 	}
 	for _, property := range sch.properties {
 		property.AppendContentTypeStructTag(c, property.Name, contentType)

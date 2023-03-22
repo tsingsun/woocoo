@@ -3,35 +3,41 @@
 package petstore
 
 type CreateUserRequest struct {
-	Body struct {
-		User User `binding:"required" json:"user"`
-	}
+	Body CreateUserRequestBody
+}
+type CreateUserRequestBody struct {
+	User User `binding:"required" json:"user"`
 }
 
 type DeleteUserRequest struct {
-	UriParams struct {
-		Username string `binding:"required" uri:"username"`
-	}
+	UriParams DeleteUserRequestUriParams
+}
+type DeleteUserRequestUriParams struct {
+	Username string `binding:"required" uri:"username"`
 }
 
 type GetUserByNameRequest struct {
-	UriParams struct {
-		Username string `binding:"required" uri:"username"`
-	}
+	UriParams GetUserByNameRequestUriParams
+}
+type GetUserByNameRequestUriParams struct {
+	Username string `binding:"required" uri:"username"`
 }
 
 type LoginUserRequest struct {
-	Body struct {
-		Username string `binding:"regex=oas_pattern_0,required" form:"username"`
-		Password string `binding:"required" form:"password" password:"true"`
-	}
+	Body LoginUserRequestBody
+}
+type LoginUserRequestBody struct {
+	Username string `binding:"regex=oas_pattern_0,required" form:"username"`
+	Password string `binding:"required" form:"password" password:"true"`
 }
 
 type UpdateUserRequest struct {
-	UriParams struct {
-		Username string `binding:"required" uri:"username"`
-	}
-	Body struct {
-		User User `binding:"required" json:"user"`
-	}
+	UriParams UpdateUserRequestUriParams
+	Body      UpdateUserRequestBody
+}
+type UpdateUserRequestUriParams struct {
+	Username string `binding:"required" uri:"username"`
+}
+type UpdateUserRequestBody struct {
+	User User `binding:"required" json:"user"`
 }

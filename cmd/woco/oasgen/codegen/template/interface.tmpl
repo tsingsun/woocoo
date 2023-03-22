@@ -13,7 +13,7 @@
     type {{ $serviceName }}Server interface {
     {{- range $n.Operations }}
     // ({{ .Method }} {{ .Path }})
-    {{ .Name }}(c *gin.Context{{ if .HasRequest }}, req *{{ .RequestName }}{{ end }})(
+    {{ .Name }}(context.Context{{ if .HasRequest }}, *{{ .RequestName }}{{ end }})(
     {{- if .HasResponse}}{{ .ResponseOK.Schema.Type.String }}, {{ end }}error)
     {{- end }}
     }
@@ -24,7 +24,7 @@
     type Unimplemented{{ $serviceName }}Server struct {
     }
     {{- range $n.Operations }}
-        func (Unimplemented{{ $serviceName }}Server) {{ .Name }}(c *gin.Context{{ if .HasRequest }}, req *{{ .RequestName }}{{ end }})(
+        func (Unimplemented{{ $serviceName }}Server) {{ .Name }}(ctx context.Context{{ if .HasRequest }}, req *{{ .RequestName }}{{ end }})(
         {{- if .HasResponse}}_ {{ .ResponseOK.Schema.Type.String }}, {{ end }}err error) {
         err = fmt.Errorf("method {{ .Name }} not implemented")
         return

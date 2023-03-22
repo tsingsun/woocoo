@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration/petstore"
@@ -29,33 +30,33 @@ type Server struct {
 	petstore.UnimplementedUserServer
 }
 
-func (s Server) FindPetsByTags(c *gin.Context, req *petstore.FindPetsByTagsRequest) ([]*petstore.Pet, error) {
+func (s Server) FindPetsByTags(ctx context.Context, req *petstore.FindPetsByTagsRequest) ([]*petstore.Pet, error) {
 	return []*petstore.Pet{
 		{ID: 1, Name: "dog"},
 	}, nil
 }
 
-func (s Server) UpdatePetWithForm(c *gin.Context, req *petstore.UpdatePetWithFormRequest) (err error) {
+func (s Server) UpdatePetWithForm(ctx context.Context, req *petstore.UpdatePetWithFormRequest) (err error) {
 	return errors.New("UpdatePetWithForm Error")
 }
 
-func (s Server) LoginUser(c *gin.Context, req *petstore.LoginUserRequest) (_ string, err error) {
+func (s Server) LoginUser(ctx context.Context, req *petstore.LoginUserRequest) (_ string, err error) {
 	return "ok", nil
 }
 
-func (s Server) GetOrderById(c *gin.Context, req *petstore.GetOrderByIdRequest) (*petstore.Order, error) {
+func (s Server) GetOrderById(ctx context.Context, req *petstore.GetOrderByIdRequest) (*petstore.Order, error) {
 	return &petstore.Order{
 		ID: 1, PetId: 1, Quantity: 1, ShipDate: time.Now(), Status: "placed", Complete: true,
 	}, nil
 }
 
-func (s Server) GetPetById(c *gin.Context, req *petstore.GetPetByIdRequest) (_ *petstore.Pet, err error) {
+func (s Server) GetPetById(ctx context.Context, req *petstore.GetPetByIdRequest) (_ *petstore.Pet, err error) {
 	return &petstore.Pet{
 		ID: 1, Name: "dog", PhotoUrls: []string{"http://github.com"},
 		Tags: []*petstore.Tag{{ID: 1, Name: "blue"}},
 	}, nil
 }
 
-func (Server) UpdateUser(c *gin.Context, req *petstore.UpdateUserRequest) (err error) {
+func (Server) UpdateUser(ctx context.Context, req *petstore.UpdateUserRequest) (err error) {
 	return nil
 }

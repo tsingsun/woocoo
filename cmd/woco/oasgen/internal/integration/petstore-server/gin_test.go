@@ -55,7 +55,7 @@ func (s *ginTestSuite) TestUpdatePetWithForm() {
 	w := httptest.NewRecorder()
 	s.Router.ServeHTTP(w, r)
 	assert.Equal(s.T(), 500, w.Code)
-	assert.JSONEq(s.T(), `{"errors":[{"message":"UpdatePetWithForm Error"}]}`, w.Body.String())
+	assert.JSONEq(s.T(), `{"errors":[{"code":500,"message":"UpdatePetWithForm Error"}]}`, w.Body.String())
 }
 
 func (s *ginTestSuite) TestLoginUser() {

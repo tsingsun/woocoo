@@ -9,30 +9,43 @@
     {{- if .HasRequest }}
         type {{ .RequestName }} struct {
         {{- if .Request.BindUri }}
-            UriParams struct {
+            UriParams {{ .RequestName }}UriParams
+        {{- end }}
+        {{- if .Request.BindHeader }}
+            HeaderParams {{ .RequestName }}HeaderParams
+        {{- end }}
+        {{- if .Request.BindCookie }}
+            CookieParams {{ .RequestName }}CookieParams
+        {{- end }}
+        {{- if .Request.BindBody }}
+            Body {{ .RequestName }}Body
+        {{- end }}
+        }
+
+        {{- if .Request.BindUri }}
+            type {{ .RequestName }}UriParams struct {
             {{- range .Request.UriParameters }}
                 {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
             }
         {{- end }}
         {{- if .Request.BindHeader }}
-            HeaderParams struct {
+            type {{ .RequestName }}HeaderParams struct {
             {{- range .Request.HeaderParameters }}
                 {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
             }
         {{- end }}
         {{- if .Request.BindCookie }}
-            CookieParams struct {
+            type {{ .RequestName }}CookieParams struct {
             {{- range .Request.CookieParameters }}
                 {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
             }
         {{- end }}
         {{- if .Request.BindBody }}
-            Body struct {
+            type {{ .RequestName }}Body struct {
             {{- range .Request.Body }}
                 {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
             }
         {{- end }}
-        }
     {{ end }}
     {{- if .HasResponse}}
         {{- with .ResponseOK}}

@@ -3,60 +3,71 @@
 package petstore
 
 type AddPetRequest struct {
-	Body struct {
-		Pet Pet `binding:"required" json:"pet" xml:"Pet"`
-	}
+	Body AddPetRequestBody
+}
+type AddPetRequestBody struct {
+	Pet Pet `binding:"required" json:"pet" xml:"Pet"`
 }
 
 type DeletePetRequest struct {
-	UriParams struct {
-		PetId int64 `binding:"required" uri:"petId"`
-	}
-	HeaderParams struct {
-		APIKey string `header:"api_key"`
-	}
+	UriParams    DeletePetRequestUriParams
+	HeaderParams DeletePetRequestHeaderParams
+}
+type DeletePetRequestUriParams struct {
+	PetId int64 `binding:"required" uri:"petId"`
+}
+type DeletePetRequestHeaderParams struct {
+	APIKey string `header:"api_key"`
 }
 
 type FindPetsByStatusRequest struct {
-	Body struct {
-		Status []string `binding:"required" form:"status"`
-	}
+	Body FindPetsByStatusRequestBody
+}
+type FindPetsByStatusRequestBody struct {
+	Status []string `binding:"required" form:"status"`
 }
 
 type FindPetsByTagsRequest struct {
-	Body struct {
-		Tags []string `binding:"required" form:"tags"`
-	}
+	Body FindPetsByTagsRequestBody
+}
+type FindPetsByTagsRequestBody struct {
+	Tags []string `binding:"required" form:"tags"`
 }
 
 type GetPetByIdRequest struct {
-	UriParams struct {
-		PetId int64 `binding:"required" uri:"petId"`
-	}
+	UriParams GetPetByIdRequestUriParams
+}
+type GetPetByIdRequestUriParams struct {
+	PetId int64 `binding:"required" uri:"petId"`
 }
 
 type UpdatePetRequest struct {
-	Body struct {
-		Pet Pet `binding:"required" json:"pet" xml:"Pet"`
-	}
+	Body UpdatePetRequestBody
+}
+type UpdatePetRequestBody struct {
+	Pet Pet `binding:"required" json:"pet" xml:"Pet"`
 }
 
 type UpdatePetWithFormRequest struct {
-	UriParams struct {
-		PetId int64 `binding:"required" uri:"petId"`
-	}
-	Body struct {
-		Name   string `form:"name"`
-		Status string `form:"status"`
-	}
+	UriParams UpdatePetWithFormRequestUriParams
+	Body      UpdatePetWithFormRequestBody
+}
+type UpdatePetWithFormRequestUriParams struct {
+	PetId int64 `binding:"required" uri:"petId"`
+}
+type UpdatePetWithFormRequestBody struct {
+	Name   string `form:"name"`
+	Status string `form:"status"`
 }
 
 type UploadFileRequest struct {
-	UriParams struct {
-		PetId int64 `binding:"required" uri:"petId"`
-	}
-	Body struct {
-		AdditionalMetadata string `form:"additionalMetadata"`
-		File               string `form:"file"`
-	}
+	UriParams UploadFileRequestUriParams
+	Body      UploadFileRequestBody
+}
+type UploadFileRequestUriParams struct {
+	PetId int64 `binding:"required" uri:"petId"`
+}
+type UploadFileRequestBody struct {
+	AdditionalMetadata string `form:"additionalMetadata"`
+	File               string `form:"file"`
 }

@@ -179,6 +179,15 @@ ZwIDAQAB
 			if !tt.wantErr(t, nil, w) {
 				return
 			}
+			if tt.name == "tokenStoreExist" {
+				srv.Router().Engine.ContextWithFallback = true
+				srv.Router().Engine.POST("/logout", mw.Config.LogoutHandler)
+				r = httptest.NewRequest("POST", "/logout", nil)
+				r.Header.Set("Authorization", "Bearer "+token)
+				w = httptest.NewRecorder()
+				srv.Router().ServeHTTP(w, r)
+				assert.Equal(t, http.StatusOK, w.Code)
+			}
 		})
 	}
 }

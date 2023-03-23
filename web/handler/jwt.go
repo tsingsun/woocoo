@@ -26,11 +26,13 @@ type (
 		TokenLookupFuncs []ValuesExtractor
 		// SuccessHandler defines a function which is executed for a valid token before middleware chain continues with next
 		// middleware or handler.
-		SuccessHandler JWTSuccessHandler
+		SuccessHandler func(c *gin.Context)
+		// LogoutHandler defines a function which is executed for user logout system.It clear something like cache.
+		LogoutHandler func(*gin.Context)
 		// ErrorHandler defines a function which is executed for an invalid token.
 		// It may be used to define a custom JWT error and abort the request.like use:
 		//  c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
-		ErrorHandler JWTErrorHandler
+		ErrorHandler func(c *gin.Context, err error) error
 		// TokenStoreKey is the name of the cache driver,default is "redis".
 		// When this option is used, requirements : token cache KEY that uses the JWT ID.
 		TokenStoreKey string `json:"tokenStoreKey" yaml:"TokenStoreKey"`
@@ -39,11 +41,6 @@ type (
 		// Use GeneratePrincipal by default. You can use your own function to create principal.
 		WithPrincipalContext func(c *gin.Context, token *jwt.Token) error
 	}
-	// JWTSuccessHandler defines a function which is executed for a valid token.
-	JWTSuccessHandler func(c *gin.Context)
-
-	// JWTErrorHandler defines a function which is executed for an invalid token.
-	JWTErrorHandler func(c *gin.Context, err error) error
 )
 
 // JWTMiddleware provides a Json-Web-Token authentication implementation. On failure, a 401 HTTP response
@@ -105,6 +102,19 @@ func (mw *JWTMiddleware) build(cfg *conf.Configuration) {
 	if opts.TokenStoreKey != "" {
 		mw.TokenStore = cache.GetCache(opts.TokenStoreKey)
 	}
+
+	if opts.LogoutHandler == nil {
+		opts.LogoutHandler = func(c *gin.Context) {
+			gp := security.GenericPrincipalFromContext(c)
+			cl := gp.Identity().Claims()
+			jti, ok := opts.GetTokenIDFunc(&jwt.Token{Claims: cl})
+			if ok && mw.TokenStore != nil {
+				if err := mw.TokenStore.Del(c, jti); err != nil {
+					c.Error(err) // lint:ignore
+				}
+			}
+		}
+	}
 }
 
 func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
@@ -144,9 +154,9 @@ func (mw *JWTMiddleware) middleware() gin.HandlerFunc {
 					continue
 				}
 				if mw.TokenStore != nil {
-					id, ok := mw.Config.GetTokenIDFunc(token)
+					jti, ok := mw.Config.GetTokenIDFunc(token)
 					if ok {
-						if exists := mw.TokenStore.Has(c, id); !exists {
+						if exists := mw.TokenStore.Has(c, jti); !exists {
 							lastTokenErr = jwt.ErrTokenUnverifiable
 							continue
 						}

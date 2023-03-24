@@ -13,7 +13,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/google/uuid v1.3.0
 	github.com/stretchr/testify v1.8.2
-	github.com/tsingsun/woocoo v0.2.3-0.20230316004528-e4db0d86bd48
+	github.com/tsingsun/woocoo v0.2.3-0.20230324100837-1caee88d1552
 	github.com/urfave/cli/v2 v2.25.0
 	golang.org/x/tools v0.6.1-0.20230222164832-25d2519c8696
 )
@@ -79,6 +79,7 @@ require (
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
+	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect

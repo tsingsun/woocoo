@@ -28,7 +28,7 @@ type (
 )
 
 var DefaultErrorHandleConfig = ErrorHandleConfig{
-	NegotiateFormat: []string{binding.MIMEJSON, binding.MIMEXML, binding.MIMEYAML, binding.MIMETOML},
+	NegotiateFormat: []string{binding.MIMEJSON, binding.MIMEXML, binding.MIMEHTML},
 	ErrorParser:     defaultErrorParser,
 }
 
@@ -91,7 +91,7 @@ func (em *ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerF
 			if c.Writer.Written() { // if the status has been written,must not write again
 				code = c.Writer.Status()
 			}
-			ErrorNegotiateResponse(c, code, e, em.config.NegotiateFormat)
+			NegotiateResponse(c, code, e, em.config.NegotiateFormat)
 		}
 	}
 }
@@ -121,20 +121,6 @@ func defaultErrorParser(c *gin.Context, public error) (int, any) {
 
 func (em *ErrorHandleMiddleware) Shutdown(_ context.Context) error {
 	return nil
-}
-
-// ErrorNegotiateResponse guarantee return data to client
-func ErrorNegotiateResponse(c *gin.Context, code int, data any, offered []string) {
-	switch c.NegotiateFormat(offered...) {
-	case binding.MIMEXML:
-		c.XML(code, data)
-	case binding.MIMEYAML:
-		c.YAML(code, data)
-	case binding.MIMETOML:
-		c.TOML(code, data)
-	default:
-		c.JSON(code, data)
-	}
 }
 
 // NegotiateResponse calls different Render according to acceptably Accept format.

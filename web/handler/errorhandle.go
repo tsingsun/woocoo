@@ -10,12 +10,16 @@ import (
 	"strings"
 )
 
+var (
+	DefaultNegotiateFormat = []string{binding.MIMEJSON, binding.MIMEXML}
+)
+
 type (
 	// ErrorHandleConfig is the config for error handle
 	ErrorHandleConfig struct {
 		// NegotiateFormat is the offered http media type format for errors.
 		// formats split by comma, such as "application/json,application/xml"
-		Accepts         string      `json:"accepts" yaml:"negotiateFormat"`
+		Accepts         string      `json:"accepts" yaml:"accepts"`
 		NegotiateFormat []string    `json:"-" yaml:"-"`
 		ErrorParser     ErrorParser `json:"-" yaml:"-"`
 		// Message is the string while the error is private
@@ -26,11 +30,6 @@ type (
 	// ErrorParser is the error parser
 	ErrorParser func(c *gin.Context, public error) (int, any)
 )
-
-var DefaultErrorHandleConfig = ErrorHandleConfig{
-	NegotiateFormat: []string{binding.MIMEJSON, binding.MIMEXML, binding.MIMEHTML},
-	ErrorParser:     defaultErrorParser,
-}
 
 // FormatResponseError converts a http error to gin.H
 func FormatResponseError(code int, err error) gin.H {
@@ -66,10 +65,6 @@ func (em *ErrorHandleMiddleware) Name() string {
 }
 
 func (em *ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	if em.config == nil {
-		em.config = new(ErrorHandleConfig)
-	}
-	*em.config = DefaultErrorHandleConfig
 	if em.opts.configFunc != nil {
 		em.config = em.opts.configFunc().(*ErrorHandleConfig)
 	} else if cfg != nil {
@@ -79,10 +74,15 @@ func (em *ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerF
 	}
 	if em.config.Accepts != "" {
 		em.config.NegotiateFormat = strings.Split(em.config.Accepts, ",")
+	} else if len(em.config.NegotiateFormat) == 0 {
+		em.config.NegotiateFormat = DefaultNegotiateFormat
 	}
 	var messageError error
 	if em.config.Message != "" {
 		messageError = errors.New(em.config.Message)
+	}
+	if em.config.ErrorParser == nil {
+		em.config.ErrorParser = DefaultErrorParser
 	}
 	return func(c *gin.Context) {
 		c.Next()
@@ -96,25 +96,25 @@ func (em *ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerF
 	}
 }
 
-func defaultErrorParser(c *gin.Context, public error) (int, any) {
+var DefaultErrorParser = func(c *gin.Context, public error) (int, any) {
 	var errs = make([]gin.H, len(c.Errors))
 	var code = c.Writer.Status()
+	if code == http.StatusOK {
+		code = http.StatusInternalServerError
+	}
 	for i, e := range c.Errors {
 		switch e.Type {
 		case gin.ErrorTypePublic:
 			errs[i] = FormatResponseError(0, e.Err)
 		case gin.ErrorTypePrivate:
 			if public == nil {
-				errs[0] = FormatResponseError(http.StatusInternalServerError, e.Err)
+				errs[0] = FormatResponseError(code, e.Err)
 			} else {
-				errs[0] = FormatResponseError(http.StatusInternalServerError, public)
+				errs[0] = FormatResponseError(code, public)
 			}
 		default:
 			errs[i] = FormatResponseError(int(e.Type), e.Err)
 		}
-	}
-	if code == http.StatusOK {
-		code = http.StatusInternalServerError
 	}
 	return code, gin.H{"errors": errs}
 }
@@ -134,10 +134,6 @@ func NegotiateResponse(c *gin.Context, code int, data any, offered []string) {
 		c.JSON(code, data)
 	case binding.MIMEXML:
 		c.XML(code, data)
-	case binding.MIMEYAML:
-		c.YAML(code, data)
-	case binding.MIMETOML:
-		c.TOML(code, data)
 	default:
 		if c.Writer.Written() {
 			c.Error(errors.New("the accepted formats are not offered by the server")) // nolint: errcheck

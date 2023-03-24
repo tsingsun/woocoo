@@ -38,22 +38,19 @@ import(
             var req {{$pkgName}}.{{ .RequestName }}
             {{- if .Request.BindUri}}
                 if err := c.ShouldBindUri(&req.UriParams); err != nil {
-                    c.Status(http.StatusBadRequest)
-                    c.Error(err)
+                    c.AbortWithError(http.StatusBadRequest, err)
                     return
                 }
             {{- end }}
             {{- if .Request.BindHeader }}
                 if err := c.ShouldBindHeader(&req.HeaderParams); err != nil {
-                    c.Status(http.StatusBadRequest)
-                    c.Error(err)
+                    c.AbortWithError(http.StatusBadRequest, err)
                     return
                 }
             {{- end }}
             {{- if .Request.BindBody }}
                 if err := c.ShouldBind(&req.Body); err != nil {
-                    c.Status(http.StatusBadRequest)
-                    c.Error(err)
+                    c.AbortWithError(http.StatusBadRequest, err)
                     return
                 }
             {{- end }}
@@ -61,14 +58,12 @@ import(
         {{- if .HasResponse }}
             resp, err := si.{{ .Name }}(c,{{ if .HasRequest }}&req, {{ end }})
             if err != nil {
-                c.Status(http.StatusInternalServerError)
                 c.Error(err)
                 return
             }
             {{- if and .ResponseNotFound .ResponseOK.Schema.Type.Nillable }}
                 if resp == nil {
-                    c.Status(http.StatusNotFound)
-                    c.Error(errors.New("{{ .ResponseNotFound.Description }}"))
+                    c.AbortWithError(http.StatusBadRequest, errors.New("{{ .ResponseNotFound.Description }}"))
                     return
                 }
             {{- end }}
@@ -82,7 +77,6 @@ import(
         {{- else }}
             err := si.{{ .Name }}(c,{{ if .HasRequest }}&req, {{ end }})
             if err != nil {
-                c.Status(http.StatusInternalServerError)
                 c.Error(err)
                 return
             }

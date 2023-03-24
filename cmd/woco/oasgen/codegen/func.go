@@ -129,7 +129,7 @@ func HasTag(src []string, tag string) bool {
 // if the response content type is not support negotiate, the response content type will be set to the first content type in the response use bytes.
 func IsSupportNegotiate(ress []string) bool {
 	for _, res := range ress {
-		for _, c := range handler.DefaultErrorHandleConfig.NegotiateFormat {
+		for _, c := range handler.DefaultNegotiateFormat {
 			if c == res {
 				return true
 			}

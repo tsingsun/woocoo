@@ -16,7 +16,7 @@
             {{- continue }}
         {{- end }}
     // ({{ .Method }} {{ .Path }})
-    {{ .Name }}(context.Context{{ if .HasRequest }}, *{{ .RequestName }}{{ end }})(
+    {{ .Name }}(*gin.Context{{ if .HasRequest }}, *{{ .RequestName }}{{ end }})(
     {{- if .HasResponse}}{{ .ResponseOK.Schema.Type.String }}, {{ end }}error)
     {{- end }}
     }
@@ -30,7 +30,7 @@
         {{- if .IgnoreInterface }}
             {{- continue }}
         {{- end }}
-        func (Unimplemented{{ $serviceName }}Server) {{ .Name }}(ctx context.Context{{ if .HasRequest }}, req *{{ .RequestName }}{{ end }})(
+        func (Unimplemented{{ $serviceName }}Server) {{ .Name }}(c *gin.Context{{ if .HasRequest }}, req *{{ .RequestName }}{{ end }})(
         {{- if .HasResponse}}_ {{ .ResponseOK.Schema.Type.String }}, {{ end }}err error) {
         err = fmt.Errorf("method {{ .Name }} not implemented")
         return

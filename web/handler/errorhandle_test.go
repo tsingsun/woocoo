@@ -125,18 +125,6 @@ func TestErrorResponse(t *testing.T) {
 			wantContentType: binding.MIMEJSON,
 		},
 		{
-			name: "yaml",
-			field: field{
-				midCfg: conf.NewFromParse(conf.NewParserFromStringMap(nil)),
-			},
-			args: args{
-				err:    fmt.Errorf("standError"),
-				accept: binding.MIMEYAML,
-			},
-			wantCode:        http.StatusInternalServerError,
-			wantContentType: binding.MIMEYAML,
-		},
-		{
 			name: "proto",
 			field: field{
 				midCfg: conf.NewFromParse(conf.NewParserFromStringMap(nil)),

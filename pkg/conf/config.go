@@ -295,43 +295,43 @@ func (c *Configuration) Abs(path string) string {
 	}
 	return filepath.Join(c.GetBaseDir(), path)
 }
-func Get(path string) any { return global.Get(path) }
 
+func Get(path string) any { return global.Get(path) }
 func (c *Configuration) Get(key string) any {
 	return c.parser.Get(key)
 }
-func Bool(path string) bool { return global.Bool(path) }
 
+func Bool(path string) bool { return global.Bool(path) }
 func (c *Configuration) Bool(path string) bool {
 	return c.parser.k.Bool(path)
 }
-func Float64(path string) float64 { return global.Float64(path) }
 
+func Float64(path string) float64 { return global.Float64(path) }
 func (c *Configuration) Float64(path string) float64 {
 	return c.parser.k.Float64(path)
 }
-func Int(path string) int { return global.Int(path) }
 
+func Int(path string) int { return global.Int(path) }
 func (c *Configuration) Int(path string) int {
 	return c.parser.k.Int(path)
 }
-func IntSlice(path string) []int { return global.IntSlice(path) }
 
+func IntSlice(path string) []int { return global.IntSlice(path) }
 func (c *Configuration) IntSlice(path string) []int {
 	return c.parser.k.Ints(path)
 }
-func String(path string) string { return global.String(path) }
 
+func String(path string) string { return global.String(path) }
 func (c *Configuration) String(path string) string {
 	return c.parser.k.String(path)
 }
-func StringMap(path string) map[string]string { return global.StringMap(path) }
 
+func StringMap(path string) map[string]string { return global.StringMap(path) }
 func (c *Configuration) StringMap(path string) map[string]string {
 	return c.parser.k.StringMap(path)
 }
-func StringSlice(path string) []string { return global.StringSlice(path) }
 
+func StringSlice(path string) []string { return global.StringSlice(path) }
 func (c *Configuration) StringSlice(path string) []string {
 	return c.parser.k.Strings(path)
 }
@@ -340,12 +340,11 @@ func (c *Configuration) StringSlice(path string) []string {
 //
 // if config is init from a map value of time.Time, the layout will be: `2006-01-02 15:04:05 -0700 MST`
 func Time(path string, layout string) time.Time { return global.Time(path, layout) }
-
 func (c *Configuration) Time(path string, layout string) time.Time {
 	return c.parser.k.Time(path, layout)
 }
-func Duration(path string) time.Duration { return global.Duration(path) }
 
+func Duration(path string) time.Duration { return global.Duration(path) }
 func (c *Configuration) Duration(path string) time.Duration {
 	return c.parser.k.Duration(path)
 }
@@ -360,9 +359,19 @@ func (c *Configuration) IsSet(path string) bool {
 
 // AllSettings return all settings
 func AllSettings() map[string]any { return global.AllSettings() }
-
 func (c *Configuration) AllSettings() map[string]any {
 	return c.parser.k.All()
+}
+
+type CValue interface {
+	int | int8 | int16 | int32 | int64 | float32 | float64 | string | bool
+}
+
+func GetOrDefault[T CValue](path string, def T) T {
+	if !IsSet(path) {
+		return def
+	}
+	return Get(path).(T)
 }
 
 // Join paths

@@ -138,6 +138,8 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 		case "uri":
 			info = &code.TypeInfo{Type: code.TypeString}
 			sch.StructTags = append(sch.StructTags, "uri")
+		case "binary":
+			info = &code.TypeInfo{Type: code.TypeBytes, Nillable: true}
 		default:
 			info = &code.TypeInfo{Type: code.TypeString}
 		}

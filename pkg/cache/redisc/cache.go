@@ -220,21 +220,21 @@ func (cd *Cache) Exists(ctx context.Context, key string) bool {
 }
 
 // Get gets the value for the given key.
-func (cd *Cache) Get(ctx context.Context, key string, value interface{}) error {
+func (cd *Cache) Get(ctx context.Context, key string, value any) error {
 	return cd.get(ctx, key, value, SkipMode(0))
 }
 
 // GetSkip gets the value for the given key skipping by special.
-func (cd *Cache) GetSkip(ctx context.Context, key string, value interface{}, mode SkipMode) error {
+func (cd *Cache) GetSkip(ctx context.Context, key string, value any, mode SkipMode) error {
 	return cd.get(ctx, key, value, mode)
 }
 
 // GetSkippingLocalCache gets the value for the given key skipping local cache.
-func (cd *Cache) GetSkippingLocalCache(ctx context.Context, key string, value interface{}) error {
+func (cd *Cache) GetSkippingLocalCache(ctx context.Context, key string, value any) error {
 	return cd.get(ctx, key, value, SkipLocal)
 }
 
-func (cd *Cache) get(ctx context.Context, key string, value interface{}, mode SkipMode) error {
+func (cd *Cache) get(ctx context.Context, key string, value any, mode SkipMode) error {
 	b, err := cd.getBytes(ctx, key, mode)
 	if err != nil {
 		return err
@@ -383,11 +383,11 @@ func (cd *Cache) CleanLocalCache() {
 	}
 }
 
-func (cd *Cache) Marshal(value interface{}) ([]byte, error) {
+func (cd *Cache) Marshal(value any) ([]byte, error) {
 	return cd.marshal(value)
 }
 
-func (cd *Cache) _marshal(value interface{}) ([]byte, error) {
+func (cd *Cache) _marshal(value any) ([]byte, error) {
 	switch value := value.(type) {
 	case nil:
 		return nil, nil
@@ -421,11 +421,11 @@ func compress(data []byte) []byte {
 	return b
 }
 
-func (cd *Cache) Unmarshal(b []byte, value interface{}) error {
+func (cd *Cache) Unmarshal(b []byte, value any) error {
 	return cd.unmarshal(b, value)
 }
 
-func (cd *Cache) _unmarshal(b []byte, value interface{}) error {
+func (cd *Cache) _unmarshal(b []byte, value any) error {
 	if len(b) == 0 {
 		return nil
 	}

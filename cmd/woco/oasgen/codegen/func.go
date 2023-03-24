@@ -3,6 +3,7 @@ package codegen
 import (
 	"fmt"
 	"github.com/tsingsun/woocoo/cmd/woco/code"
+	"github.com/tsingsun/woocoo/web/handler"
 	"regexp"
 	"strings"
 	"text/template"
@@ -13,10 +14,12 @@ var (
 	pattenMap   map[string]string
 
 	funcs = template.FuncMap{
-		"extend":         extend,
-		"oasUriToGinUri": OasUriToGinUri,
-		"ginReturnType":  GinReturnType,
-		"patternMap":     func() map[string]string { return pattenMap },
+		"extend":             extend,
+		"oasUriToGinUri":     OasUriToGinUri,
+		"ginReturnType":      GinReturnType,
+		"patternMap":         func() map[string]string { return pattenMap },
+		"isSupportNegotiate": IsSupportNegotiate,
+		"isBytes":            IsBytes,
 	}
 )
 
@@ -120,4 +123,22 @@ func HasTag(src []string, tag string) bool {
 		}
 	}
 	return false
+}
+
+// IsSupportNegotiate check if the response content type is support negotiate.
+// if the response content type is not support negotiate, the response content type will be set to the first content type in the response use bytes.
+func IsSupportNegotiate(ress []string) bool {
+	for _, res := range ress {
+		for _, c := range handler.DefaultErrorHandleConfig.NegotiateFormat {
+			if c == res {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// IsBytes check if the response content type is bytes.
+func IsBytes(p code.Type) bool {
+	return p == code.TypeBytes
 }

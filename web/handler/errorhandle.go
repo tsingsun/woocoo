@@ -27,7 +27,7 @@ type (
 	ErrorParser func(c *gin.Context, public error) (int, any)
 )
 
-var defaultErrorHandleConfig = ErrorHandleConfig{
+var DefaultErrorHandleConfig = ErrorHandleConfig{
 	NegotiateFormat: []string{binding.MIMEJSON, binding.MIMEXML, binding.MIMEYAML, binding.MIMETOML},
 	ErrorParser:     defaultErrorParser,
 }
@@ -69,7 +69,7 @@ func (em *ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerF
 	if em.config == nil {
 		em.config = new(ErrorHandleConfig)
 	}
-	*em.config = defaultErrorHandleConfig
+	*em.config = DefaultErrorHandleConfig
 	if em.opts.configFunc != nil {
 		em.config = em.opts.configFunc().(*ErrorHandleConfig)
 	} else if cfg != nil {
@@ -91,7 +91,7 @@ func (em *ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerF
 			if c.Writer.Written() { // if the status has been written,must not write again
 				code = c.Writer.Status()
 			}
-			NegotiateResponse(c, code, e, em.config.NegotiateFormat)
+			ErrorNegotiateResponse(c, code, e, em.config.NegotiateFormat)
 		}
 	}
 }
@@ -123,10 +123,25 @@ func (em *ErrorHandleMiddleware) Shutdown(_ context.Context) error {
 	return nil
 }
 
+// ErrorNegotiateResponse guarantee return data to client
+func ErrorNegotiateResponse(c *gin.Context, code int, data any, offered []string) {
+	switch c.NegotiateFormat(offered...) {
+	case binding.MIMEXML:
+		c.XML(code, data)
+	case binding.MIMEYAML:
+		c.YAML(code, data)
+	case binding.MIMETOML:
+		c.TOML(code, data)
+	default:
+		c.JSON(code, data)
+	}
+}
+
 // NegotiateResponse calls different Render according to acceptably Accept format.
 //
 // no support format described:
-//   protobuf: gin.H is not protoreflect.ProtoMessage
+//
+//	protobuf: gin.H is not protoreflect.ProtoMessage
 func NegotiateResponse(c *gin.Context, code int, data any, offered []string) {
 	switch c.NegotiateFormat(offered...) {
 	case binding.MIMEJSON:
@@ -143,6 +158,5 @@ func NegotiateResponse(c *gin.Context, code int, data any, offered []string) {
 		} else {
 			c.AbortWithError(http.StatusNotAcceptable, errors.New("the accepted formats are not offered by the server")) // nolint: errcheck
 		}
-
 	}
 }

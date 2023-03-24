@@ -202,6 +202,18 @@ func TestRedisc(t *testing.T) {
 				assert.True(t, rdc.IsNotFound(err))
 			},
 		},
+		{
+			name: "cache interface-int",
+			do: func() {
+				rdc, rdb := initStandaloneRedisc(t)
+				assert.NoError(t, rdc.Set(context.Background(), "key", 1, 0))
+				rdb.FastForward(time.Hour * 24)
+				assert.True(t, rdc.Has(context.Background(), "key"))
+				got := 0
+				assert.NoError(t, rdc.Get(context.Background(), "key", &got))
+				assert.Equal(t, 1, got)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

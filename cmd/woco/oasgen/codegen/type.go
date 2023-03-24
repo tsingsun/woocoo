@@ -28,6 +28,7 @@ type (
 		Responses        []*Response
 		ResponseOK       *Response
 		ResponseNotFound *Response
+		IgnoreInterface  bool
 	}
 	// Parameter include parameter and requestBody
 	Parameter struct {
@@ -97,6 +98,12 @@ func genOperation(c *Config, spec *openapi3.T) (ops []*Operation) {
 			op.GenSecurity(spec.Components.SecuritySchemes)
 			op.GenParameters()
 			op.GenResponses()
+			for k, v := range specop.Extensions {
+				switch k {
+				case goCodeGenIgnore:
+					op.IgnoreInterface = v.(bool)
+				}
+			}
 		}
 	}
 	sort.Slice(ops, func(i, j int) bool {

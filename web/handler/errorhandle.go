@@ -23,33 +23,18 @@ type (
 		NegotiateFormat []string    `json:"-" yaml:"-"`
 		ErrorParser     ErrorParser `json:"-" yaml:"-"`
 		// Message is the string while the error is private
-		Message      string `json:"message" yaml:"message"`
-		messageError error
+		Message string `json:"message" yaml:"message"`
 	}
 
-	// ErrorParser is the error parser
+	// ErrorParser is the error parser,public error adopt by private error to show to client.
 	ErrorParser func(c *gin.Context, public error) (int, any)
-)
 
-// FormatResponseError converts a http error to gin.H
-func FormatResponseError(code int, err error) gin.H {
-	if code != 0 {
-		return gin.H{"code": code, "message": err.Error()}
+	// ErrorHandleMiddleware is the middleware for error handle to format the errors to client
+	ErrorHandleMiddleware struct {
+		config *ErrorHandleConfig
+		opts   middlewareOptions
 	}
-	return gin.H{"message": err.Error()}
-}
-
-// SetContextError set the error to Context,and the error will be handled by ErrorHandleMiddleware
-func SetContextError(c *gin.Context, errCode int, err error) {
-	ce := c.Error(err)
-	ce.Type = gin.ErrorType(errCode)
-}
-
-// ErrorHandleMiddleware is the middleware for error handle to format the errors to client
-type ErrorHandleMiddleware struct {
-	config *ErrorHandleConfig
-	opts   middlewareOptions
-}
+)
 
 // ErrorHandle is the error handle middleware
 func ErrorHandle(opts ...MiddlewareOption) *ErrorHandleMiddleware {
@@ -96,7 +81,7 @@ func (em *ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerF
 	}
 }
 
-var DefaultErrorParser = func(c *gin.Context, public error) (int, any) {
+var DefaultErrorParser ErrorParser = func(c *gin.Context, public error) (int, any) {
 	var errs = make([]gin.H, len(c.Errors))
 	var code = c.Writer.Status()
 	if code == http.StatusOK {
@@ -105,12 +90,12 @@ var DefaultErrorParser = func(c *gin.Context, public error) (int, any) {
 	for i, e := range c.Errors {
 		switch e.Type {
 		case gin.ErrorTypePublic:
-			errs[i] = FormatResponseError(0, e.Err)
+			errs[i] = FormatResponseError(code, e.Err)
 		case gin.ErrorTypePrivate:
 			if public == nil {
-				errs[0] = FormatResponseError(code, e.Err)
+				errs[i] = FormatResponseError(code, e.Err)
 			} else {
-				errs[0] = FormatResponseError(code, public)
+				errs[i] = FormatResponseError(code, public)
 			}
 		default:
 			errs[i] = FormatResponseError(int(e.Type), e.Err)
@@ -141,4 +126,18 @@ func NegotiateResponse(c *gin.Context, code int, data any, offered []string) {
 			c.AbortWithError(http.StatusNotAcceptable, errors.New("the accepted formats are not offered by the server")) // nolint: errcheck
 		}
 	}
+}
+
+// FormatResponseError converts a http error to gin.H
+func FormatResponseError(code int, err error) gin.H {
+	if code != 0 {
+		return gin.H{"code": code, "message": err.Error()}
+	}
+	return gin.H{"message": err.Error()}
+}
+
+// SetContextError set the error to Context,and the error will be handled by ErrorHandleMiddleware
+func SetContextError(c *gin.Context, code int, err error) {
+	ce := c.Error(err)
+	ce.Type = gin.ErrorType(code)
 }

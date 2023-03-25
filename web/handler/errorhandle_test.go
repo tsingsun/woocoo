@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -89,6 +90,7 @@ func TestSetContextError(t *testing.T) {
 			srv := gin.New()
 			srv.Use(eh)
 			srv.GET("/", func(c *gin.Context) {
+				c.Error(errors.New("standError"))
 				SetContextError(c, tt.args.code, tt.args.err)
 			})
 			srv.ServeHTTP(w, r)

@@ -43,6 +43,7 @@ func TestCompressionOption_ServerOption(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			co := CompressionOption{}
+			assert.Equal(t, "compression", co.Name())
 			if tt.panic {
 				assert.Panics(t, func() {
 					co.ServerOption(tt.args.cfg)

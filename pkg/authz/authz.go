@@ -84,37 +84,32 @@ func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorizatio
 
 	au.Enforcer = enforcer
 	au.Enforcer.EnableAutoSave(false)
-	au.Watcher, err = au.buildWatcher(cnf)
+	err = au.buildWatcher(cnf)
 	if err != nil {
 		return
 	}
-	if au.Watcher != nil { // enable watcher
-		if err := au.Enforcer.SetWatcher(au.Watcher); err != nil {
-			panic(err)
-		}
-		if err := au.Watcher.SetUpdateCallback(defaultUpdateCallback(au.Enforcer)); err != nil {
-			panic(err)
-		}
-	}
+
 	return
 }
 
-func (au *Authorization) buildWatcher(cnf *conf.Configuration) (w persist.Watcher, err error) {
+func (au *Authorization) buildWatcher(cnf *conf.Configuration) (err error) {
 	if !cnf.IsSet("watcherOptions") {
 		return
 	}
-	watcherOptions := rediswatcher.WatcherOptions{}
+	watcherOptions := rediswatcher.WatcherOptions{
+		OptionalUpdateCallback: defaultUpdateCallback(au.Enforcer),
+	}
 	err = cnf.Sub("watcherOptions").Unmarshal(&watcherOptions)
 	if err != nil {
 		return
 	}
 
 	if watcherOptions.Options.Addr != "" {
-		w, err = rediswatcher.NewWatcher(watcherOptions.Options.Addr, watcherOptions)
+		au.Watcher, err = rediswatcher.NewWatcher(watcherOptions.Options.Addr, watcherOptions)
 	} else if watcherOptions.ClusterOptions.Addrs != nil {
-		w, err = rediswatcher.NewWatcherWithCluster(watcherOptions.Options.Addr, watcherOptions)
+		au.Watcher, err = rediswatcher.NewWatcherWithCluster(watcherOptions.Options.Addr, watcherOptions)
 	}
-	return
+	return au.Enforcer.SetWatcher(au.Watcher)
 }
 
 // SetAdapter sets the default adapter for the enforcer.

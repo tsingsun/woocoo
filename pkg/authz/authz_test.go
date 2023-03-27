@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/test/testdata"
@@ -158,12 +159,15 @@ func TestRedisCallback(t *testing.T) {
 		m, err := json.Marshal(msg)
 		require.NoError(t, err)
 		redis.Publish("/casbin", string(m))
-		time.Sleep(time.Second * 2)
-		ok, err := authz.Enforcer.HasRoleForUser("alice", "admin")
-		assert.NoError(t, err)
-		if !assert.True(t, ok) {
-			t.Log(authz.Enforcer.GetRolesForUser("alice"))
-		}
+		wctest.RunWait(t, time.Second*3, func() error {
+			time.Sleep(time.Second * 2)
+			ok, err := authz.Enforcer.HasRoleForUser("alice", "admin")
+			assert.NoError(t, err)
+			if !assert.True(t, ok) {
+				t.Log(authz.Enforcer.GetRolesForUser("alice"))
+			}
+			return nil
+		})
 	})
 	// file adapter does not support UpdateForRemovePolicy
 	t.Run("UpdateForRemovePolicy", func(t *testing.T) {
@@ -175,9 +179,12 @@ func TestRedisCallback(t *testing.T) {
 		ok := authz.Enforcer.HasPolicy("alice", "data1", "remove")
 		assert.True(t, ok)
 		redis.Publish("/casbin", string(m))
-		time.Sleep(time.Second * 2)
-		ok = authz.Enforcer.HasPolicy("alice", "data1", "remove")
-		assert.False(t, ok)
-		assert.NoError(t, err)
+		wctest.RunWait(t, time.Second*3, func() error {
+			time.Sleep(time.Second * 2)
+			ok = authz.Enforcer.HasPolicy("alice", "data1", "remove")
+			assert.False(t, ok)
+			assert.NoError(t, err)
+			return nil
+		})
 	})
 }

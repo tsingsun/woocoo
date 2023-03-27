@@ -79,7 +79,7 @@ func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorizatio
 	}
 
 	if cnf.IsSet("expireTime") {
-		enforcer.SetExpireTime(uint(cnf.Duration("expireTime").Seconds()))
+		enforcer.SetExpireTime(cnf.Duration("expireTime"))
 	}
 
 	au.Enforcer = enforcer

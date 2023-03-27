@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/test/testdata"
@@ -89,6 +88,7 @@ func TestNewAuthorization(t *testing.T) {
 			},
 			wantErr: false,
 			check: func(t *testing.T, got *Authorization) {
+				defer got.Watcher.Close()
 				gotcallback := make(chan bool)
 				require.NoError(t, got.Watcher.SetUpdateCallback(func(s string) {
 					gotcallback <- true
@@ -147,8 +147,8 @@ func TestRedisCallback(t *testing.T) {
 		"model":  testdata.Tmp(`callback_model.conf`),
 		"policy": testdata.Tmp(`callback_policy.csv`),
 	}))
+	defer authz.Watcher.Close()
 	require.NoError(t, err)
-	t.Parallel()
 	t.Run("UpdateForAddPolicy", func(t *testing.T) {
 		//authz.Enforcer.AddRoleForUser("alice", "admin")
 		//authz.Enforcer.SavePolicy()
@@ -158,14 +158,12 @@ func TestRedisCallback(t *testing.T) {
 		m, err := json.Marshal(msg)
 		require.NoError(t, err)
 		redis.Publish("/casbin", string(m))
-		err = wctest.RunWait(t, time.Second*2, func() error {
-			time.Sleep(time.Second)
-			ok, err := authz.Enforcer.HasRoleForUser("alice", "admin")
-			assert.NoError(t, err)
-			assert.True(t, ok)
-			return nil
-		})
+		time.Sleep(time.Second * 2)
+		ok, err := authz.Enforcer.HasRoleForUser("alice", "admin")
 		assert.NoError(t, err)
+		if !assert.True(t, ok) {
+			t.Log(authz.Enforcer.GetRolesForUser("alice"))
+		}
 	})
 	// file adapter does not support UpdateForRemovePolicy
 	t.Run("UpdateForRemovePolicy", func(t *testing.T) {
@@ -177,12 +175,9 @@ func TestRedisCallback(t *testing.T) {
 		ok := authz.Enforcer.HasPolicy("alice", "data1", "remove")
 		assert.True(t, ok)
 		redis.Publish("/casbin", string(m))
-		err = wctest.RunWait(t, time.Second*2, func() error {
-			time.Sleep(time.Second)
-			ok := authz.Enforcer.HasPolicy("alice", "data1", "remove")
-			assert.False(t, ok)
-			return nil
-		})
+		time.Sleep(time.Second * 2)
+		ok = authz.Enforcer.HasPolicy("alice", "data1", "remove")
+		assert.False(t, ok)
 		assert.NoError(t, err)
 	})
 }

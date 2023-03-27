@@ -24,7 +24,7 @@ type (
 	Option func(*Authorization)
 	// Authorization is an Authorization feature base on casbin.
 	Authorization struct {
-		Enforcer *casbin.Enforcer
+		Enforcer casbin.IEnforcer
 		Watcher  persist.Watcher
 		// RequestParser is the function to parse cashbin request according cashbin Model
 		RequestParser RequestParserFunc
@@ -39,16 +39,17 @@ func WithRequestParseFunc(f RequestParserFunc) Option {
 	}
 }
 
-// NewAuthorization returns a new authenticator by application configuration.
+// NewAuthorization returns a new authenticator with CachedEnforcer and redis watcher by application configuration.
 // Configuration example:
 //
-//	authz:
-//	  watcherOptions:
-//	    options:
-//	      addr: "localhost:6379"
-//	      channel: "/casbin"
-//	  model: /path/to/model.conf
-//	  policy: /path/to/policy.csv
+//		authz:
+//	   expireTime: 1h
+//		  watcherOptions:
+//		    options:
+//		      addr: "localhost:6379"
+//		      channel: "/casbin"
+//		  model: /path/to/model.conf
+//		  policy: /path/to/policy.csv
 func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorization, err error) {
 	au = &Authorization{
 		RequestParser: defaultRequestParserFunc,
@@ -72,11 +73,17 @@ func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorizatio
 		SetAdapter(fileadapter.NewAdapter(pv))
 	}
 	policy = defaultAdapter
-	au.Enforcer, err = casbin.NewEnforcer(dsl, policy)
+	enforcer, err := casbin.NewCachedEnforcer(dsl, policy)
 	if err != nil {
 		return
 	}
 
+	if cnf.IsSet("expireTime") {
+		enforcer.SetExpireTime(uint(cnf.Duration("expireTime").Seconds()))
+	}
+
+	au.Enforcer = enforcer
+	au.Enforcer.EnableAutoSave(false)
 	au.Watcher, err = au.buildWatcher(cnf)
 	if err != nil {
 		return

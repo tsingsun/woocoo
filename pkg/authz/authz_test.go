@@ -76,6 +76,7 @@ func TestNewAuthorization(t *testing.T) {
 					casbinFilePrepare("redis")
 					mr := miniredis.RunT(t)
 					return conf.NewFromStringMap(map[string]interface{}{
+						"expireTime": 10 * time.Second,
 						"watcherOptions": map[string]interface{}{
 							"options": map[string]interface{}{
 								"addr": mr.Addr(),
@@ -136,6 +137,7 @@ func TestRedisCallback(t *testing.T) {
 	casbinFilePrepare("callback")
 	redis := miniredis.RunT(t)
 	authz, err := NewAuthorization(conf.NewFromStringMap(map[string]any{
+		"expireTime": 10 * time.Second,
 		"watcherOptions": map[string]any{
 			"options": map[string]any{
 				"addr":    redis.Addr(),
@@ -165,10 +167,10 @@ func TestRedisCallback(t *testing.T) {
 		})
 		assert.NoError(t, err)
 	})
-	// file watcher does not support UpdateForRemovePolicy
+	// file adapter does not support UpdateForRemovePolicy
 	t.Run("UpdateForRemovePolicy", func(t *testing.T) {
 		msg := rediswatcher.MSG{ID: uuid.New().String(), Method: "UpdateForRemovePolicy",
-			Sec: "p", Ptype: "p", NewRules: [][]string{{"alice", "data1", "remove"}},
+			Sec: "p", Ptype: "p", NewRule: []string{"alice", "data1", "remove"},
 		}
 		m, err := json.Marshal(msg)
 		require.NoError(t, err)
@@ -178,7 +180,7 @@ func TestRedisCallback(t *testing.T) {
 		err = wctest.RunWait(t, time.Second*2, func() error {
 			time.Sleep(time.Second)
 			ok := authz.Enforcer.HasPolicy("alice", "data1", "remove")
-			assert.True(t, ok)
+			assert.False(t, ok)
 			return nil
 		})
 		assert.NoError(t, err)

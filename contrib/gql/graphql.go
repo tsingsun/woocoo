@@ -55,8 +55,6 @@ var defaultOptions = Options{
 	Group:         "", // must the same as the base path of route group
 }
 
-type graphqlContextKey struct{}
-
 // Handler for graphql
 type Handler struct {
 	// store multiple graphql options,gql-servers can be in different group
@@ -87,7 +85,7 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	}
 	h.opts = append(h.opts, opt)
 	return func(c *gin.Context) {
-		ctx := context.WithValue(c.Request.Context(), graphqlContextKey{}, c)
+		ctx := context.WithValue(c.Request.Context(), gin.ContextKey, c)
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
@@ -192,7 +190,7 @@ func buildGraphqlServer(routerGroup *web.RouterGroup, server *gqlgen.Server, opt
 
 // FromIncomingContext retrieves the gin.Context from the context.Context
 func FromIncomingContext(ctx context.Context) (*gin.Context, error) {
-	ginContext := ctx.Value(graphqlContextKey{})
+	ginContext := ctx.Value(gin.ContextKey)
 	if ginContext == nil {
 		return nil, fmt.Errorf("could not retrieve gin.Context")
 	}

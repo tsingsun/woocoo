@@ -23,8 +23,18 @@ func (m mockAuthorizer) QueryAllowedResourceConditions(ctx context.Context, iden
 	panic("implement me")
 }
 
-func TestSetDefaultAuthorization(t *testing.T) {
+func TestSetDefaultAuthorizer(t *testing.T) {
 	SetDefaultAuthorizer(&mockAuthorizer{})
+}
+
+func TestNoopAuthorizer(t *testing.T) {
+	au := noopAuthorizer{}
+	assert.Equal(t, Resource(""), au.Conv(ArnRequestKindWeb, "test"))
+	ev, err := au.Eval(context.Background(), nil, Resource(""))
+	assert.NoError(t, err)
+	assert.True(t, ev)
+	_, err = au.QueryAllowedResourceConditions(context.Background(), nil, Resource(""))
+	assert.NoError(t, err)
 }
 
 func TestResource_MatchResource(t *testing.T) {
@@ -37,6 +47,22 @@ func TestResource_MatchResource(t *testing.T) {
 		args args
 		want bool
 	}{
+		{
+			name: "empty",
+			r:    Resource(""),
+			args: args{
+				resource: "",
+			},
+			want: true,
+		},
+		{
+			name: "match all",
+			r:    Resource("*"),
+			args: args{
+				resource: "oss:bucket/object",
+			},
+			want: true,
+		},
 		{
 			name: "match",
 			r:    Resource("oss:bucket/object"),
@@ -60,6 +86,22 @@ func TestResource_MatchResource(t *testing.T) {
 				resource: "oss:bucket/object",
 			},
 			want: true,
+		},
+		{
+			name: "match '?' wildcard ",
+			r:    Resource("oss:bucket/object?"),
+			args: args{
+				resource: "oss:bucket/object1",
+			},
+			want: true,
+		},
+		{
+			name: "match '?' wildcard false ",
+			r:    Resource("oss:bucket/object?"),
+			args: args{
+				resource: "oss:bucket/object",
+			},
+			want: false,
 		},
 	}
 	for _, tt := range tests {

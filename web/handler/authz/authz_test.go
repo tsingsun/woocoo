@@ -2,6 +2,7 @@ package authz
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -31,7 +32,7 @@ func (m mockAuthorizer) Conv(kind security.ArnRequestKind, arnParts ...string) s
 
 func (m mockAuthorizer) Eval(ctx context.Context, identity security.Identity, item security.Resource) (bool, error) {
 	if identity.Name() == "2" {
-		return false, nil
+		return false, errors.New("mock error")
 	}
 	return item.MatchResource("test:/"), nil
 }
@@ -102,7 +103,7 @@ handler:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := Middleware()
-			h := handler.NewSimpleMiddleware("authz", got.ApplyFunc)
+			h := handler.NewSimpleMiddleware(got.Name(), got.ApplyFunc)
 			w := httptest.NewRecorder()
 			_, e := gin.CreateTestContext(w)
 			e.ContextWithFallback = true
@@ -118,4 +119,23 @@ handler:
 			tt.check(t, w)
 		})
 	}
+}
+
+func TestAuthorizer_ApplyPanic(t *testing.T) {
+	t.Run("no default authorizer", func(t *testing.T) {
+		got := New()
+		security.SetDefaultAuthorizer(nil)
+		assert.Panics(t, func() {
+			got.ApplyFunc(conf.New())
+		})
+	})
+	t.Run("config error", func(t *testing.T) {
+		got := New()
+		assert.Panics(t, func() {
+			got.ApplyFunc(conf.NewFromBytes([]byte(`
+appCode: 
+  note: errorNode
+`)))
+		})
+	})
 }

@@ -6,7 +6,7 @@ require (
 	github.com/99designs/gqlgen v0.17.26
 	github.com/gin-gonic/gin v1.9.0
 	github.com/stretchr/testify v1.8.2
-	github.com/tsingsun/woocoo v0.2.3-0.20230224054419-f116aada9120
+	github.com/tsingsun/woocoo v0.2.3
 	github.com/vektah/gqlparser/v2 v2.5.1
 )
 
@@ -32,9 +32,9 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.15.13 // indirect
+	github.com/klauspost/compress v1.15.15 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
-	github.com/knadh/koanf v1.4.4 // indirect
+	github.com/knadh/koanf v1.5.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
@@ -51,9 +51,9 @@ require (
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/arch v0.0.0-20210923205945-b76863e36670 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
-	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/net v0.8.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

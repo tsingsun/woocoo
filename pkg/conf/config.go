@@ -3,9 +3,9 @@ package conf
 import (
 	"bytes"
 	"fmt"
-	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
 	"os"
 	"path/filepath"
 	"strings"
@@ -360,7 +360,7 @@ func (c *Configuration) IsSet(path string) bool {
 // AllSettings return all settings
 func AllSettings() map[string]any { return global.AllSettings() }
 func (c *Configuration) AllSettings() map[string]any {
-	return c.parser.k.All()
+	return c.parser.k.Raw()
 }
 
 type CValue interface {

@@ -3,11 +3,11 @@ package conf
 import (
 	"encoding"
 	"fmt"
-	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/providers/rawbytes"
+	"github.com/knadh/koanf/v2"
 	"github.com/mitchellh/mapstructure"
 	"io"
 	"reflect"

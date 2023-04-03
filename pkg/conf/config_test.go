@@ -373,8 +373,8 @@ func TestConfiguration_Sub(t *testing.T) {
 			},
 			check: func(got *Configuration) {
 				assert.Equal(t, got.AllSettings(), map[string]any{
-					"a.sub": "sub",
-					"b":     1,
+					"a": map[string]any{"sub": "sub"},
+					"b": 1,
 				})
 				gotsub := got.Sub("a")
 				assert.Equal(t, got.Root(), gotsub.Root())

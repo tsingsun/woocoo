@@ -120,6 +120,25 @@ func TestNewAuthorization(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "redis watcher without redis instance",
+			args: args{
+				cnf: func() *conf.Configuration {
+					casbinFilePrepare("rbac")
+					return conf.NewFromStringMap(map[string]interface{}{
+						"expireTime": 10 * time.Second,
+						"watcherOptions": map[string]interface{}{
+							"options": map[string]interface{}{
+								"addr": "wrong addr",
+							},
+						},
+						"model":  testdata.Tmp(`redis_model.conf`),
+						"policy": testdata.Tmp(`redis_policy.csv`),
+					})
+				}(),
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -159,13 +178,13 @@ func TestRedisCallback(t *testing.T) {
 		m, err := json.Marshal(msg)
 		require.NoError(t, err)
 		redis.Publish("/casbin", string(m))
-		wctest.RunWait(t, time.Second*3, func() error {
+		assert.NoError(t, wctest.RunWait(t, time.Second*3, func() error {
 			time.Sleep(time.Second * 2)
 			//ok, err := authz.Enforcer.HasRoleForUser("alice", "admin")
 			//assert.NoError(t, err)
 			//assert.True(t, ok)
 			return nil
-		})
+		}))
 	})
 	// file adapter does not support UpdateForRemovePolicy
 	t.Run("UpdateForRemovePolicy", func(t *testing.T) {
@@ -177,12 +196,12 @@ func TestRedisCallback(t *testing.T) {
 		ok := authz.Enforcer.HasPolicy("alice", "data1", "remove")
 		assert.True(t, ok)
 		redis.Publish("/casbin", string(m))
-		wctest.RunWait(t, time.Second*3, func() error {
+		assert.NoError(t, wctest.RunWait(t, time.Second*3, func() error {
 			time.Sleep(time.Second * 2)
 			//ok = authz.Enforcer.HasPolicy("alice", "data1", "remove")
 			//assert.False(t, ok)
 			//assert.NoError(t, err)
 			return nil
-		})
+		}))
 	})
 }

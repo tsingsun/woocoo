@@ -109,6 +109,9 @@ func (au *Authorization) buildWatcher(cnf *conf.Configuration) (err error) {
 	} else if watcherOptions.ClusterOptions.Addrs != nil {
 		au.Watcher, err = rediswatcher.NewWatcherWithCluster(watcherOptions.Options.Addr, watcherOptions)
 	}
+	if err != nil {
+		return
+	}
 	return au.Enforcer.SetWatcher(au.Watcher)
 }
 
@@ -167,6 +170,6 @@ func defaultUpdateCallback(e casbin.IEnforcer) func(string) {
 	}
 }
 
-func defaultRequestParserFunc(ctx context.Context, identity security.Identity, item *security.PermissionItem) []any {
+func defaultRequestParserFunc(_ context.Context, identity security.Identity, item *security.PermissionItem) []any {
 	return []any{identity.Name(), item.Action, item.Operator}
 }

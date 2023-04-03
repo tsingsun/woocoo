@@ -3,7 +3,7 @@ package redisc
 import (
 	"context"
 	"errors"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	manager "github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	store "github.com/tsingsun/woocoo/pkg/store/redis"
@@ -16,14 +16,14 @@ type (
 	// if you want to register to cache manager, set a `driverName` in configuration
 	Redisc struct {
 		operator   *Cache
-		client     redis.Cmdable
+		client     redis.UniversalClient
 		driverName string
 	}
 
 	Option func(*Redisc)
 )
 
-func WithRedisClient(cli redis.Cmdable) Option {
+func WithRedisClient(cli redis.UniversalClient) Option {
 	return func(redisc *Redisc) {
 		redisc.client = cli
 	}
@@ -73,7 +73,7 @@ func (c *Redisc) Apply(cfg *conf.Configuration) {
 		opts.LocalCache = local
 	}
 	if c.client == nil {
-		if cfg.IsSet("type") {
+		if cfg.IsSet("addrs") {
 			remote := store.NewClient(cfg)
 			opts.Redis = remote
 			c.client = remote

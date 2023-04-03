@@ -3,7 +3,7 @@ package redis
 import (
 	"context"
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"testing"
@@ -12,19 +12,19 @@ import (
 func TestNewClient(t *testing.T) {
 	b := `
 store:
-  redis1:
-    type: cluster
+  redis1: 
     addrs:
       - 127.0.0.1:6379
-  redis:
-    type: standalone
-    addr: 127.0.0.1:6379
+      - 127.0.0.1:6380
+  redis: 
+    addrs: 
+      - 127.0.0.1:6379
     db: 1
     dialTimeout: 5s
-  redisr:
-    type: ring
+  redisr: 
+    masterName: "mymaster"
     addrs: 
-      shard1: "localhost:7000"
+      - localhost:7000
 `
 	tests := []struct {
 		name      string
@@ -49,7 +49,7 @@ store:
 				cfg := conf.NewFromBytes([]byte(b)).Load().Sub("store.redis")
 				cfg.Parser().Set("addr", rds.Addr())
 				cli := NewClient(cfg)
-				assert.Equal(t, cli.option.(*redis.Options).DialTimeout, cfg.Duration("dialTimeout"))
+				assert.Equal(t, cli.redisOptions.(*redis.UniversalOptions).DialTimeout, cfg.Duration("dialTimeout"))
 				return cli
 			},
 		},
@@ -57,17 +57,18 @@ store:
 			name: "cluster",
 			newFunc: func() *Client {
 				rds := miniredis.RunT(t)
+				rds1 := miniredis.RunT(t)
 				cfg := conf.NewFromBytes([]byte(b)).Load().Sub("store.redis1")
-				cfg.Parser().Set("addrs", []string{rds.Addr()})
+				cfg.Parser().Set("addrs", []string{rds.Addr(), rds1.Addr()})
 				return NewClient(cfg)
 			},
 		},
 		{
-			name: "ring",
+			name: "fail over",
 			newFunc: func() *Client {
 				rds := miniredis.RunT(t)
 				cfg := conf.NewFromBytes([]byte(b)).Load().Sub("store.redisr")
-				cfg.Parser().Set("addrs", map[string]string{"shard1": rds.Addr()})
+				cfg.Parser().Set("addrs", []string{rds.Addr()})
 				return NewClient(cfg)
 			},
 		},

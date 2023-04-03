@@ -4,11 +4,10 @@ go 1.20
 
 require (
 	github.com/alicebob/miniredis/v2 v2.30.0
-	github.com/casbin/casbin/v2 v2.66.0
-	github.com/casbin/redis-watcher/v2 v2.3.0
+	github.com/casbin/casbin/v2 v2.66.1
+	github.com/casbin/redis-watcher/v2 v2.5.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/go-playground/validator/v10 v10.11.2 // indirect
-	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.3.0
 	github.com/klauspost/compress v1.15.15
@@ -20,6 +19,7 @@ require (
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/redis/go-redis/v9 v9.0.3
 	github.com/stretchr/testify v1.8.2
 	github.com/vmihailenco/go-tinylfu v0.2.2
 	github.com/vmihailenco/msgpack/v5 v5.3.5

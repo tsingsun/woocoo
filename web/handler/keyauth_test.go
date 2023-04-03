@@ -21,8 +21,8 @@ func TestKeyAuth(t *testing.T) {
 	mredis := miniredis.RunT(t)
 	err := cache.RegisterCache("keyAuthStore", func() cache.Cache {
 		return redisc.New(conf.NewFromStringMap(map[string]any{
-			"type": "standalone",
-			"addr": mredis.Addr(),
+			"type":  "standalone",
+			"addrs": []string{mredis.Addr()},
 		}))
 	}())
 	require.NoError(t, err)

@@ -1,15 +1,14 @@
 package redis
 
 import (
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/tsingsun/woocoo/pkg/conf"
 )
 
+// Client is a redis client wrapper. Use redis.UniversalClient instead client/clusterClient since v9
 type Client struct {
-	ClientType string
-	redis.Cmdable
-	closeFunc func() error
-	option    any
+	redis.UniversalClient
+	redisOptions any
 }
 
 func NewClient(cfg *conf.Configuration) *Client {
@@ -24,41 +23,18 @@ func NewBuiltIn() *Client {
 }
 
 func (c *Client) Close() error {
-	if c.Cmdable == nil {
+	if c.UniversalClient == nil {
 		return nil
 	}
-	return c.closeFunc()
+	return c.UniversalClient.Close()
 }
 
 func (c *Client) Apply(cfg *conf.Configuration) {
-	var err error
-	c.ClientType = cfg.String("type")
-	switch c.ClientType {
-	case "cluster":
-		opts := &redis.ClusterOptions{}
-		err = cfg.Unmarshal(opts)
-		cl := redis.NewClusterClient(opts)
-		c.closeFunc = cl.Close
-		c.option = opts
-		c.Cmdable = cl
-	case "ring":
-		opts := &redis.RingOptions{}
-		err = cfg.Unmarshal(opts)
-		cl := redis.NewRing(opts)
-		c.closeFunc = cl.Close
-		c.option = opts
-		c.Cmdable = cl
-	case "standalone":
-		fallthrough
-	default:
-		opts := &redis.Options{}
-		err = cfg.Unmarshal(opts)
-		cl := redis.NewClient(opts)
-		c.closeFunc = cl.Close
-		c.option = opts
-		c.Cmdable = cl
-	}
+	opts := redis.UniversalOptions{}
+	err := cfg.Unmarshal(&opts)
 	if err != nil {
 		panic(err)
 	}
+	c.redisOptions = &opts
+	c.UniversalClient = redis.NewUniversalClient(&opts)
 }

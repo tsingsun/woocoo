@@ -3,7 +3,7 @@ package redisc
 import (
 	"context"
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"testing"
@@ -24,7 +24,7 @@ func TestNew(t *testing.T) {
 			name: "local",
 			args: args{
 				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
-					"local": map[string]interface{}{
+					"local": map[string]any{
 						"size": 1000,
 						"ttl":  "60s",
 					},
@@ -38,8 +38,8 @@ func TestNew(t *testing.T) {
 		{
 			name: "local with redis",
 			args: args{
-				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
-					"local": map[string]interface{}{
+				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
+					"local": map[string]any{
 						"size": 1000,
 						"ttl":  "60s",
 					},
@@ -56,14 +56,13 @@ func TestNew(t *testing.T) {
 		{
 			name: "redis and local",
 			args: args{
-				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
-					"local": map[string]interface{}{
+				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
+					"local": map[string]any{
 						"size": 1000,
 						"ttl":  "60s",
 					},
-					"type": "standalone",
-					"addr": "127.0.0.1:6379",
-					"db":   1,
+					"addrs": []string{"127.0.0.1:6379"},
+					"db":    1,
 				})),
 			},
 			want: func(r *Redisc, t *testing.T) {
@@ -74,14 +73,13 @@ func TestNew(t *testing.T) {
 		{
 			name: "standalone",
 			args: args{
-				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
-					"local": map[string]interface{}{
+				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
+					"local": map[string]any{
 						"size": 1000,
 						"ttl":  "60s",
 					},
-					"type": "standalone",
-					"addr": "127.0.0.1:6379",
-					"db":   1,
+					"addrs": []string{"127.0.0.1:6379"},
+					"db":    1,
 				})),
 			},
 			want: func(r *Redisc, t *testing.T) {
@@ -97,9 +95,8 @@ func TestNew(t *testing.T) {
 						"size": 1000,
 						"ttl":  "60s",
 					},
-					"type": "cluster",
-					"addr": []string{"127.0.0.1:6379"},
-					"db":   1,
+					"addrs": []string{"127.0.0.1:6379"},
+					"db":    1,
 				})),
 			},
 			want: func(r *Redisc, t *testing.T) {
@@ -119,8 +116,8 @@ func TestNew(t *testing.T) {
 func initStandaloneRedisc(t *testing.T) (*Redisc, *miniredis.Miniredis) {
 	cfgstr := `
 redis: 
-  type: standalone
-  addr: 127.0.0.1:6379
+  addrs: 
+    - 127.0.0.1:6379
   db: 1
   local:
     size: 1000
@@ -129,8 +126,7 @@ redis:
 	cfg := conf.NewFromBytes([]byte(cfgstr)).Load()
 	mr := miniredis.RunT(t)
 	mr.Select(cfg.Int("redis.db"))
-	cfg.Parser().Set("redis.addr", mr.Addr())
-	cfg.Parser().Set("redis.driverName", mr.Addr())
+	cfg.Parser().Set("redis.addrs", []string{mr.Addr()})
 	redisc := New(cfg.Sub("redis"))
 	return redisc, mr
 }
@@ -233,9 +229,8 @@ func TestNewBuiltIn(t *testing.T) {
 			cnf: conf.NewFromStringMap(map[string]any{
 				"cache": map[string]any{
 					"redis": map[string]any{
-						"type": "standalone",
-						"addr": "127.0.0.1:6379",
-						"db":   1,
+						"addrs": "127.0.0.1:6379",
+						"db":    1,
 					},
 				},
 			}),

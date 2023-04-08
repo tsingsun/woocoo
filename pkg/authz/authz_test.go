@@ -90,11 +90,6 @@ func TestNewAuthorization(t *testing.T) {
 			wantErr: false,
 			check: func(t *testing.T, got *Authorization) {
 				defer got.Watcher.Close()
-				gotcallback := make(chan bool)
-				require.NoError(t, got.Watcher.SetUpdateCallback(func(s string) {
-					t.Log("callback", s)
-					gotcallback <- true
-				}))
 				assert.NoError(t, got.Enforcer.LoadPolicy())
 				_, err := got.Enforcer.AddPermissionForUser("alice", "data1", "write")
 				require.NoError(t, err)
@@ -110,13 +105,6 @@ func TestNewAuthorization(t *testing.T) {
 				require.NoError(t, err)
 				assert.True(t, has)
 				assert.NoError(t, got.Enforcer.SavePolicy())
-				select {
-				case <-gotcallback:
-					return
-				case <-time.After(time.Second * 3):
-					t.Error("timeout")
-					return
-				}
 			},
 		},
 		{

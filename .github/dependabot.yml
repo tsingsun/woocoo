@@ -16,3 +16,11 @@ updates:
     directory: /contrib/gql/
     schedule:
       interval: daily
+  - package-ecosystem: gomod
+    directory: /contrib/polarismesh/
+    schedule:
+      interval: daily
+  - package-ecosystem: gomod
+    directory: /cmd/woco/
+    schedule:
+      interval: daily

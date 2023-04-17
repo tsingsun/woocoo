@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	ariga.io/atlas v0.10.0
-	entgo.io/ent v0.12.0
+	entgo.io/ent v0.12.1
 	github.com/ClickHouse/clickhouse-go/v2 v2.7.0
 	github.com/getkin/kin-openapi v0.115.0
 	github.com/gin-gonic/gin v1.9.0

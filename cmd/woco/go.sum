@@ -1,7 +1,7 @@
 ariga.io/atlas v0.10.0 h1:B1aCP6gSDQET6j8ybn7m6MArjQuoLH5d4DQBT+NP5k8=
 ariga.io/atlas v0.10.0/go.mod h1:+TR129FJZ5Lvzms6dvCeGWh1yR6hMvmXBhug4hrNIGk=
-entgo.io/ent v0.12.0 h1:DTub/yd0pMK9s0ONfZps2cYkyD2VPIuknVBv10BESc0=
-entgo.io/ent v0.12.0/go.mod h1:OA1Y5bNE8EtlxKv4IyzWwt4jgvGbkoKMcwp668iEKQE=
+entgo.io/ent v0.12.1 h1:bqK+WMwfjpTsFiXx9tQSEZMNLyAADSx5Y1xySjT4Tm8=
+entgo.io/ent v0.12.1/go.mod h1:OA1Y5bNE8EtlxKv4IyzWwt4jgvGbkoKMcwp668iEKQE=
 github.com/ClickHouse/ch-go v0.52.1 h1:nucdgfD1BDSHjbNaG3VNebonxJzD8fX8jbuBpfo5VY0=
 github.com/ClickHouse/ch-go v0.52.1/go.mod h1:B9htMJ0hii/zrC2hljUKdnagRBuLqtRG/GrU3jqCwRk=
 github.com/ClickHouse/clickhouse-go/v2 v2.7.0 h1:KFRvFjnewYkJBwkfBvDYESwZtZmQipz/xRuaBz0oVNA=

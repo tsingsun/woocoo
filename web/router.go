@@ -32,6 +32,7 @@ func NewRouter(options *ServerOptions) *Router {
 		Engine:        gin.New(),
 		serverOptions: options,
 	}
+	r.Engine.ContextWithFallback = true
 	return r
 }
 

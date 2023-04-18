@@ -3,7 +3,7 @@ module github.com/tsingsun/woocoo/cmd/woco
 go 1.20
 
 require (
-	ariga.io/atlas v0.10.0
+	ariga.io/atlas v0.10.1
 	entgo.io/ent v0.12.1
 	github.com/ClickHouse/clickhouse-go/v2 v2.7.0
 	github.com/getkin/kin-openapi v0.115.0

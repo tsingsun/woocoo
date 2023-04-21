@@ -24,8 +24,9 @@ type (
 	Option func(*Authorization)
 	// Authorization is an Authorization feature base on casbin.
 	Authorization struct {
-		Enforcer casbin.IEnforcer
-		Watcher  persist.Watcher
+		Enforcer     casbin.IEnforcer
+		baseEnforcer *casbin.Enforcer
+		Watcher      persist.Watcher
 		// RequestParser is the function to parse cashbin request according cashbin Model
 		RequestParser RequestParserFunc
 	}
@@ -74,6 +75,7 @@ func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorizatio
 	}
 	policy = defaultAdapter
 	enforcer, err := casbin.NewCachedEnforcer(dsl, policy)
+	au.baseEnforcer = enforcer.Enforcer
 	if err != nil {
 		return
 	}
@@ -115,13 +117,18 @@ func (au *Authorization) buildWatcher(cnf *conf.Configuration) (err error) {
 	return au.Enforcer.SetWatcher(au.Watcher)
 }
 
+func (au *Authorization) CheckPermission(ctx context.Context, identity security.Identity, item *security.PermissionItem) (bool, error) {
+	return au.Enforcer.Enforce(au.RequestParser(ctx, identity, item)...)
+}
+
+// BaseEnforcer returns the base enforcer. casbin api is not broadcasting to enforcer interface. so need to use base enforcer.
+func (au *Authorization) BaseEnforcer() *casbin.Enforcer {
+	return au.baseEnforcer
+}
+
 // SetAdapter sets the default adapter for the enforcer.
 func SetAdapter(adapter persist.Adapter) {
 	defaultAdapter = adapter
-}
-
-func (au *Authorization) CheckPermission(ctx context.Context, identity security.Identity, item *security.PermissionItem) (bool, error) {
-	return au.Enforcer.Enforce(au.RequestParser(ctx, identity, item)...)
 }
 
 // SetDefaultAuthorization sets the default authorization.

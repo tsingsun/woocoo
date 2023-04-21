@@ -192,3 +192,16 @@ func TestRedisCallback(t *testing.T) {
 		}))
 	})
 }
+
+func TestGetAllowedRecordsForUser(t *testing.T) {
+	casbinFilePrepare("conditions")
+	authz, err := NewAuthorization(conf.NewFromStringMap(map[string]any{
+		"expireTime": 10 * time.Second,
+		"model":      testdata.Tmp(`conditions_model.conf`),
+		"policy":     testdata.Tmp(`conditions_policy.csv`),
+	}))
+	require.NoError(t, err)
+	condions, err := authz.BaseEnforcer().GetAllowedObjectConditions("alice", "read", "r.obj.")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"price < 25", "category_id = 2"}, condions)
+}

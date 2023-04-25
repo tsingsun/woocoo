@@ -49,8 +49,9 @@ func TestNewAuthorization(t *testing.T) {
 				cnf: func() *conf.Configuration {
 					casbinFilePrepare("rbac")
 					return conf.NewFromStringMap(map[string]interface{}{
-						"model":  testdata.Tmp(`rbac_model.conf`),
-						"policy": testdata.Tmp(`rbac_policy.csv`),
+						"autoSave": true,
+						"model":    testdata.Tmp(`rbac_model.conf`),
+						"policy":   testdata.Tmp(`rbac_policy.csv`),
 					})
 				}(),
 				opts: []Option{WithRequestParseFunc(func(ctx context.Context, identity security.Identity, item *security.PermissionItem) []any {

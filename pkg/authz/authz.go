@@ -43,14 +43,15 @@ func WithRequestParseFunc(f RequestParserFunc) Option {
 // NewAuthorization returns a new authenticator with CachedEnforcer and redis watcher by application configuration.
 // Configuration example:
 //
-//		authz:
-//	   expireTime: 1h
-//		  watcherOptions:
-//		    options:
-//		      addr: "localhost:6379"
-//		      channel: "/casbin"
-//		  model: /path/to/model.conf
-//		  policy: /path/to/policy.csv
+//	  authz:
+//	    autoSave: false
+//		   expireTime: 1h
+//		   watcherOptions:
+//		     options:
+//		       addr: "localhost:6379"
+//		       channel: "/casbin"
+//		   model: /path/to/model.conf
+//		   policy: /path/to/policy.csv
 func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorization, err error) {
 	au = &Authorization{
 		RequestParser: defaultRequestParserFunc,
@@ -75,7 +76,6 @@ func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorizatio
 	}
 	policy = defaultAdapter
 	enforcer, err := casbin.NewCachedEnforcer(dsl, policy)
-	au.baseEnforcer = enforcer.Enforcer
 	if err != nil {
 		return
 	}
@@ -83,9 +83,12 @@ func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorizatio
 	if cnf.IsSet("expireTime") {
 		enforcer.SetExpireTime(cnf.Duration("expireTime"))
 	}
+	if cnf.IsSet("autoSave") {
+		enforcer.EnableAutoSave(cnf.Bool("autoSave"))
+	}
 
 	au.Enforcer = enforcer
-	au.Enforcer.EnableAutoSave(false)
+	au.baseEnforcer = enforcer.Enforcer
 	err = au.buildWatcher(cnf)
 	if err != nil {
 		return

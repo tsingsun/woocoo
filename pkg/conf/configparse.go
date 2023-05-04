@@ -1,7 +1,6 @@
 package conf
 
 import (
-	"encoding"
 	"fmt"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/confmap"
@@ -11,6 +10,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"io"
 	"reflect"
+	_ "unsafe"
 )
 
 const (
@@ -165,40 +165,8 @@ func (l *Parser) ToBytes(p koanf.Parser) ([]byte, error) {
 	return l.k.Marshal(p)
 }
 
-func textUnmarshalHookFunc() mapstructure.DecodeHookFunc {
-	return func(from reflect.Value, to reflect.Value) (any, error) {
-		if to.CanAddr() {
-			to = to.Addr()
-		}
-
-		// If the destination implements the unmarshaling interface
-		u, ok := to.Interface().(encoding.TextUnmarshaler)
-		if !ok {
-			return from.Interface(), nil
-		}
-
-		// If it is nil and a pointer, create and assign the target value first
-		if to.IsNil() && to.Type().Kind() == reflect.Ptr {
-			to.Set(reflect.New(to.Type().Elem()))
-			u = to.Interface().(encoding.TextUnmarshaler)
-		}
-
-		var text []byte
-		switch v := from.Interface().(type) {
-		case string:
-			text = []byte(v)
-		case []byte:
-			text = v
-		default:
-			return v, nil
-		}
-
-		if err := u.UnmarshalText(text); err != nil {
-			return to.Interface(), err
-		}
-		return to.Interface(), nil
-	}
-}
+//go:linkname textUnmarshalHookFunc github.com/knadh/koanf/v2.textUnmarshalerHookFunc
+func textUnmarshalHookFunc() mapstructure.DecodeHookFuncType
 
 // decoderConfig returns a default mapstructure.DecoderConfig capable of parsing time.Duration
 // and weakly converting config field values to primitive types.  It also ensures that maps

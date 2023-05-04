@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/golang/protobuf v1.5.2
-	github.com/knadh/koanf v1.4.4
+	github.com/knadh/koanf v1.5.0
 	github.com/polarismesh/polaris-go v1.2.0
 	github.com/stretchr/testify v1.8.1
 	github.com/tsingsun/woocoo v0.2.2

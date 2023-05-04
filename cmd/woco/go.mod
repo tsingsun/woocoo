@@ -14,7 +14,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/iancoleman/strcase v0.2.0
 	github.com/stretchr/testify v1.8.2
-	github.com/tsingsun/woocoo v0.2.4-0.20230403070847-0d4f1edf6ed0
+	github.com/tsingsun/woocoo v0.2.4
 	github.com/urfave/cli/v2 v2.25.0
 	golang.org/x/tools v0.8.0
 )

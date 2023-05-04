@@ -6,7 +6,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/knadh/koanf v1.4.4
 	github.com/polarismesh/polaris-go v1.2.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/tsingsun/woocoo v0.2.2
 	google.golang.org/grpc v1.53.0
 )

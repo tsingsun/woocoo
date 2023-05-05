@@ -116,7 +116,7 @@ func TestRegistry_Register(t *testing.T) {
 					},
 				},
 				testType: 1,
-			}, wantErr: assert.Error,
+			}, wantErr: assert.NoError,
 		},
 	}
 	for _, tt := range tests {

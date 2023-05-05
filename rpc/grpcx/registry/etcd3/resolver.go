@@ -106,11 +106,11 @@ func (w *etcdResolver) Watch() {
 		case <-w.rsCh:
 		}
 		out := w.watchChan()
-		for addr := range out {
-			if len(addr) == 0 {
+		for addrs := range out {
+			if len(addrs) == 0 {
 				grpclog.Errorf("resolver got zero addresses:%s", w.key)
 			}
-			w.cc.UpdateState(resolver.State{Addresses: addr})
+			w.cc.UpdateState(resolver.State{Addresses: addrs})
 		}
 	}
 }

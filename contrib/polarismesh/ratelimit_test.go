@@ -71,13 +71,9 @@ grpc:
 	}()
 	hcli := helloworld.NewGreeterClient(c)
 	for i := 0; i < 5; i++ {
-		time.Sleep(time.Millisecond * 100)
-		md, ok := metadata.FromOutgoingContext(context.Background())
-		if !ok {
-			md = metadata.New(nil)
-		}
-		md.Set("rateLimit", "1")
-		resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "polaris"})
+		time.Sleep(time.Millisecond * 200)
+		ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("rateLimit", "text"))
+		resp, err := hcli.SayHello(ctx, &helloworld.HelloRequest{Name: "polaris"})
 		if i == 0 {
 			assert.NoError(t, err)
 			assert.NotNil(t, resp)

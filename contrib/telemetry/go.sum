@@ -266,6 +266,8 @@ github.com/tsingsun/woocoo v0.2.4-0.20230403084811-972005040ae2 h1:L89HXejKV6irc
 github.com/tsingsun/woocoo v0.2.4-0.20230403084811-972005040ae2/go.mod h1:G+Qyt59gZlbbgw6Vo+cSk3XZhcroOrr9rLUj9ZHY72o=
 github.com/tsingsun/woocoo v0.2.5-0.20230427081409-e7476f5340db h1:kZhq2EBWkTmissmi7Ja2HQGiUrlpeZPrfuTmDS/thxM=
 github.com/tsingsun/woocoo v0.2.5-0.20230427081409-e7476f5340db/go.mod h1:khWj/UL3F1VPCxVXsB7lH9mbLubgDL0nyoY/gmqyEEU=
+github.com/tsingsun/woocoo v0.2.5 h1:OBDGuK+TD9xXVy3rF9Rm21bCnbGDeFEkQ40v8HqfX4g=
+github.com/tsingsun/woocoo v0.2.5/go.mod h1:dWIW0JfXC7qABCCldaIGesBe0kxyZ77Sa1A5zVEuy7s=
 github.com/twitchyliquid64/golang-asm v0.15.1 h1:SU5vSMR7hnwNxj24w34ZyCi/FmDZTkS4MhqMhdFk5YI=
 github.com/twitchyliquid64/golang-asm v0.15.1/go.mod h1:a1lVb/DtPvCB8fslRZhAngC2+aY1QWCk3Cedj/Gdt08=
 github.com/ugorji/go/codec v1.2.9 h1:rmenucSohSTiyL09Y+l2OCk+FrMxGMzho2+tjr5ticU=

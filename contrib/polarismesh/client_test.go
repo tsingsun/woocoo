@@ -9,14 +9,14 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"google.golang.org/grpc/grpclog"
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 	"time"
 )
 
 func init() {
-	log := grpclog.NewLoggerV2(os.Stdout, ioutil.Discard, ioutil.Discard)
+	log := grpclog.NewLoggerV2(os.Stdout, io.Discard, io.Discard)
 	grpclog.SetLoggerV2(log)
 }
 
@@ -78,7 +78,7 @@ func TestClient_DialMultiServer(t *testing.T) {
 grpc:
   server:
     addr: 127.0.0.1:20012
-    namespace: woocoo
+    namespace: woocoo_1
     version: "1.0"
     engine:
       - unaryInterceptors:
@@ -95,7 +95,7 @@ grpc:
             - 127.0.0.1:8091
   client:
     target:
-      namespace: woocoo
+      namespace: woocoo_1
       serviceName: helloworld.Greeter
       metadata: 
         version: "1.0"

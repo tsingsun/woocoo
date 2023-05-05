@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/golang/protobuf v1.5.2
 	github.com/knadh/koanf/parsers/yaml v0.1.0
-	github.com/polarismesh/polaris-go v1.2.0
+	github.com/polarismesh/polaris-go v1.4.3
 	github.com/stretchr/testify v1.8.2
 	github.com/tsingsun/woocoo v0.2.5
 	google.golang.org/grpc v1.54.0
@@ -33,7 +33,9 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/natefinch/lumberjack v2.0.0+incompatible // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/polarismesh/specification v1.2.1 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect

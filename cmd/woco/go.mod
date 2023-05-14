@@ -5,7 +5,7 @@ go 1.20
 require (
 	ariga.io/atlas v0.10.0
 	entgo.io/ent v0.12.1
-	github.com/ClickHouse/clickhouse-go/v2 v2.7.0
+	github.com/ClickHouse/clickhouse-go/v2 v2.9.3
 	github.com/getkin/kin-openapi v0.116.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/go-openapi/inflect v0.19.0
@@ -16,6 +16,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/tsingsun/woocoo v0.2.5
 	github.com/urfave/cli/v2 v2.25.0
+	golang.org/x/text v0.9.0
 	golang.org/x/tools v0.8.0
 )
 
@@ -85,7 +86,6 @@ require (
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

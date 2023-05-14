@@ -2,7 +2,6 @@
 
 {{ define "interface" }}
 
-{{ $pkg := base $.Config.Package }}
 {{ template "header" $ }}
 
 {{ template "import" $ }}
@@ -17,7 +16,7 @@
         {{- end }}
     // ({{ .Method }} {{ .Path }})
     {{ .Name }}(*gin.Context{{ if .HasRequest }}, *{{ .RequestName }}{{ end }})(
-    {{- if .HasResponse}}{{ .ResponseOK.Schema.Type.String }}, {{ end }}error)
+    {{- if .HasResponse }}{{ .ResponseOK.Schema.Type.String }}, {{ end }}error)
     {{- end }}
     }
 

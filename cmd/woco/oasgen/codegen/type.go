@@ -163,7 +163,7 @@ func genParameterFromContent(c *Config, name string, content openapi3.Content, r
 	return
 }
 
-func genResponse(c *Config, codeStr string, spec *openapi3.ResponseRef) *Response {
+func genResponse(c *Config, codeStr, operation string, spec *openapi3.ResponseRef) *Response {
 	if spec == nil {
 		return nil
 	}
@@ -176,7 +176,7 @@ func genResponse(c *Config, codeStr string, spec *openapi3.ResponseRef) *Respons
 		Spec:        spec.Value,
 		Description: spec.Value.Description,
 	}
-	if spec.Value.Content == nil {
+	if spec.Value.Content == nil || len(spec.Value.Content) == 0 {
 		return r
 	}
 	// use first content type
@@ -184,7 +184,8 @@ func genResponse(c *Config, codeStr string, spec *openapi3.ResponseRef) *Respons
 		mediaType := spec.Value.Content[name]
 		r.ContentTypes = append(r.ContentTypes, name)
 		if r.Schema == nil {
-			r.Schema = genSchemaRef(c, "", mediaType.Schema, false)
+			sn := operation + "Response"
+			r.Schema = genSchemaRef(c, sn, mediaType.Schema, false)
 		}
 	}
 
@@ -259,11 +260,13 @@ func (op *Operation) GenResponses() {
 			if name == "default" {
 				status = "0"
 			}
-			res := genResponse(op.Config, status, rs[name])
+			res := genResponse(op.Config, status, op.Spec.OperationID, rs[name])
 			op.Responses = append(op.Responses, res)
 			switch res.Status {
 			case http.StatusOK:
-				op.ResponseOK = res
+				if res.Schema != nil {
+					op.ResponseOK = res
+				}
 			case http.StatusNotFound:
 				op.ResponseNotFound = res
 			}

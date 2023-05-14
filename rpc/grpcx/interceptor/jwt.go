@@ -18,7 +18,7 @@ type (
 	jwtKey struct{}
 	// JWTOptions is the options for JWT interceptor.
 	JWTOptions struct {
-		auth.JWTOptions `json:",squash" yaml:",squash"`
+		auth.JWTOptions `json:",inline" yaml:",inline"`
 	}
 	// JWT is the interceptor for JWT.
 	JWT struct {

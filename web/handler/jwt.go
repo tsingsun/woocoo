@@ -13,7 +13,7 @@ import (
 
 type (
 	JWTConfig struct {
-		auth.JWTOptions `json:",squash" yaml:",squash"`
+		auth.JWTOptions `json:",inline" yaml:",inline"`
 		Skipper         Skipper
 		// Exclude is a list of http paths to exclude from JWT auth
 		//

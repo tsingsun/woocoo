@@ -69,5 +69,5 @@ type UploadFileRequestUriParams struct {
 }
 type UploadFileRequestBody struct {
 	AdditionalMetadata string `form:"additionalMetadata"`
-	File               string `form:"file"`
+	File               []byte `form:"file"`
 }

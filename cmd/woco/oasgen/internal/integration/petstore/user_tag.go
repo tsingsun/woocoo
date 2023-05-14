@@ -31,6 +31,9 @@ type LoginUserRequestBody struct {
 	Password string `binding:"required" form:"password" password:"true"`
 }
 
+type LoginUserResponse struct {
+}
+
 type UpdateUserRequest struct {
 	UriParams UpdateUserRequestUriParams
 	Body      UpdateUserRequestBody

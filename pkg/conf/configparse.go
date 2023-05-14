@@ -178,6 +178,7 @@ func decoderConfig(result any) *mapstructure.DecoderConfig {
 		Result:           result,
 		Metadata:         nil,
 		TagName:          "json",
+		Squash:           true,
 		WeaklyTypedInput: true,
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			expandNilStructPointers(),

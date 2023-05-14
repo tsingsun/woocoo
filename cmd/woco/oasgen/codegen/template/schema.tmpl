@@ -7,13 +7,18 @@
 
     {{ template "import" $ }}
 
-    {{ range .Schemas}}
+    {{- range .Schemas}}
         {{- if not .IsReplace}}
             type {{ pascal .Name }} struct {
-            {{ range .Properties }}
-                {{ pascal .Name }} {{ .Type }} `{{ join .StructTags " " }}`{{ end }}
+            {{- range .Properties }}
+                {{- if .IsInline }}
+                    {{ .Type }} `json:",inline"`
+                {{- else }}
+                    {{ pascal .Name }} {{ .Type }} `{{ join .StructTags " " }}`
+                {{- end }}
+            {{- end }}
             }
         {{- end}}
-    {{ end }}
+    {{- end }}
 
-{{ end}}
+{{- end}}

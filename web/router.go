@@ -7,8 +7,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 )
 
-// RouterGroup is a wrapper for echo.Group.
-// echo.Group is too sample and does not support search.
+// RouterGroup is a wrapper for gin.RouterGroup.
 type RouterGroup struct {
 	Group    *gin.RouterGroup
 	basePath string

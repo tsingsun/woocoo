@@ -190,12 +190,12 @@ func buildGraphqlServer(routerGroup *web.RouterGroup, server *gqlgen.Server, opt
 
 // FromIncomingContext retrieves the gin.Context from the context.Context
 func FromIncomingContext(ctx context.Context) (*gin.Context, error) {
-	ginContext := ctx.Value(gin.ContextKey)
-	if ginContext == nil {
+	ginContext, ok := ctx.Value(gin.ContextKey).(*gin.Context)
+	if !ok {
 		return nil, fmt.Errorf("could not retrieve gin.Context")
 	}
 
-	return ginContext.(*gin.Context), nil
+	return ginContext, nil
 }
 
 // CheckPermissions check the graphql operation permissions base on the package authz

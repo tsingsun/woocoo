@@ -3,7 +3,11 @@ package codegen
 import (
 	"fmt"
 	"github.com/tsingsun/woocoo/cmd/woco/code"
+	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"github.com/tsingsun/woocoo/web/handler"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"text/template"
@@ -12,6 +16,7 @@ import (
 var (
 	pathParamRE *regexp.Regexp
 	pattenMap   map[string]string
+	title       = cases.Title(language.English)
 
 	funcs = template.FuncMap{
 		"extend":             extend,
@@ -20,6 +25,13 @@ var (
 		"patternMap":         func() map[string]string { return pattenMap },
 		"isSupportNegotiate": IsSupportNegotiate,
 		"isBytes":            IsBytes,
+		"normalizePkg": func(pkg string) string {
+			pkg, err := helper.NormalizePkg(pkg)
+			if err != nil {
+				panic(err)
+			}
+			return filepath.Base(pkg)
+		},
 	}
 )
 
@@ -67,7 +79,7 @@ func extend(v any, kv ...any) (any, error) {
 
 func schemaNameFromRef(ref string) string {
 	ss := strings.Split(ref, "/")
-	return ss[len(ss)-1]
+	return helper.Pascal(ss[len(ss)-1])
 }
 
 func ModelMapToTypeInfo(model map[string]*ModelMap) (map[string]*code.TypeInfo, error) {

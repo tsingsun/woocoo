@@ -29,6 +29,8 @@ type (
 		Watcher      persist.Watcher
 		// RequestParser is the function to parse cashbin request according cashbin Model
 		RequestParser RequestParserFunc
+
+		autoSave bool
 	}
 	RequestParserFunc func(ctx context.Context, identity security.Identity, item *security.PermissionItem) []any
 )
@@ -43,15 +45,16 @@ func WithRequestParseFunc(f RequestParserFunc) Option {
 // NewAuthorization returns a new authenticator with CachedEnforcer and redis watcher by application configuration.
 // Configuration example:
 //
-//	  authz:
-//	    autoSave: false
-//		   expireTime: 1h
-//		   watcherOptions:
-//		     options:
-//		       addr: "localhost:6379"
-//		       channel: "/casbin"
-//		   model: /path/to/model.conf
-//		   policy: /path/to/policy.csv
+// authz:
+//
+//	autoSave: false
+//	expireTime: 1h
+//	watcherOptions:
+//	  options:
+//	    addr: "localhost:6379"
+//	    channel: "/casbin"
+//	model: /path/to/model.conf
+//	policy: /path/to/policy.csv
 func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorization, err error) {
 	au = &Authorization{
 		RequestParser: defaultRequestParserFunc,
@@ -83,9 +86,11 @@ func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorizatio
 	if cnf.IsSet("expireTime") {
 		enforcer.SetExpireTime(cnf.Duration("expireTime"))
 	}
+	// autosave default to false, because we use redis watcher
 	if cnf.IsSet("autoSave") {
-		enforcer.EnableAutoSave(cnf.Bool("autoSave"))
+		au.autoSave = cnf.Bool("autoSave")
 	}
+	enforcer.EnableAutoSave(au.autoSave)
 
 	au.Enforcer = enforcer
 	au.baseEnforcer = enforcer.Enforcer
@@ -139,6 +144,8 @@ func SetDefaultAuthorization(au *Authorization) {
 	DefaultAuthorization = au
 }
 
+// autoSave in watcher callback should be false. but set false will cause casbin main nodes lost save data.
+// we will improve in the future.current use database unique index to avoid duplicate data.
 func defaultUpdateCallback(e casbin.IEnforcer) func(string) {
 	return func(msg string) {
 		msgStruct := &rediswatcher.MSG{}

@@ -9,6 +9,7 @@ import (
 	"github.com/tsingsun/woocoo/cmd/woco/code"
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -25,6 +26,7 @@ type Schema struct {
 	StructTags  []string
 	properties  []*Schema
 	Properties  map[string]*Schema
+	IsInline    bool // if schema is inline , schema is embedded in another schema
 	IsReplace   bool // if schema is replaced by model defined in config
 }
 
@@ -39,7 +41,13 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 		return
 	}
 	sv := spec.Value
-	switch sv.Type {
+	sepcType := sv.Type
+	if sv.AllOf != nil {
+		sepcType = "object"
+	} else if sv.Type == "" && (sv.OneOf == nil || sv.AnyOf == nil) {
+		sepcType = "object"
+	}
+	switch sepcType {
 	case "array":
 		itemName := ""
 		info = &code.TypeInfo{
@@ -168,6 +176,8 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 		}
 		info.PkgPath = c.Package
 		info.PkgName = code.PkgShortName(c.Package)
+	case "":
+		return
 	default:
 		panic(fmt.Errorf("unhandled OpenAPISchema type: %s", sv.Type))
 	}
@@ -345,13 +355,34 @@ func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required boo
 
 	if !sc.Required {
 		if sc.Type.Type == code.TypeOther && !sc.Type.Nillable {
-			sc.Type.Ident = "*" + sc.Type.Ident
+			if !strings.HasPrefix(sc.Type.Ident, "*") {
+				sc.Type.Ident = "*" + sc.Type.Ident
+			}
 		}
 	}
 	for k, v := range spec.Value.Extensions {
 		switch k {
 		case goTag:
 			sc.StructTags = append(sc.StructTags, v.(string))
+		}
+	}
+	// allOf
+	if spec.Value != nil && len(spec.Value.AllOf) > 0 {
+		for i, one := range spec.Value.AllOf {
+			if one.Ref != "" {
+				gs := genSchemaRef(c, name, one, false)
+				// inline struct
+				gs.IsInline = true
+				sc.Properties[strconv.Itoa(i)] = gs
+				sc.properties = append(sc.properties, gs)
+			} else {
+				for _, name := range sortPropertyKeys(one.Value.Properties) {
+					schemaRef := one.Value.Properties[name]
+					gs := genSchemaRef(c, name, schemaRef, helper.InStrSlice(one.Value.Required, name))
+					sc.Properties[name] = gs
+					sc.properties = append(sc.properties, gs)
+				}
+			}
 		}
 	}
 	sc.CollectTags()

@@ -9,6 +9,9 @@ type DeleteOrderRequestUriParams struct {
 	OrderId string `binding:"required" uri:"orderId"`
 }
 
+type GetInventoryResponse struct {
+}
+
 type GetOrderByIdRequest struct {
 	UriParams GetOrderByIdRequestUriParams
 }

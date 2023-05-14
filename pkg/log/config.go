@@ -54,8 +54,8 @@ type Config struct {
 }
 
 type rotate struct {
-	// mapstructor use json tag,so ignore `unknown JSON option "squash"` lint
-	lumberjack.Logger `json:",squash" yaml:",squash"`
+	// mapstructor use ",squash" tag for embedded struct, but conf.decoderConfig use `squash=true` so need not set
+	lumberjack.Logger `json:",inline" yaml:",inline"`
 }
 
 // Sync implement zap.Sink interface

@@ -17,6 +17,12 @@ type (
 	parseTarget2 struct {
 		text string
 	}
+	parseInline struct {
+		InLineTarget
+	}
+	InLineTarget struct {
+		Inline int
+	}
 )
 
 func (p *parseTarget2) UnmarshalText(text []byte) error {
@@ -172,6 +178,23 @@ func TestParser_Unmarshal(t *testing.T) {
 				}
 				assert.NoError(t, err)
 				assert.Equal(t, tg, i[1])
+				return false
+			},
+		},
+		{
+			name: "squash",
+			fields: fields{parser: NewParserFromStringMap(map[string]any{
+				"struct": map[string]any{
+					"target": map[string]any{"inline": 1},
+				}}),
+			},
+			args: args{
+				key: "struct.target",
+				dst: parseInline{},
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				assert.NoError(t, err)
+				assert.Equal(t, parseInline{InLineTarget{Inline: 1}}, i[1])
 				return false
 			},
 		},

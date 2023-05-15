@@ -2,13 +2,16 @@
 
 {{ define "schema"}}
 
-    {{ $pkg := base $.Config.Package }}
-    {{ template "header" $ }}
+{{ $pkg := base $.Config.Package }}
+{{ template "header" $ }}
 
-    {{ template "import" $ }}
+{{ template "import" $ }}
 
-    {{- range .Schemas}}
-        {{- if not .IsReplace}}
+{{- range .Schemas}}
+    {{- if not .IsReplace}}
+        {{- if not .Properties }}
+            type {{ pascal .Name }} {{ .Type }}
+        {{ else }}
             type {{ pascal .Name }} struct {
             {{- range .Properties }}
                 {{- if .IsInline }}
@@ -18,7 +21,9 @@
                 {{- end }}
             {{- end }}
             }
-        {{- end}}
+        {{ end}}
     {{- end }}
 
 {{- end}}
+
+{{ end }}

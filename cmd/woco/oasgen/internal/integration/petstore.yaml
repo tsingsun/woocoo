@@ -42,7 +42,7 @@ paths:
             - 'write:pets'
             - 'read:pets'
       requestBody:
-        $ref: '#/components/requestBodies/Pet'
+        $ref: '#/components/requestBodies/NewPet'
     put:
       tags:
         - pet
@@ -140,14 +140,10 @@ paths:
           content:
             application/xml:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Pet'
+                $ref: '#/components/schemas/pets'
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Pet'
+                $ref: '#/components/schemas/pets'
         '400':
           description: Invalid tag value
       security:
@@ -591,6 +587,16 @@ components:
             $ref: '#/components/schemas/Pet'
       description: Pet object that needs to be added to the store
       required: true
+    NewPet:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NewPet'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/NewPet'
+      description: Pet object that needs to be added to the store
+      required: true
   securitySchemes:
     petstore_auth:
       type: oauth2
@@ -684,8 +690,14 @@ components:
           format: int64
         name:
           type: string
+        labels:
+          $ref: '#/components/schemas/labelSet'
       xml:
         name: Tag
+    labelSet:
+      type: object
+      additionalProperties:
+        type: string
     Pet:
       title: a Pet
       description: A pet for sale in the pet store
@@ -726,6 +738,19 @@ components:
             - sold
       xml:
         name: Pet
+    pets:
+      type: array
+      items:
+        $ref: '#/components/schemas/Pet'
+    NewPet:
+      allOf:
+        - $ref: '#/components/schemas/Pet'
+        - required:
+            - timestamp
+          properties:
+            timestamp:
+              type: string
+              format: date-time
     ApiResponse:
       title: An uploaded response
       description: Describes the result of uploading an image resource

@@ -21,12 +21,12 @@
             Body {{ .RequestName }}Body
         {{- end }}
         }
-
-        {{- if .Request.BindUri }}
+        {{ if .Request.BindUri }}
             type {{ .RequestName }}UriParams struct {
             {{- range .Request.UriParameters }}
                 {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
             }
+
         {{- end }}
         {{- if .Request.BindHeader }}
             type {{ .RequestName }}HeaderParams struct {

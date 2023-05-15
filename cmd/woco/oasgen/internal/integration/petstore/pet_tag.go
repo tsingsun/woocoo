@@ -5,14 +5,16 @@ package petstore
 type AddPetRequest struct {
 	Body AddPetRequestBody
 }
+
 type AddPetRequestBody struct {
-	Pet Pet `binding:"required" json:"pet" xml:"Pet"`
+	NewPet NewPet `binding:"required" json:"newPet" xml:"NewPet"`
 }
 
 type DeletePetRequest struct {
 	UriParams    DeletePetRequestUriParams
 	HeaderParams DeletePetRequestHeaderParams
 }
+
 type DeletePetRequestUriParams struct {
 	PetId int64 `binding:"required" uri:"petId"`
 }
@@ -23,6 +25,7 @@ type DeletePetRequestHeaderParams struct {
 type FindPetsByStatusRequest struct {
 	Body FindPetsByStatusRequestBody
 }
+
 type FindPetsByStatusRequestBody struct {
 	Status []string `binding:"required" form:"status"`
 }
@@ -30,6 +33,7 @@ type FindPetsByStatusRequestBody struct {
 type FindPetsByTagsRequest struct {
 	Body FindPetsByTagsRequestBody
 }
+
 type FindPetsByTagsRequestBody struct {
 	Tags []string `binding:"required" form:"tags"`
 }
@@ -37,6 +41,7 @@ type FindPetsByTagsRequestBody struct {
 type GetPetByIdRequest struct {
 	UriParams GetPetByIdRequestUriParams
 }
+
 type GetPetByIdRequestUriParams struct {
 	PetId int64 `binding:"required" uri:"petId"`
 }
@@ -44,14 +49,16 @@ type GetPetByIdRequestUriParams struct {
 type UpdatePetRequest struct {
 	Body UpdatePetRequestBody
 }
+
 type UpdatePetRequestBody struct {
-	Pet Pet `binding:"required" json:"pet" xml:"Pet"`
+	Pet *Pet `binding:"required" json:"pet" xml:"Pet"`
 }
 
 type UpdatePetWithFormRequest struct {
 	UriParams UpdatePetWithFormRequestUriParams
 	Body      UpdatePetWithFormRequestBody
 }
+
 type UpdatePetWithFormRequestUriParams struct {
 	PetId int64 `binding:"required" uri:"petId"`
 }
@@ -64,6 +71,7 @@ type UploadFileRequest struct {
 	UriParams UploadFileRequestUriParams
 	Body      UploadFileRequestBody
 }
+
 type UploadFileRequestUriParams struct {
 	PetId int64 `binding:"required" uri:"petId"`
 }

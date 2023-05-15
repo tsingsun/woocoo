@@ -8,6 +8,12 @@ type Category struct {
 	ID   int64  `json:"id,omitempty" xml:"id"`
 	Name string `binding:"regex=oas_pattern_0,omitempty" json:"name,omitempty" xml:"name"`
 }
+
+type NewPet struct {
+	*Pet      `json:",inline"`
+	Timestamp time.Time `binding:"datetime=2006-01-02T15:04:05Z07:00,required" json:"timestamp" xml:"timestamp"`
+}
+
 type Order struct {
 	Complete bool      `json:"complete,omitempty" xml:"complete"`
 	ID       int64     `json:"id,omitempty" xml:"id"`
@@ -16,6 +22,7 @@ type Order struct {
 	ShipDate time.Time `binding:"datetime=2006-01-02T15:04:05Z07:00,omitempty" json:"shipDate,omitempty" xml:"shipDate"`
 	Status   string    `json:"status,omitempty" xml:"status"`
 }
+
 type Pet struct {
 	Category  *Category `json:"category,omitempty" xml:"Category"`
 	ID        int64     `json:"id,omitempty" xml:"id"`
@@ -24,10 +31,13 @@ type Pet struct {
 	Status    string    `json:"status,omitempty" xml:"status"`
 	Tags      []*Tag    `json:"tags,omitempty" xml:"tag"`
 }
+
 type Tag struct {
-	ID   int64  `json:"id,omitempty" xml:"id"`
-	Name string `json:"name,omitempty" xml:"name"`
+	ID       int64    `json:"id,omitempty" xml:"id"`
+	LabelSet LabelSet `json:"labelSet,omitempty" xml:"LabelSet"`
+	Name     string   `json:"name,omitempty" xml:"name"`
 }
+
 type User struct {
 	Email      string `binding:"email,omitempty" json:"email,omitempty" xml:"email"`
 	FirstName  string `json:"firstName,omitempty" xml:"firstName"`
@@ -38,3 +48,7 @@ type User struct {
 	UserStatus int32  `json:"userStatus,omitempty" xml:"userStatus"`
 	Username   string `json:"username,omitempty" xml:"username"`
 }
+
+type LabelSet map[string]string
+
+type Pets []*Pet

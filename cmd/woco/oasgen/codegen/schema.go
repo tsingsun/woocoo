@@ -57,23 +57,32 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 		if sv.Items.Ref != "" {
 			itemName = schemaNameFromRef(sv.Items.Ref)
 		}
-		sch.GenSchemaType(c, itemName, sv.Items)
-		if sch.Type.RType == nil {
-			if sch.Type.Type == code.TypeOther {
-				info.Ident = "[]*" + sch.Type.String()
-			} else {
-				info.Ident = "[]" + sch.Type.String()
-			}
-			info.Type = code.TypeOther
+		subSch := Schema{}
+		subSch.GenSchemaType(c, itemName, sv.Items)
+		if spec.Ref != "" {
+			info.Ident = schemaNameFromRef(spec.Ref)
+			info.PkgPath = c.Package
+			info.PkgName = code.PkgShortName(c.Package)
 		} else {
-			iv := reflect.MakeSlice(sch.Type.RType.ReflectType(), 0, 0)
-			rt, err := code.ParseGoType(iv)
-			if err != nil {
-				panic(err)
+			if subSch.Type.RType == nil {
+				id := subSch.Type.String()
+				if subSch.Type.Type == code.TypeOther {
+					if !strings.HasPrefix(id, "*") {
+						id = "*" + id // make slice item is pointer
+					}
+				} else {
+				}
+				info.Ident = "[]" + id
+			} else {
+				iv := reflect.MakeSlice(subSch.Type.RType.ReflectType(), 0, 0)
+				rt, err := code.ParseGoType(iv)
+				if err != nil {
+					panic(err)
+				}
+				info.Ident = rt.String()
+				info.PkgPath = rt.PkgPath
+				info.RType = rt
 			}
-			info.Ident = rt.String()
-			info.PkgPath = rt.PkgPath
-			info.RType = rt
 		}
 	case "integer":
 		switch sv.Format {
@@ -159,18 +168,23 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 			itemName := ""
 			if sv.AdditionalProperties.Schema.Ref != "" {
 				itemName = schemaNameFromRef(sv.AdditionalProperties.Schema.Ref)
+				sch.GenSchemaType(c, itemName, sv.AdditionalProperties.Schema)
+			} else {
+				subSch := &Schema{}
+				subSch.GenSchemaType(c, "", sv.AdditionalProperties.Schema)
+				if spec.Ref != "" { // ref object ,the ident keep the same
+					info.Ident = schemaNameFromRef(spec.Ref)
+				} else {
+					info.Ident = "map[string]" + subSch.Type.String()
+				}
 			}
-
-			sch.GenSchemaType(c, itemName, sv.AdditionalProperties.Schema)
-			info.Ident = "map[string]" + sch.Type.String()
 			info.Nillable = true
 			break
 		}
-		ref := spec.Ref
 		// inline object,generate in package path
-		if ref != "" {
-			info.Ident = schemaNameFromRef(ref)
-			c.AddTypeMap(ref, info)
+		if spec.Ref != "" {
+			info.Ident = schemaNameFromRef(spec.Ref)
+			//c.AddTypeMap(ref, info)
 		} else {
 			info.Ident = helper.Pascal(name)
 		}
@@ -181,8 +195,12 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 	default:
 		panic(fmt.Errorf("unhandled OpenAPISchema type: %s", sv.Type))
 	}
+
 	if info == nil {
 		return
+	}
+	if spec.Ref != "" {
+		c.AddTypeMap(spec.Ref, info)
 	}
 	if spec.Value.Nullable && !info.Nillable {
 		info.Ident = "*" + info.Ident

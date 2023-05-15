@@ -135,14 +135,14 @@ func genParameter(c *Config, spec *openapi3.ParameterRef) *Parameter {
 	return ep
 }
 
-func genParameterFromContent(c *Config, name string, content openapi3.Content, required bool) (params []*Parameter) {
+func genParameterFromContent(c *Config, name string, content openapi3.Content, required, isRef bool) (params []*Parameter) {
 	var schema *Schema
 	contentTypes := make([]string, 0, len(content))
 	for ct, mediaType := range content {
 		contentTypes = append(contentTypes, ct)
 		if schema == nil {
 			schema = genSchemaRef(c, name, mediaType.Schema, required)
-			if mediaType.Schema.Ref == "" { // from independent Spec
+			if !isRef && mediaType.Schema.Ref == "" { // from independent Spec
 				for _, property := range schema.properties {
 					param := newParameterFromSchema(c, property)
 					params = append(params, param)
@@ -246,7 +246,8 @@ func (op *Operation) GenParameters() {
 		}
 	}
 	if rb := op.Spec.RequestBody; rb != nil {
-		gps := genParameterFromContent(op.Config, op.RequestName(), rb.Value.Content, rb.Value.Required)
+		rname := op.RequestName()
+		gps := genParameterFromContent(op.Config, rname, rb.Value.Content, rb.Value.Required, rb.Ref != "")
 		op.AddParameter(gps...)
 		op.Request.BindBody = true
 		op.Request.Body = append(op.Request.Body, gps...)

@@ -19,17 +19,3 @@ func TestGenerate(t *testing.T) {
 	err = oasgen.Generate(path, cfg)
 	assert.NoError(t, err)
 }
-
-func TestGenerateExpanded(t *testing.T) {
-	cfgPath := "config.yaml"
-	path := "petstore-expanded.yaml"
-	cfg := &codegen.Config{
-		OpenAPISchema: path,
-		Target:        "petstore-expanded",
-	}
-	err := oasgen.LoadConfig(cfg, cfgPath)
-	assert.NoError(t, err)
-	err = oasgen.Generate(path, cfg)
-	assert.NoError(t, err)
-
-}

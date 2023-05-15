@@ -18,7 +18,7 @@ type PetServer interface {
 	// (GET /pet/findByStatus)
 	FindPetsByStatus(*gin.Context, *FindPetsByStatusRequest) ([]*Pet, error)
 	// (GET /pet/findByTags)
-	FindPetsByTags(*gin.Context, *FindPetsByTagsRequest) ([]*Pet, error)
+	FindPetsByTags(*gin.Context, *FindPetsByTagsRequest) (Pets, error)
 	// (GET /pet/{petId})
 	GetPetById(*gin.Context, *GetPetByIdRequest) (*Pet, error)
 	// (PUT /pet)
@@ -46,9 +46,9 @@ type UserServer interface {
 	// (POST /user)
 	CreateUser(*gin.Context, *CreateUserRequest) error
 	// (POST /user/createWithArray)
-	CreateUsersWithArrayInput(*gin.Context) error
+	CreateUsersWithArrayInput(*gin.Context, *CreateUsersWithArrayInputRequest) error
 	// (POST /user/createWithList)
-	CreateUsersWithListInput(*gin.Context) error
+	CreateUsersWithListInput(*gin.Context, *CreateUsersWithListInputRequest) error
 	// (DELETE /user/{username})
 	DeleteUser(*gin.Context, *DeleteUserRequest) error
 	// (GET /user/{username})
@@ -79,7 +79,7 @@ func (UnimplementedPetServer) FindPetsByStatus(c *gin.Context, req *FindPetsBySt
 	return
 }
 
-func (UnimplementedPetServer) FindPetsByTags(c *gin.Context, req *FindPetsByTagsRequest) (_ []*Pet, err error) {
+func (UnimplementedPetServer) FindPetsByTags(c *gin.Context, req *FindPetsByTagsRequest) (_ Pets, err error) {
 	err = fmt.Errorf("method FindPetsByTags not implemented")
 	return
 }
@@ -135,12 +135,12 @@ func (UnimplementedUserServer) CreateUser(c *gin.Context, req *CreateUserRequest
 	return
 }
 
-func (UnimplementedUserServer) CreateUsersWithArrayInput(c *gin.Context) (err error) {
+func (UnimplementedUserServer) CreateUsersWithArrayInput(c *gin.Context, req *CreateUsersWithArrayInputRequest) (err error) {
 	err = fmt.Errorf("method CreateUsersWithArrayInput not implemented")
 	return
 }
 
-func (UnimplementedUserServer) CreateUsersWithListInput(c *gin.Context) (err error) {
+func (UnimplementedUserServer) CreateUsersWithListInput(c *gin.Context, req *CreateUsersWithListInputRequest) (err error) {
 	err = fmt.Errorf("method CreateUsersWithListInput not implemented")
 	return
 }

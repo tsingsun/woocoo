@@ -268,7 +268,12 @@ func wrapCreateUser(si petstore.UserServer) func(c *gin.Context) {
 
 func wrapCreateUsersWithArrayInput(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		err := si.CreateUsersWithArrayInput(c)
+		var req petstore.CreateUsersWithArrayInputRequest
+		if err := c.ShouldBind(&req.Body); err != nil {
+			c.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+		err := si.CreateUsersWithArrayInput(c, &req)
 		if err != nil {
 			c.Error(err)
 			return
@@ -278,7 +283,12 @@ func wrapCreateUsersWithArrayInput(si petstore.UserServer) func(c *gin.Context) 
 
 func wrapCreateUsersWithListInput(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		err := si.CreateUsersWithListInput(c)
+		var req petstore.CreateUsersWithListInputRequest
+		if err := c.ShouldBind(&req.Body); err != nil {
+			c.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+		err := si.CreateUsersWithListInput(c, &req)
 		if err != nil {
 			c.Error(err)
 			return

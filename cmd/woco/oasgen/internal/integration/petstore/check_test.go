@@ -2,6 +2,7 @@ package petstore
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
 )
@@ -42,6 +43,8 @@ func TestGenerateAfter(t *testing.T) {
 
 		tag := reflect.TypeOf(Tag{})
 		assert.EqualValues(t, "id,omitempty", tag.Field(0).Tag.Get("json"))
+		assert.EqualValues(t, "labelSet,omitempty", tag.Field(1).Tag.Get("json"))
+		assert.EqualValues(t, "petstore.LabelSet", tag.Field(1).Type.String()) // map[string]string
 
 		categoryS := Category{}
 		categoryType := reflect.TypeOf(categoryS)
@@ -74,6 +77,10 @@ func TestGenerateAfter(t *testing.T) {
 		status := orderType.Field(5)
 		assert.EqualValues(t, `status,omitempty`, status.Tag.Get("json"))
 		assert.EqualValues(t, `string`, status.Type.String())
+
+		allof := reflect.TypeOf(NewPet{})
+		assert.EqualValues(t, `,inline`, allof.Field(0).Tag.Get("json"))
+		assert.EqualValues(t, `*petstore.Pet`, allof.Field(0).Type.String())
 	})
 	t.Run("checkRequest", func(t *testing.T) {
 		drHeader := reflect.TypeOf(DeletePetRequest{}.HeaderParams)
@@ -93,5 +100,21 @@ func TestGenerateAfter(t *testing.T) {
 
 		usBody := reflect.TypeOf(LoginUserRequest{}.Body)
 		assert.EqualValues(t, `true`, usBody.Field(1).Tag.Get("password"))
+
+		arrayBody := reflect.TypeOf(CreateUsersWithArrayInputRequest{}.Body)
+		assert.EqualValues(t, `required`, arrayBody.Field(0).Tag.Get("binding"))
+		assert.EqualValues(t, `[]*petstore.User`, arrayBody.Field(0).Type.String())
+	})
+	t.Run("checkResponse", func(t *testing.T) {
+		res := reflect.TypeOf(UnimplementedPetServer{})
+		// response from reference
+		md, ok := res.MethodByName("FindPetsByTags")
+		require.True(t, ok)
+		/// get md return type,check if it is a special type
+		assert.EqualValues(t, `petstore.Pets`, md.Type.Out(0).String())
+
+		md, ok = res.MethodByName("FindPetsByStatus")
+		require.True(t, ok)
+		assert.EqualValuesf(t, `[]*petstore.Pet`, md.Type.Out(0).String(), "array response type should be petstore.Pets slice")
 	})
 }

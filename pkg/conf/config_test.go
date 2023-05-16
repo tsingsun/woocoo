@@ -545,37 +545,3 @@ func TestGlobal(t *testing.T) {
 		})
 	}
 }
-
-func TestGetOrDefault(t *testing.T) {
-	type args[T CValue] struct {
-		path string
-		def  T
-	}
-	type testCase[T CValue] struct {
-		name string
-		args args[T]
-		want T
-	}
-	tests := []testCase[int]{
-		{
-			name: "int",
-			args: args[int]{
-				path: "a.b",
-				def:  1,
-			},
-			want: func() int {
-				global.Configuration = NewFromStringMap(map[string]any{
-					"a": map[string]any{
-						"b": 1,
-					},
-				})
-				return 1
-			}(),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, GetOrDefault(tt.args.path, tt.args.def), "GetOrDefault(%v, %v)", tt.args.path, tt.args.def)
-		})
-	}
-}

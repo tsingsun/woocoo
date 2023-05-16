@@ -363,17 +363,6 @@ func (c *Configuration) AllSettings() map[string]any {
 	return c.parser.k.Raw()
 }
 
-type CValue interface {
-	int | int8 | int16 | int32 | int64 | float32 | float64 | string | bool
-}
-
-func GetOrDefault[T CValue](path string, def T) T {
-	if !IsSet(path) {
-		return def
-	}
-	return Get(path).(T)
-}
-
 // Join paths
 func Join(ps ...string) string {
 	if len(ps) == 0 {

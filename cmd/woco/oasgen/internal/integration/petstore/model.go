@@ -33,9 +33,9 @@ type Pet struct {
 }
 
 type Tag struct {
-	ID       int64    `json:"id,omitempty" xml:"id"`
-	LabelSet LabelSet `json:"labelSet,omitempty" xml:"LabelSet"`
-	Name     string   `json:"name,omitempty" xml:"name"`
+	ID     int64    `json:"id,omitempty" xml:"id"`
+	Labels LabelSet `json:"labelSet,omitempty" xml:"LabelSet"`
+	Name   string   `json:"name,omitempty" xml:"name"`
 }
 
 type User struct {

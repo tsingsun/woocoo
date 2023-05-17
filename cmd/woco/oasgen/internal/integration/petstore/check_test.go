@@ -44,6 +44,7 @@ func TestGenerateAfter(t *testing.T) {
 		tag := reflect.TypeOf(Tag{})
 		assert.EqualValues(t, "id,omitempty", tag.Field(0).Tag.Get("json"))
 		assert.EqualValues(t, "labelSet,omitempty", tag.Field(1).Tag.Get("json"))
+		assert.EqualValues(t, "Labels", tag.Field(1).Name)                     // map[string]string
 		assert.EqualValues(t, "petstore.LabelSet", tag.Field(1).Type.String()) // map[string]string
 
 		categoryS := Category{}

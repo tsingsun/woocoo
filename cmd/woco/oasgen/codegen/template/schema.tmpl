@@ -13,11 +13,11 @@
             type {{ pascal .Name }} {{ .Type }}
         {{ else }}
             type {{ pascal .Name }} struct {
-            {{- range .Properties }}
-                {{- if .IsInline }}
-                    {{ .Type }} `json:",inline"`
+            {{- range $key,$schema := .Properties }}
+                {{- if $schema.IsInline }}
+                    {{ $schema.Type }} `json:",inline"`
                 {{- else }}
-                    {{ pascal .Name }} {{ .Type }} `{{ join .StructTags " " }}`
+                    {{ pascal $key }} {{ .Type }} `{{ join .StructTags " " }}`
                 {{- end }}
             {{- end }}
             }

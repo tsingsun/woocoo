@@ -44,7 +44,7 @@ type StoreServer interface {
 // UserServer is the server API for User service.
 type UserServer interface {
 	// (POST /user)
-	CreateUser(*gin.Context, *CreateUserRequest) error
+	CreateUser(*gin.Context, *CreateUserRequest) (*CreateUserResponse, error)
 	// (POST /user/createWithArray)
 	CreateUsersWithArrayInput(*gin.Context, *CreateUsersWithArrayInputRequest) error
 	// (POST /user/createWithList)
@@ -130,7 +130,7 @@ func (UnimplementedStoreServer) PlaceOrder(c *gin.Context, req *PlaceOrderReques
 type UnimplementedUserServer struct {
 }
 
-func (UnimplementedUserServer) CreateUser(c *gin.Context, req *CreateUserRequest) (err error) {
+func (UnimplementedUserServer) CreateUser(c *gin.Context, req *CreateUserRequest) (_ *CreateUserResponse, err error) {
 	err = fmt.Errorf("method CreateUser not implemented")
 	return
 }

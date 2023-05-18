@@ -47,7 +47,7 @@ func wrapAddPet(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.AddPetRequest
 		if err := c.ShouldBind(&req.Body); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		resp, err := si.AddPet(c, &req)
@@ -63,11 +63,11 @@ func wrapDeletePet(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.DeletePetRequest
 		if err := c.ShouldBindUri(&req.UriParams); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		if err := c.ShouldBindHeader(&req.HeaderParams); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		err := si.DeletePet(c, &req)
@@ -82,7 +82,7 @@ func wrapFindPetsByStatus(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.FindPetsByStatusRequest
 		if err := c.ShouldBind(&req.Body); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		resp, err := si.FindPetsByStatus(c, &req)
@@ -98,7 +98,7 @@ func wrapFindPetsByTags(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.FindPetsByTagsRequest
 		if err := c.ShouldBind(&req.Body); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		resp, err := si.FindPetsByTags(c, &req)
@@ -114,7 +114,7 @@ func wrapGetPetById(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.GetPetByIdRequest
 		if err := c.ShouldBindUri(&req.UriParams); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		resp, err := si.GetPetById(c, &req)
@@ -123,7 +123,7 @@ func wrapGetPetById(si petstore.PetServer) func(c *gin.Context) {
 			return
 		}
 		if resp == nil {
-			c.AbortWithError(http.StatusBadRequest, errors.New("Pet not found"))
+			handler.AbortWithError(c, http.StatusBadRequest, errors.New("Pet not found"))
 			return
 		}
 		handler.NegotiateResponse(c, http.StatusOK, resp, []string{"application/json", "application/xml"})
@@ -134,7 +134,7 @@ func wrapUpdatePet(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.UpdatePetRequest
 		if err := c.ShouldBind(&req.Body); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		resp, err := si.UpdatePet(c, &req)
@@ -143,7 +143,7 @@ func wrapUpdatePet(si petstore.PetServer) func(c *gin.Context) {
 			return
 		}
 		if resp == nil {
-			c.AbortWithError(http.StatusBadRequest, errors.New("Pet not found"))
+			handler.AbortWithError(c, http.StatusBadRequest, errors.New("Pet not found"))
 			return
 		}
 		handler.NegotiateResponse(c, http.StatusOK, resp, []string{"application/json", "application/xml"})
@@ -154,11 +154,11 @@ func wrapUpdatePetWithForm(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.UpdatePetWithFormRequest
 		if err := c.ShouldBindUri(&req.UriParams); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		if err := c.ShouldBind(&req.Body); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		err := si.UpdatePetWithForm(c, &req)
@@ -173,11 +173,11 @@ func wrapUploadFile(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.UploadFileRequest
 		if err := c.ShouldBindUri(&req.UriParams); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		if err := c.ShouldBind(&req.Body); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		resp, err := si.UploadFile(c, &req)
@@ -193,7 +193,7 @@ func wrapDeleteOrder(si petstore.StoreServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.DeleteOrderRequest
 		if err := c.ShouldBindUri(&req.UriParams); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		err := si.DeleteOrder(c, &req)
@@ -219,7 +219,7 @@ func wrapGetOrderById(si petstore.StoreServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.GetOrderByIdRequest
 		if err := c.ShouldBindUri(&req.UriParams); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		resp, err := si.GetOrderById(c, &req)
@@ -228,7 +228,7 @@ func wrapGetOrderById(si petstore.StoreServer) func(c *gin.Context) {
 			return
 		}
 		if resp == nil {
-			c.AbortWithError(http.StatusBadRequest, errors.New("Order not found"))
+			handler.AbortWithError(c, http.StatusBadRequest, errors.New("Order not found"))
 			return
 		}
 		handler.NegotiateResponse(c, http.StatusOK, resp, []string{"application/json", "application/xml"})
@@ -239,7 +239,7 @@ func wrapPlaceOrder(si petstore.StoreServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.PlaceOrderRequest
 		if err := c.ShouldBind(&req.Body); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		resp, err := si.PlaceOrder(c, &req)
@@ -255,14 +255,15 @@ func wrapCreateUser(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.CreateUserRequest
 		if err := c.ShouldBind(&req.Body); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
-		err := si.CreateUser(c, &req)
+		resp, err := si.CreateUser(c, &req)
 		if err != nil {
 			c.Error(err)
 			return
 		}
+		handler.NegotiateResponse(c, http.StatusOK, resp, []string{"application/json"})
 	}
 }
 
@@ -270,7 +271,7 @@ func wrapCreateUsersWithArrayInput(si petstore.UserServer) func(c *gin.Context) 
 	return func(c *gin.Context) {
 		var req petstore.CreateUsersWithArrayInputRequest
 		if err := c.ShouldBind(&req.Body); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		err := si.CreateUsersWithArrayInput(c, &req)
@@ -285,7 +286,7 @@ func wrapCreateUsersWithListInput(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.CreateUsersWithListInputRequest
 		if err := c.ShouldBind(&req.Body); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		err := si.CreateUsersWithListInput(c, &req)
@@ -300,7 +301,7 @@ func wrapDeleteUser(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.DeleteUserRequest
 		if err := c.ShouldBindUri(&req.UriParams); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		err := si.DeleteUser(c, &req)
@@ -315,7 +316,7 @@ func wrapGetUserByName(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.GetUserByNameRequest
 		if err := c.ShouldBindUri(&req.UriParams); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		resp, err := si.GetUserByName(c, &req)
@@ -324,7 +325,7 @@ func wrapGetUserByName(si petstore.UserServer) func(c *gin.Context) {
 			return
 		}
 		if resp == nil {
-			c.AbortWithError(http.StatusBadRequest, errors.New("User not found"))
+			handler.AbortWithError(c, http.StatusBadRequest, errors.New("User not found"))
 			return
 		}
 		handler.NegotiateResponse(c, http.StatusOK, resp, []string{"application/json", "application/xml"})
@@ -335,7 +336,7 @@ func wrapLoginUser(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.LoginUserRequest
 		if err := c.ShouldBind(&req.Body); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		resp, err := si.LoginUser(c, &req)
@@ -361,11 +362,11 @@ func wrapUpdateUser(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.UpdateUserRequest
 		if err := c.ShouldBindUri(&req.UriParams); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		if err := c.ShouldBind(&req.Body); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
 		err := si.UpdateUser(c, &req)

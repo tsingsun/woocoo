@@ -385,8 +385,15 @@ paths:
       description: This can only be done by the logged in user.
       operationId: createUser
       responses:
-        default:
-          description: successful operation
+        200:
+          description: Create user response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userID:
+                    type: string
       security:
         - api_key: []
       requestBody:
@@ -747,10 +754,13 @@ components:
         - $ref: '#/components/schemas/Pet'
         - required:
             - timestamp
+            - owner
           properties:
             timestamp:
               type: string
               format: date-time
+            owner:
+                $ref: '#/components/schemas/User'
     ApiResponse:
       title: An uploaded response
       description: Describes the result of uploading an image resource

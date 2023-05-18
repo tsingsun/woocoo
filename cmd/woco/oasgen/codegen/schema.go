@@ -14,11 +14,28 @@ import (
 	"time"
 )
 
+var (
+	intmap = map[string]code.Type{
+		"int":    code.TypeInt,
+		"int8":   code.TypeInt8,
+		"int16":  code.TypeInt16,
+		"int32":  code.TypeInt32,
+		"int64":  code.TypeInt64,
+		"uint":   code.TypeUint,
+		"uint8":  code.TypeUint8,
+		"uint16": code.TypeUint16,
+		"uint32": code.TypeUint32,
+		"uint64": code.TypeUint64,
+	}
+)
+
 // Schema is for schema of openapi3
+// a struct , the struct 's field all is Schema
+// Properties are sort by name, because openapi3 use map to store properties,map is not ordered.
 type Schema struct {
 	Spec        *openapi3.SchemaRef // The original OpenAPIv3 Schema.
-	Name        string
-	Type        *code.TypeInfo
+	Name        string              // The name of the schema.
+	Type        *code.TypeInfo      // The type of the schema.
 	IsRef       bool
 	HasRegular  bool // if schema has a pattern setting
 	Required    bool
@@ -28,9 +45,12 @@ type Schema struct {
 	Properties  map[string]*Schema
 	IsInline    bool // if schema is inline , schema is embedded in another schema
 	IsReplace   bool // if schema is replaced by model defined in config
+	IsAlias     bool // if schema is alias of not go native type
+	IsArray     bool
 }
 
 // GenSchemaType generates the type of the parameter by SPEC.
+// schema type from : the schema's sepc , additionalProperties, array items
 func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRef) {
 	var info *code.TypeInfo
 	if spec == nil {
@@ -45,66 +65,44 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 	if sv.AllOf != nil {
 		sepcType = "object"
 	} else if sv.Type == "" && (sv.OneOf == nil || sv.AnyOf == nil) {
+		// todo check oneOf and anyOf
 		sepcType = "object"
 	}
+
 	switch sepcType {
 	case "array":
-		itemName := ""
+		sch.IsArray = true
 		info = &code.TypeInfo{
 			Type:     code.TypeOther,
 			Nillable: true,
-		}
-		if sv.Items.Ref != "" {
-			itemName = schemaNameFromRef(sv.Items.Ref)
+			PkgPath:  c.Package,
+			PkgName:  code.PkgShortName(c.Package),
 		}
 		subSch := Schema{}
-		subSch.GenSchemaType(c, itemName, sv.Items)
-		if spec.Ref != "" {
-			info.Ident = schemaNameFromRef(spec.Ref)
-			info.PkgPath = c.Package
-			info.PkgName = code.PkgShortName(c.Package)
-		} else {
-			if subSch.Type.RType == nil {
-				id := subSch.Type.String()
-				if subSch.Type.Type == code.TypeOther {
-					if !strings.HasPrefix(id, "*") {
-						id = "*" + id // make slice item is pointer
-					}
-				} else {
-				}
-				info.Ident = "[]" + id
-			} else {
-				iv := reflect.MakeSlice(subSch.Type.RType.ReflectType(), 0, 0)
-				rt, err := code.ParseGoType(iv)
-				if err != nil {
-					panic(err)
-				}
-				info.Ident = rt.String()
-				info.PkgPath = rt.PkgPath
-				info.RType = rt
+		subSch.GenSchemaType(c, schemaNameFromRef(sv.Items.Ref), sv.Items)
+		info.Ident = "[]" + subSch.Type.String()
+		//  has RType
+		if subSch.Type.RType != nil {
+			iv := reflect.MakeSlice(subSch.Type.RType.ReflectType(), 0, 0)
+			rt, err := code.ParseGoType(iv)
+			if err != nil {
+				panic(err)
+			}
+			info.Ident = rt.String()
+			info.PkgPath = rt.PkgPath
+			info.RType = rt
+		}
+		if subSch.Type.Type == code.TypeOther {
+			if !strings.HasPrefix(subSch.Type.String(), "*") {
+				info.Ident = "[]*" + subSch.Type.String() // make slice item is pointer to easy set value
 			}
 		}
 	case "integer":
-		switch sv.Format {
-		case "int64":
-			info = &code.TypeInfo{Type: code.TypeInt64}
-		case "int32":
-			info = &code.TypeInfo{Type: code.TypeInt32}
-		case "int16":
-			info = &code.TypeInfo{Type: code.TypeInt16}
-		case "int8":
-			info = &code.TypeInfo{Type: code.TypeInt8}
-		case "uint64":
-			info = &code.TypeInfo{Type: code.TypeUint64}
-		case "uint32":
-			info = &code.TypeInfo{Type: code.TypeUint32}
-		case "uint16":
-			info = &code.TypeInfo{Type: code.TypeUint16}
-		case "uint8":
-			info = &code.TypeInfo{Type: code.TypeUint8}
-		default:
-			info = &code.TypeInfo{Type: code.TypeInt}
+		tp, ok := intmap[sv.Format]
+		if !ok {
+			tp = code.TypeInt
 		}
+		info = &code.TypeInfo{Type: tp}
 	case "number":
 		switch sv.Format {
 		case "double":
@@ -122,10 +120,10 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 			info = &code.TypeInfo{Type: code.TypeBytes, Nillable: true}
 		case "date":
 			info = &code.TypeInfo{Type: code.TypeTime}
-			sch.validations = append(sch.validations, `datetime=2006-01-02`)
+			sch.StructTags = append(sch.StructTags, fmt.Sprintf(`time_format:%q`, time.DateOnly))
 		case "date-time":
 			info = &code.TypeInfo{Type: code.TypeTime, PkgPath: "time"}
-			sch.validations = append(sch.validations, fmt.Sprintf("datetime=%s", time.RFC3339))
+			sch.StructTags = append(sch.StructTags, fmt.Sprintf(`time_format:%q`, time.RFC3339))
 		case "duration":
 			info = &code.TypeInfo{Type: code.TypeUint64, PkgPath: "time"}
 			info.Ident = "Duration"
@@ -165,32 +163,30 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 	case "object":
 		info = &code.TypeInfo{Type: code.TypeOther}
 		if sv.AdditionalProperties.Schema != nil {
-			itemName := ""
 			if sv.AdditionalProperties.Schema.Ref != "" {
-				itemName = schemaNameFromRef(sv.AdditionalProperties.Schema.Ref)
-				sch.GenSchemaType(c, itemName, sv.AdditionalProperties.Schema)
+				sch.GenSchemaType(c, schemaNameFromRef(sv.AdditionalProperties.Schema.Ref), sv.AdditionalProperties.Schema)
 			} else {
 				subSch := &Schema{}
 				subSch.GenSchemaType(c, "", sv.AdditionalProperties.Schema)
-				if spec.Ref != "" { // ref object ,the ident keep the same
-					info.Ident = schemaNameFromRef(spec.Ref)
-				} else {
-					info.Ident = "map[string]" + subSch.Type.String()
-				}
+				info.Ident = "map[string]" + subSch.Type.String()
 			}
 			info.Nillable = true
+
 			break
 		}
 		// inline object,generate in package path
 		if spec.Ref != "" {
 			info.Ident = schemaNameFromRef(spec.Ref)
-			//c.AddTypeMap(ref, info)
 		} else {
 			info.Ident = helper.Pascal(name)
+		}
+		if info.Ident == "" {
+			panic("object should be a ident name")
 		}
 		info.PkgPath = c.Package
 		info.PkgName = code.PkgShortName(c.Package)
 	case "":
+		// TODO
 		return
 	default:
 		panic(fmt.Errorf("unhandled OpenAPISchema type: %s", sv.Type))
@@ -199,92 +195,107 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 	if info == nil {
 		return
 	}
-	if spec.Ref != "" {
-		c.AddTypeMap(spec.Ref, info)
-	}
+
 	if spec.Value.Nullable && !info.Nillable {
-		info.Ident = "*" + info.Ident
+		if info.Ident != "" {
+			info.Ident = "*" + info.Ident
+		}
 		info.Nillable = true
 	}
 	sch.Type = info
 	return
 }
 
-// AppendContentTypeStructTag parse content type and append to struct tags
-func (sch *Schema) AppendContentTypeStructTag(c *Config, tagName, contentType string) {
-	switch contentType {
-	case binding.MIMEJSON:
-		if HasTag(sch.StructTags, "json") {
-			break
-		}
-		tagName = strcase.ToLowerCamel(tagName)
-		if sch.Required {
-			sch.StructTags = append(sch.StructTags, fmt.Sprintf(`json:"%s"`, tagName))
-		} else {
-			sch.StructTags = append(sch.StructTags, fmt.Sprintf(`json:"%s,omitempty"`, tagName))
-		}
-	case binding.MIMEPOSTForm:
-		if HasTag(sch.StructTags, "form") {
-			break
-		}
-		sch.StructTags = append(sch.StructTags, fmt.Sprintf(`form:"%s"`, tagName))
-	case binding.MIMEXML, binding.MIMEXML2:
-		if HasTag(sch.StructTags, "xml") {
-			break
-		}
-		if x := sch.Spec.Value.XML; x != nil {
-			tagName = ""
-			if x.Prefix != "" {
-				tagName = x.Prefix + ":"
+var updateContentTypes = make(map[string]struct{})
+
+// AppendContentTypeStructTag parse content type and append to struct tags.if depends on Request or Response content type.
+func (sch *Schema) AppendContentTypeStructTag(c *Config, tagName string, contentTypes []string) {
+	for _, contentType := range contentTypes {
+		switch contentType {
+		case binding.MIMEJSON:
+			if HasTag(sch.StructTags, "json") {
+				continue
 			}
-			tagName += x.Name
-			if x.Attribute {
-				tagName += ",attr"
+			tagName = strcase.ToLowerCamel(tagName)
+			if sch.Required {
+				sch.StructTags = append(sch.StructTags, fmt.Sprintf(`json:"%s"`, tagName))
+			} else {
+				sch.StructTags = append(sch.StructTags, fmt.Sprintf(`json:"%s,omitempty"`, tagName))
 			}
+		case binding.MIMEPOSTForm:
+			if HasTag(sch.StructTags, "form") {
+				continue
+			}
+			sch.StructTags = append(sch.StructTags, fmt.Sprintf(`form:"%s"`, tagName))
+		case binding.MIMEXML, binding.MIMEXML2:
+			if HasTag(sch.StructTags, "xml") {
+				continue
+			}
+			if x := sch.Spec.Value.XML; x != nil {
+				tagName = ""
+				if x.Prefix != "" {
+					tagName = x.Prefix + ":"
+				}
+				tagName += x.Name
+				if x.Attribute {
+					tagName += ",attr"
+				}
+			}
+			sch.StructTags = append(sch.StructTags, fmt.Sprintf(`xml:"%s"`, tagName))
+		case binding.MIMEMSGPACK2:
+			if HasTag(sch.StructTags, "msgpack") {
+				continue
+			}
+			sch.StructTags = append(sch.StructTags, fmt.Sprintf(`msgpack:"%s"`, tagName))
+		default:
+			if HasTag(sch.StructTags, "form") {
+				continue
+			}
+			sch.StructTags = append(sch.StructTags, fmt.Sprintf(`form:"%s"`, tagName))
 		}
-		sch.StructTags = append(sch.StructTags, fmt.Sprintf(`xml:"%s"`, tagName))
-	case binding.MIMEMSGPACK2:
-		if HasTag(sch.StructTags, "msgpack") {
-			break
-		}
-		sch.StructTags = append(sch.StructTags, fmt.Sprintf(`msgpack:"%s"`, tagName))
-	default:
-		if HasTag(sch.StructTags, "form") {
-			break
-		}
-		sch.StructTags = append(sch.StructTags, fmt.Sprintf(`form:"%s"`, tagName))
 	}
 
-	if sch.IsRef {
+	// update schema info
+	if sch.IsRef || sch.IsArray {
 		ref := sch.Spec.Ref
 		if sch.IsObjectArray() {
 			// array
 			ref = sch.Spec.Value.Items.Ref
 		}
 		if s, ok := c.schemas[ref]; ok {
-			s.AppendContentTypeStructTag(c, s.Name, contentType)
+			cts := []string{}
+			for _, contentType := range contentTypes {
+				key := sch.Spec.Ref + ":" + contentType
+				if _, ok := updateContentTypes[key]; ok {
+					continue
+				}
+				cts = append(cts, contentType)
+				updateContentTypes[key] = struct{}{}
+			}
+			if len(cts) > 0 {
+				s.AppendContentTypeStructTag(c, s.Name, cts)
+			}
 		}
-	} else {
-		if sch.Type.Type == code.TypeOther && !sch.Type.Nillable {
-			// nillable like slice map, pointer do not need to be added to the schema,those are inline or has added to the schema
-			c.AddSchema(sch)
-		}
+		//else if sch.Type.Type == code.TypeOther && !sch.Type.Nillable {
+		//	// nillable like slice map, pointer do not need to be added to the schema,those are inline or has added to the schema
+		//	c.AddSchema(sch)
+		//}
 	}
 	for _, property := range sch.properties {
-		property.AppendContentTypeStructTag(c, property.Name, contentType)
+		property.AppendContentTypeStructTag(c, property.Name, contentTypes)
 	}
 }
 
 // IsObjectArray returns true if the schema is an array of objects
 func (sch *Schema) IsObjectArray() bool {
-	if sch.Type.Type == code.TypeOther {
-		// inline
-		switch sch.Spec.Value.Type {
-		case "array":
-			return true
-		}
+	return sch.IsArray
+}
+
+func (sch Schema) StructTagsString() string {
+	if len(sch.StructTags) == 0 {
+		return ""
 	}
-	return false
+	return "`" + strings.Join(sch.StructTags, " ") + "`"
 }
 
 // CollectTags collects all struct tags from the schema and its children.
@@ -351,78 +362,154 @@ func (sch *Schema) CollectTags() {
 	}
 }
 
+// CopyTo copies the schema's base properties to the target schema
+func (sch *Schema) CopyTo(tg *Schema) {
+	tg.properties = sch.properties
+	tg.Properties = sch.Properties
+	tg.StructTags = sch.StructTags
+	tg.validations = sch.validations
+	tg.HasRegular = sch.HasRegular
+	tg.IsReplace = sch.IsReplace
+	tg.IsInline = sch.IsInline
+	tg.IsAlias = sch.IsAlias
+	tg.Type = sch.Type
+}
+
+// CheckRequired checks if the schema is required and updates the schema type if needed
+func (sch *Schema) CheckRequired() {
+	if sch.Type.Type == code.TypeOther && !sch.Type.Nillable {
+		if sch.Required {
+			if strings.HasPrefix(sch.Type.Ident, "*") {
+				sch.Type.Ident = sch.Type.Ident[1:]
+			}
+		} else {
+			if !strings.HasPrefix(sch.Type.Ident, "*") {
+				sch.Type.Ident = "*" + sch.Type.Ident
+			}
+		}
+	}
+}
+
 func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required bool) *Schema {
-	sv := spec.Value
+	if spec.Ref != "" && name == "" { // if it's a ref, we need to get the name from the ref
+		name = schemaNameFromRef(spec.Ref)
+	}
 	sc := &Schema{
 		Name:       name,
 		Spec:       spec,
 		Properties: make(map[string]*Schema),
 		Required:   required,
-	}
-	sc.GenSchemaType(c, name, spec)
-	sc.IsRef = spec.Ref != ""
-	if sc.IsRef { // if it's a ref, we need to get the name from the ref
-		sc.Name = schemaNameFromRef(spec.Ref)
-	}
-	if sc.IsObjectArray() {
-		if sc.Name == "" {
-			sc.Name = code.TypeName(sc.Type.Ident) + "List"
-		}
-		sc.IsRef = spec.Value.Items.Ref != ""
+		IsRef:      spec.Ref != "",
 	}
 
-	if !sc.Required {
-		if sc.Type.Type == code.TypeOther && !sc.Type.Nillable {
-			if !strings.HasPrefix(sc.Type.Ident, "*") {
-				sc.Type.Ident = "*" + sc.Type.Ident
+	if sc.IsRef {
+		if s, ok := c.schemas[spec.Ref]; ok {
+			s.CopyTo(sc)
+			// get real type according sepc.Ref
+			//sc.GenSchemaType(c, name, spec)
+
+			// if it's an alias, we need to get the name for reference type
+			if s.IsAlias {
+				tt := *s.Type
+				sc.Type = &tt
+				sc.Type.Ident = helper.Pascal(s.Name)
 			}
+
+			sc.CheckRequired()
+			return sc
 		}
 	}
+	sc.GenSchemaType(c, name, spec)
+	//if sc.IsObjectArray() {
+	//	if sc.Name == "" {
+	//		sc.Name = code.TypeName(sc.Type.Ident) + "List"
+	//	}
+	//	sc.IsRef = sv.Items.Ref != ""
+	//}
+	sc.CheckRequired()
 	for k, v := range spec.Value.Extensions {
 		switch k {
 		case goTag:
 			sc.StructTags = append(sc.StructTags, v.(string))
 		}
 	}
+
 	// allOf
 	if spec.Value != nil && len(spec.Value.AllOf) > 0 {
+		// allof node is a new schema
+		sc.IsRef = false
 		for i, one := range spec.Value.AllOf {
 			if one.Ref != "" {
-				gs := genSchemaRef(c, name, one, false)
+				gs := genSchemaRef(c, "", one, false)
 				// inline struct
 				gs.IsInline = true
 				sc.Properties[strconv.Itoa(i)] = gs
 				sc.properties = append(sc.properties, gs)
 			} else {
-				for _, name := range sortPropertyKeys(one.Value.Properties) {
-					schemaRef := one.Value.Properties[name]
-					gs := genSchemaRef(c, name, schemaRef, helper.InStrSlice(one.Value.Required, name))
-					sc.Properties[name] = gs
+				for _, oname := range sortPropertyKeys(one.Value.Properties) {
+					schemaRef := one.Value.Properties[oname]
+					gs := genSchemaRef(c, oname, schemaRef, helper.InStrSlice(one.Value.Required, oname))
+					sc.Properties[oname] = gs
 					sc.properties = append(sc.properties, gs)
 				}
 			}
 		}
 	}
 	sc.CollectTags()
-	for _, name := range sortPropertyKeys(sv.Properties) {
-		schemaRef := sv.Properties[name]
-		gs := genSchemaRef(c, name, schemaRef, helper.InStrSlice(spec.Value.Required, name))
-		sc.Properties[name] = gs
-		sc.properties = append(sc.properties, gs)
+	sc.setAlias()
+	// set to c.schemas , and avoid recursive
+	if sc.IsRef {
+		if sc.IsAlias {
+			// not the root schema, set alias to type todo set type other field
+			sc.Type.Ident = helper.Pascal(schemaNameFromRef(sc.Spec.Ref))
+		}
 	}
+	sc.genProperties(c, name, spec)
 	return sc
 }
 
-func genComponentSchemas(c *Config, spec *openapi3.T) (schemas map[string]*Schema) {
-	schemas = make(map[string]*Schema)
+func (sch *Schema) genProperties(c *Config, name string, spec *openapi3.SchemaRef) {
+	for _, pname := range sortPropertyKeys(spec.Value.Properties) {
+		schemaRef := sch.Spec.Value.Properties[pname]
+		gs := genSchemaRef(c, pname, schemaRef, helper.InStrSlice(spec.Value.Required, pname))
+		sch.Properties[pname] = gs
+		sch.properties = append(sch.properties, gs)
+	}
+}
+
+// SetAlias set IsAlias, it just calls in genComponentSchemas
+func (sch *Schema) setAlias() {
+	//  set IsAlias
+	if sch.Type.Type == code.TypeOther {
+		if sch.IsArray {
+			sch.IsAlias = true
+		}
+		if strings.HasPrefix(sch.Type.Ident, "map[string]") {
+			sch.IsAlias = true
+		}
+	}
+
+}
+
+func genComponentSchemas(c *Config, spec *openapi3.T) {
+	// copy c.TypeMap to tmpTypeMap
+	// make sure this mothod is run first,because type map will change in genSchemaRef by request or response
+	// and isReplace will be not correct
+	tmpTypeMap := make(map[string]*code.TypeInfo)
+	for k, v := range c.TypeMap {
+		tmpTypeMap[k] = v
+	}
 	for _, name := range sortPropertyKeys(spec.Components.Schemas) {
 		schemaRef := spec.Components.Schemas[name]
 		k := "#/components/schemas/" + name
 		gs := genSchemaRef(c, name, schemaRef, false)
-		if _, ok := c.Models[k]; ok {
+		if tp, ok := tmpTypeMap[k]; ok { // schemas do not has a ref
 			gs.IsReplace = true
+			gs.Type = tp
 		}
-		schemas[k] = gs
+		//gs.setAlias()
+		c.AddTypeMap(k, gs.Type)
+		c.AddSchema(k, gs)
 	}
 	return
 }

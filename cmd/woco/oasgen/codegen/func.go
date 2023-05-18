@@ -32,6 +32,9 @@ var (
 			}
 			return filepath.Base(pkg)
 		},
+		"hasTag": func(ts []string, t string) bool {
+			return HasTag(ts, t)
+		},
 	}
 )
 
@@ -78,6 +81,9 @@ func extend(v any, kv ...any) (any, error) {
 }
 
 func schemaNameFromRef(ref string) string {
+	if ref == "" {
+		return ""
+	}
 	ss := strings.Split(ref, "/")
 	return helper.Pascal(ss[len(ss)-1])
 }

@@ -18,7 +18,7 @@
             CookieParams {{ .RequestName }}CookieParams
         {{- end }}
         {{- if .Request.BindBody }}
-            Body {{ .RequestName }}Body
+            Body {{ if not .SimpleBody }}{{ .RequestName }}Body {{ else }}{{ .SimpleBody.Schema.Type.StructString }} {{ .SimpleBody.Schema.StructTagsString }}{{ end }}
         {{- end }}
         }
         {{ if .Request.BindUri }}
@@ -40,20 +40,22 @@
                 {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
             }
         {{- end }}
-        {{- if .Request.BindBody }}
+        {{- if and .Request.BindBody (not .SimpleBody ) }}
             type {{ .RequestName }}Body struct {
             {{- range .Request.Body }}
-                {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
+                {{- if .Schema.IsInline }}
+                    {{ .Schema.Type }} `json:",inline"`
+                {{- else }}
+                    {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
+                {{- end }}
             }
         {{- end }}
     {{ end }}
     {{- if .HasResponse}}
         {{- with .ResponseOK}}
-            {{ if and (not .Schema.IsRef) .Schema.Name }}
+            {{ if and (not .Schema.IsRef) .Schema.Properties }}
                 type {{ pascal .Schema.Name }} struct {
-                {{- range .Schema.Properties }}
-                    {{ pascal .Name }} {{ .Type.String }} `{{ join .StructTags " " }}`
-                {{- end }}
+                    {{ template "help/properties" .Schema}}
                 }
             {{- end }}
         {{ end }}

@@ -37,19 +37,19 @@ import(
             var req {{$pkgName}}.{{ .RequestName }}
             {{- if .Request.BindUri}}
                 if err := c.ShouldBindUri(&req.UriParams); err != nil {
-                    c.AbortWithError(http.StatusBadRequest, err)
+                    handler.AbortWithError(c,http.StatusBadRequest, err)
                     return
                 }
             {{- end }}
             {{- if .Request.BindHeader }}
                 if err := c.ShouldBindHeader(&req.HeaderParams); err != nil {
-                    c.AbortWithError(http.StatusBadRequest, err)
+                    handler.AbortWithError(c,http.StatusBadRequest, err)
                     return
                 }
             {{- end }}
             {{- if .Request.BindBody }}
                 if err := c.ShouldBind(&req.Body); err != nil {
-                    c.AbortWithError(http.StatusBadRequest, err)
+                    handler.AbortWithError(c,http.StatusBadRequest, err)
                     return
                 }
             {{- end }}
@@ -62,7 +62,7 @@ import(
             }
             {{- if and .ResponseNotFound .ResponseOK.Schema.Type.Nillable }}
                 if resp == nil {
-                    c.AbortWithError(http.StatusBadRequest, errors.New("{{ .ResponseNotFound.Description }}"))
+                    handler.AbortWithError(c,http.StatusBadRequest, errors.New("{{ .ResponseNotFound.Description }}"))
                     return
                 }
             {{- end }}

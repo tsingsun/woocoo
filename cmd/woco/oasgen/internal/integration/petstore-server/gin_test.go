@@ -110,6 +110,35 @@ func (s *ginTestSuite) TestUpdateUser() {
 	})
 }
 
+func (s *ginTestSuite) TestPostOrder() {
+	t := s.T()
+	t.Run("empty", func(t *testing.T) {
+		bf := bytes.NewBufferString(`{"id":1,"status":"placed"}`)
+		r := httptest.NewRequest("POST", "/store/order", bf)
+		r.Header.Set("Content-Type", binding.MIMEJSON)
+		w := httptest.NewRecorder()
+		s.Router.ServeHTTP(w, r)
+		assert.Equal(t, 200, w.Code)
+	})
+	t.Run("wrong time", func(t *testing.T) {
+		bf := bytes.NewBufferString(`{"id":1,"status":"placed","shipDate":"2006-01-02"}`)
+		r := httptest.NewRequest("POST", "/store/order", bf)
+		r.Header.Set("Content-Type", binding.MIMEJSON)
+		w := httptest.NewRecorder()
+		s.Router.ServeHTTP(w, r)
+		assert.Equal(t, 400, w.Code)
+		assert.Contains(t, w.Header().Get("Content-Type"), binding.MIMEJSON)
+	})
+	t.Run("with time", func(t *testing.T) {
+		bf := bytes.NewBufferString(`{"id":1,"status":"placed","shipDate":"2006-01-02T15:04:05Z"}`)
+		r := httptest.NewRequest("POST", "/store/order", bf)
+		r.Header.Set("Content-Type", binding.MIMEJSON)
+		w := httptest.NewRecorder()
+		s.Router.ServeHTTP(w, r)
+		assert.Equal(t, 200, w.Code)
+	})
+}
+
 func TestGinTestSuite(t *testing.T) {
 	suite.Run(t, new(ginTestSuite))
 }

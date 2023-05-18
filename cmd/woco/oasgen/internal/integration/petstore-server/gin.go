@@ -29,7 +29,7 @@ type Server struct {
 	petstore.UnimplementedUserServer
 }
 
-func (s Server) FindPetsByTags(ctx *gin.Context, req *petstore.FindPetsByTagsRequest) ([]*petstore.Pet, error) {
+func (s Server) FindPetsByTags(ctx *gin.Context, req *petstore.FindPetsByTagsRequest) (petstore.Pets, error) {
 	return []*petstore.Pet{
 		{ID: 1, Name: "dog"},
 	}, nil
@@ -58,4 +58,8 @@ func (s Server) GetPetById(ctx *gin.Context, req *petstore.GetPetByIdRequest) (_
 
 func (Server) UpdateUser(ctx *gin.Context, req *petstore.UpdateUserRequest) (err error) {
 	return nil
+}
+
+func (Server) PlaceOrder(ctx *gin.Context, req *petstore.PlaceOrderRequest) (res *petstore.Order, err error) {
+	return nil, nil
 }

@@ -11,7 +11,8 @@ type Category struct {
 
 type NewPet struct {
 	*Pet      `json:",inline"`
-	Timestamp time.Time `binding:"datetime=2006-01-02T15:04:05Z07:00,required" json:"timestamp" xml:"timestamp"`
+	Owner     User      `binding:"required" json:"owner" xml:"User"`
+	Timestamp time.Time `time_format:"2006-01-02T15:04:05Z07:00" binding:"required" json:"timestamp" xml:"timestamp"`
 }
 
 type Order struct {
@@ -19,7 +20,7 @@ type Order struct {
 	ID       int64     `json:"id,omitempty" xml:"id"`
 	PetId    int64     `json:"petId,omitempty" xml:"petId"`
 	Quantity int32     `json:"quantity,omitempty" xml:"quantity"`
-	ShipDate time.Time `binding:"datetime=2006-01-02T15:04:05Z07:00,omitempty" json:"shipDate,omitempty" xml:"shipDate"`
+	ShipDate time.Time `time_format:"2006-01-02T15:04:05Z07:00" json:"shipDate,omitempty" xml:"shipDate"`
 	Status   string    `json:"status,omitempty" xml:"status"`
 }
 
@@ -34,7 +35,7 @@ type Pet struct {
 
 type Tag struct {
 	ID     int64    `json:"id,omitempty" xml:"id"`
-	Labels LabelSet `json:"labelSet,omitempty" xml:"LabelSet"`
+	Labels LabelSet `json:"labels,omitempty" xml:"labels"`
 	Name   string   `json:"name,omitempty" xml:"name"`
 }
 

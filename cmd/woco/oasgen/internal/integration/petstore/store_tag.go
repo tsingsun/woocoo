@@ -10,9 +10,6 @@ type DeleteOrderRequestUriParams struct {
 	OrderId string `binding:"required" uri:"orderId"`
 }
 
-type GetInventoryResponse struct {
-}
-
 type GetOrderByIdRequest struct {
 	UriParams GetOrderByIdRequestUriParams
 }
@@ -22,9 +19,5 @@ type GetOrderByIdRequestUriParams struct {
 }
 
 type PlaceOrderRequest struct {
-	Body PlaceOrderRequestBody
-}
-
-type PlaceOrderRequestBody struct {
-	Order Order `binding:"required" json:"order"`
+	Body Order
 }

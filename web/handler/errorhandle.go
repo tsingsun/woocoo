@@ -141,3 +141,10 @@ func SetContextError(c *gin.Context, code int, err error) {
 	ce := c.Error(err)
 	ce.Type = gin.ErrorType(code)
 }
+
+// AbortWithError gin context's AbortWithError prevent to reset response header, so we need to replace it
+func AbortWithError(c *gin.Context, code int, err error) {
+	c.Abort()
+	c.Error(err) // nolint: errcheck
+	c.Status(code)
+}

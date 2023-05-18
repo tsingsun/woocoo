@@ -3,6 +3,7 @@ package codegen
 import (
 	"fmt"
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/tsingsun/woocoo/cmd/woco/code"
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"net/http"
 	"sort"
@@ -96,7 +97,7 @@ func genOperation(c *Config, spec *openapi3.T) (ops []*Operation) {
 			}
 			ops = append(ops, op)
 			op.GenSecurity(spec.Components.SecuritySchemes)
-			op.GenParameters()
+			op.GenRequest()
 			op.GenResponses()
 			for k, v := range specop.Extensions {
 				switch k {
@@ -135,7 +136,8 @@ func genParameter(c *Config, spec *openapi3.ParameterRef) *Parameter {
 	return ep
 }
 
-func genParameterFromContent(c *Config, name string, content openapi3.Content, required, isRef bool) (params []*Parameter) {
+// genBodyFromContent according to the http content type.
+func genBodyFromContent(c *Config, name string, content openapi3.Content, required, isRef bool) (params []*Parameter) {
 	var schema *Schema
 	contentTypes := make([]string, 0, len(content))
 	for ct, mediaType := range content {
@@ -149,59 +151,20 @@ func genParameterFromContent(c *Config, name string, content openapi3.Content, r
 				}
 			} else {
 				// from reference Spec
+				schema.IsInline = mediaType.Schema.Ref != ""
 				param := newParameterFromSchema(c, schema)
 				params = append(params, param)
 			}
 		}
 	}
 	for _, param := range params {
-		param.initStructTag()
-		for _, contentType := range contentTypes {
-			param.Schema.AppendContentTypeStructTag(c, param.Name, contentType)
+		//param.initStructTag()
+		param.Schema.AppendContentTypeStructTag(c, param.Name, contentTypes)
+		if param.Name == name { // if name is operation request name
+			param.Schema.StructTags = param.Schema.StructTags[:0]
 		}
 	}
 	return
-}
-
-func genResponse(c *Config, codeStr, operation string, spec *openapi3.ResponseRef) *Response {
-	if spec == nil {
-		return nil
-	}
-	status, err := strconv.Atoi(codeStr)
-	if err != nil {
-		panic(fmt.Errorf("response status code must be int:%s", codeStr))
-	}
-	r := &Response{
-		Status:      status,
-		Spec:        spec.Value,
-		Description: spec.Value.Description,
-	}
-	if spec.Value.Content == nil || len(spec.Value.Content) == 0 {
-		return r
-	}
-	// use first content type
-	for _, name := range sortSpecMediaTypeKeys(spec.Value.Content) {
-		mediaType := spec.Value.Content[name]
-		r.ContentTypes = append(r.ContentTypes, name)
-		if r.Schema == nil {
-			sn := operation + "Response"
-			r.Schema = genSchemaRef(c, sn, mediaType.Schema, false)
-		}
-	}
-
-	if v, ok := c.schemas[r.Schema.Spec.Ref]; ok {
-		for _, contentType := range r.ContentTypes {
-			v.AppendContentTypeStructTag(c, v.Name, contentType)
-		}
-	}
-	// response object is pointer
-	if !r.Schema.Type.Nillable {
-		r.Schema.Type.Nillable = true
-		if r.Schema.Type.Ident != "" && !strings.HasPrefix(r.Schema.Type.Ident, "*") {
-			r.Schema.Type.Ident = "*" + r.Schema.Type.Ident
-		}
-	}
-	return r
 }
 
 func (op *Operation) GenSecurity(ssSpec openapi3.SecuritySchemes) {
@@ -226,7 +189,7 @@ func (op *Operation) GenSecurity(ssSpec openapi3.SecuritySchemes) {
 	}
 }
 
-func (op *Operation) GenParameters() {
+func (op *Operation) GenRequest() {
 	for _, p := range op.Spec.Parameters {
 		gp := genParameter(op.Config, p)
 		op.AddParameter(gp)
@@ -240,18 +203,26 @@ func (op *Operation) GenParameters() {
 		case "cookie":
 			op.Request.BindCookie = true
 			op.Request.CookieParameters = append(op.Request.CookieParameters, gp)
-		case "query", "form":
+		case "query", "form": // query and form include in body
 			op.Request.BindBody = true
 			op.Request.Body = append(op.Request.Body, gp)
 		}
 	}
 	if rb := op.Spec.RequestBody; rb != nil {
 		rname := op.RequestName()
-		gps := genParameterFromContent(op.Config, rname, rb.Value.Content, rb.Value.Required, rb.Ref != "")
+		gps := genBodyFromContent(op.Config, rname, rb.Value.Content, rb.Value.Required, rb.Ref != "")
 		op.AddParameter(gps...)
 		op.Request.BindBody = true
 		op.Request.Body = append(op.Request.Body, gps...)
 	}
+}
+
+// SimpleBody if request body is only one, use the parameter to body field
+func (op *Operation) SimpleBody() *Parameter {
+	if len(op.Request.Body) != 1 {
+		return nil
+	}
+	return op.Request.Body[0]
 }
 
 func (op *Operation) GenResponses() {
@@ -261,7 +232,7 @@ func (op *Operation) GenResponses() {
 			if name == "default" {
 				status = "0"
 			}
-			res := genResponse(op.Config, status, op.Spec.OperationID, rs[name])
+			res := op.GenResponse(status, rs[name])
 			op.Responses = append(op.Responses, res)
 			switch res.Status {
 			case http.StatusOK:
@@ -273,6 +244,48 @@ func (op *Operation) GenResponses() {
 			}
 		}
 	}
+}
+
+func (op *Operation) GenResponse(codeStr string, spec *openapi3.ResponseRef) *Response {
+	if spec == nil {
+		return nil
+	}
+	status, err := strconv.Atoi(codeStr)
+	if err != nil {
+		panic(fmt.Errorf("response status code must be int:%s", codeStr))
+	}
+	r := &Response{
+		Status:      status,
+		Spec:        spec.Value,
+		Description: spec.Value.Description,
+		Name:        op.Name + "Response",
+	}
+	if spec.Value.Content == nil || len(spec.Value.Content) == 0 {
+		return r
+	}
+	// use first content type
+	for _, name := range sortSpecMediaTypeKeys(spec.Value.Content) {
+		mediaType := spec.Value.Content[name]
+		r.ContentTypes = append(r.ContentTypes, name)
+		if r.Schema == nil { // nil at first
+			schemaName := ""
+			if mediaType.Schema.Ref == "" {
+				schemaName = r.Name
+			}
+			r.Schema = genSchemaRef(op.Config, schemaName, mediaType.Schema, false)
+		}
+	}
+
+	r.Schema.AppendContentTypeStructTag(op.Config, r.Schema.Name, r.ContentTypes)
+
+	// response object is pointer
+	if !r.Schema.Type.Nillable {
+		r.Schema.Type.Nillable = true
+		if r.Schema.Type.Ident != "" && !strings.HasPrefix(r.Schema.Type.Ident, "*") {
+			r.Schema.Type.Ident = "*" + r.Schema.Type.Ident
+		}
+	}
+	return r
 }
 
 func (op *Operation) AddParameter(params ...*Parameter) {
@@ -343,6 +356,9 @@ func (p *Parameter) initStructTag() {
 		fallthrough
 	default:
 		// query /id/ or form , body
+		if p.Schema.Type.Type == code.TypeTime {
+
+		}
 		ts = append(ts, fmt.Sprintf(`form:"%s"`, tagName))
 	}
 	p.Schema.StructTags = append(p.Schema.StructTags, ts...)

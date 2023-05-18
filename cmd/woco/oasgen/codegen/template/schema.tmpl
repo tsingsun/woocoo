@@ -13,13 +13,7 @@
             type {{ pascal .Name }} {{ .Type }}
         {{ else }}
             type {{ pascal .Name }} struct {
-            {{- range $key,$schema := .Properties }}
-                {{- if $schema.IsInline }}
-                    {{ $schema.Type }} `json:",inline"`
-                {{- else }}
-                    {{ pascal $key }} {{ .Type }} `{{ join .StructTags " " }}`
-                {{- end }}
-            {{- end }}
+                {{ template "help/properties" .}}
             }
         {{ end}}
     {{- end }}
@@ -27,3 +21,13 @@
 {{- end}}
 
 {{ end }}
+
+{{ define "help/properties" }}
+    {{- range .Properties }}
+        {{- if .IsInline }}
+            {{ .Type }} `json:",inline"`
+        {{- else }}
+            {{ pascal .Name }} {{ .Type }} {{ .StructTagsString }}
+        {{- end }}
+    {{- end }}
+{{ end}}

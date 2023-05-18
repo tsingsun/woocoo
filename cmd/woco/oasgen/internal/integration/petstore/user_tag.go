@@ -3,27 +3,19 @@
 package petstore
 
 type CreateUserRequest struct {
-	Body CreateUserRequestBody
+	Body User
 }
 
-type CreateUserRequestBody struct {
-	User User `binding:"required" json:"user"`
+type CreateUserResponse struct {
+	UserID string `json:"userID,omitempty"`
 }
 
 type CreateUsersWithArrayInputRequest struct {
-	Body CreateUsersWithArrayInputRequestBody
-}
-
-type CreateUsersWithArrayInputRequestBody struct {
-	CreateUsersWithArrayInputRequest []*User `binding:"required" json:"createUsersWithArrayInputRequest"`
+	Body []*User
 }
 
 type CreateUsersWithListInputRequest struct {
-	Body CreateUsersWithListInputRequestBody
-}
-
-type CreateUsersWithListInputRequestBody struct {
-	CreateUsersWithListInputRequest []*User `binding:"required" json:"createUsersWithListInputRequest"`
+	Body []*User
 }
 
 type DeleteUserRequest struct {
@@ -51,17 +43,11 @@ type LoginUserRequestBody struct {
 	Password string `binding:"required" form:"password" password:"true"`
 }
 
-type LoginUserResponse struct {
-}
-
 type UpdateUserRequest struct {
 	UriParams UpdateUserRequestUriParams
-	Body      UpdateUserRequestBody
+	Body      User
 }
 
 type UpdateUserRequestUriParams struct {
 	Username string `binding:"required" uri:"username"`
-}
-type UpdateUserRequestBody struct {
-	User User `binding:"required" json:"user"`
 }

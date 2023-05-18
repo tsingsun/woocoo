@@ -99,16 +99,15 @@ func (c *Config) AddTypeMap(key string, t *code.TypeInfo) {
 	}
 }
 
-func (c *Config) AddSchema(schema *Schema) {
+func (c *Config) AddSchema(ref string, schema *Schema) {
 	if c.schemas == nil {
 		c.schemas = make(map[string]*Schema)
 	}
-	for _, sche := range c.schemas {
-		if sche.Name == schema.Name {
-			return
-		}
+	if _, ok := c.schemas[ref]; ok {
+		return
 	}
-	c.schemas[schema.Name] = schema
+
+	c.schemas[ref] = schema
 	c.Schemas = append(c.Schemas, schema)
 }
 
@@ -253,7 +252,7 @@ func (g *Graph) addTag(schema *openapi3.T) {
 	}
 }
 func (g *Graph) addModels(schema *openapi3.T) {
-	g.schemas = genComponentSchemas(g.Config, schema)
+	genComponentSchemas(g.Config, schema)
 	var sc []*Schema
 	// map to list
 	for _, s := range g.schemas {

@@ -43,8 +43,8 @@ func TestGenerateAfter(t *testing.T) {
 
 		tag := reflect.TypeOf(Tag{})
 		assert.EqualValues(t, "id,omitempty", tag.Field(0).Tag.Get("json"))
-		assert.EqualValues(t, "labelSet,omitempty", tag.Field(1).Tag.Get("json"))
-		assert.EqualValues(t, "Labels", tag.Field(1).Name)                     // map[string]string
+		assert.EqualValues(t, "labels,omitempty", tag.Field(1).Tag.Get("json"))
+		assert.EqualValues(t, "Labels", tag.Field(1).Name)
 		assert.EqualValues(t, "petstore.LabelSet", tag.Field(1).Type.String()) // map[string]string
 
 		categoryS := Category{}
@@ -83,6 +83,12 @@ func TestGenerateAfter(t *testing.T) {
 		assert.EqualValues(t, `,inline`, allof.Field(0).Tag.Get("json"))
 		assert.EqualValues(t, `*petstore.Pet`, allof.Field(0).Type.String())
 	})
+	t.Run("checkModel-allof", func(t *testing.T) {
+		newpet := reflect.TypeOf(NewPet{})
+		assert.EqualValues(t, `,inline`, newpet.Field(0).Tag.Get("json"))
+		assert.EqualValues(t, `*petstore.Pet`, newpet.Field(0).Type.String())
+		assert.EqualValues(t, `Timestamp`, newpet.Field(2).Name)
+	})
 	t.Run("checkRequest", func(t *testing.T) {
 		drHeader := reflect.TypeOf(DeletePetRequest{}.HeaderParams)
 		assert.EqualValues(t, `api_key`, drHeader.Field(0).Tag.Get("header"))
@@ -95,15 +101,15 @@ func TestGenerateAfter(t *testing.T) {
 		urBody := reflect.TypeOf(UpdatePetWithFormRequest{}.Body)
 		assert.EqualValues(t, `name`, urBody.Field(0).Tag.Get("form"))
 		assert.EqualValues(t, `status`, urBody.Field(1).Tag.Get("form"))
-		upBOdy := reflect.TypeOf(UpdateUserRequest{}.Body)
-		assert.EqualValues(t, `user`, upBOdy.Field(0).Tag.Get("json"))
-		assert.NotEqual(t, upBOdy.Field(0).Type.Kind(), reflect.Ptr)
+		upBody := reflect.TypeOf(UpdateUserRequest{})
+		assert.EqualValuesf(t, "", upBody.Field(1).Tag.Get("json"), "request body should not have json tag")
+		assert.Equal(t, upBody.Field(1).Type.Kind(), reflect.Struct)
 
 		usBody := reflect.TypeOf(LoginUserRequest{}.Body)
 		assert.EqualValues(t, `true`, usBody.Field(1).Tag.Get("password"))
 
-		arrayBody := reflect.TypeOf(CreateUsersWithArrayInputRequest{}.Body)
-		assert.EqualValues(t, `required`, arrayBody.Field(0).Tag.Get("binding"))
+		arrayBody := reflect.TypeOf(CreateUsersWithArrayInputRequest{})
+		assert.EqualValuesf(t, "", arrayBody.Field(0).Tag.Get("binding"), "array body should not have binding tag")
 		assert.EqualValues(t, `[]*petstore.User`, arrayBody.Field(0).Type.String())
 	})
 	t.Run("checkResponse", func(t *testing.T) {

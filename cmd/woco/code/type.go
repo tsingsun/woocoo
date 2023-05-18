@@ -125,6 +125,14 @@ func (t TypeInfo) String() string {
 	}
 }
 
+func (t TypeInfo) StructString() string {
+	s := t.String()
+	if strings.HasPrefix(s, "*") {
+		return s[1:]
+	}
+	return s
+}
+
 // Valid reports if the given type if known type.
 func (t TypeInfo) Valid() bool {
 	return t.Type.Valid()

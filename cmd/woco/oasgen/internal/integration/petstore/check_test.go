@@ -82,6 +82,10 @@ func TestGenerateAfter(t *testing.T) {
 		allof := reflect.TypeOf(NewPet{})
 		assert.EqualValues(t, `,inline`, allof.Field(0).Tag.Get("json"))
 		assert.EqualValues(t, `*petstore.Pet`, allof.Field(0).Type.String())
+
+		usert := reflect.TypeOf(User{})
+		// check binding
+		assert.EqualValues(t, `email,omitempty`, usert.Field(0).Tag.Get("binding"))
 	})
 	t.Run("checkModel-allof", func(t *testing.T) {
 		newpet := reflect.TypeOf(NewPet{})

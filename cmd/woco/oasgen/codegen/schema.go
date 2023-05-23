@@ -120,6 +120,7 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 			info = &code.TypeInfo{Type: code.TypeBytes, Nillable: true}
 		case "date":
 			info = &code.TypeInfo{Type: code.TypeTime}
+			// time use struct tag to set format
 			sch.StructTags = append(sch.StructTags, fmt.Sprintf(`time_format:%q`, time.DateOnly))
 		case "date-time":
 			info = &code.TypeInfo{Type: code.TypeTime, PkgPath: "time"}
@@ -140,19 +141,19 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 			info = &code.TypeInfo{Type: code.TypeJSON, Nillable: true}
 		case "hostname":
 			info = &code.TypeInfo{Type: code.TypeString}
-			sch.StructTags = append(sch.StructTags, "hostname_rfc1123")
+			sch.validations = append(sch.validations, "hostname_rfc1123")
 		case "ip":
 			info = &code.TypeInfo{Type: code.TypeString}
-			sch.StructTags = append(sch.StructTags, "ip")
+			sch.validations = append(sch.validations, "ip")
 		case "ipv4":
 			info = &code.TypeInfo{Type: code.TypeString}
-			sch.StructTags = append(sch.StructTags, "ipv4")
+			sch.validations = append(sch.validations, "ipv4")
 		case "ipv6":
 			info = &code.TypeInfo{Type: code.TypeString}
-			sch.StructTags = append(sch.StructTags, "ipv6")
+			sch.validations = append(sch.validations, "ipv6")
 		case "uri":
 			info = &code.TypeInfo{Type: code.TypeString}
-			sch.StructTags = append(sch.StructTags, "uri")
+			sch.validations = append(sch.validations, "uri")
 		case "binary":
 			info = &code.TypeInfo{Type: code.TypeBytes, Nillable: true}
 		default:
@@ -405,9 +406,6 @@ func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required boo
 	if sc.IsRef {
 		if s, ok := c.schemas[spec.Ref]; ok {
 			s.CopyTo(sc)
-			// get real type according sepc.Ref
-			//sc.GenSchemaType(c, name, spec)
-
 			// if it's an alias, we need to get the name for reference type
 			if s.IsAlias {
 				tt := *s.Type
@@ -420,12 +418,6 @@ func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required boo
 		}
 	}
 	sc.GenSchemaType(c, name, spec)
-	//if sc.IsObjectArray() {
-	//	if sc.Name == "" {
-	//		sc.Name = code.TypeName(sc.Type.Ident) + "List"
-	//	}
-	//	sc.IsRef = sv.Items.Ref != ""
-	//}
 	sc.CheckRequired()
 	for k, v := range spec.Value.Extensions {
 		switch k {

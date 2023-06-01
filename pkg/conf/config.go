@@ -289,7 +289,11 @@ func (c *Configuration) Unmarshal(dst any) (err error) {
 // Abs returns the absolute path by the base dir if path is a relative path
 func Abs(path string) string { return global.Abs(path) }
 
+// Abs returns the absolute path by the base dir if path is a relative path,if path is empty return empty.
 func (c *Configuration) Abs(path string) string {
+	if path == "" {
+		return ""
+	}
 	if filepath.IsAbs(path) {
 		return path
 	}

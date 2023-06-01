@@ -1,9 +1,6 @@
 web:
   server:
     addr: 0.0.0.0:30000
-    tls:
-      cert: ""
-      key: ""
   engine:
     redirectTrailingSlash: false
     remoteIPHeaders:

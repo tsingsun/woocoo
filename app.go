@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// App is the application.
+// App is the application with a universal mechanism to manage goroutine lifecycles.
 type App struct {
 	opts options
 
@@ -21,6 +21,7 @@ type App struct {
 	cancel func()
 }
 
+// New creates an application by Option.
 func New(opts ...Option) *App {
 	app := &App{}
 	app.opts = options{
@@ -48,6 +49,9 @@ func (a *App) RegisterServer(servers ...Server) {
 	a.opts.servers = append(a.opts.servers, servers...)
 }
 
+// Run all Server concurrently.
+// Run returns when all Server have exited.
+// Run returns the first non-nil error (if any) from them.
 func (a *App) Run() error {
 	eg, ctx := errgroup.WithContext(a.ctx)
 	wg := sync.WaitGroup{}
@@ -66,16 +70,25 @@ func (a *App) Run() error {
 		})
 	}
 	wg.Wait()
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, a.opts.quitCh...)
-	eg.Go(func() error {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-quit:
-			return a.Stop()
-		}
-	})
+	if len(a.opts.quitCh) == 0 {
+		eg.Go(func() error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		})
+	} else {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, a.opts.quitCh...)
+		eg.Go(func() error {
+			select {
+			case <-ctx.Done():
+				return nil // hup app out not return error
+			case <-quit:
+				return a.Stop()
+			}
+		})
+	}
 	if err := eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		return err
 	}
@@ -86,4 +99,39 @@ func (a *App) Run() error {
 func (a *App) Stop() error {
 	a.cancel()
 	return nil
+}
+
+type miniServer struct {
+	start func(ctx context.Context) error
+	stop  func(ctx context.Context) error
+}
+
+func (s *miniServer) Start(ctx context.Context) error {
+	return s.start(ctx)
+}
+
+func (s *miniServer) Stop(ctx context.Context) error {
+	return s.stop(ctx)
+}
+
+// MiniApp is a simple way to run multi goroutine base on simplified App.
+func MiniApp(ctx context.Context, timeout time.Duration, servers ...Server) (run, stop func() error) {
+	app := &App{}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if timeout > 0 {
+		app.ctx, app.cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		app.ctx, app.cancel = context.WithCancel(ctx)
+	}
+	app.RegisterServer(servers...)
+	return func() error {
+		return app.Run()
+	}, app.Stop
+}
+
+// GroupRun is a simple way to run multi goroutine with start and stop function base on simplified App.
+func GroupRun(ctx context.Context, timeout time.Duration, start, release func(ctx context.Context) error) (run, stop func() error) {
+	return MiniApp(ctx, timeout, &miniServer{start: start, stop: release})
 }

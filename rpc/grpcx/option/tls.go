@@ -5,7 +5,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	"path/filepath"
 )
 
 // TLSOption tls option. it supports file or cert string
@@ -18,24 +17,12 @@ func (TLSOption) Name() string {
 	return "tls"
 }
 
-func (TLSOption) getFiles(cfg *conf.Configuration) (certFile, keyFile string) {
-	certFile = cfg.String("cert")
-	keyFile = cfg.String("key")
-	if certFile != "" && !filepath.IsAbs(certFile) {
-		certFile = filepath.Join(cfg.GetBaseDir(), certFile)
-	}
-	if keyFile != "" && !filepath.IsAbs(keyFile) {
-		keyFile = filepath.Join(cfg.GetBaseDir(), keyFile)
-	}
-	return
-}
-
 func (t TLSOption) ServerOption(cfg *conf.Configuration) grpc.ServerOption {
-	cert, key := t.getFiles(cfg)
-	if cert == "" || key == "" {
+	tls := conf.NewTLS(cfg)
+	if tls.Cert == "" || tls.Key == "" {
 		panic("tls cert or key is empty")
 	}
-	tc, err := credentials.NewServerTLSFromFile(cert, key)
+	tc, err := credentials.NewServerTLSFromFile(tls.Cert, tls.Key)
 	if err != nil {
 		panic(err)
 	}
@@ -43,11 +30,11 @@ func (t TLSOption) ServerOption(cfg *conf.Configuration) grpc.ServerOption {
 }
 
 func (t TLSOption) DialOption(cfg *conf.Configuration) grpc.DialOption {
-	cert, _ := t.getFiles(cfg)
-	if cert == "" {
+	tls := conf.NewTLS(cfg)
+	if tls.Cert == "" {
 		return grpc.WithTransportCredentials(insecure.NewCredentials())
 	}
-	tc, err := credentials.NewClientTLSFromFile(cert, "")
+	tc, err := credentials.NewClientTLSFromFile(tls.Cert, "")
 	if err != nil {
 		panic(err)
 	}

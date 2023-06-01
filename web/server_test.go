@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/test/testdata"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -31,8 +32,8 @@ web:
   server:
     addr: 127.0.0.1:33333
     tls:
-      cert: ""
-      key: ""
+      cert: "x509/test.pem"
+      key: "x509/test.key"
   engine:
     redirectTrailingSlash: false
     remoteIPHeaders:
@@ -100,10 +101,13 @@ web:
   server:
     addr: 127.0.0.1:33333
     tls:
-      cert: ""
-      key: ""
+      cert: "x509/server.crt"
+      key: "x509/server.key"
 `
 	cnf := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
+	cnf.SetBaseDir(testdata.BaseDir())
+	cnfWithouttls := cnf.Copy()
+	cnfWithouttls.ParserOperator().Delete("web.server.tls")
 	type fields struct {
 		srv *Server
 	}
@@ -112,9 +116,9 @@ web:
 		fields  fields
 		wantErr bool // port conflict
 	}{
-		{name: "run", fields: fields{New(WithConfiguration(cnf.Sub("web")))}},
-		{name: "runGraceful", fields: fields{New(WithConfiguration(cnf.Sub("web")), WithGracefulStop())}},
-		{name: "runConflictPort", fields: fields{New(WithConfiguration(cnf.Sub("web")))}, wantErr: true},
+		{name: "run-tls", fields: fields{New(WithConfiguration(cnf.Sub("web")))}},
+		{name: "runGraceful-tls", fields: fields{New(WithConfiguration(cnf.Sub("web")), WithGracefulStop())}},
+		{name: "runConflictPort", fields: fields{New(WithConfiguration(cnfWithouttls.Sub("web")))}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

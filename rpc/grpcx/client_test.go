@@ -185,8 +185,8 @@ service:
     ttl: 600s
     etcd:
       tls:
-        cert: "x509/test.pem"
-        key: "x509/test.key"
+        cert: "x509/server.crt"
+        key: "x509/server.key"
       endpoints:
         - 127.0.0.1:2379
       dial-timeout: 3s
@@ -202,7 +202,7 @@ service:
       - block:
       - timeout: 5s
       - tls:
-          cert: "x509/test.pem" 
+          cert: "x509/server.crt" 
       - unaryInterceptors:
           - otel:
 `)

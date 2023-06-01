@@ -62,6 +62,11 @@ type Parser struct {
 	k *koanf.Koanf
 }
 
+// Operator returns the koanf instance.
+func (l *Parser) Operator() *koanf.Koanf {
+	return l.k
+}
+
 // AllKeys returns all keys holding a value, regardless of where they are set.
 // Nested keys are returned with a KeyDelimiter separator.
 func (l *Parser) AllKeys() []string {

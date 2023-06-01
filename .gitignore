@@ -4,14 +4,17 @@
 *.dll
 *.so
 *.dylib
-*.DS_Store
+*_debug_bin
 # Test binary, built with `go testdata -c`
 *.test
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+*.DS_Store
 .idea
 .run
 go.work*
+
 
 test/tmp/

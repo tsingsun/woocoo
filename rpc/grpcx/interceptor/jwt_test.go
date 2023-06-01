@@ -33,7 +33,7 @@ func TestJWTUnaryServerInterceptor(t *testing.T) {
 		"tokenLookup": "authorization",
 	}))
 
-	cert, err := tls.LoadX509KeyPair(testdata.Path("x509/test.pem"), testdata.Path("x509/test.key"))
+	cert, err := tls.LoadX509KeyPair(testdata.Path("x509/server.crt"), testdata.Path("x509/server.key"))
 	require.NoError(t, err)
 	gs, addr := testproto.NewPingGrpcService(t,
 		grpc.UnaryInterceptor(JWT{}.UnaryServerInterceptor(acfg)),
@@ -41,7 +41,7 @@ func TestJWTUnaryServerInterceptor(t *testing.T) {
 	assert.NotNil(t, gs)
 	defer gs.Stop()
 
-	ccreds, err := credentials.NewClientTLSFromFile(testdata.Path("x509/test.pem"), "*.woocoo.com")
+	ccreds, err := credentials.NewClientTLSFromFile(testdata.Path("x509/server.crt"), "localhost")
 	assert.NoError(t, err)
 	fetchToken := &oauth2.Token{
 		AccessToken: hs256Token,

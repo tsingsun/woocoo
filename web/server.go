@@ -24,12 +24,11 @@ var (
 )
 
 type ServerOptions struct {
-	Addr              string              `json:"addr" yaml:"addr"`
-	SSLCertificate    string              `json:"-" yaml:"-"`
-	SSLCertificateKey string              `json:"-" yaml:"-"`
-	configuration     *conf.Configuration // not root configuration
-	handlerManager    *handler.Manager    // middleware manager
-	gracefulStop      bool                // run with grace full shutdown
+	Addr           string              `json:"addr" yaml:"addr"`
+	TLS            *conf.TLS           `json:"tls" yaml:"tls"`
+	configuration  *conf.Configuration // not root configuration
+	handlerManager *handler.Manager    // middleware manager
+	gracefulStop   bool                // run with grace full shutdown
 }
 
 type Server struct {
@@ -85,9 +84,8 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 			panic(err)
 		}
 	}
-	if k := conf.Join("server", "tls"); cfg.IsSet(k) {
-		s.opts.SSLCertificate = cfg.String(conf.Join(k, "cert"))
-		s.opts.SSLCertificateKey = cfg.String(conf.Join(k, "key"))
+	if cfg.IsSet("server.tls") {
+		s.opts.TLS = conf.NewTLS(cfg.Sub("server.tls"))
 	}
 	if cfg.IsSet("engine") {
 		if err := s.router.Apply(cfg.Sub("engine")); err != nil {
@@ -135,9 +133,8 @@ func (s *Server) ListenAndServe() (err error) {
 	if err = s.beforeRun(); err != nil {
 		return
 	}
-	runSSL := s.opts.SSLCertificate != "" && s.opts.SSLCertificateKey != ""
-	if runSSL {
-		err = s.httpSrv.ListenAndServeTLS(s.opts.SSLCertificate, s.opts.SSLCertificateKey)
+	if s.opts.TLS != nil {
+		err = s.httpSrv.ListenAndServeTLS(s.opts.TLS.Cert, s.opts.TLS.Key)
 	} else {
 		err = s.httpSrv.ListenAndServe()
 	}

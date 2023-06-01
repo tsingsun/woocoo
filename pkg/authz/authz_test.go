@@ -33,6 +33,9 @@ func casbinFilePrepare(node string) {
 }
 
 func TestNewAuthorization(t *testing.T) {
+	//reset
+	SetDefaultRequestParserFunc(defaultRequestParser)
+
 	type args struct {
 		cnf  *conf.Configuration
 		opts []Option
@@ -55,7 +58,7 @@ func TestNewAuthorization(t *testing.T) {
 					})
 				}(),
 				opts: []Option{WithRequestParseFunc(func(ctx context.Context, identity security.Identity, item *security.PermissionItem) []any {
-					return defaultRequestParserFunc(ctx, identity, item)
+					return defaultRequestParser(ctx, identity, item)
 				})},
 			},
 			wantErr: false,

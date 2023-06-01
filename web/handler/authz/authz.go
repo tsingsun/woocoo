@@ -12,7 +12,8 @@ import (
 
 // Options is the options for the authz middleware.
 type Options struct {
-	AppCode       string
+	AppCode       string `yaml:"appCode" json:"appCode"`
+	ConfigPath    string `yaml:"configPath" json:"configPath"`
 	Authorization *authz.Authorization
 }
 
@@ -31,14 +32,16 @@ func (a *Authorizer) Name() string {
 }
 
 func (a *Authorizer) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	opt := Options{}
+	opt := Options{
+		ConfigPath: a.Name(),
+	}
 	if err := cfg.Unmarshal(&opt); err != nil {
 		panic(err)
 	}
 	opt.Authorization = authz.DefaultAuthorization
 	if opt.Authorization == nil {
 		var err error
-		opt.Authorization, err = authz.NewAuthorization(cfg.Root())
+		opt.Authorization, err = authz.NewAuthorization(cfg.Root().Sub(opt.ConfigPath))
 		if err != nil {
 			panic(fmt.Errorf("[web]authz: %w", err))
 		}

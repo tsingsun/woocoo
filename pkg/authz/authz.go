@@ -15,9 +15,12 @@ import (
 )
 
 var (
-	defaultAdapter persist.Adapter
-
+	defaultAdapter       persist.Adapter
 	DefaultAuthorization *Authorization
+
+	defaultRequestParser = func(_ context.Context, id security.Identity, item *security.PermissionItem) []any {
+		return []any{id.Name(), item.Action, item.Operator}
+	}
 )
 
 type (
@@ -57,7 +60,7 @@ func WithRequestParseFunc(f RequestParserFunc) Option {
 //	policy: /path/to/policy.csv
 func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorization, err error) {
 	au = &Authorization{
-		RequestParser: defaultRequestParserFunc,
+		RequestParser: defaultRequestParser,
 	}
 	for _, opt := range opts {
 		opt(au)
@@ -144,6 +147,15 @@ func SetDefaultAuthorization(au *Authorization) {
 	DefaultAuthorization = au
 }
 
+// SetDefaultRequestParserFunc sets the default request parser function.
+//
+// notice: in web middleware that will implicit initial authorization component,
+// web permission check use appcode,c.Request.URL.Path, request.Method as default enforce check,
+// you should set this first if not default.
+func SetDefaultRequestParserFunc(f RequestParserFunc) {
+	defaultRequestParser = f
+}
+
 // autoSave in watcher callback should be false. but set false will cause casbin main nodes lost save data.
 // we will improve in the future.current use database unique index to avoid duplicate data.
 func defaultUpdateCallback(e casbin.IEnforcer) func(string) {
@@ -185,8 +197,4 @@ func defaultUpdateCallback(e casbin.IEnforcer) func(string) {
 			log.Error("[woocoo-authz]callback update policy failed")
 		}
 	}
-}
-
-func defaultRequestParserFunc(_ context.Context, identity security.Identity, item *security.PermissionItem) []any {
-	return []any{identity.Name(), item.Action, item.Operator}
 }

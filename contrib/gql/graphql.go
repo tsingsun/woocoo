@@ -21,6 +21,7 @@ import (
 
 const (
 	graphqlHandlerName = "graphql"
+	authzConfigPath    = "authz"
 )
 
 // Options handler option
@@ -78,7 +79,10 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	}
 	opt.Authorization = authz.DefaultAuthorization
 	if opt.WithAuthorization && opt.Authorization == nil {
-		opt.Authorization, err = authz.NewAuthorization(cfg.Root())
+		if !cfg.Root().IsSet(authzConfigPath) {
+			panic("gql authorization missing authz configuration")
+		}
+		opt.Authorization, err = authz.NewAuthorization(cfg.Root().Sub(authzConfigPath))
 		if err != nil {
 			panic(err)
 		}

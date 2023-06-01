@@ -58,8 +58,8 @@ grpc:
   - keepalive:
       time: 1h
   - tls:
-      cert: "x509/test.pem"
-      key: "x509/test.key"
+      cert: "x509/server.crt"
+      key: "x509/server.key"
   - unaryInterceptors:
     - accessLog:
         timestampFormat: "2006-01-02 15:04:05"

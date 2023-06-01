@@ -32,8 +32,8 @@ web:
   server:
     addr: 127.0.0.1:33333
     tls:
-      cert: "x509/test.pem"
-      key: "x509/test.key"
+      cert: "x509/server.crt"
+      key: "x509/server.key"
   engine:
     redirectTrailingSlash: false
     remoteIPHeaders:

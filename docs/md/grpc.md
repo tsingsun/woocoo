@@ -57,7 +57,7 @@ grpc:
       - block:
       - timeout: 5s
       - tls:
-          cert: "x509/test.pem" 
+          cert: "x509/server.crt" 
       - unaryInterceptors:
           - otel:
 ```

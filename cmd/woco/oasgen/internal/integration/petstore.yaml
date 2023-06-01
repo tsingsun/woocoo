@@ -635,6 +635,10 @@ components:
         shipDate:
           type: string
           format: date-time
+        orderDate:
+          type: string
+          format: date-time
+          x-go-tag-validator: "ltfield=ShipDate"
         status:
           type: string
           description: Order Status

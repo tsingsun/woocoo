@@ -59,23 +59,33 @@ func TestGenerateAfter(t *testing.T) {
 		assert.EqualValues(t, `bool`, complete.Type.String())
 		assert.EqualValues(t, false, orderValue.Field(0).Bool())
 
-		oid := orderType.Field(1)
+		oid, ok := orderType.FieldByName("ID")
+		require.True(t, ok)
 		assert.EqualValues(t, `id,omitempty`, oid.Tag.Get("json"))
 		assert.EqualValues(t, `int64`, oid.Type.String())
 
-		pid := orderType.Field(2)
+		pid, ok := orderType.FieldByName("PetId")
+		require.True(t, ok)
 		assert.EqualValues(t, `petId,omitempty`, pid.Tag.Get("json"))
 		assert.EqualValues(t, `int64`, pid.Type.String())
 
-		quantity := orderType.Field(3)
+		quantity, ok := orderType.FieldByName("Quantity")
+		require.True(t, ok)
 		assert.EqualValues(t, `quantity,omitempty`, quantity.Tag.Get("json"))
 		assert.EqualValues(t, `int32`, quantity.Type.String())
 
-		shipDate := orderType.Field(4)
+		shipDate, ok := orderType.FieldByName("ShipDate")
+		require.True(t, ok)
 		assert.EqualValues(t, `shipDate,omitempty`, shipDate.Tag.Get("json"))
 		assert.EqualValues(t, `time.Time`, shipDate.Type.String())
 
-		status := orderType.Field(5)
+		orderDate, ok := orderType.FieldByName("OrderDate")
+		require.True(t, ok)
+		assert.EqualValues(t, `ltfield=InnerStructField.ShipDate,omitempty`, orderDate.Tag.Get("binding"))
+		assert.EqualValues(t, `time.Time`, orderDate.Type.String())
+
+		status, ok := orderType.FieldByName("Status")
+		require.True(t, ok)
 		assert.EqualValues(t, `status,omitempty`, status.Tag.Get("json"))
 		assert.EqualValues(t, `string`, status.Type.String())
 

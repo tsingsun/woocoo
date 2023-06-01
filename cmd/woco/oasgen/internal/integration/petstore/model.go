@@ -16,12 +16,13 @@ type NewPet struct {
 }
 
 type Order struct {
-	Complete bool      `json:"complete,omitempty" xml:"complete"`
-	ID       int64     `json:"id,omitempty" xml:"id"`
-	PetId    int64     `json:"petId,omitempty" xml:"petId"`
-	Quantity int32     `json:"quantity,omitempty" xml:"quantity"`
-	ShipDate time.Time `time_format:"2006-01-02T15:04:05Z07:00" json:"shipDate,omitempty" xml:"shipDate"`
-	Status   string    `json:"status,omitempty" xml:"status"`
+	Complete  bool      `json:"complete,omitempty" xml:"complete"`
+	ID        int64     `json:"id,omitempty" xml:"id"`
+	OrderDate time.Time `time_format:"2006-01-02T15:04:05Z07:00" binding:"ltfield=ShipDate,omitempty" json:"orderDate,omitempty" xml:"orderDate"`
+	PetId     int64     `json:"petId,omitempty" xml:"petId"`
+	Quantity  int32     `json:"quantity,omitempty" xml:"quantity"`
+	ShipDate  time.Time `time_format:"2006-01-02T15:04:05Z07:00" json:"shipDate,omitempty" xml:"shipDate"`
+	Status    string    `json:"status,omitempty" xml:"status"`
 }
 
 type Pet struct {

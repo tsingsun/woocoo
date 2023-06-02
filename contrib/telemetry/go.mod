@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/gin-gonic/gin v1.9.0
 	github.com/stretchr/testify v1.8.2
-	github.com/tsingsun/woocoo v0.2.5
+	github.com/tsingsun/woocoo v0.2.6
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.41.1
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.41.1
 	go.opentelemetry.io/contrib/propagators/b3 v1.16.1
@@ -21,7 +21,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v0.38.1
 	go.opentelemetry.io/otel/trace v1.15.1
 	go.uber.org/zap v1.24.0
-	google.golang.org/grpc v1.54.0
+	google.golang.org/grpc v1.55.0
 )
 
 require (

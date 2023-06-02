@@ -6,7 +6,7 @@ require (
 	github.com/99designs/gqlgen v0.17.31
 	github.com/gin-gonic/gin v1.9.0
 	github.com/stretchr/testify v1.8.2
-	github.com/tsingsun/woocoo v0.2.5
+	github.com/tsingsun/woocoo v0.2.6
 	github.com/vektah/gqlparser/v2 v2.5.1
 )
 

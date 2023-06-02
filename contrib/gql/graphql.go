@@ -27,26 +27,28 @@ const (
 // Options handler option
 type Options struct {
 	// QueryPath is the path to register the graphql handler.default is "POST /query"
-	QueryPath string
+	QueryPath string `yaml:"queryPath" json:"queryPath"`
 	// WebSocketPath is the path to register the websocket handler.default is "GET /query"
-	WebSocketPath string
+	WebSocketPath string `yaml:"webSocketPath" json:"webSocketPath"`
 	// DocPath is the path to register the playground handler.default is "GET /"
-	DocPath string
+	DocPath string `yaml:"docPath" json:"docPath"`
 	// Group is used to be found the matching group router,it must the same as the base path of route group.
-	Group string
+	Group string `yaml:"group" json:"group"`
 	// Endpoint is the URL to send GraphQL requests to in the playground.
-	EndPoint string
-	Skip     bool
+	Endpoint string `yaml:"endpoint" json:"endpoint"`
+	// Skip indicates whether skip the graphql handler.
+	Skip bool `yaml:"skip" json:"skip"`
 	// WithAuthorization indicates whether parse graphql operations to resource-action data for default authorization.
 	//
 	// if you want to use custom authorization, you can set it to false, then after RegisterSchema return the graphql server,
 	// Example:
 	//   gqlServers,_ := gql.RegisterSchema(router, schema1, schema2)
 	//   gqlServers[0].AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {....})
-	WithAuthorization bool
+	WithAuthorization bool `yaml:"withAuthorization" json:"withAuthorization"`
 	// AppCode is used to be found the matching app code in the authorization configuration.
-	AppCode       string
-	Authorization *authz.Authorization
+	AppCode string `yaml:"appCode" json:"appCode"`
+
+	authorization *authz.Authorization
 }
 
 var defaultOptions = Options{
@@ -71,18 +73,19 @@ func (h *Handler) Name() string {
 	return graphqlHandlerName
 }
 
+// ApplyFunc is a middleware for gin. it seeks the global authorization first, New one if not found.
 func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	var err error
 	opt := defaultOptions
 	if err = cfg.Unmarshal(&opt); err != nil {
 		panic(err)
 	}
-	opt.Authorization = authz.DefaultAuthorization
-	if opt.WithAuthorization && opt.Authorization == nil {
+	opt.authorization = authz.DefaultAuthorization
+	if opt.WithAuthorization && opt.authorization == nil {
 		if !cfg.Root().IsSet(authzConfigPath) {
 			panic("gql authorization missing authz configuration")
 		}
-		opt.Authorization, err = authz.NewAuthorization(cfg.Root().Sub(authzConfigPath))
+		opt.authorization, err = authz.NewAuthorization(cfg.Root().Sub(authzConfigPath))
 		if err != nil {
 			panic(err)
 		}
@@ -150,11 +153,11 @@ func buildGraphqlServer(routerGroup *web.RouterGroup, server *gqlgen.Server, opt
 	var QueryHandler = func(c *gin.Context) {
 		server.ServeHTTP(c.Writer, c.Request)
 	}
-	if opt.EndPoint == "" {
-		opt.EndPoint = opt.Group + opt.QueryPath
+	if opt.Endpoint == "" {
+		opt.Endpoint = opt.Group + opt.QueryPath
 	}
 	// set endpoint to graphql-playground used in playground UI
-	docHandler := playground.Handler("graphql", opt.EndPoint)
+	docHandler := playground.Handler("graphql", opt.Endpoint)
 
 	var DocHandler = func(c *gin.Context) {
 		docHandler.ServeHTTP(c.Writer, c.Request)
@@ -185,8 +188,11 @@ func buildGraphqlServer(routerGroup *web.RouterGroup, server *gqlgen.Server, opt
 			log.StdPrintln(err)
 			debug.PrintStack()
 		}
-		ue := err.(error)
-		return ue
+		if ue, ok := err.(error); ok {
+			return ue
+		} else {
+			return fmt.Errorf("%v", err)
+		}
 	})
 
 	return server
@@ -218,7 +224,7 @@ func CheckPermissions(opt *Options) graphql.OperationMiddleware {
 				Action:   opf.Name,
 				Operator: gctx.Request.Method,
 			}
-			allowed, err := opt.Authorization.CheckPermission(gctx, gp, pi)
+			allowed, err := opt.authorization.CheckPermission(gctx, gp, pi)
 			if err != nil {
 				errList = append(errList, gqlerror.Errorf("action %s authorization err:%s ", opf.Name, err.Error()))
 			}

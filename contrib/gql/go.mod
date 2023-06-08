@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/99designs/gqlgen v0.17.31
-	github.com/casbin/casbin/v2 v2.68.0
+	github.com/casbin/casbin/v2 v2.70.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/stretchr/testify v1.8.3
 	github.com/tsingsun/woocoo v0.2.7

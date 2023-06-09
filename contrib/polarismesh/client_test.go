@@ -12,6 +12,8 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 	"io"
 	"net/http"
@@ -23,8 +25,8 @@ import (
 )
 
 func init() {
-	//log := grpclog.NewLoggerV2WithVerbosity(os.Stdout, io.Discard, io.Discard, 5)
-	//grpclog.SetLoggerV2(log)
+	log := grpclog.NewLoggerV2WithVerbosity(io.Discard, os.Stdout, os.Stdout, 5)
+	grpclog.SetLoggerV2(log)
 }
 
 type httpAPI struct {
@@ -77,13 +79,13 @@ func (api *httpAPI) routings() *httpAPI {
   "priority": 0,
   "routing_config": {
     "@type": "type.googleapis.com/v2.RuleRoutingConfig",
-    "sources": [{"service": "*","namespace": "*"}],
+    "sources": [{"service": "*","namespace": "routingTest"}],
     "destinations": [{"service": "helloworld.Greeter","namespace": "routingTest"}],
     "rules": [{
       "name": "规则0",
       "sources": [{
         "service": "*",
-        "namespace": "routing-test",
+        "namespace": "routingTest",
         "arguments": [{
           "type": "HEADER",
           "key": "country",
@@ -105,18 +107,18 @@ func (api *httpAPI) routings() *httpAPI {
 },{
   "id": "guarantee",
   "name": "guarantee",
-  "enable": false,
+  "enable": true,
   "description": "",
   "priority": 1,
   "routing_config": {
     "@type": "type.googleapis.com/v2.RuleRoutingConfig",
-    "sources": [{"service": "*","namespace": "*"}],
+    "sources": [{"service": "*","namespace": "routingTest"}],
     "destinations": [{"service": "helloworld.Greeter","namespace": "routingTest"}],
     "rules": [{
       "name": "规则0",
       "sources": [{
         "service": "*",
-        "namespace": "routing-test",
+        "namespace": "routingTest",
         "arguments": []
       }],
       "destinations": [{
@@ -197,6 +199,8 @@ func (api *httpAPI) do(r *http.Request) (data []byte, err error) {
 		return
 	}
 	data, err = io.ReadAll(resp.Body)
+	// await for effect
+	time.Sleep(time.Second)
 	return
 }
 
@@ -225,7 +229,7 @@ func TestClient_DialMultiServerAndDown(t *testing.T) {
 	require.NoError(t, err)
 	cfg := conf.NewFromBytes(b)
 	var srv, srv2 *grpcx.Server
-	err = wctest.RunWait(t, time.Second*5, func() error {
+	err = wctest.RunWait(t, time.Second*2, func() error {
 		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		return srv.Run()
@@ -297,7 +301,7 @@ func TestClientRouting(t *testing.T) {
 	t.Run("grpc dial", func(t *testing.T) {
 		// api.routingsEnable("guarantee", false)
 		conn, err := grpc.Dial(scheme+"://routingTest/helloworld.Greeter?route=true",
-			grpc.WithInsecure(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			grpc.WithResolvers(&resolverBuilder{}),
 			grpc.WithDefaultServiceConfig(`{ "loadBalancingConfig": [{"polaris": {}}] }`),
 		)
@@ -316,8 +320,6 @@ func TestClientRouting(t *testing.T) {
 	})
 
 	t.Run("route rule match", func(t *testing.T) {
-		api.routingsEnable("guarantee", true)
-
 		cli := grpcx.NewClient(cfg.Sub("grpc"))
 		c, err := cli.Dial("")
 		if !assert.NoError(t, err) {
@@ -327,7 +329,6 @@ func TestClientRouting(t *testing.T) {
 		defer c.Close()
 
 		hcli := helloworld.NewGreeterClient(c)
-		time.Sleep(time.Second * 1)
 		for i := 0; i < 5; i++ {
 			resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "match"})
 			assert.NoError(t, err)

@@ -24,7 +24,6 @@ grpc:
       - tls:
       - block:
       - timeout: 1s
-      - serviceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }'
 grpc2:
   server:
     addr: 127.0.0.1:22113

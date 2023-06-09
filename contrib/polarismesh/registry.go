@@ -114,6 +114,7 @@ func (drv *Driver) ResolverBuilder(config *conf.Configuration) (resolver.Builder
 	return rb, nil
 }
 
+// WithDialOptions returns the default dial options for the grpc Polaris GRPC Client.
 func (drv *Driver) WithDialOptions(registryOpt registry.DialOptions) (opts []grpc.DialOption, err error) {
 	do := &dialOptions{
 		Namespace:   registryOpt.Namespace,
@@ -121,7 +122,7 @@ func (drv *Driver) WithDialOptions(registryOpt registry.DialOptions) (opts []grp
 		DstMetadata: filterMetadata(&registryOpt, "dst_"),
 		SrcMetadata: filterMetadata(&registryOpt, "src_"),
 	}
-	opts = append(opts, grpc.WithUnaryInterceptor(injectCallerInfo(do)))
+	opts = append(opts, grpc.WithUnaryInterceptor(injectCallerInfo(do)), grpc.WithDefaultServiceConfig(LoadBalanceConfig))
 	return
 }
 

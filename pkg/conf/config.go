@@ -191,7 +191,7 @@ func (c *Configuration) ParserOperator() *koanf.Koanf {
 	return c.parser.k
 }
 
-// Sub return a new Configuration by a sub node.
+// Sub return a new Configuration by a sub node.return current node if path empty,panic if path not found.
 //
 // sub node keep the same root configuration of current node.
 func (c *Configuration) Sub(path string) *Configuration {

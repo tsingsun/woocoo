@@ -39,12 +39,13 @@ grpc:
       endpoints:
         - 127.0.0.1:2379
       tls:
-        sslCertificate: ""
-        sslCertificateKey: ""
+        cert: "x509/server.crt"
+        key: "x509/server.key"
       dial-timeout: 3s
       dial-keep-alive-time: 1h
 `)
 	cfg := conf.NewFromBytes(b)
+	cfg.SetBaseDir(testdata.BaseDir())
 	r := New()
 	r.Apply(cfg.Sub("grpc.registry"))
 	if len(r.opts.EtcdConfig.Endpoints) == 0 {

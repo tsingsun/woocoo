@@ -6,6 +6,7 @@ import (
 	"github.com/polarismesh/polaris-go/api"
 	"github.com/polarismesh/polaris-go/pkg/config"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"strings"
 	"sync"
 )
 
@@ -14,6 +15,12 @@ var (
 	DefaultNamespace = "default"
 	// LoadBalanceConfig config for do the balance
 	LoadBalanceConfig = fmt.Sprintf("{\n  \"loadBalancingConfig\": [ { \"%s\": {} } ]}", scheme)
+)
+
+var (
+	polarisCallerServiceKey   = "polaris.request.caller.service"
+	polarisCallerNamespaceKey = "polaris.request.caller.namespace"
+	registerServiceTokenKey   = "token"
 )
 
 var (
@@ -44,8 +51,8 @@ func PolarisConfig() config.Configuration {
 	return polarisConfig
 }
 
-// SetPolarisConfig set the global polaris configuration
-func SetPolarisConfig(cfg *conf.Configuration) error {
+// NewPolarisConfig create a polaris configuration from conf.Configuration
+func NewPolarisConfig(cfg *conf.Configuration) (config.Configuration, error) {
 	var (
 		parser *conf.Parser
 		err    error
@@ -54,18 +61,43 @@ func SetPolarisConfig(cfg *conf.Configuration) error {
 	if pcfg.IsSet("configFile") {
 		parser, err = conf.NewParserFromFile(cfg.Abs(pcfg.String("configFile")))
 		if err != nil {
-			return err
+			return nil, err
 		}
 	} else {
 		parser = pcfg.Parser()
 	}
 	bts, err := parser.ToBytes(yaml.Parser())
 	if err != nil {
-		return err
+		return nil, err
 	}
-	polarisConfig, err = config.LoadConfiguration(bts)
+	pc, err := config.LoadConfiguration(bts)
+	if err != nil {
+		return nil, err
+	}
+	return pc, nil
+}
+
+// SetPolarisConfig set the global polaris configuration
+func SetPolarisConfig(cfg *conf.Configuration) (err error) {
+	polarisConfig, err = NewPolarisConfig(cfg)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func extractBareMethodName(fullMethodName string) string {
+	index := strings.LastIndex(fullMethodName, "/")
+	if index == -1 {
+		return ""
+	}
+	return fullMethodName[index+1:]
+}
+
+func extractBareServiceName(fullMethodName string) string {
+	index := strings.LastIndex(fullMethodName, "/")
+	if index == -1 {
+		return ""
+	}
+	return fullMethodName[:index]
 }

@@ -9,33 +9,62 @@ import (
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
 	"sync"
 	"time"
 )
 
 func init() {
-	registry.RegisterDriver(scheme, Driver{})
+	registry.RegisterDriver(scheme, &Driver{cache: make(map[string]registry.Registry)})
 }
 
-// Driver is an etcd3 registry driver.
+// Driver is an etcd3 registry driver. Support reference config.
 type Driver struct {
+	cache map[string]registry.Registry
+	mu    sync.RWMutex
 }
 
-func (drv Driver) CreateRegistry(config *conf.Configuration) (registry.Registry, error) {
+// CreateRegistry creates a new registry.
+func (drv *Driver) CreateRegistry(cfg *conf.Configuration) (registry.Registry, error) {
+	drv.mu.Lock()
+	defer drv.mu.Unlock()
+	ccfg := cfg
+	ref := cfg.String("ref")
+	if ref != "" {
+		if v, ok := drv.cache[ref]; ok {
+			return v, nil
+		}
+		ccfg = cfg.Root().Sub(ref)
+	}
 	r := New()
-	r.Apply(config)
+	r.Apply(ccfg)
+	if ref != "" {
+		drv.cache[ref] = r
+	}
 	return r, nil
 }
 
-func (drv Driver) ResolverBuilder(config *conf.Configuration) (resolver.Builder, error) {
+// ResolverBuilder creates a new resolver builder.
+func (drv *Driver) ResolverBuilder(cfg *conf.Configuration) (resolver.Builder, error) {
+	drv.mu.Lock()
+	defer drv.mu.Unlock()
 	var opts Options
-	if err := config.Unmarshal(&opts); err != nil {
+	ccfg := cfg
+	if ref := cfg.String("ref"); ref != "" {
+		ccfg = cfg.Root().Sub(ref)
+	}
+	if err := ccfg.Unmarshal(&opts); err != nil {
 		return nil, err
 	}
 	return &etcdBuilder{
 		etcdConfig: opts.EtcdConfig,
 	}, nil
+}
+
+// WithDialOptions no need to implement
+func (drv *Driver) WithDialOptions(registry.DialOptions) ([]grpc.DialOption, error) {
+	return nil, nil
 }
 
 type Options struct {
@@ -64,16 +93,12 @@ func (r *Registry) Apply(cfg *conf.Configuration) {
 	if err := cfg.Unmarshal(&r.opts); err != nil {
 		panic(err)
 	}
-	if k := conf.Join("etcd", "tls"); cfg.IsSet(k) {
-		cp := cfg.String(conf.Join(k, "cert"))
-		kp := cfg.String(conf.Join(k, "key"))
-		if cp != "" && kp != "" {
-			r.opts.EtcdConfig.TLS = registry.TLS(cfg.Root().GetBaseDir(), cp, kp)
-		} else {
-			r.opts.EtcdConfig.TLS = nil
+	if k := "etcd.tls"; cfg.IsSet(k) {
+		tls, err := conf.NewTLS(cfg.Sub(k)).BuildTlsConfig()
+		if err != nil {
+			panic(err)
 		}
-	} else {
-		r.opts.EtcdConfig.TLS = nil
+		r.opts.EtcdConfig.TLS = tls
 	}
 	err := r.buildClient()
 	if err != nil {

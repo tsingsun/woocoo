@@ -67,6 +67,11 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 		if err != nil {
 			panic(err)
 		}
+		if rdo, err := drv.WithDialOptions(c.registryOptions); err != nil {
+			panic(err)
+		} else {
+			c.dialOptions = append(c.dialOptions, rdo...)
+		}
 		c.dialOptions = append(c.dialOptions, grpc.WithResolvers(rb))
 	}
 	// grpc dial options

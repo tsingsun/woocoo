@@ -1,0 +1,36 @@
+grpc:
+  server:
+    addr: 0.0.0.0:20011
+    namespace: woocoo
+    version: "1.0"
+    registryMeta:
+      location: amoy
+  engine:
+    - unaryInterceptors:
+        - recovery:
+    - streamInterceptors:
+  registry:
+    scheme: polaris
+    ttl: 600s
+    polaris:
+      global:
+        serverConnector:
+          addresses:
+            - 127.0.0.1:8091
+  client:
+    target:
+      namespace: woocoo
+      serviceName: helloworld.Greeter
+      metadata:
+        version: "1.0"
+        dst_location: amoy
+        src_tag: tag1
+        route: true
+        circuit_breaker: true
+    dialOption:
+      - tls:
+      - block:
+      - timeout: 10s
+      - serviceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }'
+      - unaryInterceptors:
+          - trace:

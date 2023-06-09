@@ -10,33 +10,42 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/resolver"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
 const (
-	scheme          = "polaris"
-	headerPrefixKey = "headerPrefix"
+	scheme             = "polaris"
+	keyDialOptions     = "options"
+	keyDialOptionRoute = "route"
+	keyResponse        = "response"
 )
 
 func init() {
-	registry.RegisterDriver(scheme, Driver{})
+	registry.RegisterDriver(scheme, &Driver{
+		refRegtries: make(map[string]registry.Registry),
+		refBuilders: make(map[string]resolver.Builder)},
+	)
 	balancer.Register(&balancerBuilder{})
 	grpcx.RegisterGrpcUnaryInterceptor(scheme+"RateLimit", RateLimitUnaryServerInterceptor)
 }
 
 var (
 	once sync.Once
-	_    registry.Driver = (*Driver)(nil)
 )
 
 type (
-	// Driver implementation of registry.Driver
+	// Driver implementation of registry.Driver. It is used to create a polaris registry
 	Driver struct {
+		refRegtries map[string]registry.Registry
+		refBuilders map[string]resolver.Builder
+		mu          sync.RWMutex
 	}
 	// Options is the options for the polaris registry
 	Options struct {
@@ -56,21 +65,64 @@ type (
 	}
 )
 
-func (drv Driver) CreateRegistry(config *conf.Configuration) (registry.Registry, error) {
+func (drv *Driver) CreateRegistry(config *conf.Configuration) (registry.Registry, error) {
+	drv.mu.Lock()
+	defer drv.mu.Unlock()
+	ccfg := config
+	ref := config.String("ref")
+	if ref != "" {
+		if v, ok := drv.refRegtries[ref]; ok {
+			return v, nil
+		}
+		ccfg = config.Root().Sub(ref)
+	}
 	r := New()
-	r.Apply(config)
+	r.Apply(ccfg)
+	if ref != "" {
+		drv.refRegtries[ref] = r
+	}
 	return r, nil
 }
 
-func (drv Driver) ResolverBuilder(config *conf.Configuration) (resolver.Builder, error) {
-	if err := SetPolarisConfig(config); err != nil {
+func (drv *Driver) ResolverBuilder(config *conf.Configuration) (resolver.Builder, error) {
+	drv.mu.Lock()
+	defer drv.mu.Unlock()
+	ccfg := config
+	ref := config.String("ref")
+	if ref != "" {
+		if v, ok := drv.refBuilders[ref]; ok {
+			return v, nil
+		}
+		ccfg = config.Root().Sub(ref)
+	}
+	pc, err := NewPolarisConfig(ccfg)
+	if err != nil {
 		return nil, err
 	}
-	rb := &resolverBuilder{}
-	once.Do(func() {
-		balancer.Register(&balancerBuilder{})
-	})
+	sdkCtx, err := api.InitContextByConfig(pc)
+	if err != nil {
+		return nil, err
+	}
+
+	rb := &resolverBuilder{
+		config: pc,
+		sdkCtx: sdkCtx,
+	}
+	if ref != "" {
+		drv.refBuilders[ref] = rb
+	}
 	return rb, nil
+}
+
+func (drv *Driver) WithDialOptions(registryOpt registry.DialOptions) (opts []grpc.DialOption, err error) {
+	do := &dialOptions{
+		Namespace:   registryOpt.Namespace,
+		SrcService:  registryOpt.ServiceName,
+		DstMetadata: filterMetadata(&registryOpt, "dst_"),
+		SrcMetadata: filterMetadata(&registryOpt, "src_"),
+	}
+	opts = append(opts, grpc.WithUnaryInterceptor(injectCallerInfo(do)))
+	return
 }
 
 func (r *Registry) Register(serviceInfo *registry.ServiceInfo) error {
@@ -94,15 +146,15 @@ func (r *Registry) Register(serviceInfo *registry.ServiceInfo) error {
 		registerRequest.Protocol = proto.String(info.Protocol)
 	}
 	// try to get the value from the config
-	registerRequest.ServiceToken = info.Metadata["token"]
-	delete(info.Metadata, "token")
+	registerRequest.ServiceToken = info.Metadata[registerServiceTokenKey]
+	delete(info.Metadata, registerServiceTokenKey)
 	registerRequest.Metadata = info.Metadata
 	r.registerContext.registerRequests = append(r.registerContext.registerRequests, registerRequest)
 	resp, err := r.registerContext.providerAPI.RegisterInstance(registerRequest)
 	if err != nil {
 		return err
 	}
-	grpclog.Infof("[Polaris]success to register %s:%d to service %s(%s), id %s",
+	grpclog.Infof("[Polaris][Naming]success to register %s:%d to service %s(%s), id %s",
 		registerRequest.Host, registerRequest.Port, registerRequest.Service, registerRequest.Namespace, resp.InstanceID)
 	return nil
 }
@@ -115,7 +167,7 @@ func (r *Registry) Unregister(serviceInfo *registry.ServiceInfo) error {
 	deregisterRequest.Service = serviceInfo.Name
 	deregisterRequest.Host = serviceInfo.Host
 	deregisterRequest.Port = serviceInfo.Port
-	deregisterRequest.ServiceToken = serviceInfo.Metadata["token"]
+	deregisterRequest.ServiceToken = serviceInfo.Metadata[registerServiceTokenKey]
 	err := r.registerContext.providerAPI.Deregister(deregisterRequest)
 	if nil != err {
 		return err
@@ -144,21 +196,41 @@ func New() *Registry {
 	return r
 }
 
+// Apply the configuration to the registry and set the first config as the default global config
 func (r *Registry) Apply(cfg *conf.Configuration) {
-	err := SetPolarisConfig(cfg)
+	pcfg, err := NewPolarisConfig(cfg)
 	if err != nil {
 		panic(err)
 	}
-	ctx, err := PolarisContext()
+
+	ctx, err := api.InitContextByConfig(pcfg)
 	if err != nil {
 		panic(err)
 	}
+	once.Do(func() {
+		if err = SetPolarisConfig(cfg); err != nil {
+			panic(err)
+		}
+	})
 	r.opts.TTL = cfg.Duration("ttl")
 	r.registerContext.providerAPI = api.NewProviderAPIByContext(ctx)
 }
 
-func targetToOptions(target resolver.Target) (*dialOptions, error) {
-	options := &dialOptions{}
+// polaris parse the target to options
+//
+// target format :
+//  1. polaris://<namespace>/<service>?key1=value1&key2=value2
+//  2. polaris://<service>?<options=<jsonstr>>
+func targetToOptions(target resolver.Target) (options *dialOptions, err error) {
+	options = &dialOptions{}
+	if target.URL.Path != "" { // no service name,parse from raw query
+		options.Namespace = target.URL.Host
+		if target.URL.Opaque != "" {
+			options.SrcService = strings.TrimPrefix(target.URL.Opaque, "/")
+		} else {
+			options.SrcService = strings.TrimPrefix(target.URL.Path, "/")
+		}
+	}
 	if len(target.URL.RawQuery) > 0 {
 		var optionsStr string
 		values := target.URL.Query()
@@ -166,8 +238,17 @@ func targetToOptions(target resolver.Target) (*dialOptions, error) {
 			optionValues := values[keyDialOptions]
 			if len(optionValues) > 0 {
 				optionsStr = optionValues[0]
+			} else {
+				ur := values[keyDialOptionRoute]
+				if len(ur) > 0 {
+					options.Route, err = strconv.ParseBool(ur[0])
+					if err != nil {
+						return nil, fmt.Errorf("TargetToOptions:fail to parse route %s: %v", ur[0], err)
+					}
+				}
 			}
 		}
+		// parse options from query
 		if len(optionsStr) > 0 {
 			value, err := base64.URLEncoding.DecodeString(optionsStr)
 			if nil != err {
@@ -180,18 +261,15 @@ func targetToOptions(target resolver.Target) (*dialOptions, error) {
 					string(value), err)
 			}
 			options.Namespace = ro.Namespace
+			options.SrcService = ro.ServiceName
 			options.DstMetadata = filterMetadata(ro, "dst_")
 			options.SrcMetadata = filterMetadata(ro, "src_")
-			if hk, ok := ro.Metadata[headerPrefixKey]; ok {
-				options.HeaderPrefix = strings.Split(hk, ",")
+			if tf, ok := ro.Metadata["route"]; ok {
+				if options.Route, err = strconv.ParseBool(tf); err != nil {
+					return nil, fmt.Errorf("TargetToOptions:fail to parse target:metadata:route %s: %v",
+						tf, err)
+				}
 			}
-		}
-	} else {
-		options.Namespace = target.URL.Host
-		if target.URL.Opaque != "" {
-			options.SrcService = target.URL.Opaque
-		} else {
-			options.SrcService = target.URL.Path
 		}
 	}
 	return options, nil

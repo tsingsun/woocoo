@@ -6,7 +6,6 @@ grpc:
     engine:
       - keepalive:
           time: 1h
-      - tls:
       - unaryInterceptors:
           - accessLog:
               timestampFormat: "2006-01-02 15:04:05"
@@ -23,7 +22,6 @@ grpc:
     scheme: etcd
     ttl: 600s
     etcd:
-      tls:
       endpoints:
         - 127.0.0.1:2379
       dial-timeout: 3s

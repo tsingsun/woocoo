@@ -322,12 +322,10 @@ func TestClientRouting(t *testing.T) {
 	t.Run("route rule match", func(t *testing.T) {
 		cli := grpcx.NewClient(cfg.Sub("grpc"))
 		c, err := cli.Dial("")
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		require.NoError(t, err)
 		assert.NotNil(t, c)
 		defer c.Close()
-
+		time.Sleep(time.Second)
 		hcli := helloworld.NewGreeterClient(c)
 		for i := 0; i < 5; i++ {
 			resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "match"})

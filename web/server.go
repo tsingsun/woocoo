@@ -79,16 +79,16 @@ func (s *Server) Router() *Router {
 }
 
 func (s *Server) Apply(cfg *conf.Configuration) {
-	if cfg.IsSet("server") {
-		if err := cfg.Parser().Unmarshal("server", &s.opts); err != nil {
+	if k := "server"; cfg.IsSet(k) {
+		if err := cfg.Parser().Unmarshal(k, &s.opts); err != nil {
 			panic(err)
 		}
 	}
-	if cfg.IsSet("server.tls") {
-		s.opts.TLS = conf.NewTLS(cfg.Sub("server.tls"))
+	if k := "server.tls"; cfg.IsSet(k) {
+		s.opts.TLS = conf.NewTLS(cfg.Sub(k))
 	}
-	if cfg.IsSet("engine") {
-		if err := s.router.Apply(cfg.Sub("engine")); err != nil {
+	if k := "engine"; cfg.IsSet(k) {
+		if err := s.router.Apply(cfg.Sub(k)); err != nil {
 			panic(err)
 		}
 	}

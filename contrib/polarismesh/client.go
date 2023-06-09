@@ -1,11 +1,38 @@
 package polarismesh
 
-// dialOptions
+import (
+	"context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
+)
+
+// dialOptions is the options for attach caller info
 type dialOptions struct {
-	Namespace   string            `json:"Namespace"`
-	DstMetadata map[string]string `json:"dst_metadata"`
-	SrcMetadata map[string]string `json:"src_metadata"`
-	SrcService  string            `json:"src_service"`
-	// 可选，规则路由Meta匹配前缀，用于过滤作为路由规则的gRPC Header
-	HeaderPrefix []string `json:"header_prefix"`
+	Namespace   string            `yaml:"namespace" json:"namespace"`
+	DstMetadata map[string]string `yaml:"dst_metadata" json:"dst_metadata"`
+	// SrcMetadata will be added to the outgoing context
+	SrcMetadata    map[string]string `yaml:"src_metadata" json:"src_metadata"`
+	SrcService     string            `yaml:"src_service" json:"src_service"`
+	Route          bool              `yaml:"route" json:"route"`
+	CircuitBreaker bool              `yaml:"circuitBreaker" json:"circuitBreaker"`
+}
+
+func injectCallerInfo(options *dialOptions) grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn,
+		invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+
+		if _, ok := metadata.FromOutgoingContext(ctx); !ok {
+			ctx = metadata.NewOutgoingContext(context.Background(), metadata.MD{})
+		}
+
+		if len(options.SrcService) > 0 {
+			ctx = metadata.AppendToOutgoingContext(ctx, polarisCallerServiceKey, options.SrcService)
+			ctx = metadata.AppendToOutgoingContext(ctx, polarisCallerNamespaceKey, options.Namespace)
+		}
+		for h, v := range options.SrcMetadata {
+			ctx = metadata.AppendToOutgoingContext(ctx, h, v)
+		}
+
+		return invoker(ctx, method, req, reply, cc, opts...)
+	}
 }

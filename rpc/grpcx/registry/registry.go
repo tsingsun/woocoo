@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/attributes"
 	"google.golang.org/grpc/resolver"
 	"path/filepath"
@@ -20,12 +21,23 @@ var (
 	driverManager = make(map[string]Driver)
 )
 
-// Driver is the registry driver interface
+// Driver is the registry driver interface,it builds a registry for some kind of service discovery and resolver for grpc client.
+//
+// usually, config contains a common config reference to a registry server config,thus use a single client.
+// config like this:
+//
+//	registry:
+//	  ref: some-registry-config # conf.Configuration path,start the root
+//	some-registry-config:
+//	  scheme: etcd
+//	  ... # etcd client config
 type Driver interface {
 	// CreateRegistry create a registry which for server side
 	CreateRegistry(config *conf.Configuration) (Registry, error)
 	// ResolverBuilder returns a resolver.Builder for client side
 	ResolverBuilder(config *conf.Configuration) (resolver.Builder, error)
+	// WithDialOptions injects grpc.DialOption for grpc client dial if speciality of driver is needed.
+	WithDialOptions(registryOpt DialOptions) ([]grpc.DialOption, error)
 }
 
 // Registry provides an interface for service discovery
@@ -116,6 +128,7 @@ type ServiceInfo struct {
 	Metadata  map[string]string `json:"metadata" yaml:"metadata"`
 }
 
+// ToAttributes convert metadata to grpc attributes
 func (si ServiceInfo) ToAttributes() *attributes.Attributes {
 	var val *attributes.Attributes
 	for k, v := range si.Metadata {

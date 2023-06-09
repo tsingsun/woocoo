@@ -80,12 +80,13 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 	if err != nil {
 		panic(err)
 	}
-	if k := conf.Join("registry"); cfg.IsSet(k) {
-		drv, ok := registry.GetRegistry(cfg.String(conf.Join("registry", "scheme")))
+	if k := "registry"; cfg.IsSet(k) {
+		rgcfg := cfg.Sub(k)
+		drv, ok := registry.GetRegistry(rgcfg.String("scheme"))
 		if !ok {
 			panic(fmt.Errorf("registry driver not found"))
 		}
-		if s.registry, err = drv.CreateRegistry(cfg.Sub(k)); err != nil {
+		if s.registry, err = drv.CreateRegistry(rgcfg); err != nil {
 			panic(err)
 		}
 	}

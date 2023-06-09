@@ -9,7 +9,6 @@ on:
       - 'cmd/**'
       - '.github/**'
   pull_request:
-    branches: [ master ]
     paths-ignore:
       - 'docs/**'
       - 'readme*.md'
@@ -36,6 +35,12 @@ jobs:
         env:
           ALLOW_NONE_AUTHENTICATION: yes
           ETCD_ADVERTISE_CLIENT_URLS: "http://127.0.0.1:2379"
+      polaris:
+        image: polarismesh/polaris-standalone:latest
+        ports:
+          - 8090:8090
+          - 8091:8091
+          - 8093:8093
     strategy:
       fail-fast: false
       matrix:

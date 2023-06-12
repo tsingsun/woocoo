@@ -49,6 +49,7 @@ type (
 	}
 	// Options is the options for the polaris registry
 	Options struct {
+		// TTL must between (0s, 60s) see: polaris.yaml
 		TTL time.Duration `json:"ttl" yaml:"ttl"`
 	}
 
@@ -65,35 +66,36 @@ type (
 	}
 )
 
-func (drv *Driver) CreateRegistry(config *conf.Configuration) (registry.Registry, error) {
+func (drv *Driver) CreateRegistry(cnf *conf.Configuration) (registry.Registry, error) {
 	drv.mu.Lock()
 	defer drv.mu.Unlock()
-	ccfg := config
-	ref := config.String("ref")
+	ccfg := cnf
+	ref := cnf.String("ref")
 	if ref != "" {
 		if v, ok := drv.refRegtries[ref]; ok {
 			return v, nil
 		}
-		ccfg = config.Root().Sub(ref)
+		ccfg = cnf.Root().Sub(ref)
 	}
 	r := New()
 	r.Apply(ccfg)
 	if ref != "" {
+		setGlobalConfig(ccfg)
 		drv.refRegtries[ref] = r
 	}
 	return r, nil
 }
 
-func (drv *Driver) ResolverBuilder(config *conf.Configuration) (resolver.Builder, error) {
+func (drv *Driver) ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, error) {
 	drv.mu.Lock()
 	defer drv.mu.Unlock()
-	ccfg := config
-	ref := config.String("ref")
+	ccfg := cnf
+	ref := cnf.String("ref")
 	if ref != "" {
 		if v, ok := drv.refBuilders[ref]; ok {
 			return v, nil
 		}
-		ccfg = config.Root().Sub(ref)
+		ccfg = cnf.Root().Sub(ref)
 	}
 	pc, err := NewPolarisConfig(ccfg)
 	if err != nil {
@@ -109,6 +111,7 @@ func (drv *Driver) ResolverBuilder(config *conf.Configuration) (resolver.Builder
 		sdkCtx: sdkCtx,
 	}
 	if ref != "" {
+		setGlobalConfig(ccfg)
 		drv.refBuilders[ref] = rb
 	}
 	return rb, nil
@@ -118,12 +121,22 @@ func (drv *Driver) ResolverBuilder(config *conf.Configuration) (resolver.Builder
 func (drv *Driver) WithDialOptions(registryOpt registry.DialOptions) (opts []grpc.DialOption, err error) {
 	do := &dialOptions{
 		Namespace:   registryOpt.Namespace,
-		SrcService:  registryOpt.ServiceName,
+		Service:     registryOpt.ServiceName,
 		DstMetadata: filterMetadata(&registryOpt, "dst_"),
 		SrcMetadata: filterMetadata(&registryOpt, "src_"),
 	}
 	opts = append(opts, grpc.WithUnaryInterceptor(injectCallerInfo(do)), grpc.WithDefaultServiceConfig(LoadBalanceConfig))
 	return
+}
+
+func setGlobalConfig(cnf *conf.Configuration) {
+	once.Do(func() {
+		if pc, err := NewPolarisConfig(cnf); err != nil {
+			panic(err)
+		} else {
+			SetPolarisConfig(pc)
+		}
+	})
 }
 
 func (r *Registry) Register(serviceInfo *registry.ServiceInfo) error {
@@ -208,11 +221,7 @@ func (r *Registry) Apply(cfg *conf.Configuration) {
 	if err != nil {
 		panic(err)
 	}
-	once.Do(func() {
-		if err = SetPolarisConfig(cfg); err != nil {
-			panic(err)
-		}
-	})
+
 	r.opts.TTL = cfg.Duration("ttl")
 	r.registerContext.providerAPI = api.NewProviderAPIByContext(ctx)
 }
@@ -227,9 +236,9 @@ func targetToOptions(target resolver.Target) (options *dialOptions, err error) {
 	if target.URL.Path != "" { // no service name,parse from raw query
 		options.Namespace = target.URL.Host
 		if target.URL.Opaque != "" {
-			options.SrcService = strings.TrimPrefix(target.URL.Opaque, "/")
+			options.Service = strings.TrimPrefix(target.URL.Opaque, "/")
 		} else {
-			options.SrcService = strings.TrimPrefix(target.URL.Path, "/")
+			options.Service = strings.TrimPrefix(target.URL.Path, "/")
 		}
 	}
 	if len(target.URL.RawQuery) > 0 {
@@ -262,7 +271,7 @@ func targetToOptions(target resolver.Target) (options *dialOptions, err error) {
 					string(value), err)
 			}
 			options.Namespace = ro.Namespace
-			options.SrcService = ro.ServiceName
+			options.Service = ro.ServiceName
 			options.DstMetadata = filterMetadata(ro, "dst_")
 			options.SrcMetadata = filterMetadata(ro, "src_")
 			if tf, ok := ro.Metadata["route"]; ok {

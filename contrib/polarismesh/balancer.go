@@ -47,8 +47,9 @@ type (
 		// the base grpc balancer
 		balancer balancer.Balancer
 
-		host        string
-		options     *dialOptions
+		host    string
+		options *dialOptions
+		// must init by GetAllInstances, otherwise will be miss cluster info
 		response    *model.InstancesResponse
 		picker      *polarisNamingPicker
 		consumerAPI polaris.ConsumerAPI
@@ -75,7 +76,11 @@ func (p *polarisBalancer) UpdateClientConnState(state balancer.ClientConnState) 
 		p.options = state.ResolverState.Attributes.Value(keyDialOptions).(*dialOptions)
 	}
 	if state.ResolverState.Attributes != nil {
-		p.response = state.ResolverState.Attributes.Value(keyResponse).(*model.InstancesResponse)
+		resp := state.ResolverState.Attributes.Value(keyResponse).(*model.InstancesResponse)
+		if resp.Cluster == nil { // avoid when resolver watcher return single requestInstance return nil cluster info
+			resp.Cluster = p.response.Cluster
+		}
+		p.response = resp
 	}
 	if state.BalancerConfig != nil {
 		p.lbCfg = state.BalancerConfig.(*LBConfig)
@@ -168,15 +173,14 @@ func (pb *pickerBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
 		readySCs: scs,
 		response: &copyR,
 		options:  pb.balancer.options,
-		//lbCfg: pb.balancer
 	}
 }
 
 func buildSourceInfo(options *dialOptions) *model.ServiceInfo {
 	var valueSet bool
 	svcInfo := &model.ServiceInfo{}
-	if options.SrcService != "" {
-		svcInfo.Service = options.SrcService
+	if options.Service != "" {
+		svcInfo.Service = options.Service
 		valueSet = true
 	}
 	if len(options.SrcMetadata) > 0 {
@@ -190,7 +194,7 @@ func buildSourceInfo(options *dialOptions) *model.ServiceInfo {
 	return nil
 }
 
-// Pick
+// Pick an instance from the ready instances
 func (pnp *polarisNamingPicker) Pick(info balancer.PickInfo) (balancer.PickResult, error) {
 	var resp *model.InstancesResponse
 	if pnp.options.Route {
@@ -228,7 +232,9 @@ func (pnp *polarisNamingPicker) Pick(info balancer.PickInfo) (balancer.PickResul
 	subSc, ok := pnp.readySCs[addr]
 	if ok {
 		reporter := &resultReporter{
-			instance: targetInstance, consumerAPI: pnp.balancer.consumerAPI, startTime: time.Now()}
+			instance: targetInstance, consumerAPI: pnp.balancer.consumerAPI,
+			method: extractBareMethodName(info.FullMethodName), startTime: time.Now(),
+		}
 		return balancer.PickResult{
 			SubConn: subSc,
 			Done:    reporter.report,
@@ -272,7 +278,7 @@ func (pnp *polarisNamingPicker) buildLoadBalanceRequest(info balancer.PickInfo,
 func (pnp *polarisNamingPicker) addTrafficLabels(info balancer.PickInfo, insReq *polaris.ProcessRoutersRequest) error {
 	req := &model.GetServiceRuleRequest{}
 	req.Namespace = getNamespace(pnp.options)
-	req.Service = pnp.options.SrcService
+	req.Service = pnp.options.Service
 	req.SetTimeout(time.Second)
 	engine := pnp.balancer.consumerAPI.SDKContext().GetEngine()
 	resp, err := engine.SyncGetServiceRule(model.EventRouting, req)
@@ -333,9 +339,11 @@ func collectRouteLabels(routings []*apitraffic.Route) []string {
 type resultReporter struct {
 	instance    model.Instance
 	consumerAPI polaris.ConsumerAPI
+	method      string
 	startTime   time.Time
 }
 
+// use by balancer.PickResult.Done
 func (r *resultReporter) report(info balancer.DoneInfo) {
 	if !info.BytesReceived {
 		return
@@ -344,6 +352,7 @@ func (r *resultReporter) report(info balancer.DoneInfo) {
 
 	callResult := &polaris.ServiceCallResult{}
 	callResult.CalledInstance = r.instance
+	callResult.Method = r.method
 	callResult.RetStatus = retStatus
 	callResult.SetDelay(time.Since(r.startTime))
 	callResult.SetRetCode(int32(code))

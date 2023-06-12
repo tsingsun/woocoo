@@ -33,19 +33,19 @@ var (
 //	  ... # etcd client config
 type Driver interface {
 	// CreateRegistry create a registry which for server side
-	CreateRegistry(config *conf.Configuration) (Registry, error)
+	CreateRegistry(cnf *conf.Configuration) (Registry, error)
 	// ResolverBuilder returns a resolver.Builder for client side
-	ResolverBuilder(config *conf.Configuration) (resolver.Builder, error)
+	ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, error)
 	// WithDialOptions injects grpc.DialOption for grpc client dial if speciality of driver is needed.
-	WithDialOptions(registryOpt DialOptions) ([]grpc.DialOption, error)
+	WithDialOptions(registryOpts DialOptions) ([]grpc.DialOption, error)
 }
 
 // Registry provides an interface for service discovery
 type Registry interface {
 	// Register a service node
-	Register(serviceInfo *ServiceInfo) error
+	Register(*ServiceInfo) error
 	// Unregister a service node
-	Unregister(serviceInfo *ServiceInfo) error
+	Unregister(*ServiceInfo) error
 	// TTL returns the time to live of the service node, if it is not available, return 0.
 	// every tick will call Register function to refresh.
 	TTL() time.Duration

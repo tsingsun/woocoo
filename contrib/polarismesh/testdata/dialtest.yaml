@@ -11,12 +11,22 @@ grpc:
     - streamInterceptors:
   registry:
     scheme: polaris
-    ttl: 600s
+    ttl: 10s
+    global: true
     polaris:
       global:
         serverConnector:
           addresses:
             - 127.0.0.1:8091
+        statReporter:
+          enable: true
+          chain:
+            - prometheus
+          plugin:
+            prometheus:
+              type: push
+              address: 127.0.0.1:9091
+              interval: 1s
   client:
     target:
       namespace: woocoo

@@ -12,7 +12,7 @@ type dialOptions struct {
 	DstMetadata map[string]string `yaml:"dst_metadata" json:"dst_metadata"`
 	// SrcMetadata will be added to the outgoing context
 	SrcMetadata    map[string]string `yaml:"src_metadata" json:"src_metadata"`
-	SrcService     string            `yaml:"src_service" json:"src_service"`
+	Service        string            `yaml:"service" json:"service"`
 	Route          bool              `yaml:"route" json:"route"`
 	CircuitBreaker bool              `yaml:"circuitBreaker" json:"circuitBreaker"`
 }
@@ -25,8 +25,8 @@ func injectCallerInfo(options *dialOptions) grpc.UnaryClientInterceptor {
 			ctx = metadata.NewOutgoingContext(context.Background(), metadata.MD{})
 		}
 
-		if len(options.SrcService) > 0 {
-			ctx = metadata.AppendToOutgoingContext(ctx, polarisCallerServiceKey, options.SrcService)
+		if options.Service != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, polarisCallerServiceKey, options.Service)
 			ctx = metadata.AppendToOutgoingContext(ctx, polarisCallerNamespaceKey, options.Namespace)
 		}
 		for h, v := range options.SrcMetadata {

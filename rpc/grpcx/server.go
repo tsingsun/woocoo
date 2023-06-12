@@ -102,14 +102,16 @@ func (s *Server) ListenAndServe() error {
 	if err != nil {
 		return err
 	}
+	tcpaddr := lis.Addr().(*net.TCPAddr)
+	port := tcpaddr.Port
+	host := conf.GetIP(s.opts.UseIPv6)
+	if tcpaddr.IP.IsLoopback() {
+		host = tcpaddr.IP.String()
+	}
+	s.opts.Addr = lis.Addr().String()
+	logger.Info(fmt.Sprintf("start grpc server on %s", s.opts.Addr))
 	// registry run
 	if s.registry != nil {
-		tcpaddr := lis.Addr().(*net.TCPAddr)
-		port := tcpaddr.Port
-		host := conf.GetIP(s.opts.UseIPv6)
-		if tcpaddr.IP.IsLoopback() {
-			host = tcpaddr.IP.String()
-		}
 		for name := range s.engine.GetServiceInfo() {
 			nd := &registry.ServiceInfo{
 				Name:      name,
@@ -184,7 +186,6 @@ func (s *Server) Engine() *grpc.Server {
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	logger.Info(fmt.Sprintf("start grpc server on %s", s.opts.Addr))
 	return s.ListenAndServe()
 }
 

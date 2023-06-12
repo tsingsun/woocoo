@@ -8,13 +8,14 @@ import (
 	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
-	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"os"
 	"testing"
 	"time"
 )
 
-// single machine test: rate limit 1 req/s to sayHello. header: rateLimit=1
+// single machine test: rate limit 1 req/3s to sayHello. header: rateLimit=1
 func TestRateLimitUnaryServerInterceptor(t *testing.T) {
 	b, err := os.ReadFile("./testdata/ratelimit.yaml")
 	require.NoError(t, err)
@@ -41,12 +42,11 @@ func TestRateLimitUnaryServerInterceptor(t *testing.T) {
 
 	hcli := helloworld.NewGreeterClient(c)
 	for i := 0; i < 5; i++ {
-		//time.Sleep(time.Millisecond * 200)
-		ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("rateLimit", "text"))
+		time.Sleep(time.Millisecond * 500)
 		// Todo test pass in local server v1.72, but fail in github ci docker v1.70,so ignore it
-		_, _ = hcli.SayHello(ctx, &helloworld.HelloRequest{Name: "polaris"})
-		if i > 2 {
-			//assert.Equal(t, codes.ResourceExhausted.String(), status.Code(err).String())
+		_, err = hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "polaris"})
+		if i > 3 {
+			assert.Equal(t, codes.ResourceExhausted.String(), status.Code(err).String())
 		}
 	}
 }

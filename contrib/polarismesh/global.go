@@ -41,12 +41,12 @@ func PolarisContext() (ctx api.SDKContext, err error) {
 	return polarisContext, err
 }
 
-// PolarisConfig get or init the global polaris configuration
+// PolarisConfig get or init the global polaris configuration.
+//
+// It will auto init in the server side.if you use it for client, you should SetPolarisConfig manually.
 func PolarisConfig() config.Configuration {
 	if polarisConfig == nil {
-		oncePolarisConfig.Do(func() {
-			polarisConfig = api.NewConfiguration()
-		})
+		SetPolarisConfig(api.NewConfiguration())
 	}
 	return polarisConfig
 }
@@ -74,16 +74,17 @@ func NewPolarisConfig(cfg *conf.Configuration) (config.Configuration, error) {
 	if err != nil {
 		return nil, err
 	}
+	if cfg.Bool("global") {
+		SetPolarisConfig(pc)
+	}
 	return pc, nil
 }
 
 // SetPolarisConfig set the global polaris configuration
-func SetPolarisConfig(cfg *conf.Configuration) (err error) {
-	polarisConfig, err = NewPolarisConfig(cfg)
-	if err != nil {
-		return err
-	}
-	return nil
+func SetPolarisConfig(cfg config.Configuration) {
+	oncePolarisConfig.Do(func() {
+		polarisConfig = cfg
+	})
 }
 
 func extractBareMethodName(fullMethodName string) string {

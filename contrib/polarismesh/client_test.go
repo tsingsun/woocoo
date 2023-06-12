@@ -1,7 +1,6 @@
 package polarismesh
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,9 +11,11 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"io"
 	"net/http"
 	"os"
@@ -154,16 +155,17 @@ func (api *httpAPI) routingsEnable(id string, bl bool) *httpAPI {
 }
 
 func (api *httpAPI) rateLimit() *httpAPI {
-	checkRule, err := http.NewRequest(http.MethodGet, "http://localhost:8090/naming/v1/ratelimits?name=limit-test", nil)
+	url := api.baseUrl + "/naming/v1/ratelimits"
+	checkRule, err := http.NewRequest(http.MethodGet, url+"?name=limit-test", nil)
 	require.NoError(api.t, err)
 	bd, err := api.do(checkRule)
 	require.NoError(api.t, err)
 	if !strings.Contains(string(bd), "id") {
-		req, err := http.NewRequest(http.MethodPost, "http://localhost:8090/naming/v1/ratelimits",
-			bytes.NewBuffer([]byte(`
+		req, err := http.NewRequest(http.MethodPost, url,
+			strings.NewReader(`
 [{
   "name":"limit-test",
-  "namespace":"woocoo",
+  "namespace":"ratelimit",
   "service":"helloworld.Greeter",
   "method": {"type":"EXACT","value":"SayHello"},
   "arguments":[{
@@ -172,14 +174,92 @@ func (api *httpAPI) rateLimit() *httpAPI {
   "resource": "QPS",
   "type": "LOCAL",
   "disable": false,
-  "amounts": [{"maxAmount": 1,"validDuration": "1s"}],
+  "amounts": [{"maxAmount": 1,"validDuration": "3s"}],
   "failover": "FAILOVER_LOCAL"
-}]`)))
+}]`))
 		require.NoError(api.t, err)
 		bd, err = api.do(req)
 		require.NoError(api.t, err)
 		require.Contains(api.t, string(bd), "execute success")
 	}
+	return api
+}
+
+func (api *httpAPI) circuitBreaker() *httpAPI {
+	url := api.baseUrl + "/naming/v1/circuitbreaker/rules"
+	checkRule, err := http.NewRequest(http.MethodGet, url+"?name=circuitBreaker-test", nil)
+	require.NoError(api.t, err)
+	bd, err := api.do(checkRule)
+	require.NoError(api.t, err)
+	if strings.Contains(string(bd), "id") {
+		return api
+	}
+	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(`
+[
+    {	
+        "name": "circuitBreaker-test",
+        "enable": true,
+        "level": "METHOD",
+        "description": "",
+        "ruleMatcher": {
+            "source": {
+                "service": "*",
+                "namespace": "*"
+            },
+            "destination": {
+                "service": "helloworld.Greeter",
+                "namespace": "circuitBreakerTest",
+                "method": {
+                    "type": "EXACT",
+                    "value": "SayHello"
+                }
+            }
+        },
+        "errorConditions": [
+            {
+                "inputType": "RET_CODE",
+                "condition": {
+                    "type": "NOT_EQUALS",
+                    "value": "0"
+                }
+            }
+        ],
+        "triggerCondition": [
+            {
+                "triggerType": "ERROR_RATE",
+                "errorCount": 10,
+                "errorPercent": 20,
+                "interval": 5,
+                "minimumRequest": 5
+            }
+        ],
+        "recoverCondition": {
+            "sleepWindow": 5,
+            "consecutiveSuccess": 3
+        },
+        "faultDetectConfig": {
+            "enable": false
+        },
+        "fallbackConfig": {
+            "enable": true,
+            "response": {
+                "code": 8,
+                "headers": [
+                    {
+                        "key": "X-CircuitBreaker-Retry",
+                        "value": "5s"
+                    }
+                ],
+                "body": "CircuitBreaker"
+            }
+        }
+    }
+]
+`))
+	require.NoError(api.t, err)
+	bd, err = api.do(req)
+	require.NoError(api.t, err)
+	require.Contains(api.t, string(bd), "execute success")
 	return api
 }
 
@@ -199,8 +279,10 @@ func (api *httpAPI) do(r *http.Request) (data []byte, err error) {
 		return
 	}
 	data, err = io.ReadAll(resp.Body)
-	// await for effect
-	time.Sleep(time.Second)
+	if r.Method != http.MethodGet {
+		// await for effect
+		time.Sleep(time.Second)
+	}
 	return
 }
 
@@ -230,13 +312,27 @@ func TestClient_DialMultiServerAndDown(t *testing.T) {
 	cfg := conf.NewFromBytes(b)
 	var srv, srv2 *grpcx.Server
 	err = wctest.RunWait(t, time.Second*2, func() error {
-		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
+		opts := []grpc.ServerOption{
+			grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+				return &helloworld.HelloReply{
+					Message: "server1",
+				}, nil
+			}),
+		}
+		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")), grpcx.WithGrpcOption(opts...))
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		return srv.Run()
 	}, func() error {
 		cfg2 := cfg.Sub("grpc")
 		cfg2.Parser().Set("server.addr", "127.0.0.1:21113")
-		srv2 = grpcx.New(grpcx.WithConfiguration(cfg2))
+		opts := []grpc.ServerOption{
+			grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+				return &helloworld.HelloReply{
+					Message: "server2",
+				}, nil
+			}),
+		}
+		srv2 = grpcx.New(grpcx.WithConfiguration(cfg2), grpcx.WithGrpcOption(opts...))
 		helloworld.RegisterGreeterServer(srv2.Engine(), &helloworld.Server{})
 		return srv2.Run()
 	})
@@ -249,26 +345,37 @@ func TestClient_DialMultiServerAndDown(t *testing.T) {
 	assert.NotNil(t, c)
 	defer c.Close()
 	hcli := helloworld.NewGreeterClient(c)
-	for i := 0; i < 5; i++ {
-		resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
-		assert.NoError(t, err)
-		assert.Equal(t, resp.Message, "Hello round robin")
-	}
-	{
+	t.Run("loadbalance", func(t *testing.T) {
+		var s1count, s2count int
+		for i := 0; i < 10; i++ {
+			resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
+			assert.NoError(t, err)
+			if resp.Message != "server1" {
+				s1count++
+			}
+			if resp.Message != "server2" {
+				s2count++
+			}
+		}
+		// router robin
+		assert.NotZero(t, s1count, "server1 request")
+		assert.NotZero(t, s2count, "server2 request")
+	})
+	t.Run("down 1/2", func(t *testing.T) {
 		srv.Stop(context.Background())
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Second * 1)
 		resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
 		assert.NoError(t, err)
-		assert.Equal(t, resp.Message, "Hello round robin")
-	}
-	{
+		assert.Equal(t, resp.Message, "server2")
+
+	})
+	t.Run("down 2/2", func(t *testing.T) {
 		srv2.Stop(context.Background())
 		//sleep let unregistry work,the latency 500 work fine, below will failure
 		resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
 		assert.Nil(t, resp)
 		assert.Error(t, err)
-		//time.Sleep(time.Second)
-	}
+	})
 }
 
 func TestClientRouting(t *testing.T) {
@@ -325,13 +432,69 @@ func TestClientRouting(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, c)
 		defer c.Close()
-		time.Sleep(time.Second)
 		hcli := helloworld.NewGreeterClient(c)
 		for i := 0; i < 5; i++ {
-			_, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "match"})
-			assert.NoError(t, err)
-			// Todo test pass in local server v1.72, but fail in github ci docker v1.70,so ignore it
-			//assert.Equal(t, "match success", resp.Message)
+			time.Sleep(time.Millisecond * 100)
+			resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "match"})
+			if assert.NoError(t, err) {
+				// Todo test pass in local server v1.72, but fail in github ci docker v1.70,so ignore it
+				assert.Equal(t, "match success", resp.Message)
+			}
 		}
 	})
+}
+
+func TestClientCircleBreaker(t *testing.T) {
+	b, err := os.ReadFile("./testdata/circuitbreaker.yaml")
+	require.NoError(t, err)
+	cfg := conf.NewFromBytes(b)
+	var (
+		makeErr = true
+	)
+	opts := []grpc.ServerOption{
+		grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+			if makeErr {
+				return nil, status.Error(codes.Canceled, "canceled")
+			}
+			return handler(ctx, req)
+		}),
+	}
+
+	var srv, srv2 *grpcx.Server
+	err = wctest.RunWait(t, time.Second*2, func() error {
+		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")), grpcx.WithGrpcOption(opts...))
+		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
+		return srv.Run()
+	}, func() error {
+		cfg2 := cfg.Sub("grpc2")
+		srv2 = grpcx.New(grpcx.WithConfiguration(cfg2), grpcx.WithGrpcOption(opts...))
+		helloworld.RegisterGreeterServer(srv2.Engine(), &helloworld.Server{})
+		return srv2.Run()
+	})
+	require.NoError(t, err)
+
+	meshapi(t).getToken().circuitBreaker()
+
+	cli := grpcx.NewClient(cfg.Sub("grpc"))
+	c, err := cli.Dial("")
+	require.NoError(t, err)
+	assert.NotNil(t, c)
+	defer c.Close()
+	hcli := helloworld.NewGreeterClient(c)
+	for i := 0; i < 12; i++ {
+		_, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "match"})
+		if i == 9 {
+			makeErr = false
+		}
+		if !makeErr {
+			// TODO need implement
+			// assert.Equal(t, status.Code(err).String(), codes.ResourceExhausted.String())
+		} else {
+			assert.Error(t, err, i)
+		}
+		time.Sleep(time.Millisecond * 100)
+
+	}
+	// wait for prometheus
+	time.Sleep(time.Second * 2)
 }

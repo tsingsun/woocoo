@@ -1,7 +1,7 @@
 grpc:
   server:
-    addr: 127.0.0.1:22112
-    namespace: routingTest
+    addr: 127.0.0.1:23112
+    namespace: circuitBreakerTest
     version: "1.0"
     engine:
       - unaryInterceptors:
@@ -13,21 +13,22 @@ grpc:
     scheme: polaris
   client:
     target:
-      namespace: routingTest
+      namespace: circuitBreakerTest
       serviceName: helloworld.Greeter
       metadata:
         version: "1.0"
         route: true
         dst_location: amoy
         src_country: CN
+        circuitBreaker: true
     dialOption:
       - tls:
       - block:
-      - timeout: 1s
+      - timeout: 10s
 grpc2:
   server:
-    addr: 127.0.0.1:22113
-    namespace: routingTest
+    addr: 127.0.0.1:23113
+    namespace: circuitBreakerTest
     version: "1.0"
     engine:
       - unaryInterceptors:
@@ -49,7 +50,7 @@ registry:
         enable: true
         chain:
           - prometheus
-        #        - pushgateway
+  #        - pushgateway
         plugin:
           prometheus:
             type: push

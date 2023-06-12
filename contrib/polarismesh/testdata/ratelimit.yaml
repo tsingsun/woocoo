@@ -1,4 +1,4 @@
-namespace: woocoo
+namespace: ratelimit
 grpc:
   server:
     addr: 127.0.0.1:20012
@@ -8,7 +8,8 @@ grpc:
         - polarisRateLimit:
   registry:
     scheme: polaris
-    ttl: 600s
+    ttl: 10s
+    global: true
     polaris:
       global:
         serverConnector:
@@ -20,15 +21,17 @@ grpc:
             - prometheus
           plugin:
             prometheus:
-              metricPort: 0
+              type: push
+              address: 127.0.0.1:9091
+              interval: 1s
   client:
     target:
-      namespace: woocoo
+      namespace: ratelimit
       serviceName: helloworld.Greeter
       metadata:
-        src_rateLimit: 1
+        src_rateLimit: text
     dialOption:
       - tls:
       - block:
-      - timeout: 1s
+      - timeout: 10s
       - serviceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }'

@@ -22,7 +22,7 @@ func TestRateLimitUnaryServerInterceptor(t *testing.T) {
 	cfg := conf.NewFromBytes(b)
 	var srv *grpcx.Server
 	err = wctest.RunWait(t, time.Second*2, func() error {
-		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")), grpcx.WithGrpcLogger())
+		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		return srv.Run()
 	})
@@ -43,7 +43,6 @@ func TestRateLimitUnaryServerInterceptor(t *testing.T) {
 	hcli := helloworld.NewGreeterClient(c)
 	breaked := false
 	for i := 0; i < 5; i++ {
-		time.Sleep(time.Millisecond * 500)
 		// Todo test pass in local server v1.72, but fail in github ci docker v1.70,so ignore it
 		_, err = hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "polaris"})
 		if err != nil {

@@ -14,41 +14,102 @@ go get github.com/tsingsun/woocoo/polarismesh
 ```  
 现使用polaris默认配置的话所需的配置项很少,因此直接在woocoo配置文件中集成了.
 
+支持能力有:
+
+- [x] 服务注册及发现
+- [x] 动态路由
+- [x] 负载均衡
+- [] 节点熔断
+- [x] 访问限流:部分能力
+    - 根据请求方法进行限流.
+- [] 配置管理
+- [x] 可观测性
+
+可以查看[示例](https://github.com/tsingsun/woocoo-example/tree/main/grpc/polaris)
+
+## 接入配置
+
+在woocoo微服务`registry`配置节中,指定相应的北极星网格:
+
 ```yaml
 grpc:
-  server:
-    addr: :20000
-    namespace: /woocoo/service
-    version: "1.0"
-    registryMeta:
-      key1: value1
-      key2: value2
+  registry:
+    scheme: polaris # 必须指定为polaris
+    global: true #该节点配置是否做为全局配置.
+    ttl: 30s # 心跳时间,[0-60]s
+    polaris:
+      ... # 该节占下同北极星网格本身的配置  
+
+# 也可以指定为一个独立的配置节,使用独立的配置文件,如下:
+grpc2:
+  registry:
+    scheme: polaris # 仍然需要指定为polaris
+    ref: registry # 以root为起点的配置节路径,对于引用的注册中心,会默认将第一个初始化全局配置.
+registry:
+  ttl: 30s # 心跳时间,[0-60]s
+  polaris:
+    # 采用配置文件方式.此时内嵌配置无效
+    configFile: etc/polaris.yaml  
+```
+
+### client
+
+woocoo微服务中的客户端可以采用标准的GRPC客户端.但更简单的方式是使用woocoo扩展的`grpcx.client`,不管使用哪种微服务中心,都可以使用该客户端.
+
+配置如下:
+
+```yaml
+grpc:
   registry:
     scheme: polaris
-    ttl: 600s
+    global: true
+    ttl: 30s # 心跳时间,[0-60]s
     polaris:
-      # 目前直接使用polaris自带的简易配置,后续如果配置复杂的话提供配置文件位置方式,配置文件优先于内嵌配置,同时只能2选1.
       global:
         serverConnector:
           addresses:
             - 127.0.0.1:8091
-      # 采用配置文件方式.此时内嵌配置无效
-      configFile: etc/polaris.yaml      
   client:
-    target:
-      namespace: woocoo
-      serviceName: helloworld.Greeter
-      metadata:
-        version: "1.0"
-        dst_location: amoy
-        src_tag: tag1
-        headerPrefix: "head1,head2"
+    target: # 该节相当于Dial的目标地址信息
+      namespace: default # 服务命名空间
+      serviceName: helloworld.Greeter # 服务名称
+      metadata:        
+        route: true # 是否启用动态路由,默认为false
+        dst_location: amoy #
+        src_tag: tag1        
 ```
 
-### 路由配置
-
-在元数据节中,由于polaris区分SrcMetadata及DstMetadata,所以需要在客户端和服务端配置中分别配置.
-
+在`metadata`元数据节中,polaris区分SrcMetadata及DstMetadata,所以需要在客户端和服务端配置中分别配置.
 而在woocoo的Registry组件并未这样区分,因此在metadata中配置前缀来对应,使得可以使用Polaris的治理功能.
 
-`dst_`前缀=>对应DstMetadata;`src_`前缀=>对应SrcMetadata,`headerPrefix`=>对应Grpc HeaderPrefix
+`dst_`前缀=>对应DstMetadata;`src_`前缀=>对应SrcMetadata
+
+在客户端与服务端的通信过程中,grpcx.client会将配置中的`metadata`作为元数据传递给服务端,服务端可以根据元数据来进行路由,限流等操作.规则如下:
+
+- namespace,serviceName默认传递
+- src_{key}:{value}以 key:value 加入outgoing context.
+- dst_{key}:{value}: 不传递.
+
+#### grpcx.client
+
+初始化方式没有特殊点.
+
+```go
+client := grpcx.NewClient(app.AppConfiguration().Sub("grpc"))
+// 可以传空.
+conn, err := client.Dial("")
+// 或者
+conn, err := client.Dial("polaris://helloworld.Greeter")
+```
+
+#### 原生client
+
+需要指定resolver和负载均衡配置.当然resolver也可以全局注入. 而grpcx.client会自动初始化以支持动态配置.
+
+```go
+conn, err := grpc.Dial(scheme+"://routingTest/helloworld.Greeter?route=true",		
+			grpc.WithResolvers(&resolverBuilder{}),
+			grpc.WithDefaultServiceConfig(`{ "loadBalancingConfig": [{"polaris": {}}] }`),
+		)
+
+```

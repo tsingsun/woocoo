@@ -23,7 +23,7 @@ grpc:
     dialOption:
       - tls:
       - block:
-      - timeout: 1s
+      - timeout: 10s
 grpc2:
   server:
     addr: 127.0.0.1:22113

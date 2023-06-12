@@ -382,7 +382,10 @@ func TestClientRouting(t *testing.T) {
 	b, err := os.ReadFile("./testdata/routing.yaml")
 	require.NoError(t, err)
 	cfg := conf.NewFromBytes(b)
-	var srv, srv2 *grpcx.Server
+	var (
+		srv, srv2   *grpcx.Server
+		expectedMsg = "match success"
+	)
 	err = wctest.RunWait(t, time.Second*2, func() error {
 		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
@@ -392,7 +395,7 @@ func TestClientRouting(t *testing.T) {
 		opts := []grpc.ServerOption{
 			grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 				return &helloworld.HelloReply{
-					Message: "match success",
+					Message: expectedMsg,
 				}, nil
 			}),
 		}
@@ -405,7 +408,7 @@ func TestClientRouting(t *testing.T) {
 	api := meshapi(t)
 	api.getToken().routings()
 
-	t.Run("grpc dial", func(t *testing.T) {
+	t.Run("native-dial", func(t *testing.T) {
 		// api.routingsEnable("guarantee", false)
 		conn, err := grpc.Dial(scheme+"://routingTest/helloworld.Greeter?route=true",
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -422,11 +425,11 @@ func TestClientRouting(t *testing.T) {
 			ctx := metadata.AppendToOutgoingContext(context.Background(), "country", "CN")
 			resp, err := gcli.SayHello(ctx, &helloworld.HelloRequest{Name: "hello"})
 			require.NoError(t, err)
-			assert.Equal(t, "match success", resp.Message)
+			assert.Equal(t, expectedMsg, resp.Message)
 		}
 	})
 
-	t.Run("route rule match", func(t *testing.T) {
+	t.Run("route-rule-match", func(t *testing.T) {
 		cli := grpcx.NewClient(cfg.Sub("grpc"))
 		c, err := cli.Dial("")
 		require.NoError(t, err)
@@ -438,7 +441,7 @@ func TestClientRouting(t *testing.T) {
 			resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "match"})
 			if assert.NoError(t, err) {
 				// Todo test pass in local server v1.72, but fail in github ci docker v1.70,so ignore it
-				assert.Equal(t, "match success", resp.Message)
+				assert.Equal(t, expectedMsg, resp.Message)
 			}
 		}
 	})

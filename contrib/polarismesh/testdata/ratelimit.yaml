@@ -29,7 +29,8 @@ grpc:
       namespace: ratelimit
       serviceName: helloworld.Greeter
       metadata:
-        src_rateLimit: text
+        srcService: helloworld.Greeter
+        header_rateLimit: text # key case-sensitive
     dialOption:
       - tls:
       - block:

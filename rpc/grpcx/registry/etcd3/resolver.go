@@ -9,7 +9,6 @@ import (
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/resolver"
 	"strings"
-	"sync"
 )
 
 const scheme = "etcd"
@@ -19,7 +18,7 @@ type etcdBuilder struct {
 }
 
 // Build Implement the Build method in the Resolver Builder interface
-func (r *etcdBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
+func (r *etcdBuilder) Build(target resolver.Target, cc resolver.ClientConn, _ resolver.BuildOptions) (resolver.Resolver, error) {
 	etcdCli, err := clientv3.New(r.etcdConfig)
 	if err != nil {
 		return nil, err
@@ -64,11 +63,10 @@ type etcdResolver struct {
 	target  resolver.Target
 	options *registry.DialOptions
 	addrMap map[string]resolver.Address
-	wg      sync.WaitGroup
 	rsCh    chan struct{}
 }
 
-func (w *etcdResolver) ResolveNow(options resolver.ResolveNowOptions) {
+func (w *etcdResolver) ResolveNow(_ resolver.ResolveNowOptions) {
 	select {
 	case w.rsCh <- struct{}{}:
 	default:
@@ -95,8 +93,6 @@ func (w *etcdResolver) safeKey() {
 }
 
 func (w *etcdResolver) Watch() {
-	defer w.wg.Done()
-	w.wg.Add(1)
 	w.safeKey()
 
 	for {
@@ -110,7 +106,10 @@ func (w *etcdResolver) Watch() {
 			if len(addrs) == 0 {
 				grpclog.Errorf("resolver got zero addresses:%s", w.key)
 			}
-			w.cc.UpdateState(resolver.State{Addresses: addrs})
+
+			if err := w.cc.UpdateState(resolver.State{Addresses: addrs}); err != nil {
+				grpclog.Errorf("fail to do update service %s: %v", w.target.URL.String(), err)
+			}
 		}
 	}
 }

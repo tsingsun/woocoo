@@ -21,10 +21,13 @@ import (
 )
 
 const (
-	scheme             = "polaris"
-	keyDialOptions     = "options"
-	keyDialOptionRoute = "route"
-	keyResponse        = "response"
+	scheme                  = "polaris"
+	keyDialOptions          = "options"
+	keyDialOptionRoute      = "route"
+	keyDialOptionNamespace  = "namespace"
+	keyDialOptionService    = "service"
+	keyDialOptionSrcService = "srcservice"
+	keyResponse             = "response"
 )
 
 func init() {
@@ -119,11 +122,9 @@ func (drv *Driver) ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, e
 
 // WithDialOptions returns the default dial options for the grpc Polaris GRPC Client.
 func (drv *Driver) WithDialOptions(registryOpt registry.DialOptions) (opts []grpc.DialOption, err error) {
-	do := &dialOptions{
-		Namespace:   registryOpt.Namespace,
-		Service:     registryOpt.ServiceName,
-		DstMetadata: filterMetadata(&registryOpt, "dst_"),
-		SrcMetadata: filterMetadata(&registryOpt, "src_"),
+	do := &dialOptions{}
+	if err = convertDialOptions(&registryOpt, do); err != nil {
+		return nil, fmt.Errorf("WithDialOptions:failed to convert dial options: %v", err)
 	}
 	opts = append(opts, grpc.WithUnaryInterceptor(injectCallerInfo(do)), grpc.WithDefaultServiceConfig(LoadBalanceConfig))
 	return
@@ -249,11 +250,21 @@ func targetToOptions(target resolver.Target) (options *dialOptions, err error) {
 			if len(optionValues) > 0 {
 				optionsStr = optionValues[0]
 			} else {
-				ur := values[keyDialOptionRoute]
-				if len(ur) > 0 {
-					options.Route, err = strconv.ParseBool(ur[0])
-					if err != nil {
-						return nil, fmt.Errorf("TargetToOptions:fail to parse route %s: %v", ur[0], err)
+				for k, v := range values {
+					switch strings.ToLower(k) {
+					case keyDialOptionNamespace:
+						options.Namespace = v[0]
+					case keyDialOptionService:
+						options.Service = v[0]
+					case keyDialOptionSrcService:
+						options.SrcService = v[0]
+					case keyDialOptionRoute:
+						if len(v) > 0 {
+							options.Route, err = strconv.ParseBool(v[0])
+							if err != nil {
+								return nil, fmt.Errorf("TargetToOptions:fail to parse route %s: %v", v[0], err)
+							}
+						}
 					}
 				}
 			}
@@ -270,19 +281,32 @@ func targetToOptions(target resolver.Target) (options *dialOptions, err error) {
 				return nil, fmt.Errorf("TargetToOptions:fail to unmarshal options %s: %v",
 					string(value), err)
 			}
-			options.Namespace = ro.Namespace
-			options.Service = ro.ServiceName
-			options.DstMetadata = filterMetadata(ro, "dst_")
-			options.SrcMetadata = filterMetadata(ro, "src_")
-			if tf, ok := ro.Metadata["route"]; ok {
-				if options.Route, err = strconv.ParseBool(tf); err != nil {
-					return nil, fmt.Errorf("TargetToOptions:fail to parse target:metadata:route %s: %v",
-						tf, err)
-				}
+			if err = convertDialOptions(ro, options); err != nil {
+				return nil, fmt.Errorf("TargetToOptions:fail to parse target: %v", err)
 			}
 		}
 	}
 	return options, nil
+}
+
+func convertDialOptions(src *registry.DialOptions, tar *dialOptions) (err error) {
+	tar.Namespace = src.Namespace
+	tar.Service = src.ServiceName
+	tar.Headers = filterMetadata(src, "header_")
+	if v, ok := src.Metadata["route"]; ok {
+		if tar.Route, err = strconv.ParseBool(v); err != nil {
+			return fmt.Errorf("metadata:route %s: %v", v, err)
+		}
+	}
+	if v, ok := src.Metadata["circuitBreaker"]; ok {
+		if tar.CircuitBreaker, err = strconv.ParseBool(v); err != nil {
+			return fmt.Errorf("metadata:circuit breaker %s: %v", v, err)
+		}
+	}
+	if v, ok := src.Metadata["srcService"]; ok {
+		tar.SrcService = v
+	}
+	return nil
 }
 
 // parse src metadata from registry dial options, example: src_key = value => key = value

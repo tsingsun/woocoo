@@ -32,8 +32,7 @@ grpc:
       serviceName: helloworld.Greeter
       metadata:
         version: "1.0"
-        dst_location: amoy
-        src_tag: tag1
+        header_tag: tag1
     dialOption:
       - tls:
       - block:

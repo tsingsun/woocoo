@@ -8,13 +8,14 @@ import (
 
 // dialOptions is the options for attach caller info
 type dialOptions struct {
-	Namespace   string            `yaml:"namespace" json:"namespace"`
-	DstMetadata map[string]string `yaml:"dst_metadata" json:"dst_metadata"`
-	// SrcMetadata will be added to the outgoing context
-	SrcMetadata    map[string]string `yaml:"src_metadata" json:"src_metadata"`
-	Service        string            `yaml:"service" json:"service"`
-	Route          bool              `yaml:"route" json:"route"`
-	CircuitBreaker bool              `yaml:"circuitBreaker" json:"circuitBreaker"`
+	Namespace string `yaml:"namespace" json:"namespace"`
+	Service   string `yaml:"service" json:"service"`
+	// Headers will be added to the outgoing context,are fixed values,parse from meatedata
+	Headers map[string]string `yaml:"-" json:"-"`
+	// the service name of the caller
+	SrcService     string `yaml:"srcService" json:"srcService"`
+	Route          bool   `yaml:"route" json:"route"`
+	CircuitBreaker bool   `yaml:"circuitBreaker" json:"circuitBreaker"`
 }
 
 func injectCallerInfo(options *dialOptions) grpc.UnaryClientInterceptor {
@@ -25,12 +26,13 @@ func injectCallerInfo(options *dialOptions) grpc.UnaryClientInterceptor {
 			ctx = metadata.NewOutgoingContext(context.Background(), metadata.MD{})
 		}
 
-		if options.Service != "" {
-			ctx = metadata.AppendToOutgoingContext(ctx, polarisCallerServiceKey, options.Service)
+		if options.SrcService != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, polarisCallerServiceKey, options.SrcService)
 			ctx = metadata.AppendToOutgoingContext(ctx, polarisCallerNamespaceKey, options.Namespace)
 		}
-		for h, v := range options.SrcMetadata {
-			ctx = metadata.AppendToOutgoingContext(ctx, h, v)
+
+		for k, v := range options.Headers {
+			ctx = metadata.AppendToOutgoingContext(ctx, k, v)
 		}
 
 		return invoker(ctx, method, req, reply, cc, opts...)

@@ -18,9 +18,8 @@ grpc:
       metadata:
         version: "1.0"
         route: true
-        dst_location: amoy
-        src_country: CN
         circuitBreaker: true
+        header_country: CN
     dialOption:
       - tls:
       - block:
@@ -50,9 +49,16 @@ registry:
         enable: true
         chain:
           - prometheus
-  #        - pushgateway
         plugin:
           prometheus:
             type: push
             address: 127.0.0.1:9091
-            interval: 1s
+            interval: 10s
+            metricPort: 0
+    consumer:
+      circuitBreaker:
+        enable: true
+        checkPeriod: 30s
+        plugin:
+          errorRate:
+            metricStatTimeWindow: 10s

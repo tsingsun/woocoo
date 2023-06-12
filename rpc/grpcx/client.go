@@ -76,7 +76,8 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 	}
 	// grpc dial options
 	if k := conf.Join("client", "dialOption"); cfg.IsSet(k) {
-		c.dialOptions = append(c.dialOptions, optionsManager.BuildDialOption(c, cfg, k)...)
+		cnfOpts := optionsManager.BuildDialOption(c, cfg, k)
+		c.dialOptions = append(cnfOpts, c.dialOptions...)
 	}
 	if !c.withSecure {
 		c.dialOptions = append(c.dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))

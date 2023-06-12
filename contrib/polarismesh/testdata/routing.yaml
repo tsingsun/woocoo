@@ -18,12 +18,12 @@ grpc:
       metadata:
         version: "1.0"
         route: true
-        dst_location: amoy
-        src_country: CN
+        srcService: helloworld.Greeter
+        header_country: CN
     dialOption:
       - tls:
       - block:
-      - timeout: 1s
+      - timeout: 10s
 grpc2:
   server:
     addr: 127.0.0.1:22113
@@ -33,7 +33,20 @@ grpc2:
       - unaryInterceptors:
           - recovery:
     registryMeta:
-      location: amoy
+      location: CN
+  registry:
+    ref: registry
+    scheme: polaris
+grpc3:
+  server:
+    addr: 127.0.0.1:22114
+    namespace: routingTest
+    version: "1.0"
+    engine:
+      - unaryInterceptors:
+          - recovery:
+    registryMeta:
+      location: US
   registry:
     ref: registry
     scheme: polaris
@@ -49,7 +62,6 @@ registry:
         enable: true
         chain:
           - prometheus
-        #        - pushgateway
         plugin:
           prometheus:
             type: push

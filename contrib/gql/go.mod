@@ -8,7 +8,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/stretchr/testify v1.8.3
 	github.com/tsingsun/woocoo v0.2.7
-	github.com/vektah/gqlparser/v2 v2.5.1
+	github.com/vektah/gqlparser/v2 v2.5.3
 )
 
 require (

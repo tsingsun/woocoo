@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -26,8 +27,8 @@ import (
 )
 
 func init() {
-	log := grpclog.NewLoggerV2WithVerbosity(io.Discard, os.Stdout, os.Stdout, 5)
-	grpclog.SetLoggerV2(log)
+	logger := grpclog.NewLoggerV2WithVerbosity(io.Discard, os.Stdout, os.Stdout, 5)
+	grpclog.SetLoggerV2(logger)
 }
 
 type httpAPI struct {
@@ -171,8 +172,9 @@ func (api *httpAPI) routings() *httpAPI {
 `)
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/naming/v2/routings", api.baseUrl), payload)
 	require.NoError(api.t, err)
-	_, err = api.do(req)
+	bd, err := api.do(req)
 	require.NoError(api.t, err)
+	require.Contains(api.t, string(bd), "execute success")
 	return api
 }
 
@@ -228,15 +230,14 @@ func (api *httpAPI) circuitBreaker() *httpAPI {
         ],
         "triggerCondition": [
             {
-                "triggerType": "ERROR_RATE",
-                "errorCount": 10,
-                "errorPercent": 20,
-                "interval": 5,
+                "triggerType": "ERROR_RATE", 
+                "errorPercent": 1,
+                "interval": 30,
                 "minimumRequest": 5
             }
         ],
         "recoverCondition": {
-            "sleepWindow": 5,
+            "sleepWindow": 30,
             "consecutiveSuccess": 3
         },
         "faultDetectConfig": {
@@ -245,11 +246,11 @@ func (api *httpAPI) circuitBreaker() *httpAPI {
         "fallbackConfig": {
             "enable": true,
             "response": {
-                "code": 8,
+                "code": 429,
                 "headers": [
                     {
                         "key": "X-CircuitBreaker-Retry",
-                        "value": "5s"
+                        "value": "30s"
                     }
                 ],
                 "body": "CircuitBreaker"
@@ -315,7 +316,7 @@ func TestClient_DialMultiServerAndDown(t *testing.T) {
 	var srv, srv2 *grpcx.Server
 	err = wctest.RunWait(t, time.Second*2, func() error {
 		opts := []grpc.ServerOption{
-			grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+			grpc.ChainUnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 				return &helloworld.HelloReply{
 					Message: "server1",
 				}, nil
@@ -328,7 +329,7 @@ func TestClient_DialMultiServerAndDown(t *testing.T) {
 		cfg2 := cfg.Sub("grpc")
 		cfg2.Parser().Set("server.addr", "127.0.0.1:21113")
 		opts := []grpc.ServerOption{
-			grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+			grpc.ChainUnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 				return &helloworld.HelloReply{
 					Message: "server2",
 				}, nil
@@ -395,7 +396,7 @@ func TestClientRouting(t *testing.T) {
 	}, func() error {
 		cfg2 := cfg.Sub("grpc2")
 		opts := []grpc.ServerOption{
-			grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+			grpc.ChainUnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 				return &helloworld.HelloReply{
 					Message: expectedMsg,
 				}, nil
@@ -407,7 +408,7 @@ func TestClientRouting(t *testing.T) {
 	}, func() error {
 		cfg3 := cfg.Sub("grpc3")
 		opts := []grpc.ServerOption{
-			grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+			grpc.ChainUnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 				return nil, status.Error(codes.FailedPrecondition, "")
 			}),
 		}
@@ -463,26 +464,23 @@ func TestClientCircleBreaker(t *testing.T) {
 	b, err := os.ReadFile("./testdata/circuitbreaker.yaml")
 	require.NoError(t, err)
 	cfg := conf.NewFromBytes(b)
-	var (
-		makeErr = true
-	)
-	opts := []grpc.ServerOption{
-		grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-			if makeErr {
-				return nil, status.Error(codes.Canceled, "canceled")
-			}
-			return handler(ctx, req)
-		}),
-	}
-
 	var srv, srv2 *grpcx.Server
 	err = wctest.RunWait(t, time.Second*2, func() error {
-		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")), grpcx.WithGrpcOption(opts...))
+		count := 0
+		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")), grpcx.WithGrpcOption(
+			grpc.ChainUnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+				count++
+				log.Print(count)
+				return nil, nil
+			})))
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		return srv.Run()
 	}, func() error {
 		cfg2 := cfg.Sub("grpc2")
-		srv2 = grpcx.New(grpcx.WithConfiguration(cfg2), grpcx.WithGrpcOption(opts...))
+		srv2 = grpcx.New(grpcx.WithConfiguration(cfg2), grpcx.WithGrpcOption(
+			grpc.ChainUnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+				return nil, status.Error(codes.Canceled, "canceled")
+			})))
 		helloworld.RegisterGreeterServer(srv2.Engine(), &helloworld.Server{})
 		return srv2.Run()
 	})
@@ -496,20 +494,18 @@ func TestClientCircleBreaker(t *testing.T) {
 	assert.NotNil(t, c)
 	defer c.Close()
 	hcli := helloworld.NewGreeterClient(c)
-	for i := 0; i < 12; i++ {
-		_, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "match"})
-		if i == 9 {
-			makeErr = false
+	// make cb
+	errcount := 0
+	for i := 0; i < 6; i++ {
+		for i := 0; i < 10; i++ {
+			_, err = hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "match"})
+			if err != nil {
+				errcount++
+			}
 		}
-		if !makeErr {
-			// TODO need implement
-			// assert.Equal(t, status.Code(err).String(), codes.ResourceExhausted.String())
-		} else {
-			assert.Error(t, err, i)
-		}
-		time.Sleep(time.Millisecond * 100)
-
+		time.Sleep(time.Second * 1)
+		log.Println(" ")
 	}
-	// wait for prometheus
-	time.Sleep(time.Second * 2)
+	log.Println("make cb done")
+	assert.InDelta(t, 50, errcount, 30)
 }

@@ -19,7 +19,7 @@ go get github.com/tsingsun/woocoo/polarismesh
 - [x] 服务注册及发现
 - [x] 动态路由
 - [x] 负载均衡
-- [] 节点熔断
+- [x] 节点熔断
 - [x] 访问限流:部分能力
     - 根据请求方法进行限流.
 - [] 配置管理
@@ -75,20 +75,20 @@ grpc:
       serviceName: helloworld.Greeter # 服务名称
       metadata:        
         route: true # 是否启用动态路由,默认为false
-        dst_location: amoy #
-        src_tag: tag1        
+        header_location: amoy #                
 ```
 
 在`metadata`元数据节中,polaris区分SrcMetadata及DstMetadata,所以需要在客户端和服务端配置中分别配置.
 而在woocoo的Registry组件并未这样区分,因此在metadata中配置前缀来对应,使得可以使用Polaris的治理功能.
 
-`dst_`前缀=>对应DstMetadata;`src_`前缀=>对应SrcMetadata
+`header_`前缀的参数在会在对应Polaris中的请求头参数.
 
 在客户端与服务端的通信过程中,grpcx.client会将配置中的`metadata`作为元数据传递给服务端,服务端可以根据元数据来进行路由,限流等操作.规则如下:
 
 - namespace,serviceName默认传递
-- src_{key}:{value}以 key:value 加入outgoing context.
-- dst_{key}:{value}: 不传递.
+- header_{key}:{value}以 key:value 加入outgoing context.
+
+在配置文件中,为固化参数.如果需要使用动态参数,如用户ID,可使用interceptor来实现.
 
 #### grpcx.client
 

@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc/resolver"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -32,7 +31,7 @@ func (rb *resolverBuilder) Scheme() string {
 // Build Implement the Build method in the Resolver Builder interface,
 // build a new Resolver resolution service address for the specified Target,
 // and pass the polaris information to the balancer through attr
-func (rb *resolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
+func (rb *resolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, _ resolver.BuildOptions) (resolver.Resolver, error) {
 	options, err := targetToOptions(target)
 	if nil != err {
 		return nil, err
@@ -55,9 +54,8 @@ func (rb *resolverBuilder) Build(target resolver.Target, cc resolver.ClientConn,
 	}
 	d.ctx, d.cancel = context.WithCancel(context.Background())
 
-	d.wg.Add(1)
 	//go d.watcher()
-	go d.initWatcher()
+	go d.Watch()
 	d.ResolveNow(resolver.ResolveNowOptions{})
 	return d, nil
 }
@@ -83,7 +81,6 @@ type polarisNamingResolver struct {
 	cc     resolver.ClientConn
 	// rn channel is used by ResolveNow() to force an immediate resolution of the target.
 	rn      chan struct{}
-	wg      sync.WaitGroup
 	options *dialOptions
 	target  resolver.Target
 
@@ -97,12 +94,16 @@ type polarisNamingResolver struct {
 //
 // when watch all instances, but if single instance, response cluster instances will be nil.
 // so need get all instances again.
-func (pr *polarisNamingResolver) OnInstancesUpdate(_ *model.InstancesResponse) {
+func (pr *polarisNamingResolver) OnInstancesUpdate(resp *model.InstancesResponse) {
+	pr.onInstancesUpdate(resp, true)
+}
+
+func (pr *polarisNamingResolver) onInstancesUpdate(_ *model.InstancesResponse, skipRouteFilter bool) {
 	instancesRequest := &api.GetInstancesRequest{
 		GetInstancesRequest: model.GetInstancesRequest{
 			Service:         pr.options.Service,
 			Namespace:       getNamespace(pr.options),
-			SkipRouteFilter: true,
+			SkipRouteFilter: skipRouteFilter,
 		},
 	}
 
@@ -128,7 +129,7 @@ func (pr *polarisNamingResolver) OnInstancesUpdate(_ *model.InstancesResponse) {
 // ResolveNow The method is called by the gRPC framework to resolve the target name immediately.
 //
 // attention: this method trigger too high frequency to cause polaris server hung. so do not anything until you know what you are doing.
-func (pr *polarisNamingResolver) ResolveNow(opt resolver.ResolveNowOptions) {
+func (pr *polarisNamingResolver) ResolveNow(_ resolver.ResolveNowOptions) {
 	select {
 	case pr.rn <- struct{}{}:
 	default:
@@ -143,31 +144,34 @@ func getNamespace(options *dialOptions) string {
 	return namespace
 }
 
-// the listener is OnInstancesUpdate
-func (pr *polarisNamingResolver) initWatcher() {
-	defer func() {
-		pr.wg.Done()
-	}()
-	pr.OnInstancesUpdate(nil)
-
-	pr.watchRequest = &api.WatchAllInstancesRequest{
-		WatchAllInstancesRequest: model.WatchAllInstancesRequest{
-			ServiceKey: model.ServiceKey{
-				Namespace: getNamespace(pr.options),
-				Service:   pr.target.URL.Host,
+// Watch the listener is OnInstancesUpdate
+func (pr *polarisNamingResolver) Watch() {
+	for {
+		select {
+		case <-pr.ctx.Done():
+			return
+		case <-pr.rn:
+			pr.OnInstancesUpdate(nil)
+		}
+		pr.watchRequest = &api.WatchAllInstancesRequest{
+			WatchAllInstancesRequest: model.WatchAllInstancesRequest{
+				ServiceKey: model.ServiceKey{
+					Namespace: getNamespace(pr.options),
+					Service:   pr.target.URL.Host,
+				},
+				InstancesListener: pr,
+				WaitTime:          time.Minute,
+				WatchMode:         model.WatchModeNotify,
 			},
-			InstancesListener: pr,
-			WaitTime:          time.Minute,
-			WatchMode:         model.WatchModeNotify,
-		},
-	}
+		}
 
-	watcher, err := pr.consumerAPI.WatchAllInstances(pr.watchRequest)
-	if err != nil {
-		pr.cc.ReportError(err)
-		return
+		watcher, err := pr.consumerAPI.WatchAllInstances(pr.watchRequest)
+		if err != nil {
+			pr.cc.ReportError(err)
+			return
+		}
+		pr.watcherResp = watcher
 	}
-	pr.watcherResp = watcher
 }
 
 // Close resolver closed

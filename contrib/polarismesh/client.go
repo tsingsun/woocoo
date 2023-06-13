@@ -3,7 +3,9 @@ package polarismesh
 import (
 	"context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 // dialOptions is the options for attach caller info
@@ -35,6 +37,10 @@ func injectCallerInfo(options *dialOptions) grpc.UnaryClientInterceptor {
 			ctx = metadata.AppendToOutgoingContext(ctx, k, v)
 		}
 
-		return invoker(ctx, method, req, reply, cc, opts...)
+		err := invoker(ctx, method, req, reply, cc, opts...)
+		if status.Code(err) == codes.ResourceExhausted {
+			return err
+		}
+		return err
 	}
 }

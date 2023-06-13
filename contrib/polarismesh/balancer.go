@@ -204,7 +204,7 @@ func (pnp *polarisNamingPicker) Pick(info balancer.PickInfo) (balancer.PickResul
 
 	lbReq := pnp.buildLoadBalanceRequest(info, resp)
 	oneInsResp, err := pnp.balancer.routerAPI.ProcessLoadBalance(lbReq)
-	if nil != err {
+	if err != nil {
 		return balancer.PickResult{}, err
 	}
 	targetInstance := oneInsResp.GetInstance()

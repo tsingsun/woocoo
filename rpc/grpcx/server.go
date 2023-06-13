@@ -92,7 +92,8 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 	}
 	// engine
 	if k := conf.Join("engine"); cfg.IsSet(k) {
-		s.opts.grpcOptions = optionsManager.BuildServerOptions(cfg, k)
+		cnfOpts := optionsManager.BuildServerOptions(cfg, k)
+		s.opts.grpcOptions = append(cnfOpts, s.opts.grpcOptions...)
 	}
 }
 
@@ -185,11 +186,11 @@ func (s *Server) Engine() *grpc.Server {
 	return s.engine
 }
 
-func (s *Server) Start(ctx context.Context) error {
+func (s *Server) Start(_ context.Context) error {
 	return s.ListenAndServe()
 }
 
-func (s *Server) Stop(ctx context.Context) (err error) {
+func (s *Server) Stop(_ context.Context) (err error) {
 	if s.registry != nil {
 		s.mu.RLock()
 		defer s.mu.RUnlock()
@@ -212,7 +213,7 @@ func (s *Server) Run() error {
 	quitFunc := func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		s.Stop(ctx)
+		s.Stop(ctx) //nolint:errcheck
 	}
 	ch := make(chan error)
 	go func() {

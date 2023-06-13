@@ -74,7 +74,7 @@ func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorizatio
 			return
 		}
 	} else {
-		dsl = cnf.String("model")
+		dsl = cnf.Abs(cnf.String("model"))
 	}
 	// policy
 	if pv := cnf.String("policy"); pv != "" {

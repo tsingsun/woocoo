@@ -64,7 +64,7 @@ func (api *httpAPI) getToken() *httpAPI {
 }
 
 func (api *httpAPI) routings() *httpAPI {
-	checkreq, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/naming/v2/routings?id=%s", api.baseUrl, "14a1eab0f21549a9beb7f401f4f21cf6"), nil)
+	checkreq, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/naming/v2/routings?id=%s", api.baseUrl, "cn"), nil)
 	data, err := api.do(checkreq)
 	require.NoError(api.t, err)
 	if strings.Contains(string(data), "routing-test") {
@@ -73,7 +73,7 @@ func (api *httpAPI) routings() *httpAPI {
 	// one route ,one guarantee
 	payload := strings.NewReader(`
 [{
-  "id": "14a1eab0f21549a9beb7f401f4f21cf6",
+  "id": "cn",
   "name": "routing-test",
   "enable": true,
   "description": "",
@@ -106,6 +106,39 @@ func (api *httpAPI) routings() *httpAPI {
     }]
   }
 },{
+  "id": "us",
+  "name": "routing-test",
+  "enable": true,
+  "description": "",
+  "priority": 0,
+  "routing_config": {
+    "@type": "type.googleapis.com/v2.RuleRoutingConfig",
+    "sources": [{"service": "*","namespace": "routingTest"}],
+    "destinations": [{"service": "helloworld.Greeter","namespace": "routingTest"}],
+    "rules": [{
+      "name": "规则0",
+      "sources": [{
+        "service": "*",
+        "namespace": "routingTest",
+        "arguments": [{
+          "type": "HEADER",
+          "key": "country",
+	      "value": {"type": "NOT_EQUALS","value": "CN","value_type": "TEXT"}
+        }]
+      }],
+      "destinations": [{
+        "service": "helloworld.Greeter",
+        "namespace": "routingTest",
+        "labels": {
+            "location": {"value": "us","type": "EXACT","value_type": "TEXT"}
+        },
+        "weight": 100,
+        "isolate": false,
+        "name": "group-0"
+      }]
+    }]
+  }
+},{
   "id": "guarantee",
   "name": "guarantee",
   "enable": true,
@@ -119,7 +152,7 @@ func (api *httpAPI) routings() *httpAPI {
       "name": "规则0",
       "sources": [{
         "service": "*",
-        "namespace": "routingTest",
+        "namespace": "*",
         "arguments": []
       }],
       "destinations": [{
@@ -383,8 +416,8 @@ func TestClientRouting(t *testing.T) {
 	require.NoError(t, err)
 	cfg := conf.NewFromBytes(b)
 	var (
-		srv, srv2   *grpcx.Server
-		expectedMsg = "match success"
+		srv, srv2, srv3 *grpcx.Server
+		expectedMsg     = "match success"
 	)
 	err = wctest.RunWait(t, time.Second*2, func() error {
 		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
@@ -402,13 +435,23 @@ func TestClientRouting(t *testing.T) {
 		srv2 = grpcx.New(grpcx.WithConfiguration(cfg2), grpcx.WithGrpcOption(opts...))
 		helloworld.RegisterGreeterServer(srv2.Engine(), &helloworld.Server{})
 		return srv2.Run()
+	}, func() error {
+		cfg3 := cfg.Sub("grpc3")
+		opts := []grpc.ServerOption{
+			grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+				return nil, status.Error(codes.FailedPrecondition, "")
+			}),
+		}
+		srv3 = grpcx.New(grpcx.WithConfiguration(cfg3), grpcx.WithGrpcOption(opts...))
+		helloworld.RegisterGreeterServer(srv3.Engine(), &helloworld.Server{})
+		return srv3.Run()
 	})
 	require.NoError(t, err)
 
 	api := meshapi(t)
 	api.getToken().routings()
 
-	t.Run("native-dial", func(t *testing.T) {
+	t.Run("native-dial-without-src-service", func(t *testing.T) {
 		// api.routingsEnable("guarantee", false)
 		conn, err := grpc.Dial(scheme+"://routingTest/helloworld.Greeter?route=true",
 			grpc.WithTransportCredentials(insecure.NewCredentials()),

@@ -18,7 +18,7 @@ grpc:
       metadata:
         version: "1.0"
         route: true
-        dst_location: amoy
+        srcService: helloworld.Greeter
         src_country: CN
     dialOption:
       - tls:
@@ -34,6 +34,19 @@ grpc2:
           - recovery:
     registryMeta:
       location: amoy
+  registry:
+    ref: registry
+    scheme: polaris
+grpc3:
+  server:
+    addr: 127.0.0.1:22114
+    namespace: routingTest
+    version: "1.0"
+    engine:
+      - unaryInterceptors:
+          - recovery:
+    registryMeta:
+      location: US
   registry:
     ref: registry
     scheme: polaris

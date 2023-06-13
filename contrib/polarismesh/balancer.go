@@ -176,19 +176,22 @@ func (pb *pickerBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
 	}
 }
 
-func buildSourceInfo(options *dialOptions) *model.ServiceInfo {
+func buildSourceInfo(options *dialOptions, insReq *polaris.ProcessRoutersRequest) *model.ServiceInfo {
 	var valueSet bool
 	svcInfo := &model.ServiceInfo{}
-	if options.Service != "" {
-		svcInfo.Service = options.Service
+	if options.SrcService != "" {
+		svcInfo.Namespace = getNamespace(options)
+		svcInfo.Service = options.SrcService
 		valueSet = true
 	}
+
 	if len(options.SrcMetadata) > 0 {
-		svcInfo.Metadata = options.SrcMetadata
 		valueSet = true
+		for k, v := range options.SrcMetadata {
+			insReq.AddArguments(model.BuildHeaderArgument(k, v))
+		}
 	}
 	if valueSet {
-		svcInfo.Namespace = getNamespace(options)
 		return svcInfo
 	}
 	return nil
@@ -200,7 +203,7 @@ func (pnp *polarisNamingPicker) Pick(info balancer.PickInfo) (balancer.PickResul
 	if pnp.options.Route {
 		request := &polaris.ProcessRoutersRequest{}
 		request.DstInstances = pnp.response
-		sourceService := buildSourceInfo(pnp.options)
+		sourceService := buildSourceInfo(pnp.options, request)
 		if sourceService != nil {
 			// 如果在Conf中配置了SourceService，则优先使用配置
 			request.SourceService = *sourceService
@@ -210,9 +213,6 @@ func (pnp *polarisNamingPicker) Pick(info balancer.PickInfo) (balancer.PickResul
 			}
 		}
 
-		if grpclog.V(2) {
-			grpclog.Infof("[Polaris][Balancer] get one instance request : %+v", request)
-		}
 		var err error
 		resp, err = pnp.balancer.routerAPI.ProcessRouters(request)
 		if err != nil {
@@ -295,7 +295,6 @@ func (pnp *polarisNamingPicker) addTrafficLabels(info balancer.PickInfo, insReq 
 
 	routeRule := resp.GetValue().(*apitraffic.Routing)
 	labels := make([]string, 0, 4)
-	labels = append(labels, collectRouteLabels(routeRule.GetInbounds())...)
 	labels = append(labels, collectRouteLabels(routeRule.GetInbounds())...)
 
 	header, ok := metadata.FromOutgoingContext(info.Ctx)

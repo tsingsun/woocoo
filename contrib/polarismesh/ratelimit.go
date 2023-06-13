@@ -20,8 +20,7 @@ import (
 
 // RateLimitInterceptor is a gRPC interceptor that implements rate limiting.
 type RateLimitInterceptor struct {
-	Namespace string
-	Service   string
+	namespace string
 	limitAPI  api.LimitAPI
 }
 
@@ -36,7 +35,7 @@ func NewRateLimitOptions() *RateLimitInterceptor {
 }
 
 func (rl *RateLimitInterceptor) Apply(cnf *conf.Configuration) {
-	rl.Namespace = cnf.Root().Namespace()
+	rl.namespace = cnf.Root().Namespace()
 	if err := cnf.Unmarshal(rl); err != nil {
 		panic(err)
 	}
@@ -50,17 +49,12 @@ func (rl *RateLimitInterceptor) buildQuotaRequest(ctx context.Context, req inter
 	if len(tokens) != 3 {
 		return nil
 	}
-	namespace := rl.Namespace
+	namespace := rl.namespace
 
 	quotaReq := api.NewQuotaRequest()
 	quotaReq.SetNamespace(namespace)
 	quotaReq.SetService(tokens[1])
 	quotaReq.SetMethod(tokens[2])
-
-	if len(rl.Service) > 0 {
-		quotaReq.SetService(rl.Service)
-		quotaReq.SetMethod(fullMethodName)
-	}
 
 	matchs, ok := rl.fetchArguments(quotaReq.(*model.QuotaRequestImpl))
 	if !ok {

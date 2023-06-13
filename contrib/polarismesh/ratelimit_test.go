@@ -43,6 +43,9 @@ func TestRateLimitUnaryServerInterceptor(t *testing.T) {
 	hcli := helloworld.NewGreeterClient(c)
 	breaked := false
 	for i := 0; i < 5; i++ {
+		if i == 1 {
+			time.Sleep(time.Second * 1)
+		}
 		// Todo test pass in local server v1.72, but fail in github ci docker v1.70,so ignore it
 		_, err = hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "polaris"})
 		if err != nil {

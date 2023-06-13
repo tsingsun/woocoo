@@ -18,9 +18,8 @@ grpc:
       metadata:
         version: "1.0"
         route: true
-        dst_location: amoy
-        src_country: CN
         circuitBreaker: true
+        src_country: CN
     dialOption:
       - tls:
       - block:

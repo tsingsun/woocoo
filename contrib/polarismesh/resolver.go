@@ -39,7 +39,7 @@ func (rb *resolverBuilder) Build(target resolver.Target, cc resolver.ClientConn,
 	}
 
 	if options.Service == "" {
-		return nil, errors.New("resolver need a service name")
+		return nil, errors.New("resolver need a target host or service name")
 	}
 
 	if rb.config == nil {
@@ -140,7 +140,7 @@ func (pr *polarisNamingResolver) ResolveNow(opt resolver.ResolveNowOptions) {
 
 func getNamespace(options *dialOptions) string {
 	namespace := DefaultNamespace
-	if len(options.Namespace) > 0 {
+	if options.Namespace != "" {
 		namespace = options.Namespace
 	}
 	return namespace

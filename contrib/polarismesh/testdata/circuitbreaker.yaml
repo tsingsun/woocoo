@@ -19,7 +19,7 @@ grpc:
         version: "1.0"
         route: true
         circuitBreaker: true
-        src_country: CN
+        header_country: CN
     dialOption:
       - tls:
       - block:

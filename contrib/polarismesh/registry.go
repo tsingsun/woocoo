@@ -279,14 +279,18 @@ func targetToOptions(target resolver.Target) (options *dialOptions, err error) {
 func convertDialOptions(src *registry.DialOptions, tar *dialOptions) (err error) {
 	tar.Namespace = src.Namespace
 	tar.Service = src.ServiceName
-	tar.DstMetadata = filterMetadata(src, "dst_")
-	tar.SrcMetadata = filterMetadata(src, "src_")
+	tar.Headers = filterMetadata(src, "header_")
 	if v, ok := src.Metadata["route"]; ok {
 		if tar.Route, err = strconv.ParseBool(v); err != nil {
 			return fmt.Errorf("metadata:route %s: %v", v, err)
 		}
 	}
-	if v, ok := src.Metadata["src_service"]; ok {
+	if v, ok := src.Metadata["circuitBreaker"]; ok {
+		if tar.CircuitBreaker, err = strconv.ParseBool(v); err != nil {
+			return fmt.Errorf("metadata:circuit breaker %s: %v", v, err)
+		}
+	}
+	if v, ok := src.Metadata["srcService"]; ok {
 		tar.SrcService = v
 	}
 	return nil

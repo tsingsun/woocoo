@@ -74,7 +74,7 @@ func (api *httpAPI) routings() *httpAPI {
 	payload := strings.NewReader(`
 [{
   "id": "cn",
-  "name": "routing-test",
+  "name": "cn",
   "enable": true,
   "description": "",
   "priority": 0,
@@ -107,7 +107,7 @@ func (api *httpAPI) routings() *httpAPI {
   }
 },{
   "id": "us",
-  "name": "routing-test",
+  "name": "us",
   "enable": true,
   "description": "",
   "priority": 0,

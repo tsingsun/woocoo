@@ -2,7 +2,6 @@ package polarismesh
 
 import (
 	"context"
-	"fmt"
 	"github.com/polarismesh/polaris-go/api"
 	"github.com/polarismesh/polaris-go/pkg/flow/data"
 	"github.com/polarismesh/polaris-go/pkg/model"
@@ -77,7 +76,7 @@ func (rl *RateLimitInterceptor) buildQuotaRequest(ctx context.Context, req inter
 		case apitraffic.MatchArgument_HEADER:
 			values := header.Get(item.GetKey())
 			if len(values) > 0 {
-				quotaReq.AddArgument(model.BuildHeaderArgument(item.GetKey(), fmt.Sprintf("%+v", values[0])))
+				quotaReq.AddArgument(model.BuildHeaderArgument(item.GetKey(), values[0]))
 			}
 		case apitraffic.MatchArgument_CALLER_IP:
 			if pr, ok := peer.FromContext(ctx); ok && pr.Addr != nil {

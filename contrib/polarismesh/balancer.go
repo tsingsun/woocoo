@@ -176,41 +176,21 @@ func (pb *pickerBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
 	}
 }
 
-func buildSourceInfo(options *dialOptions, insReq *polaris.ProcessRoutersRequest) *model.ServiceInfo {
-	var valueSet bool
-	svcInfo := &model.ServiceInfo{}
-	if options.SrcService != "" {
-		svcInfo.Namespace = getNamespace(options)
-		svcInfo.Service = options.SrcService
-		valueSet = true
-	}
-
-	if len(options.SrcMetadata) > 0 {
-		valueSet = true
-		for k, v := range options.SrcMetadata {
-			insReq.AddArguments(model.BuildHeaderArgument(k, v))
-		}
-	}
-	if valueSet {
-		return svcInfo
-	}
-	return nil
-}
-
 // Pick an instance from the ready instances
 func (pnp *polarisNamingPicker) Pick(info balancer.PickInfo) (balancer.PickResult, error) {
 	var resp *model.InstancesResponse
 	if pnp.options.Route {
 		request := &polaris.ProcessRoutersRequest{}
 		request.DstInstances = pnp.response
-		sourceService := buildSourceInfo(pnp.options, request)
-		if sourceService != nil {
-			// 如果在Conf中配置了SourceService，则优先使用配置
-			request.SourceService = *sourceService
-		} else {
-			if err := pnp.addTrafficLabels(info, request); err != nil {
-				grpclog.Errorf("[Polaris][Balancer] fetch traffic labels fail : %+v", err)
+		if pnp.options.SrcService != "" {
+			request.SourceService = model.ServiceInfo{
+				Service:   pnp.options.SrcService,
+				Namespace: getNamespace(pnp.options),
 			}
+		}
+
+		if err := pnp.addTrafficLabels(info, request); err != nil {
+			grpclog.Errorf("[Polaris][Balancer] fetch traffic labels fail : %+v", err)
 		}
 
 		var err error
@@ -294,15 +274,13 @@ func (pnp *polarisNamingPicker) addTrafficLabels(info balancer.PickInfo, insReq 
 	}
 
 	routeRule := resp.GetValue().(*apitraffic.Routing)
-	labels := make([]string, 0, 4)
-	labels = append(labels, collectRouteLabels(routeRule.GetInbounds())...)
+	labels := collectRouteLabels(routeRule)
 
 	header, ok := metadata.FromOutgoingContext(info.Ctx)
 	if !ok {
 		header = metadata.MD{}
 	}
-	for i := range labels {
-		label := labels[i]
+	for label := range labels {
 		if strings.Compare(label, model.LabelKeyPath) == 0 {
 			insReq.AddArguments(model.BuildPathArgument(extractBareMethodName(info.FullMethodName)))
 			continue
@@ -310,7 +288,7 @@ func (pnp *polarisNamingPicker) addTrafficLabels(info balancer.PickInfo, insReq 
 		if strings.HasPrefix(label, model.LabelKeyHeader) {
 			values := header.Get(strings.TrimPrefix(label, model.LabelKeyHeader))
 			if len(values) > 0 {
-				insReq.AddArguments(model.BuildArgumentFromLabel(label, fmt.Sprintf("%+v", values[0])))
+				insReq.AddArguments(model.BuildArgumentFromLabel(label, values[0]))
 			}
 		}
 	}
@@ -318,16 +296,13 @@ func (pnp *polarisNamingPicker) addTrafficLabels(info balancer.PickInfo, insReq 
 	return nil
 }
 
-func collectRouteLabels(routings []*apitraffic.Route) []string {
-	ret := make([]string, 0, 4)
+func collectRouteLabels(routing *apitraffic.Routing) map[string]struct{} {
+	ret := make(map[string]struct{})
 
-	for i := range routings {
-		route := routings[i]
-		sources := route.GetSources()
-		for p := range sources {
-			source := sources[p]
-			for k := range source.GetMetadata() {
-				ret = append(ret, k)
+	for _, rs := range routing.GetInbounds() {
+		for _, s := range rs.GetSources() {
+			for k := range s.GetMetadata() {
+				ret[k] = struct{}{}
 			}
 		}
 	}

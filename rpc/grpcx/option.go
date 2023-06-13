@@ -35,11 +35,13 @@ func WithGrpcLogger() Option {
 }
 
 func useContextLogger() *log.Logger {
-	lg := log.Component(log.GrpcComponentName).Logger()
-	if _, ok := lg.ContextLogger().(*log.DefaultContextLogger); ok {
-		lg.SetContextLogger(interceptor.NewGrpcContextLogger())
+	glog := log.Component(log.GrpcComponentName)
+	if lg := glog.Logger(); lg != nil {
+		if _, ok := lg.ContextLogger().(*log.DefaultContextLogger); ok {
+			lg.SetContextLogger(interceptor.NewGrpcContextLogger())
+		}
 	}
-	return lg
+	return glog.Logger()
 }
 
 func WithGrpcOption(opts ...grpc.ServerOption) Option {

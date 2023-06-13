@@ -105,9 +105,6 @@ func (pr *polarisNamingResolver) OnInstancesUpdate(_ *model.InstancesResponse) {
 			SkipRouteFilter: true,
 		},
 	}
-	if len(pr.options.DstMetadata) > 0 {
-		instancesRequest.Metadata = pr.options.DstMetadata
-	}
 
 	resp, err := pr.consumerAPI.GetInstances(instancesRequest)
 	if nil != err {

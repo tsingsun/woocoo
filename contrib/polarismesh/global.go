@@ -94,11 +94,3 @@ func extractBareMethodName(fullMethodName string) string {
 	}
 	return fullMethodName[index+1:]
 }
-
-func extractBareServiceName(fullMethodName string) string {
-	index := strings.LastIndex(fullMethodName, "/")
-	if index == -1 {
-		return ""
-	}
-	return fullMethodName[:index]
-}

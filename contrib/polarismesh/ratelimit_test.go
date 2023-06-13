@@ -10,10 +10,45 @@ import (
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
+
+func mockRatelimitRule(api *httpAPI) *httpAPI {
+	url := api.baseUrl + "/naming/v1/ratelimits"
+	checkRule, err := http.NewRequest(http.MethodGet, url+"?name=limit-test", nil)
+	require.NoError(api.t, err)
+	bd, err := api.do(checkRule)
+	require.NoError(api.t, err)
+	if !strings.Contains(string(bd), "id") {
+		req, err := http.NewRequest(http.MethodPost, url,
+			strings.NewReader(`
+[{
+  "name":"limit-test",
+  "namespace":"ratelimit",
+  "service":"helloworld.Greeter",
+  "method": {"type":"EXACT","value":"SayHello"},
+  "arguments":[
+    {"type":"HEADER","key":"rateLimit","value":{"type":"EXACT","value":"text"}},
+	{"type": "CALLER_SERVICE","key": "ratelimit","value": {"type": "EXACT","value": "helloworld.Greeter"}},
+	{"type": "CALLER_IP","key": "$caller_ip","value": {"type": "EXACT","value": "127.0.0.1"}}
+  ],
+  "resource": "QPS",
+  "type": "LOCAL",
+  "disable": false,
+  "amounts": [{"maxAmount": 1,"validDuration": "3s"}],
+  "failover": "FAILOVER_LOCAL"
+}]`))
+		require.NoError(api.t, err)
+		bd, err = api.do(req)
+		require.NoError(api.t, err)
+		require.Contains(api.t, string(bd), "execute success")
+	}
+	return api
+}
 
 // single machine test: rate limit 1 req/3s to sayHello. header: rateLimit=1
 func TestRateLimitUnaryServerInterceptor(t *testing.T) {
@@ -38,7 +73,7 @@ func TestRateLimitUnaryServerInterceptor(t *testing.T) {
 		srv.Stop(context.Background())
 	}()
 	// limit rule setup
-	meshapi(t).getToken().rateLimit()
+	mockRatelimitRule(meshapi(t).getToken())
 
 	hcli := helloworld.NewGreeterClient(c)
 	breaked := false

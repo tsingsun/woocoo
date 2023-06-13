@@ -187,37 +187,6 @@ func (api *httpAPI) routingsEnable(id string, bl bool) *httpAPI {
 	return api
 }
 
-func (api *httpAPI) rateLimit() *httpAPI {
-	url := api.baseUrl + "/naming/v1/ratelimits"
-	checkRule, err := http.NewRequest(http.MethodGet, url+"?name=limit-test", nil)
-	require.NoError(api.t, err)
-	bd, err := api.do(checkRule)
-	require.NoError(api.t, err)
-	if !strings.Contains(string(bd), "id") {
-		req, err := http.NewRequest(http.MethodPost, url,
-			strings.NewReader(`
-[{
-  "name":"limit-test",
-  "namespace":"ratelimit",
-  "service":"helloworld.Greeter",
-  "method": {"type":"EXACT","value":"SayHello"},
-  "arguments":[{
-     "type":"HEADER","key":"rateLimit","value":{"type":"EXACT","value":"text"}
-  }],
-  "resource": "QPS",
-  "type": "LOCAL",
-  "disable": false,
-  "amounts": [{"maxAmount": 1,"validDuration": "3s"}],
-  "failover": "FAILOVER_LOCAL"
-}]`))
-		require.NoError(api.t, err)
-		bd, err = api.do(req)
-		require.NoError(api.t, err)
-		require.Contains(api.t, string(bd), "execute success")
-	}
-	return api
-}
-
 func (api *httpAPI) circuitBreaker() *httpAPI {
 	url := api.baseUrl + "/naming/v1/circuitbreaker/rules"
 	checkRule, err := http.NewRequest(http.MethodGet, url+"?name=circuitBreaker-test", nil)

@@ -183,3 +183,11 @@ func (pr *polarisNamingResolver) Close() {
 	}
 	pr.cancel()
 }
+
+func extractBareMethodName(fullMethodName string) string {
+	index := strings.LastIndex(fullMethodName, "/")
+	if index == -1 {
+		return ""
+	}
+	return fullMethodName[index+1:]
+}

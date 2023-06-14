@@ -40,10 +40,6 @@ func init() {
 	grpcx.RegisterGrpcUnaryInterceptor(scheme+"RateLimit", RateLimitUnaryServerInterceptor)
 }
 
-var (
-	once sync.Once
-)
-
 type (
 	// Driver implementation of registry.Driver. It is used to create a polaris registry
 	Driver struct {
@@ -84,8 +80,10 @@ func (drv *Driver) CreateRegistry(cnf *conf.Configuration) (registry.Registry, e
 	r := New()
 	r.Apply(ccfg)
 	if ref != "" {
-		setGlobalPolaris(ccfg)
 		drv.refRegtries[ref] = r
+	}
+	if _, _, err := InitPolarisContext(ccfg); err != nil {
+		return nil, err
 	}
 	return r, nil
 }
@@ -94,8 +92,7 @@ func (drv *Driver) ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, e
 	drv.mu.Lock()
 	defer drv.mu.Unlock()
 	var (
-		sdkCtx api.SDKContext
-		rb     = &resolverBuilder{}
+		rb = &resolverBuilder{}
 	)
 
 	ccfg := cnf
@@ -106,19 +103,12 @@ func (drv *Driver) ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, e
 		}
 		ccfg = cnf.Root().Sub(ref)
 	}
-	pc, err := NewPolarisConfig(ccfg)
+	_, sdkCtx, err := InitPolarisContext(ccfg)
 	if err != nil {
 		return nil, err
 	}
 	if ref != "" {
-		if err = SetPolarisContextOnceByConfig(pc); err != nil {
-			return nil, err
-		}
 		drv.refBuilders[ref] = rb
-	} else {
-		if sdkCtx, err = api.InitContextByConfig(pc); err != nil {
-			return nil, err
-		}
 	}
 	rb.sdkCtx = sdkCtx
 
@@ -133,18 +123,6 @@ func (drv *Driver) WithDialOptions(registryOpt registry.DialOptions) (opts []grp
 	}
 	opts = append(opts, grpc.WithChainUnaryInterceptor(injectCallerInfo(do)), grpc.WithDefaultServiceConfig(LoadBalanceConfig))
 	return
-}
-
-func setGlobalPolaris(cnf *conf.Configuration) {
-	once.Do(func() {
-		pc, err := NewPolarisConfig(cnf)
-		if err != nil {
-			panic(err)
-		}
-		if err = SetPolarisContextOnceByConfig(pc); err != nil {
-			panic(err)
-		}
-	})
 }
 
 func (r *Registry) Register(serviceInfo *registry.ServiceInfo) error {
@@ -219,18 +197,13 @@ func New() *Registry {
 }
 
 // Apply the configuration to the registry and set the first config as the default global config
-func (r *Registry) Apply(cfg *conf.Configuration) {
-	pcfg, err := NewPolarisConfig(cfg)
+func (r *Registry) Apply(cnf *conf.Configuration) {
+	_, ctx, err := InitPolarisContext(cnf)
 	if err != nil {
 		panic(err)
 	}
 
-	ctx, err := api.InitContextByConfig(pcfg)
-	if err != nil {
-		panic(err)
-	}
-
-	r.opts.TTL = cfg.Duration("ttl")
+	r.opts.TTL = cnf.Duration("ttl")
 	r.registerContext.providerAPI = api.NewProviderAPIByContext(ctx)
 }
 

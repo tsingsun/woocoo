@@ -7,7 +7,6 @@ import (
 	"github.com/polarismesh/polaris-go/api"
 	"github.com/polarismesh/polaris-go/pkg/config"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"strings"
 	"sync"
 )
 
@@ -57,41 +56,36 @@ func SetPolarisContextOnceByConfig(cfg config.Configuration) (err error) {
 	return nil
 }
 
-// NewPolarisConfig create a polaris configuration from conf.Configuration
-func NewPolarisConfig(cfg *conf.Configuration) (config.Configuration, error) {
+// InitPolarisContext create polaris context by config
+func InitPolarisContext(cnf *conf.Configuration) (cfg config.Configuration, ctx api.SDKContext, err error) {
 	var (
 		parser *conf.Parser
-		err    error
 	)
-	pcfg := cfg.Sub("polaris")
-	if pcfg.IsSet("configFile") {
-		parser, err = conf.NewParserFromFile(cfg.Abs(pcfg.String("configFile")))
+	pcnf := cnf.Sub("polaris")
+	if pcnf.IsSet("configFile") {
+		parser, err = conf.NewParserFromFile(cnf.Abs(pcnf.String("configFile")))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	} else {
-		parser = pcfg.Parser()
+		parser = pcnf.Parser()
 	}
 	bts, err := parser.ToBytes(yaml.Parser())
 	if err != nil {
-		return nil, err
+		return
 	}
-	pc, err := config.LoadConfiguration(bts)
+	cfg, err = config.LoadConfiguration(bts)
 	if err != nil {
-		return nil, err
+		return
 	}
-	if cfg.Bool("global") {
-		if err = SetPolarisContextOnceByConfig(pc); err != nil {
-			return nil, err
+	// default global
+	if cnf.IsSet("global") && !cnf.Bool("global") {
+		ctx, err = api.InitContextByConfig(cfg)
+	} else {
+		if err = SetPolarisContextOnceByConfig(cfg); err != nil {
+			return nil, nil, err
 		}
+		ctx, err = PolarisContext()
 	}
-	return pc, nil
-}
-
-func extractBareMethodName(fullMethodName string) string {
-	index := strings.LastIndex(fullMethodName, "/")
-	if index == -1 {
-		return ""
-	}
-	return fullMethodName[index+1:]
+	return
 }

@@ -507,5 +507,5 @@ func TestClientCircleBreaker(t *testing.T) {
 		log.Println(" ")
 	}
 	log.Println("make cb done")
-	assert.InDelta(t, 50, errcount, 30)
+	assert.Less(t, errcount, 20)
 }

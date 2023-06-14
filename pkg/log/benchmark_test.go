@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/tsingsun/woocoo/internal/logtest"
+	"github.com/tsingsun/woocoo/testco/logtest"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"testing"

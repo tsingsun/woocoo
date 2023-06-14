@@ -34,8 +34,8 @@ type Client struct {
 	timeout time.Duration
 	// registry scheme
 	scheme string
-	// if withSecure is false, auto client auto init with insecure
-	withSecure bool
+	// if withTransportCredentials is false, auto client auto init with insecure
+	withTransportCredentials bool
 }
 
 func NewClient(cfg *conf.Configuration) *Client {
@@ -79,9 +79,11 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 		cnfOpts := optionsManager.BuildDialOption(c, cfg, k)
 		c.dialOptions = append(cnfOpts, c.dialOptions...)
 	}
-	if !c.withSecure {
-		c.dialOptions = append(c.dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		c.withSecure = true
+	if !c.withTransportCredentials {
+		// make sure put first, thus user can overwrite it
+		c.dialOptions = append([]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
+			c.dialOptions...)
+		c.withTransportCredentials = true
 	}
 }
 

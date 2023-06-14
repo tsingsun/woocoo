@@ -42,7 +42,6 @@ type (
 	}
 
 	polarisBalancer struct {
-		config config.Configuration
 		sdkCtx api.SDKContext
 		// the base grpc balancer
 		balancer balancer.Balancer
@@ -116,24 +115,20 @@ func (b balancerBuilder) Build(cc balancer.ClientConn, opts balancer.BuildOption
 	pb := &pickerBuilder{}
 	bb := base.NewBalancerBuilder(b.Name(), pb, base.Config{HealthCheck: true})
 	bl := &polarisBalancer{
-		config:   b.config,
 		balancer: bb.Build(cc, opts),
 	}
 	pb.balancer = bl
-
-	if bl.sdkCtx == nil {
-		if bl.config == nil {
-			bl.sdkCtx, err = PolarisContext()
-		} else {
-			bl.sdkCtx, err = api.InitContextByConfig(bl.config)
-		}
-		if err != nil {
-			grpclog.Errorln("[Polaris][Balancer] failed to create balancer: " + err.Error())
-			return nil
-		}
-		bl.consumerAPI = polaris.NewConsumerAPIByContext(bl.sdkCtx)
-		bl.routerAPI = polaris.NewRouterAPIByContext(bl.sdkCtx)
+	if b.config == nil {
+		bl.sdkCtx, err = PolarisContext()
+	} else {
+		bl.sdkCtx, err = api.InitContextByConfig(b.config)
 	}
+	if err != nil {
+		grpclog.Errorln("[Polaris][Balancer] failed to create balancer: " + err.Error())
+		return nil
+	}
+	bl.consumerAPI = polaris.NewConsumerAPIByContext(bl.sdkCtx)
+	bl.routerAPI = polaris.NewRouterAPIByContext(bl.sdkCtx)
 
 	return bl
 }

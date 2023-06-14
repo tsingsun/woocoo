@@ -3,10 +3,10 @@ package grpcx
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/internal/mock/helloworld"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	_ "github.com/tsingsun/woocoo/rpc/grpcx/registry/etcd3"
 	"github.com/tsingsun/woocoo/test/testdata"
+	"github.com/tsingsun/woocoo/testco/mock/helloworld"
 	"google.golang.org/grpc/connectivity"
 	"testing"
 	"time"
@@ -72,7 +72,7 @@ grpc:
 				cfg: conf.NewFromStringMap(map[string]any{}),
 			},
 			check: func(client *Client) {
-				assert.Equal(t, client.withSecure, true)
+				assert.Equal(t, client.withTransportCredentials, true)
 				assert.Len(t, client.dialOptions, 1)
 			},
 		},
@@ -90,7 +90,7 @@ grpc:
 				}),
 			},
 			check: func(client *Client) {
-				assert.Equal(t, client.withSecure, true)
+				assert.Equal(t, client.withTransportCredentials, true)
 				assert.Len(t, client.dialOptions, 1)
 			},
 		},
@@ -156,7 +156,7 @@ grpc:
 	}()
 	time.Sleep(time.Second)
 	cli := NewClient(cfg.Sub("grpc"))
-	assert.True(t, cli.withSecure)
+	assert.True(t, cli.withTransportCredentials)
 	conn, err := cli.Dial(cfg.String("grpc.server.addr"))
 	assert.NoError(t, err)
 	// timeout is not a dial option

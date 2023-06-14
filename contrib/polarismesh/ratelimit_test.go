@@ -4,10 +4,10 @@ import (
 	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tsingsun/woocoo/internal/mock/helloworld"
-	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
+	"github.com/tsingsun/woocoo/testco/mock/helloworld"
+	"github.com/tsingsun/woocoo/testco/wctest"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"net/http"
@@ -39,7 +39,7 @@ func mockRatelimitRule(api *httpAPI) *httpAPI {
   "resource": "QPS",
   "type": "LOCAL",
   "disable": false,
-  "amounts": [{"maxAmount": 1,"validDuration": "3s"}],
+  "amounts": [{"maxAmount": 1,"validDuration": "10s"}],
   "failover": "FAILOVER_LOCAL"
 }]`))
 		require.NoError(api.t, err)
@@ -78,9 +78,7 @@ func TestRateLimitUnaryServerInterceptor(t *testing.T) {
 	hcli := helloworld.NewGreeterClient(c)
 	breaked := false
 	for i := 0; i < 10; i++ {
-		if i == 1 {
-			time.Sleep(time.Millisecond * 200)
-		}
+		time.Sleep(time.Millisecond * 500)
 		// Todo test pass in local server v1.72, but fail in github ci docker v1.70,so ignore it
 		_, err = hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "polaris"})
 		if err != nil {

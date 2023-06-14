@@ -21,13 +21,14 @@ import (
 )
 
 const (
-	scheme                  = "polaris"
-	keyDialOptions          = "options"
-	keyDialOptionRoute      = "route"
-	keyDialOptionNamespace  = "namespace"
-	keyDialOptionService    = "service"
-	keyDialOptionSrcService = "srcservice"
-	keyResponse             = "response"
+	scheme                      = "polaris"
+	keyDialOptions              = "options"
+	keyDialOptionRoute          = "route"
+	keyDialOptionNamespace      = "namespace"
+	keyDialOptionService        = "service"
+	keyDialOptionSrcService     = "srcService"
+	keyDialOptionCircuitBreaker = "circuitBreaker"
+	keyResponse                 = "response"
 )
 
 func init() {
@@ -83,7 +84,7 @@ func (drv *Driver) CreateRegistry(cnf *conf.Configuration) (registry.Registry, e
 	r := New()
 	r.Apply(ccfg)
 	if ref != "" {
-		setGlobalConfig(ccfg)
+		setGlobalPolaris(ccfg)
 		drv.refRegtries[ref] = r
 	}
 	return r, nil
@@ -92,6 +93,11 @@ func (drv *Driver) CreateRegistry(cnf *conf.Configuration) (registry.Registry, e
 func (drv *Driver) ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, error) {
 	drv.mu.Lock()
 	defer drv.mu.Unlock()
+	var (
+		sdkCtx api.SDKContext
+		rb     = &resolverBuilder{}
+	)
+
 	ccfg := cnf
 	ref := cnf.String("ref")
 	if ref != "" {
@@ -104,19 +110,18 @@ func (drv *Driver) ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, e
 	if err != nil {
 		return nil, err
 	}
-	sdkCtx, err := api.InitContextByConfig(pc)
-	if err != nil {
-		return nil, err
-	}
-
-	rb := &resolverBuilder{
-		config: pc,
-		sdkCtx: sdkCtx,
-	}
 	if ref != "" {
-		setGlobalConfig(ccfg)
+		if err = SetPolarisContextOnceByConfig(pc); err != nil {
+			return nil, err
+		}
 		drv.refBuilders[ref] = rb
+	} else {
+		if sdkCtx, err = api.InitContextByConfig(pc); err != nil {
+			return nil, err
+		}
 	}
+	rb.sdkCtx = sdkCtx
+
 	return rb, nil
 }
 
@@ -126,16 +131,18 @@ func (drv *Driver) WithDialOptions(registryOpt registry.DialOptions) (opts []grp
 	if err = convertDialOptions(&registryOpt, do); err != nil {
 		return nil, fmt.Errorf("WithDialOptions:failed to convert dial options: %v", err)
 	}
-	opts = append(opts, grpc.WithUnaryInterceptor(injectCallerInfo(do)), grpc.WithDefaultServiceConfig(LoadBalanceConfig))
+	opts = append(opts, grpc.WithChainUnaryInterceptor(injectCallerInfo(do)), grpc.WithDefaultServiceConfig(LoadBalanceConfig))
 	return
 }
 
-func setGlobalConfig(cnf *conf.Configuration) {
+func setGlobalPolaris(cnf *conf.Configuration) {
 	once.Do(func() {
-		if pc, err := NewPolarisConfig(cnf); err != nil {
+		pc, err := NewPolarisConfig(cnf)
+		if err != nil {
 			panic(err)
-		} else {
-			SetPolarisConfig(pc)
+		}
+		if err = SetPolarisContextOnceByConfig(pc); err != nil {
+			panic(err)
 		}
 	})
 }
@@ -256,7 +263,7 @@ func targetToOptions(target resolver.Target) (options *dialOptions, err error) {
 						options.Namespace = v[0]
 					case keyDialOptionService:
 						options.Service = v[0]
-					case keyDialOptionSrcService:
+					case strings.ToLower(keyDialOptionSrcService):
 						options.SrcService = v[0]
 					case keyDialOptionRoute:
 						if len(v) > 0 {
@@ -293,17 +300,17 @@ func convertDialOptions(src *registry.DialOptions, tar *dialOptions) (err error)
 	tar.Namespace = src.Namespace
 	tar.Service = src.ServiceName
 	tar.Headers = filterMetadata(src, "header_")
-	if v, ok := src.Metadata["route"]; ok {
+	if v, ok := src.Metadata[keyDialOptionRoute]; ok {
 		if tar.Route, err = strconv.ParseBool(v); err != nil {
 			return fmt.Errorf("metadata:route %s: %v", v, err)
 		}
 	}
-	if v, ok := src.Metadata["circuitBreaker"]; ok {
+	if v, ok := src.Metadata[keyDialOptionCircuitBreaker]; ok {
 		if tar.CircuitBreaker, err = strconv.ParseBool(v); err != nil {
 			return fmt.Errorf("metadata:circuit breaker %s: %v", v, err)
 		}
 	}
-	if v, ok := src.Metadata["srcService"]; ok {
+	if v, ok := src.Metadata[keyDialOptionSrcService]; ok {
 		tar.SrcService = v
 	}
 	return nil

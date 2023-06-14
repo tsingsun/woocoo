@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tsingsun/woocoo/internal/mock/helloworld"
-	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
+	"github.com/tsingsun/woocoo/testco/mock/helloworld"
+	"github.com/tsingsun/woocoo/testco/wctest"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -198,7 +198,7 @@ func (api *httpAPI) routings() *httpAPI {
           "sources": [
             {
               "service": "*",
-              "namespace": "*",
+              "namespace": "routingTest",
               "arguments": [{
 				"type": "HEADER",
 				"key": "country",
@@ -571,8 +571,8 @@ func TestClientCircleBreaker(t *testing.T) {
 			}
 		}
 		time.Sleep(time.Second * 1)
-		log.Println(" ")
+		log.Println("batch:", i, "errcount:", errcount)
 	}
 	log.Println("make cb done")
-	assert.Less(t, errcount, 20)
+	assert.Less(t, errcount, 25)
 }

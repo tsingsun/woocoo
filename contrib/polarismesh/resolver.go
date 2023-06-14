@@ -41,9 +41,11 @@ func (rb *resolverBuilder) Build(target resolver.Target, cc resolver.ClientConn,
 		return nil, errors.New("resolver need a target host or service name")
 	}
 
-	if rb.config == nil {
-		rb.config = PolarisConfig()
+	if rb.sdkCtx == nil {
 		rb.sdkCtx, err = PolarisContext()
+		if err != nil {
+			return nil, err
+		}
 	}
 	d := &polarisNamingResolver{
 		consumerAPI: api.NewConsumerAPIByContext(rb.sdkCtx),

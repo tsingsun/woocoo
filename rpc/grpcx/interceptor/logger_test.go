@@ -3,11 +3,11 @@ package interceptor
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/internal/logtest"
-	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/test/testproto"
+	"github.com/tsingsun/woocoo/testco/logtest"
+	"github.com/tsingsun/woocoo/testco/wctest"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

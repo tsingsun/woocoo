@@ -3,9 +3,9 @@ package woocoo
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/internal/wctest"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	_ "github.com/tsingsun/woocoo/rpc/grpcx/registry/etcd3"
+	"github.com/tsingsun/woocoo/testco/wctest"
 	"github.com/tsingsun/woocoo/web"
 	"log"
 	"testing"
@@ -71,7 +71,7 @@ func TestMiniApp(t *testing.T) {
 				return assert.ErrorIs(t, err, context.DeadlineExceeded)
 			}},
 		{"parent timeout ctx", args{ctx: func() context.Context {
-			ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*500)
+			ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*500) //nolint:govet
 			return ctx
 		}(), timeout: 0, servers: []Server{&server1{}, &server2{timeout: true}}}, func(t assert.TestingT, err error, i ...interface{}) bool {
 			return assert.ErrorIs(t, err, context.DeadlineExceeded)

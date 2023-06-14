@@ -2,6 +2,8 @@ module github.com/tsingsun/woocoo/contrib/polarismesh
 
 go 1.19
 
+replace github.com/tsingsun/woocoo => ../../
+
 require (
 	github.com/golang/protobuf v1.5.3
 	github.com/knadh/koanf/parsers/yaml v0.1.0

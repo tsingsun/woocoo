@@ -2,7 +2,7 @@ package log
 
 import (
 	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/internal/logtest"
+	"github.com/tsingsun/woocoo/testco/logtest"
 	"go.uber.org/zap"
 	"strings"
 	"testing"

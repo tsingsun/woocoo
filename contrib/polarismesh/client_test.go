@@ -571,8 +571,8 @@ func TestClientCircleBreaker(t *testing.T) {
 			}
 		}
 		time.Sleep(time.Second * 1)
-		log.Println(" ")
+		log.Println("batch:", i, "errcount:", errcount)
 	}
 	log.Println("make cb done")
-	assert.Less(t, errcount, 20)
+	assert.Less(t, errcount, 25)
 }

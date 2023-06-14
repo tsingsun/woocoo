@@ -83,7 +83,7 @@ func (drv *Driver) CreateRegistry(cnf *conf.Configuration) (registry.Registry, e
 	r := New()
 	r.Apply(ccfg)
 	if ref != "" {
-		setGlobalConfig(ccfg)
+		setGlobalPolaris(ccfg)
 		drv.refRegtries[ref] = r
 	}
 	return r, nil
@@ -92,6 +92,11 @@ func (drv *Driver) CreateRegistry(cnf *conf.Configuration) (registry.Registry, e
 func (drv *Driver) ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, error) {
 	drv.mu.Lock()
 	defer drv.mu.Unlock()
+	var (
+		sdkCtx api.SDKContext
+		rb     = &resolverBuilder{}
+	)
+
 	ccfg := cnf
 	ref := cnf.String("ref")
 	if ref != "" {
@@ -104,19 +109,18 @@ func (drv *Driver) ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, e
 	if err != nil {
 		return nil, err
 	}
-	sdkCtx, err := api.InitContextByConfig(pc)
-	if err != nil {
-		return nil, err
-	}
-
-	rb := &resolverBuilder{
-		config: pc,
-		sdkCtx: sdkCtx,
-	}
 	if ref != "" {
-		setGlobalConfig(ccfg)
+		if err = SetPolarisContextOnceByConfig(pc); err != nil {
+			return nil, err
+		}
 		drv.refBuilders[ref] = rb
+	} else {
+		if sdkCtx, err = api.InitContextByConfig(pc); err != nil {
+			return nil, err
+		}
 	}
+	rb.sdkCtx = sdkCtx
+
 	return rb, nil
 }
 
@@ -130,12 +134,14 @@ func (drv *Driver) WithDialOptions(registryOpt registry.DialOptions) (opts []grp
 	return
 }
 
-func setGlobalConfig(cnf *conf.Configuration) {
+func setGlobalPolaris(cnf *conf.Configuration) {
 	once.Do(func() {
-		if pc, err := NewPolarisConfig(cnf); err != nil {
+		pc, err := NewPolarisConfig(cnf)
+		if err != nil {
 			panic(err)
-		} else {
-			SetPolarisConfig(pc)
+		}
+		if err = SetPolarisContextOnceByConfig(pc); err != nil {
+			panic(err)
 		}
 	})
 }

@@ -9,7 +9,7 @@ grpc:
     registryMeta:
       location: default
   registry:
-    ref: registry
+    ref: routingRegistry
     scheme: polaris
   client:
     target:
@@ -35,7 +35,7 @@ grpc2:
     registryMeta:
       location: CN
   registry:
-    ref: registry
+    ref: routingRegistry
     scheme: polaris
 grpc3:
   server:
@@ -48,9 +48,9 @@ grpc3:
     registryMeta:
       location: US
   registry:
-    ref: registry
+    ref: routingRegistry
     scheme: polaris
-registry:
+routingRegistry:
   scheme: polaris
   global: false
   ttl: 10s

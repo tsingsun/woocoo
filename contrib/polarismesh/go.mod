@@ -8,7 +8,7 @@ require (
 	github.com/polarismesh/polaris-go v1.4.3
 	github.com/polarismesh/specification v1.2.1
 	github.com/stretchr/testify v1.8.3
-	github.com/tsingsun/woocoo v0.2.8-0.20230614074500-e8b0c26b0df6
+	github.com/tsingsun/woocoo v0.2.8-0.20230614124800-bd693977499b
 	google.golang.org/grpc v1.55.0
 )
 

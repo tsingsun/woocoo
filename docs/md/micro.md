@@ -113,3 +113,37 @@ conn, err := grpc.Dial(scheme+"://routingTest/helloworld.Greeter?route=true",
 		)
 
 ```
+
+#### 多集群环境下客户端初始化
+
+在多集群环境下,客户端需要初始化负载均衡器,并在client初始化时指定名称.
+
+```yaml
+grpc:
+  registry:
+    ref: "circuit_breaker"
+    scheme: polaris
+
+circuit_breaker:
+  # ...其他配置  
+```
+程序中使用如下方式: 
+```go
+// 正常初始化
+cli := grpcx.NewClient(cnf.Sub("grpc"))
+balancer.Register(NewBalancerBuilder("circuit_breaker", GetPolarisContextFromDriver("circuit_breaker")")))
+c, err := cli.Dial("", grpc.WithDefaultServiceConfig(`{ "loadBalancingConfig": [{"circuit_breaker": {}}] }`))
+```
+
+原生grpc连接初始化
+```go
+drv, ok := registry.GetRegistry(scheme)
+rb, err := drv.ResolverBuilder(rgcnf)
+balancename := "routing"
+balancer.Register(NewBalancerBuilder(balancename, GetPolarisContextFromDriver("Registry配置节点ref指向名称")))
+conn, err := grpc.Dial(scheme+"://routingTest/helloworld.Greeter?route=true&srcservice=helloworld.Greeter",
+    grpc.WithTransportCredentials(insecure.NewCredentials()),
+    grpc.WithResolvers(rb),
+    grpc.WithDefaultServiceConfig(fmt.Sprint(`{ "loadBalancingConfig": [{"%s": {}}] }`,balancename)),
+)
+```

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/polarismesh/polaris-go"
-	"github.com/polarismesh/polaris-go/pkg/config"
 	"google.golang.org/grpc/metadata"
 	"strconv"
 	"strings"
@@ -38,11 +37,11 @@ type (
 	ReportInfoAnalyzer func(info balancer.DoneInfo) (model.RetStatus, uint32)
 
 	balancerBuilder struct {
-		config config.Configuration
+		name   string
+		sdkCtx api.SDKContext
 	}
 
 	polarisBalancer struct {
-		sdkCtx api.SDKContext
 		// the base grpc balancer
 		balancer balancer.Balancer
 
@@ -104,6 +103,14 @@ func SetReportInfoAnalyzer(analyzer ReportInfoAnalyzer) {
 	reportInfoAnalyzer = analyzer
 }
 
+// NewBalancerBuilder creates a new polaris balancer builder
+func NewBalancerBuilder(name string, ctx api.SDKContext) balancer.Builder {
+	return &balancerBuilder{
+		name:   name,
+		sdkCtx: ctx,
+	}
+}
+
 func (b balancerBuilder) Build(cc balancer.ClientConn, opts balancer.BuildOptions) balancer.Balancer {
 	grpclog.Infof("[Polaris][Balancer] start to build polaris balancer")
 	target := opts.Target
@@ -112,29 +119,27 @@ func (b balancerBuilder) Build(cc balancer.ClientConn, opts balancer.BuildOption
 		grpclog.Errorln("[Polaris][Balancer] failed to create balancer: " + err.Error())
 		return nil
 	}
+	if b.sdkCtx == nil {
+		b.sdkCtx, err = PolarisContext()
+		if err != nil {
+			grpclog.Errorln("[Polaris][Balancer] failed to create balancer: " + err.Error())
+			return nil
+		}
+	}
 	pb := &pickerBuilder{}
 	bb := base.NewBalancerBuilder(b.Name(), pb, base.Config{HealthCheck: true})
 	bl := &polarisBalancer{
-		balancer: bb.Build(cc, opts),
+		balancer:    bb.Build(cc, opts),
+		consumerAPI: polaris.NewConsumerAPIByContext(b.sdkCtx),
+		routerAPI:   polaris.NewRouterAPIByContext(b.sdkCtx),
 	}
 	pb.balancer = bl
-	if b.config == nil {
-		bl.sdkCtx, err = PolarisContext()
-	} else {
-		bl.sdkCtx, err = api.InitContextByConfig(b.config)
-	}
-	if err != nil {
-		grpclog.Errorln("[Polaris][Balancer] failed to create balancer: " + err.Error())
-		return nil
-	}
-	bl.consumerAPI = polaris.NewConsumerAPIByContext(bl.sdkCtx)
-	bl.routerAPI = polaris.NewRouterAPIByContext(bl.sdkCtx)
 
 	return bl
 }
 
 func (b balancerBuilder) Name() string {
-	return scheme
+	return b.name
 }
 
 // Build creates a picker,trigger when connection change to ready

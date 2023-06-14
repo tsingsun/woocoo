@@ -9,7 +9,7 @@ grpc:
     registryMeta:
       location: default
   registry:
-    ref: registry
+    ref: circuitBreakerRegistry
     scheme: polaris
   client:
     target:
@@ -19,7 +19,6 @@ grpc:
         version: "1.0"
         route: true
         circuitBreaker: true
-        header_country: CN
     dialOption:
       - tls:
       - block:
@@ -35,9 +34,10 @@ grpc2:
     registryMeta:
       location: amoy
   registry:
-    ref: registry
+    ref: circuitBreakerRegistry
     scheme: polaris
-registry:
+
+circuitBreakerRegistry:
   scheme: polaris
   global: false
   ttl: 10s
@@ -59,7 +59,7 @@ registry:
     consumer:
       circuitBreaker:
         enable: true
-        checkPeriod: 30s
+        checkPeriod: 2s
         plugin:
           errorRate:
             metricStatTimeWindow: 10s

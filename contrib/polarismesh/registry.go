@@ -22,6 +22,7 @@ import (
 
 const (
 	scheme                      = "polaris"
+	refConfigKey                = "ref"
 	keyDialOptions              = "options"
 	keyDialOptionRoute          = "route"
 	keyDialOptionNamespace      = "namespace"
@@ -36,7 +37,9 @@ func init() {
 		refRegtries: make(map[string]registry.Registry),
 		refBuilders: make(map[string]resolver.Builder)},
 	)
-	balancer.Register(&balancerBuilder{})
+	// register default polaris balancer
+	balancer.Register(NewBalancerBuilder(scheme, nil))
+
 	grpcx.RegisterGrpcUnaryInterceptor(scheme+"RateLimit", RateLimitUnaryServerInterceptor)
 }
 
@@ -66,28 +69,28 @@ type (
 	}
 )
 
+// CreateRegistry creates a polaris registry.
 func (drv *Driver) CreateRegistry(cnf *conf.Configuration) (registry.Registry, error) {
 	drv.mu.Lock()
 	defer drv.mu.Unlock()
-	ccfg := cnf
-	ref := cnf.String("ref")
+	pcnf := cnf
+	ref := cnf.String(refConfigKey)
 	if ref != "" {
 		if v, ok := drv.refRegtries[ref]; ok {
 			return v, nil
 		}
-		ccfg = cnf.Root().Sub(ref)
+		pcnf = cnf.Root().Sub(ref)
 	}
 	r := New()
-	r.Apply(ccfg)
+	r.Apply(pcnf)
+
 	if ref != "" {
 		drv.refRegtries[ref] = r
-	}
-	if _, _, err := InitPolarisContext(ccfg); err != nil {
-		return nil, err
 	}
 	return r, nil
 }
 
+// ResolverBuilder creates a polaris resolver builder.
 func (drv *Driver) ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, error) {
 	drv.mu.Lock()
 	defer drv.mu.Unlock()
@@ -96,7 +99,7 @@ func (drv *Driver) ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, e
 	)
 
 	ccfg := cnf
-	ref := cnf.String("ref")
+	ref := cnf.String(refConfigKey)
 	if ref != "" {
 		if v, ok := drv.refBuilders[ref]; ok {
 			return v, nil
@@ -198,12 +201,11 @@ func New() *Registry {
 
 // Apply the configuration to the registry and set the first config as the default global config
 func (r *Registry) Apply(cnf *conf.Configuration) {
+	r.opts.TTL = cnf.Duration("ttl")
 	_, ctx, err := InitPolarisContext(cnf)
 	if err != nil {
 		panic(err)
 	}
-
-	r.opts.TTL = cnf.Duration("ttl")
 	r.registerContext.providerAPI = api.NewProviderAPIByContext(ctx)
 }
 

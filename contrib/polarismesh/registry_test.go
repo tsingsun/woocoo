@@ -10,6 +10,13 @@ import (
 	"time"
 )
 
+func getPolarisContext(t *testing.T, ref string) (ctx api.SDKContext) {
+	assert.NotPanics(t, func() {
+		ctx = GetPolarisContextFromDriver(ref)
+	})
+	return
+}
+
 func TestRegistry_Apply(t *testing.T) {
 	b := []byte(`
 grpc:

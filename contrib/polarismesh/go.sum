@@ -286,6 +286,8 @@ github.com/stretchr/testify v1.8.3 h1:RP3t2pwF7cMEbC1dqtB6poj3niw/9gnV4Cjg5oW5gt
 github.com/stretchr/testify v1.8.3/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/tsingsun/woocoo v0.2.8-0.20230614074500-e8b0c26b0df6 h1:F2kRPNSFf+o/OlxNiK2xf+iIXd75ijJv8Qw0kEvEIAs=
 github.com/tsingsun/woocoo v0.2.8-0.20230614074500-e8b0c26b0df6/go.mod h1:VH4BC7EEHg9UFE4ou2dnpG3YeEhiShBYXeF3a+zlGy0=
+github.com/tsingsun/woocoo v0.2.8-0.20230614124800-bd693977499b h1:6ABJ3krrTxMFnzOuDhScjK/KwmDZm9anWDo7NncDkeg=
+github.com/tsingsun/woocoo v0.2.8-0.20230614124800-bd693977499b/go.mod h1:VH4BC7EEHg9UFE4ou2dnpG3YeEhiShBYXeF3a+zlGy0=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

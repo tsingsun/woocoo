@@ -9,7 +9,7 @@ grpc:
   registry:
     scheme: polaris
     ttl: 10s
-    global: false
+    global: true
     polaris:
       global:
         serverConnector:

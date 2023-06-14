@@ -8,9 +8,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
+	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"github.com/tsingsun/woocoo/testco/mock/helloworld"
 	"github.com/tsingsun/woocoo/testco/wctest"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/grpclog"
@@ -270,7 +272,7 @@ func (api *httpAPI) circuitBreaker() *httpAPI {
         "ruleMatcher": {
             "source": {
                 "service": "*",
-                "namespace": "*"
+                "namespace": "circuitBreakerTest"
             },
             "destination": {
                 "service": "helloworld.Greeter",
@@ -486,13 +488,23 @@ func TestClientRouting(t *testing.T) {
 	api := meshapi(t)
 	api.getToken().routings()
 
+	drv, ok := registry.GetRegistry(scheme)
+	require.True(t, ok)
+	rgcnf := cnf.Sub("routingRegistry")
+	rgcnf.Parser().Set("ref", "routingRegistry")
+	rb, err := drv.ResolverBuilder(rgcnf)
+	balancer.Register(NewBalancerBuilder("routing", getPolarisContext(t, "routingRegistry")))
+
 	t.Run("native-dial-without-src-service", func(t *testing.T) {
+
+		require.NoError(t, err)
 		// api.routingsEnable("guarantee", false)
-		conn, _ := grpc.Dial(scheme+"://routingTest/helloworld.Greeter?route=true&srcservice=helloworld.Greeter",
+		conn, err := grpc.Dial(scheme+"://routingTest/helloworld.Greeter?route=true&srcservice=helloworld.Greeter",
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithResolvers(&resolverBuilder{}),
-			grpc.WithDefaultServiceConfig(`{ "loadBalancingConfig": [{"polaris": {}}] }`),
+			grpc.WithResolvers(rb),
+			grpc.WithDefaultServiceConfig(`{ "loadBalancingConfig": [{"routing": {}}] }`),
 		)
+		require.NoError(t, err)
 		require.NotNil(t, conn)
 		defer conn.Close()
 		gcli := helloworld.NewGreeterClient(conn)
@@ -512,7 +524,8 @@ func TestClientRouting(t *testing.T) {
 
 	t.Run("route-rule-match-cn", func(t *testing.T) {
 		cli := grpcx.NewClient(cnf.Sub("grpc"))
-		conn, _ := cli.Dial("")
+		conn, err := cli.Dial("", grpc.WithDefaultServiceConfig(`{ "loadBalancingConfig": [{"routing": {}}] }`))
+		require.NoError(t, err)
 		require.NotNil(t, conn)
 		defer conn.Close()
 		hcli := helloworld.NewGreeterClient(conn)
@@ -527,6 +540,7 @@ func TestClientRouting(t *testing.T) {
 	})
 }
 
+// TestClientCircleBreaker test circuit breaker, it use independent polaris config
 func TestClientCircleBreaker(t *testing.T) {
 	b, err := os.ReadFile("./testdata/circuitbreaker.yaml")
 	require.NoError(t, err)
@@ -556,11 +570,13 @@ func TestClientCircleBreaker(t *testing.T) {
 	meshapi(t).getToken().circuitBreaker()
 
 	cli := grpcx.NewClient(cnf.Sub("grpc"))
-	c, err := cli.Dial("")
+	balancer.Register(NewBalancerBuilder("circuit_breaker", getPolarisContext(t, "circuitBreakerRegistry")))
+	c, err := cli.Dial("", grpc.WithDefaultServiceConfig(`{ "loadBalancingConfig": [{"circuit_breaker": {}}] }`))
 	require.NoError(t, err)
 	assert.NotNil(t, c)
 	defer c.Close()
 	hcli := helloworld.NewGreeterClient(c)
+
 	// make cb
 	errcount := 0
 	for i := 0; i < 6; i++ {

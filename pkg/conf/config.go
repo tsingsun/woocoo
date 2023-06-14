@@ -37,8 +37,8 @@ type (
 	Configuration struct {
 		opts        options
 		parser      *Parser
-		Development bool
 		root        *Configuration
+		Development bool
 	}
 	// AppConfiguration is the application level configuration,include all of component's configurations
 	AppConfiguration struct {

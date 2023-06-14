@@ -56,6 +56,17 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 			panic(err)
 		}
 	}
+
+	var pluginOptions []grpc.DialOption
+	// config dial options, lowest priority
+	if k := conf.Join("client", "dialOption"); cfg.IsSet(k) {
+		pluginOptions = append(pluginOptions, optionsManager.BuildDialOption(c, cfg, k)...)
+	}
+	if !c.withTransportCredentials {
+		// make sure put first, thus user can overwrite it
+		pluginOptions = append(pluginOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		c.withTransportCredentials = true
+	}
 	// if using registry
 	if k := "registry"; cfg.IsSet(k) {
 		c.scheme = cfg.String(conf.Join(k, "scheme"))
@@ -67,24 +78,15 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 		if err != nil {
 			panic(err)
 		}
-		if rdo, err := drv.WithDialOptions(c.registryOptions); err != nil {
+		rdo, err := drv.WithDialOptions(c.registryOptions)
+		if err != nil {
 			panic(err)
-		} else {
-			c.dialOptions = append(c.dialOptions, rdo...)
 		}
-		c.dialOptions = append(c.dialOptions, grpc.WithResolvers(rb))
+		pluginOptions = append(pluginOptions, rdo...)
+		pluginOptions = append(pluginOptions, grpc.WithResolvers(rb))
 	}
-	// grpc dial options
-	if k := conf.Join("client", "dialOption"); cfg.IsSet(k) {
-		cnfOpts := optionsManager.BuildDialOption(c, cfg, k)
-		c.dialOptions = append(cnfOpts, c.dialOptions...)
-	}
-	if !c.withTransportCredentials {
-		// make sure put first, thus user can overwrite it
-		c.dialOptions = append([]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
-			c.dialOptions...)
-		c.withTransportCredentials = true
-	}
+	// custom dial options, highest priority
+	c.dialOptions = append(pluginOptions, c.dialOptions...)
 }
 
 func (c *Client) targetPrefix() string {

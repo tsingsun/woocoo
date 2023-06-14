@@ -91,7 +91,7 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 		}
 	}
 	// engine
-	if k := conf.Join("engine"); cfg.IsSet(k) {
+	if k := "engine"; cfg.IsSet(k) {
 		cnfOpts := optionsManager.BuildServerOptions(cfg, k)
 		s.opts.grpcOptions = append(cnfOpts, s.opts.grpcOptions...)
 	}

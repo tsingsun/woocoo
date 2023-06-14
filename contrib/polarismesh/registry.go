@@ -21,10 +21,13 @@ import (
 )
 
 const (
-	scheme             = "polaris"
-	keyDialOptions     = "options"
-	keyDialOptionRoute = "route"
-	keyResponse        = "response"
+	scheme                  = "polaris"
+	keyDialOptions          = "options"
+	keyDialOptionRoute      = "route"
+	keyDialOptionNamespace  = "namespace"
+	keyDialOptionService    = "service"
+	keyDialOptionSrcService = "srcservice"
+	keyResponse             = "response"
 )
 
 func init() {
@@ -247,11 +250,21 @@ func targetToOptions(target resolver.Target) (options *dialOptions, err error) {
 			if len(optionValues) > 0 {
 				optionsStr = optionValues[0]
 			} else {
-				ur := values[keyDialOptionRoute]
-				if len(ur) > 0 {
-					options.Route, err = strconv.ParseBool(ur[0])
-					if err != nil {
-						return nil, fmt.Errorf("TargetToOptions:fail to parse route %s: %v", ur[0], err)
+				for k, v := range values {
+					switch strings.ToLower(k) {
+					case keyDialOptionNamespace:
+						options.Namespace = v[0]
+					case keyDialOptionService:
+						options.Service = v[0]
+					case keyDialOptionSrcService:
+						options.SrcService = v[0]
+					case keyDialOptionRoute:
+						if len(v) > 0 {
+							options.Route, err = strconv.ParseBool(v[0])
+							if err != nil {
+								return nil, fmt.Errorf("TargetToOptions:fail to parse route %s: %v", v[0], err)
+							}
+						}
 					}
 				}
 			}

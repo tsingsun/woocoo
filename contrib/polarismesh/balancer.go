@@ -307,6 +307,14 @@ func collectRouteLabels(routing *apitraffic.Routing) map[string]struct{} {
 		}
 	}
 
+	for _, rs := range routing.GetOutbounds() {
+		for _, s := range rs.GetSources() {
+			for k := range s.GetMetadata() {
+				ret[k] = struct{}{}
+			}
+		}
+	}
+
 	return ret
 }
 

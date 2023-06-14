@@ -33,7 +33,7 @@ grpc2:
       - unaryInterceptors:
           - recovery:
     registryMeta:
-      location: amoy
+      location: CN
   registry:
     ref: registry
     scheme: polaris

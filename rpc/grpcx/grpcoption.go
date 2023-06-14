@@ -177,7 +177,7 @@ func (c grpcOptionManager) BuildDialOption(client *Client, cnf *conf.Configurati
 		case "timeout":
 			client.timeout = sub.Duration(root)
 		case "tls":
-			client.withSecure = true
+			client.withTransportCredentials = true
 			fallthrough
 		default:
 			if handler, ok := c.cd[root]; ok {

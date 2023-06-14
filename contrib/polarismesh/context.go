@@ -32,7 +32,6 @@ var (
 var (
 	polarisContext      api.SDKContext
 	mutexPolarisContext sync.Mutex
-	oncePolarisContext  sync.Once
 )
 
 // PolarisContext get or init the global polaris context

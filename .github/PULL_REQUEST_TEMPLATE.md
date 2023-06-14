@@ -6,17 +6,17 @@ labels: ''
 assignees: ''
 ---
 
-<!--
-Thank you for contributing to `gnet`! Please fill this out to help us make the most of your pull request.
-
-Was this change discussed in an issue first? That can help save time in case the change is not a good fit for the project. Not all pull requests get merged.
-
-It is not uncommon for pull requests to go through several, iterative reviews. Please be patient with us! Every reviewer is a volunteer, and each has their own style.
--->
-
 ## 1. Are you opening this pull request for bug-fixes, optimizations or new feature?
 
-
+- [ ] Configuration
+- [ ] Log
+- [ ] Web
+- [ ] GRPC
+- [ ] WOCO
+- [ ] GraphQL
+- [ ] Telemetry
+- [ ] Documentation
+- [ ] Others
 
 ## 2. Please describe how these code changes achieve your intention.
 <!-- Please be specific. Motivate the problem, and justify why this is the best solution. -->

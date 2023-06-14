@@ -518,7 +518,8 @@ func TestClientRouting(t *testing.T) {
 		hcli := helloworld.NewGreeterClient(conn)
 		for i := 0; i < 5; i++ {
 			time.Sleep(time.Millisecond * 100)
-			resp, err := hcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "match"})
+			ctx := metadata.AppendToOutgoingContext(context.Background(), "country", "CN")
+			resp, err := hcli.SayHello(ctx, &helloworld.HelloRequest{Name: "match"})
 			if assert.NoError(t, err) {
 				// Todo test pass in local server v1.72, but fail in github ci docker v1.70,so ignore it
 				assert.Equal(t, expectedMsg, resp.Message)

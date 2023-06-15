@@ -236,8 +236,9 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/polarismesh/polaris-go v1.4.3 h1:Ka2ancA4BCLt4pxhEJdRIHMWaj+wkwtw+4AlrSI24c0=
 github.com/polarismesh/polaris-go v1.4.3/go.mod h1:ymxU5F20Bs99P+jvt5tbLn5guOEt1JmT4i69AOmZSVI=
-github.com/polarismesh/specification v1.2.1 h1:NcFoinO+aSWIOIyKTAhvEbjaPvZAAm5/DwJAL2FGdXs=
 github.com/polarismesh/specification v1.2.1/go.mod h1:rDvMMtl5qebPmqiBLNa5Ps0XtwkP31ZLirbH4kXA0YU=
+github.com/polarismesh/specification v1.3.1 h1:smBI3hMYJFt20dlVGEryJKVoydWe9D1ZoxMhj88+l74=
+github.com/polarismesh/specification v1.3.1/go.mod h1:rDvMMtl5qebPmqiBLNa5Ps0XtwkP31ZLirbH4kXA0YU=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v1.0.0/go.mod h1:db9x61etRT2tGnBNRi70OPL5FsnadC4Ky3P0J6CfImo=
 github.com/prometheus/client_golang v1.7.1/go.mod h1:PY5Wy2awLA44sXw4AOSfFBetzPP4j5+D6mVACh+pe2M=

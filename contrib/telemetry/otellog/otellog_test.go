@@ -293,11 +293,11 @@ func TestBufferArrayEncoder(t *testing.T) {
 		},
 		{
 			name:  "time",
-			input: []any{time.Unix(0, 0)},
+			input: []any{time.Unix(0, 0).UTC()},
 			do: func(encoder *bufferArrayEncoder, input ...any) {
 				encoder.AppendTime(input[0].(time.Time))
 			},
-			expected: []string{"1970-01-01 08:00:00 +0800 CST"},
+			expected: []string{"1970-01-01 00:00:00 +0000 UTC"},
 		},
 		{
 			name:  "duration",

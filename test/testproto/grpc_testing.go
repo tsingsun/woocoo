@@ -2,16 +2,16 @@ package testproto
 
 import (
 	"context"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"io"
 	"log"
 	"net"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
 
@@ -70,7 +70,9 @@ func (s *TestPingService) PingStream(stream TestService_PingStreamServer) error 
 		if err != nil {
 			return err
 		}
-		stream.Send(&PingResponse{Value: ping.Value, Counter: int32(count)})
+		if err = stream.Send(&PingResponse{Value: ping.Value, Counter: int32(count)}); err != nil {
+			return err
+		}
 		count += 1
 	}
 	return nil

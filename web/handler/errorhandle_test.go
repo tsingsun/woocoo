@@ -1,16 +1,18 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
-	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/pkg/conf"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/stretchr/testify/assert"
+	"github.com/tsingsun/woocoo/pkg/conf"
 )
 
 func TestErrorHandleMiddleware_ApplyFunc(t *testing.T) {
@@ -58,6 +60,7 @@ func TestErrorHandleMiddleware_ApplyFunc(t *testing.T) {
 			res := httptest.NewRecorder()
 			web.ServeHTTP(res, req)
 			tt.check(t, res, e)
+			assert.Nil(t, e.Shutdown(context.TODO()))
 		})
 	}
 }

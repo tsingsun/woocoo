@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/test/testdata"
@@ -11,10 +16,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
-	"strconv"
-	"sync"
-	"testing"
-	"time"
 )
 
 func Configuration() *conf.Configuration {

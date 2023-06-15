@@ -13,8 +13,6 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
-    - depguard
     - dogsled
     - dupl
     - errcheck
@@ -28,17 +26,17 @@ linters:
     - ineffassign
     - misspell
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unused
-    - varcheck
     - whitespace
 issues:
   exclude-rules:
-    - path: _test\.go
+    - path: _test.go
       linters:
+        - errcheck
         - funlen
         - bodyclose
         - gosec
+        - dupl

@@ -81,7 +81,7 @@ func TestRegistryMultiService(t *testing.T) {
 	c, err := grpc.Dial(fmt.Sprintf("etcd://%s/", sn), grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
 	require.NoError(t, err)
-	defer c.Close()
+
 	hlClient := helloworld.NewGreeterClient(c)
 	tsClient := testproto.NewTestServiceClient(c)
 	for i := 0; i < 5; i++ {
@@ -94,10 +94,10 @@ func TestRegistryMultiService(t *testing.T) {
 	}
 	ctx, cxl = context.WithTimeout(context.Background(), time.Second*3)
 	defer cxl()
-	d, err := grpc.DialContext(ctx, fmt.Sprintf("etcd://%s/", sn), grpc.WithTransportCredentials(insecure.NewCredentials()),
+	_, err = grpc.DialContext(ctx, fmt.Sprintf("etcd://%s/", sn), grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
-	defer d.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
+
 }
 
 func TestRegisterResolver(t *testing.T) {

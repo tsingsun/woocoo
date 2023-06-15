@@ -23,10 +23,6 @@ import (
 	"time"
 )
 
-const (
-	defaultTracerName = "github.com/tsingsun/woocoo"
-)
-
 var (
 	globalConfig *Config
 )

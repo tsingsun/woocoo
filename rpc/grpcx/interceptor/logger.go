@@ -2,6 +2,10 @@ package interceptor
 
 import (
 	"context"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
@@ -11,9 +15,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
-	"path"
-	"strings"
-	"time"
 )
 
 var defaultLoggerOptions = &LoggerOptions{

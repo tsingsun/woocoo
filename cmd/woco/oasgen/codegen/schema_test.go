@@ -7,58 +7,6 @@ import (
 	"testing"
 )
 
-func TestSchema_GenSchemaType(t *testing.T) {
-	type fields struct {
-		Spec        *openapi3.SchemaRef
-		Name        string
-		Type        *code.TypeInfo
-		IsRef       bool
-		HasRegular  bool
-		Required    bool
-		validations []string
-		StructTags  []string
-		properties  []*Schema
-		Properties  map[string]*Schema
-		IsInline    bool
-		IsReplace   bool
-		IsAlias     bool
-		IsArray     bool
-	}
-	type args struct {
-		c    *Config
-		name string
-		spec *openapi3.SchemaRef
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			sch := &Schema{
-				Spec:        tt.fields.Spec,
-				Name:        tt.fields.Name,
-				Type:        tt.fields.Type,
-				IsRef:       tt.fields.IsRef,
-				HasRegular:  tt.fields.HasRegular,
-				Required:    tt.fields.Required,
-				validations: tt.fields.validations,
-				StructTags:  tt.fields.StructTags,
-				properties:  tt.fields.properties,
-				Properties:  tt.fields.Properties,
-				IsInline:    tt.fields.IsInline,
-				IsReplace:   tt.fields.IsReplace,
-				IsAlias:     tt.fields.IsAlias,
-				IsArray:     tt.fields.IsArray,
-			}
-			sch.GenSchemaType(tt.args.c, tt.args.name, tt.args.spec)
-		})
-	}
-}
-
 func TestGenComponentSchema_genSchemaRef(t *testing.T) {
 	type args struct {
 		c        *Config

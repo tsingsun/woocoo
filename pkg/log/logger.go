@@ -3,10 +3,11 @@ package log
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"sync"
 )
 
 var (

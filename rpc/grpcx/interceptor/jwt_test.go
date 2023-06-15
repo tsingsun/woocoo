@@ -3,6 +3,9 @@ package interceptor
 import (
 	"context"
 	"crypto/tls"
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -15,8 +18,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/grpclog"
-	"testing"
-	"time"
 )
 
 func TestJWTUnaryServerInterceptor(t *testing.T) {

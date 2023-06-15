@@ -3,12 +3,13 @@ package interceptor
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/tsingsun/woocoo/pkg/auth"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"strings"
 )
 
 // ValuesExtractor defines a function for extracting values (keys/tokens) from the given context.

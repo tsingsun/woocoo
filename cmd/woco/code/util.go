@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// take a string in the form github.com/package/blah.Type and split it into package and type
+// PkgAndType take a string in the form github.com/package/blah.Type and split it into package and type
 func PkgAndType(name string) (string, string) {
 	parts := strings.Split(name, ".")
 	if len(parts) == 1 {

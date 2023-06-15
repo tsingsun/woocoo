@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/attributes"
 	"google.golang.org/grpc/resolver"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -149,18 +147,4 @@ func (si ServiceInfo) BuildKey() string {
 // return service instance key
 func nodePath(namespace, name, version, addr string) string {
 	return strings.Join([]string{namespace, name, version, addr}, "/")
-}
-
-func TLS(basedir, sslCertificate, sslCertificateKey string) *tls.Config {
-	if !filepath.IsAbs(sslCertificate) {
-		sslCertificate = filepath.Join(basedir, sslCertificate)
-	}
-	if !filepath.IsAbs(sslCertificateKey) {
-		sslCertificateKey = filepath.Join(basedir, sslCertificateKey)
-	}
-	cer, err := tls.LoadX509KeyPair(sslCertificate, sslCertificateKey)
-	if err != nil {
-		panic(err)
-	}
-	return &tls.Config{Certificates: []tls.Certificate{cer}}
 }

@@ -25,8 +25,6 @@ type (
 		cd map[string]DialOptionFunc
 		cu map[string]UnaryClientInterceptorFunc
 		cs map[string]StreamClientInterceptorFunc
-
-		mid map[string]interceptor.Interceptor
 	}
 	// server side
 	ServerOptionFunc            func(*conf.Configuration) grpc.ServerOption
@@ -189,7 +187,6 @@ func (c grpcOptionManager) BuildDialOption(client *Client, cnf *conf.Configurati
 		}
 	})
 	return
-
 }
 
 func (c grpcOptionManager) buildClientChainUnary(root string, cnf *conf.Configuration) grpc.DialOption {

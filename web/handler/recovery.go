@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
 	"net/http"
 	"net/http/httputil"
+
+	"github.com/gin-gonic/gin"
+	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/log"
 )
 
 var (
@@ -44,9 +45,9 @@ func HandleRecoverError(c *gin.Context, p any, stackSkip int) {
 	err, ok := p.(error)
 	// gin private error not show to user
 	if ok {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		AbortWithError(c, http.StatusInternalServerError, err)
 	} else {
-		c.AbortWithError(http.StatusInternalServerError, ErrRecovery)
+		AbortWithError(c, http.StatusInternalServerError, ErrRecovery)
 		err = fmt.Errorf("%v", p)
 	}
 	fc := GetLogCarrierFromGinContext(c)

@@ -3,6 +3,10 @@ package authz
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/alicebob/miniredis/v2"
 	rediswatcher "github.com/casbin/redis-watcher/v2"
 	"github.com/golang-jwt/jwt/v4"
@@ -13,9 +17,6 @@ import (
 	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/testco/wctest"
-	"os"
-	"testing"
-	"time"
 )
 
 func casbinFilePrepare(node string) {
@@ -33,7 +34,7 @@ func casbinFilePrepare(node string) {
 }
 
 func TestNewAuthorization(t *testing.T) {
-	//reset
+	// reset
 	SetDefaultRequestParserFunc(defaultRequestParser)
 
 	type args struct {
@@ -158,11 +159,9 @@ func TestRedisCallback(t *testing.T) {
 		"model":  testdata.Tmp(`callback_model.conf`),
 		"policy": testdata.Tmp(`callback_policy.csv`),
 	}))
-	defer authz.Watcher.Close()
+
 	require.NoError(t, err)
 	t.Run("UpdateForAddPolicy", func(t *testing.T) {
-		//authz.Enforcer.AddRoleForUser("alice", "admin")
-		//authz.Enforcer.SavePolicy()
 		msg := rediswatcher.MSG{ID: uuid.New().String(), Method: "UpdateForAddPolicy",
 			Sec: "g", Ptype: "g", NewRule: []string{"alice", "admin"},
 		}
@@ -171,9 +170,6 @@ func TestRedisCallback(t *testing.T) {
 		redis.Publish("/casbin", string(m))
 		assert.NoError(t, wctest.RunWait(t, time.Second*3, func() error {
 			time.Sleep(time.Second * 2)
-			//ok, err := authz.Enforcer.HasRoleForUser("alice", "admin")
-			//assert.NoError(t, err)
-			//assert.True(t, ok)
 			return nil
 		}))
 	})
@@ -189,12 +185,10 @@ func TestRedisCallback(t *testing.T) {
 		redis.Publish("/casbin", string(m))
 		assert.NoError(t, wctest.RunWait(t, time.Second*3, func() error {
 			time.Sleep(time.Second * 2)
-			//ok = authz.Enforcer.HasPolicy("alice", "data1", "remove")
-			//assert.False(t, ok)
-			//assert.NoError(t, err)
 			return nil
 		}))
 	})
+	authz.Watcher.Close()
 }
 
 func TestGetAllowedRecordsForUser(t *testing.T) {

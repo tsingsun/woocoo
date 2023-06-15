@@ -1,7 +1,12 @@
 package handler
 
 import (
+	"context"
 	"errors"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -9,9 +14,6 @@ import (
 	"github.com/tsingsun/woocoo/testco/logtest"
 	"github.com/tsingsun/woocoo/testco/wctest"
 	"go.uber.org/zap"
-	"net/http/httptest"
-	"strings"
-	"testing"
 )
 
 func TestLoggerMiddleware(t *testing.T) {
@@ -123,9 +125,11 @@ func TestLoggerMiddleware(t *testing.T) {
 			r := httptest.NewRequest("GET", "/", nil)
 			w := httptest.NewRecorder()
 			want := tt.want()
+			accessLog := AccessLog()
+			defer accessLog.Shutdown(context.TODO())
+			middleware := accessLog.ApplyFunc(tt.args.cfg)
 			gin.SetMode(gin.ReleaseMode)
 			srv := gin.New()
-			middleware := AccessLog().ApplyFunc(tt.args.cfg)
 			srv.Use(middleware, Recovery().ApplyFunc(tt.args.cfg))
 			srv.GET("/", func(c *gin.Context) {
 				tt.args.handler(c)

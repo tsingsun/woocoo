@@ -3,11 +3,12 @@ package handler
 import (
 	"context"
 	"errors"
+	"net/http"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"net/http"
-	"strings"
 )
 
 var (

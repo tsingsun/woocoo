@@ -2,14 +2,15 @@ package web
 
 import (
 	"context"
+	"net/http/httptest"
+	"testing"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/testco/wctest"
-	"net/http/httptest"
-	"testing"
-	"time"
 )
 
 func TestNew(t *testing.T) {

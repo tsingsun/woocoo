@@ -1,12 +1,13 @@
 package woocoo
 
 import (
+	"net/http"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web"
 	"github.com/tsingsun/woocoo/web/handler"
-	"net/http"
-	"testing"
 )
 
 func BenchmarkGinDefault(b *testing.B) {
@@ -66,16 +67,16 @@ func (m *mockWriter) WriteString(s string) (n int, err error) {
 
 func (m *mockWriter) WriteHeader(int) {}
 
-func runRequest(B *testing.B, r *gin.Engine, method, path string) {
+func runRequest(b *testing.B, r *gin.Engine, method, path string) {
 	// create fake request
 	req, err := http.NewRequest(method, path, nil)
 	if err != nil {
 		panic(err)
 	}
 	w := newMockWriter()
-	B.ReportAllocs()
-	B.ResetTimer()
-	for i := 0; i < B.N; i++ {
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
 		r.ServeHTTP(w, req)
 	}
 }

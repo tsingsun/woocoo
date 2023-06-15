@@ -2,6 +2,9 @@ package authz
 
 import (
 	"context"
+	"net/http/httptest"
+	"testing"
+
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -9,8 +12,6 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/web/handler"
-	"net/http/httptest"
-	"testing"
 )
 
 func TestNewAuthorizer(t *testing.T) {

@@ -2,14 +2,15 @@ package grpcx
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	_ "github.com/tsingsun/woocoo/rpc/grpcx/registry/etcd3"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/testco/mock/helloworld"
 	"google.golang.org/grpc/connectivity"
-	"testing"
-	"time"
 )
 
 func TestClient_New(t *testing.T) {

@@ -2,11 +2,12 @@ package httpx
 
 import (
 	"fmt"
-	"github.com/tsingsun/woocoo/pkg/conf"
-	"golang.org/x/net/http/httpproxy"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/tsingsun/woocoo/pkg/conf"
+	"golang.org/x/net/http/httpproxy"
 )
 
 // ClientConfig configures an HTTP client.
@@ -86,7 +87,7 @@ type ProxyConfig struct {
 
 func (p ProxyConfig) Validate() error {
 	if p.ProxyURL != "" {
-		if _, err := url.Parse(p.ProxyURL); err != nil {
+		if _, err := url.ParseRequestURI(p.ProxyURL); err != nil {
 			return fmt.Errorf("proxyUrl %q is invalid: %w", p.ProxyURL, err)
 		}
 	}

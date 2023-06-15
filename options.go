@@ -2,9 +2,10 @@ package woocoo
 
 import (
 	"context"
-	"github.com/tsingsun/woocoo/pkg/conf"
 	"os"
 	"time"
+
+	"github.com/tsingsun/woocoo/pkg/conf"
 )
 
 // Server is the interface that can run in App.

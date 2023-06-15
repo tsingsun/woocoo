@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -12,10 +17,6 @@ import (
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"strconv"
-	"strings"
-	"testing"
-	"time"
 )
 
 type user struct {
@@ -346,9 +347,9 @@ func TestLoggerLog(t *testing.T) {
 			name: "panic format error",
 			do: func() *logtest.Buffer {
 				applyGlobal(true)
-				logdata := initBuffWriteSyncer()
+				initBuffWriteSyncer()
 				Panicf("error%s", "x")
-				return logdata
+				return nil
 			},
 			require: func(logdata *logtest.Buffer) {
 				ss := logdata

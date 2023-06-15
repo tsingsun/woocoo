@@ -3,13 +3,14 @@ package conf
 import (
 	"bytes"
 	"fmt"
-	"github.com/knadh/koanf/parsers/yaml"
-	"github.com/knadh/koanf/providers/file"
-	"github.com/knadh/koanf/v2"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
 )
 
 // Configurable can initial by framework

@@ -113,7 +113,7 @@ func (ck *ckDriver) schemas(ctx context.Context, opts *schema.InspectRealmOption
 			for _, s := range opts.Schemas {
 				args = append(args, s)
 			}
-			query = fmt.Sprintf(schemasQueryArgs, "IN (%s)", nArgs(2, len(opts.Schemas)+1))
+			query = fmt.Sprintf(schemasQueryArgs, fmt.Sprintf("IN (%s)", nArgs(2, len(opts.Schemas)+1)))
 		}
 	}
 	rows, err := ck.QueryContext(ctx, query, args)

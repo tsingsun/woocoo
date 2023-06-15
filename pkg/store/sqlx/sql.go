@@ -2,6 +2,7 @@ package sqlx
 
 import (
 	"database/sql"
+
 	"github.com/tsingsun/woocoo/pkg/conf"
 )
 

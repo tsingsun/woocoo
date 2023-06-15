@@ -3,11 +3,12 @@ package authz
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/authz"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/security"
-	"net/http"
 )
 
 // Options is the options for the authz middleware.
@@ -54,7 +55,7 @@ func (a *Authorizer) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			Operator: c.Request.Method,
 		})
 		if err != nil {
-			c.Error(fmt.Errorf("authorization failed: %w", err))
+			c.Error(fmt.Errorf("authorization failed: %w", err)) //nolint:errcheck
 			return
 		}
 		if !allowed {

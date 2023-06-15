@@ -2,11 +2,12 @@ package redisc
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/testco/wctest"
-	"testing"
-	"time"
 )
 
 func TestSkipMode(t *testing.T) {
@@ -250,7 +251,6 @@ func TestCache_Set(t *testing.T) {
 
 				cache.opt.Redis = nil
 				cache.DeleteFromLocalCache("key")
-				//assert.NoError(t, cache.Delete(context.Background(), "key"))
 				assert.False(t, cache.Exists(context.Background(), "key"))
 			},
 		},

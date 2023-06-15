@@ -264,7 +264,7 @@ func (sch *Schema) AppendContentTypeStructTag(c *Config, tagName string, content
 			ref = sch.Spec.Value.Items.Ref
 		}
 		if s, ok := c.schemas[ref]; ok {
-			cts := []string{}
+			var cts []string
 			for _, contentType := range contentTypes {
 				key := ref + ":" + contentType
 				if _, ok := updateContentTypes[key]; ok {

@@ -102,8 +102,7 @@ func TestMap(t *testing.T) {
 			mapper: func(item any, writer Writer, cancel func(error)) {
 				v := item.(int)
 				if v%2 == 0 {
-					//todo panic
-					//panic
+					// todo panic
 					return
 				}
 				writer.Write(v * v)

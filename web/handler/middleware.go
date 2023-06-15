@@ -3,12 +3,13 @@ package handler
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/web/handler/gzip"
-	"net/url"
-	"strings"
 )
 
 var (
@@ -137,7 +138,7 @@ func (m *Manager) registerIntegrationHandler() {
 // Shutdown a handler if handler base on file,net such as need to release resource
 func (m *Manager) Shutdown(ctx context.Context) error {
 	for _, handler := range m.middlewares {
-		handler.Shutdown(ctx) // lint:ignore
+		handler.Shutdown(ctx) //nolint:errcheck
 	}
 	return nil
 }

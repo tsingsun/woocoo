@@ -3,7 +3,6 @@ package grpcx
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
@@ -137,13 +136,13 @@ func TestServer_Run(t *testing.T) {
 			time.AfterFunc(time.Second*2, func() {
 				s.Stop(context.Background())
 			})
-			tt.wantErr(t, s.Run(), fmt.Sprintf("Run()"))
+			tt.wantErr(t, s.Run(), "Run()")
 		})
 	}
 }
 
 // TODO grpclog will case test fail by race condition.so let it skip
-func server_UseLogger(t *testing.T) {
+func serverUselogger(t *testing.T) {
 	b := []byte(`
 grpc:
   server:

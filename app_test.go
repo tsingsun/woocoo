@@ -2,14 +2,15 @@ package woocoo
 
 import (
 	"context"
+	"log"
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	_ "github.com/tsingsun/woocoo/rpc/grpcx/registry/etcd3"
 	"github.com/tsingsun/woocoo/testco/wctest"
 	"github.com/tsingsun/woocoo/web"
-	"log"
-	"testing"
-	"time"
 )
 
 func TestApp(t *testing.T) {

@@ -3,6 +3,9 @@ package gql
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"runtime/debug"
+
 	"github.com/99designs/gqlgen/graphql"
 	gqlgen "github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -15,8 +18,6 @@ import (
 	"github.com/tsingsun/woocoo/web/handler"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
-	"net/http"
-	"runtime/debug"
 )
 
 const (

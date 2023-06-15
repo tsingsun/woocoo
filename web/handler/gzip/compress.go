@@ -1,9 +1,10 @@
 package gzip
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/klauspost/compress/gzhttp/writer"
-	"net/http"
 )
 
 // ResponseWriter is a wrapper for the http.ResponseWriter that compresses

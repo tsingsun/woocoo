@@ -2,13 +2,14 @@ package conf
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/tsingsun/woocoo/test/testdata"
 	"path"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tsingsun/woocoo/test/testdata"
 )
 
 func TestNew(t *testing.T) {

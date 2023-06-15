@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/99designs/gqlgen/graphql"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/gin-gonic/gin"
@@ -14,9 +18,6 @@ import (
 	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/web"
 	"github.com/vektah/gqlparser/v2/ast"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 var gqlSchemaMock = graphql.ExecutableSchemaMock{
@@ -64,7 +65,6 @@ web:
 
 		srv.Router().ServeHTTP(w, r)
 		assert.Equal(t, http.StatusOK, w.Code)
-
 	})
 	t.Run("test doc", func(t *testing.T) {
 		r := httptest.NewRequest("GET", "/graphql/doc", nil)
@@ -182,7 +182,6 @@ web:
 		gqlsrv[0].ServeHTTP(w, r)
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), expectedPanic)
-
 	})
 	t.Run("panic err", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -196,7 +195,6 @@ web:
 		gqlsrv[0].ServeHTTP(w, r)
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), expectedPanicErr.Error())
-
 	})
 	t.Run("reject", func(t *testing.T) {
 		w := httptest.NewRecorder()

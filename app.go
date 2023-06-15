@@ -3,14 +3,15 @@ package woocoo
 import (
 	"context"
 	"errors"
-	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/pkg/log"
 	"golang.org/x/sync/errgroup"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/log"
 )
 
 // App is the application with a universal mechanism to manage goroutine lifecycles.
@@ -72,10 +73,8 @@ func (a *App) Run() error {
 	wg.Wait()
 	if len(a.opts.quitCh) == 0 {
 		eg.Go(func() error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			}
+			<-ctx.Done()
+			return ctx.Err()
 		})
 	} else {
 		quit := make(chan os.Signal, 1)

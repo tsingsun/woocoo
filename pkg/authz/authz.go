@@ -3,6 +3,8 @@ package authz
 import (
 	"context"
 	"errors"
+	"strings"
+
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
@@ -11,7 +13,6 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/pkg/security"
-	"strings"
 )
 
 var (

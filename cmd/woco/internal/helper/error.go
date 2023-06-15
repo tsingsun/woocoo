@@ -66,7 +66,7 @@ func (a Assets) Write() error {
 	}
 	for path, content := range a.files {
 		if err := os.WriteFile(path, content, 0644); err != nil {
-			return fmt.Errorf("Write file %q: %w", path, err)
+			return fmt.Errorf("write file %q: %w", path, err)
 		}
 	}
 	return nil
@@ -80,10 +80,10 @@ func (a Assets) Format() error {
 		}
 		src, err := imports.Process(path, content, nil)
 		if err != nil {
-			return fmt.Errorf("Format file %s: %w", path, err)
+			return fmt.Errorf("format file %s: %w", path, err)
 		}
 		if err := os.WriteFile(path, src, 0644); err != nil {
-			return fmt.Errorf("Write file %s: %w", path, err)
+			return fmt.Errorf("write file %s: %w", path, err)
 		}
 	}
 	return nil

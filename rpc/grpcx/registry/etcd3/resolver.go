@@ -88,7 +88,7 @@ func (w *etcdResolver) safeKey() {
 		w.key = "/" + w.key
 	}
 	if !strings.HasSuffix(w.key, "/") {
-		w.key = w.key + "/"
+		w.key += "/"
 	}
 }
 
@@ -128,7 +128,6 @@ func (w *etcdResolver) GetAllAddresses() (ret []resolver.Address) {
 				Attributes: node.ToAttributes(),
 			}
 			w.addrMap[node.BuildKey()] = addr
-			//as := v.Pairs()
 			ret = append(ret, addr)
 		}
 	}
@@ -203,9 +202,7 @@ func extractAddrs(resp *clientv3.GetResponse) []registry.ServiceInfo {
 
 func (w *etcdResolver) cloneAddresses(in []resolver.Address) []resolver.Address {
 	out := make([]resolver.Address, len(in))
-	for i := 0; i < len(in); i++ {
-		out[i] = in[i]
-	}
+	copy(out, in)
 	return out
 }
 

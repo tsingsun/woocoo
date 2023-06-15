@@ -3,16 +3,17 @@ package gzip
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"path/filepath"
+	"strings"
+	"sync"
+
 	"github.com/gin-gonic/gin"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/klauspost/compress/gzhttp/writer"
 	"github.com/klauspost/compress/gzhttp/writer/gzkp"
 	"github.com/klauspost/compress/gzip"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"net/http"
-	"path/filepath"
-	"strings"
-	"sync"
 )
 
 var (

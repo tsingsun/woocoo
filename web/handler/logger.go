@@ -2,13 +2,14 @@ package handler
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
-	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/log"
 )
 
 type loggerTagType int
@@ -134,9 +135,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		start := time.Now()
 		logCarrier := log.NewCarrier()
 		c.Set(AccessLogComponentName, logCarrier)
-		// Process request first
 		c.Next()
-		// c.Next() may change implicit skipper,so call it after c.Next()
 		if opts.Skipper(c) {
 			return
 		}

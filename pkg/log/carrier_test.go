@@ -2,9 +2,10 @@ package log
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIncomingContext(t *testing.T) {

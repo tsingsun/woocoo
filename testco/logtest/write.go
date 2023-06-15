@@ -3,10 +3,11 @@ package logtest
 import (
 	"bytes"
 	"errors"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"io"
 	"strings"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // A Syncer is a spy for the Sync portion of zapcore.WriteSyncer.

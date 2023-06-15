@@ -55,3 +55,7 @@ test-coverage/%:
 	@echo "$(GO) test -timeout $(TIMEOUT)s $(ARGS) -covermode=$(COVERAGE_MODE) -coverprofile=$(COVERAGE_PROFILE) $(DIR)/..." \
 		&& cd $(DIR) \
 		&& $(GO) test -timeout $(TIMEOUT)s $(ARGS) -covermode=$(COVERAGE_MODE) -coverprofile=$(COVERAGE_PROFILE) ./...
+
+golangci-lint:
+	cd ./ \
+	&& golangci-lint run

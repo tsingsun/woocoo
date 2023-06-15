@@ -2,16 +2,17 @@ package log
 
 import (
 	"fmt"
-	"github.com/tsingsun/woocoo/pkg/conf"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"net/url"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/tsingsun/woocoo/pkg/conf"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const (

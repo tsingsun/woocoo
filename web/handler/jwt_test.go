@@ -3,6 +3,11 @@ package handler_test
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
+	"testing"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
@@ -15,10 +20,6 @@ import (
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/web"
 	"github.com/tsingsun/woocoo/web/handler"
-	"net/http"
-	"net/http/httptest"
-	"path/filepath"
-	"testing"
 )
 
 func TestJWTMiddleware_ApplyFunc(t *testing.T) {

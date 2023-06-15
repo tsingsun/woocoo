@@ -20,3 +20,59 @@ func TestRouter_AddRule(t *testing.T) {
 	r.Engine.ServeHTTP(rec, req)
 	assert.Equal(t, rec.Body.String(), "hello")
 }
+
+func TestRouter_FindGroup(t *testing.T) {
+	type fields struct {
+		Engine                       *gin.Engine
+		Groups                       []*RouterGroup
+		serverOptions                *ServerOptions
+		AfterRegisterInternalHandler func(*Router)
+	}
+	type args struct {
+		basePath string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   *RouterGroup
+	}{
+		{
+			name: "find",
+			fields: fields{
+				Engine:                       gin.New(),
+				Groups:                       []*RouterGroup{{basePath: "/"}},
+				serverOptions:                &ServerOptions{},
+				AfterRegisterInternalHandler: nil,
+			},
+			args: args{
+				basePath: "/",
+			},
+			want: &RouterGroup{basePath: "/"},
+		},
+		{
+			name: "not found",
+			fields: fields{
+				Engine:                       gin.New(),
+				Groups:                       []*RouterGroup{{basePath: "/"}},
+				serverOptions:                &ServerOptions{},
+				AfterRegisterInternalHandler: nil,
+			},
+			args: args{
+				basePath: "/xxx",
+			},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &Router{
+				Engine:                       tt.fields.Engine,
+				Groups:                       tt.fields.Groups,
+				serverOptions:                tt.fields.serverOptions,
+				AfterRegisterInternalHandler: tt.fields.AfterRegisterInternalHandler,
+			}
+			assert.Equalf(t, tt.want, r.FindGroup(tt.args.basePath), "FindGroup(%v)", tt.args.basePath)
+		})
+	}
+}

@@ -2,11 +2,12 @@ package handler
 
 import (
 	"context"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"testing"
 )
 
 func TestNewSimpleMiddleware(t *testing.T) {
@@ -39,7 +40,7 @@ func TestNewSimpleMiddleware(t *testing.T) {
 			got := NewSimpleMiddleware(tt.args.name, tt.args.applyFunc)
 			got.ApplyFunc(tt.cfg)
 			assert.Equal(t, tt.want.Name(), got.Name())
-			got.Shutdown(context.Background())
+			assert.NoError(t, got.Shutdown(context.Background()))
 		})
 	}
 }
@@ -94,8 +95,9 @@ func TestManager(t *testing.T) {
 				}
 				got.ApplyFunc(conf.New())(c)
 				assert.Equal(t, tt.want, c.GetInt(tt.args.name))
-				got.Shutdown(context.Background())
+				assert.NoError(t, got.Shutdown(context.Background()))
 			}
+			assert.NoError(t, m.Shutdown(context.Background()))
 		})
 	}
 }

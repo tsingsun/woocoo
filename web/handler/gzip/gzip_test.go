@@ -3,11 +3,6 @@ package gzip_test
 import (
 	"context"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/web"
-	"github.com/tsingsun/woocoo/web/handler/gzip"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +13,11 @@ import (
 	"testing"
 
 	nativeGzip "compress/gzip"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/web"
+	"github.com/tsingsun/woocoo/web/handler/gzip"
 )
 
 const (

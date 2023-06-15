@@ -2,13 +2,14 @@ package handler
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/tsingsun/woocoo/pkg/auth"
 	"github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/security"
-	"net/http"
 )
 
 type (
@@ -110,7 +111,7 @@ func (mw *JWTMiddleware) build(cfg *conf.Configuration) {
 			jti, ok := opts.GetTokenIDFunc(&jwt.Token{Claims: cl})
 			if ok && mw.TokenStore != nil {
 				if err := mw.TokenStore.Del(c, jti); err != nil {
-					c.Error(err) // lint:ignore
+					c.Error(err) // nolint: errcheck
 				}
 			}
 		}

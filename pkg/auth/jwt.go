@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/tsingsun/woocoo/pkg/conf"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/tsingsun/woocoo/pkg/conf"
 )
 
 const (

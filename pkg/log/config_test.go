@@ -3,6 +3,12 @@ package log
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"os"
+	"path"
+	"strings"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -10,11 +16,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"io"
-	"os"
-	"path"
-	"strings"
-	"testing"
 )
 
 func TestNewConfigSolo(t *testing.T) {

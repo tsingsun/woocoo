@@ -1,11 +1,12 @@
 package log
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/testco/logtest"
 	"go.uber.org/zap"
-	"strings"
-	"testing"
 )
 
 func TestComponent(t *testing.T) {

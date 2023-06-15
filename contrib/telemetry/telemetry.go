@@ -3,6 +3,11 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"go.opentelemetry.io/contrib/propagators/b3"
@@ -10,17 +15,12 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
-	"os"
-	"strings"
-	"sync"
-	"time"
 )
 
 var (
@@ -137,9 +137,9 @@ func (c *Config) Apply(cnf *conf.Configuration) {
 	c.Tracer = c.TracerProvider.Tracer(c.ServiceName, trace.WithInstrumentationVersion(SemVersion()))
 
 	if c.MeterProvider != nil {
-		global.SetMeterProvider(c.MeterProvider)
+		otel.SetMeterProvider(c.MeterProvider)
 	} else {
-		c.MeterProvider = global.MeterProvider()
+		c.MeterProvider = otel.GetMeterProvider()
 	}
 	c.Meter = c.MeterProvider.Meter(c.ServiceName)
 
@@ -186,7 +186,6 @@ func (c *Config) applyMetricProvider() {
 		shutdown func(ctx context.Context) error
 		err      error
 	)
-	//metric
 	switch c.MetricExporter {
 	case "otlp":
 		c.MeterProvider, shutdown, err = NewOtlpMetric(c)

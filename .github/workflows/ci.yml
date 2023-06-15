@@ -45,6 +45,13 @@ jobs:
           - "8101:8101"
           - "9090:9090"
           - "9091:9091"
+      otel:
+        image: otel/opentelemetry-collector-contrib:0.79.0
+        ports:
+          - "4317:4317"
+          - "4318:4318"
+          - "8888:8888"
+          - "8889:8889"
     strategy:
       fail-fast: false
       matrix:

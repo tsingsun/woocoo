@@ -36,9 +36,7 @@ func TestMiddleware_NewConfig(t *testing.T) {
 					},
 				}),
 			},
-			handlerFunc: func(c *gin.Context) {
-				return
-			},
+			handlerFunc: func(c *gin.Context) {},
 		},
 	}
 	for _, tt := range tests {

@@ -22,7 +22,7 @@ var (
 	logMessageKey  = attribute.Key("log.message")
 )
 
-// ContextLogger is a zapcore.Core that logs to the current span in the context.
+// ContextLogger is a ContextLogger that add log field to the current recording span.
 //
 // log configuration set the `callerSkip: 4` for matching the stacktrace
 type ContextLogger struct {

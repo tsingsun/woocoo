@@ -7,7 +7,6 @@ import (
 	otelwoocoo "github.com/tsingsun/woocoo/contrib/telemetry"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
@@ -84,38 +83,4 @@ func middleware(cfg *otelwoocoo.Config) gin.HandlerFunc {
 			span.SetAttributes(attribute.String("web.errors", c.Errors.String()))
 		}
 	}
-}
-
-// HTML will trace the rendering of the template as a child of the
-// span in the given context. This is a replacement for
-// gin.Context.HTML function - it invokes the original function after
-// setting up the span.
-func HTML(c *gin.Context, code int, name string, obj any) {
-	var tracer trace.Tracer
-	tracerInterface, ok := c.Get(tracerKey)
-	if ok {
-		tracer, ok = tracerInterface.(trace.Tracer)
-	}
-	if !ok {
-		c.HTML(code, name, obj)
-		return
-	}
-	savedContext := c.Request.Context()
-	defer func() {
-		c.Request = c.Request.WithContext(savedContext)
-	}()
-	opt := trace.WithAttributes(attribute.String("go.template", name))
-	_, span := tracer.Start(savedContext, "gin.renderer.html", opt)
-	defer func() {
-		if r := recover(); r != nil {
-			err := fmt.Errorf("error rendering template:%s: %s", name, r)
-			span.RecordError(err)
-			span.SetStatus(codes.Error, "template failure")
-			span.End()
-			panic(r)
-		} else {
-			span.End()
-		}
-	}()
-	c.HTML(code, name, obj)
 }

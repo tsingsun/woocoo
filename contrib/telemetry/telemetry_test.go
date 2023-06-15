@@ -19,6 +19,44 @@ import (
 	"time"
 )
 
+func TestAttribute(t *testing.T) {
+	type aliasF64 float64
+	type aliasS string
+	type aliasB bool
+	tests := []struct {
+		value interface{}
+		want  attribute.KeyValue
+	}{
+		{nil, attribute.String("key", "<nil>")},
+		{string("value"), attribute.String("key", "value")},
+		{aliasS("value"), attribute.String("key", "value")},
+		{int(1), attribute.Int("key", 1)},
+		{int16(1), attribute.Int("key", 1)},
+		{int64(2), attribute.Int64("key", 2)},
+		{uint64(3), attribute.Int64("key", 3)},
+		{float64(1.5), attribute.Float64("key", 1.5)},
+		{aliasF64(1.5), attribute.Float64("key", 1.5)},
+		{true, attribute.Bool("key", true)},
+		{aliasB(true), attribute.Bool("key", true)},
+		{time.Saturday, attribute.String("key", "Saturday")},
+		{struct{ Name string }{Name: "value"}, attribute.String("key", `{"Name":"value"}`)},
+		{[]string{"a", "b"}, attribute.StringSlice("key", []string{"a", "b"})},
+		{[2]string{"a", "b"}, attribute.StringSlice("key", []string{"a", "b"})},
+		{[2]string{"a", "b"}, attribute.StringSlice("key", []string{"a", "b"})},
+		{[]float64{1.5, 2.5}, attribute.Float64Slice("key", []float64{1.5, 2.5})},
+		{[]int{1, 2}, attribute.IntSlice("key", []int{1, 2})},
+		{[]int64{3, 4}, attribute.Int64Slice("key", []int64{3, 4})},
+		{[]bool{true, false}, attribute.BoolSlice("key", []bool{true, false})},
+		{complex(1, 2), attribute.String("key", "(1+2i)")},
+		// unsupported but should not get error
+		{[]int8{1, 2}, attribute.KeyValue{Key: attribute.Key("key")}},
+	}
+	for _, tt := range tests {
+		got := Attribute("key", tt.value)
+		assert.Equal(t, tt.want, got)
+	}
+}
+
 func TestNewConfig(t *testing.T) {
 	require.NoError(t, os.Setenv("WOOCOO_TEST_NAME", "woocoo"))
 	type args struct {
@@ -131,6 +169,10 @@ func TestNewConfig(t *testing.T) {
 			assert.Equal(t, tt.want.AttributesEnvKeys, got.AttributesEnvKeys)
 			assert.Equal(t, tt.want.resourceAttributes, got.resourceAttributes)
 			assert.Subset(t, got.Resource.Attributes(), tt.want.Resource.Attributes())
+			assert.NotNil(t, GlobalConfig())
+			assert.NotNil(t, GlobalTracer())
+			assert.NotNil(t, GlobalMeter())
+			assert.NotNil(t, GetTextMapPropagator())
 		})
 	}
 }

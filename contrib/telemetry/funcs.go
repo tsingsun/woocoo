@@ -32,7 +32,9 @@ func Attribute(key string, value interface{}) attribute.KeyValue {
 
 	switch rv.Kind() {
 	case reflect.Array:
-		rv = rv.Slice(0, rv.Len())
+		rv2 := reflect.New(rv.Type()).Elem()
+		rv2.Set(rv)
+		rv = rv2.Slice(0, rv.Len())
 		fallthrough
 	case reflect.Slice:
 		switch reflect.TypeOf(value).Elem().Kind() {

@@ -28,7 +28,7 @@ func WithLocalPath(s string) Option {
 		}
 		_, err := os.Stat(s)
 		if err != nil {
-			panic(fmt.Sprintf("local file '%s' is not exists", s))
+			panic(fmt.Sprintf("local file %q is not exists", s))
 		}
 		o.localPath = s
 	}
@@ -41,7 +41,7 @@ func WithBaseDir(s string) Option {
 		var err error
 		o.basedir, err = filepath.Abs(s)
 		if err != nil {
-			panic(fmt.Sprintf("base dir '%s' is not exists", s))
+			panic(fmt.Sprintf("base dir %q is not exists", s))
 		}
 		o.localPath = filepath.Join(o.basedir, defaultConfigFile)
 	}
@@ -56,7 +56,7 @@ func WithIncludeFiles(paths ...string) Option {
 		for _, s := range paths {
 			_, err := os.Stat(s)
 			if err != nil {
-				panic(fmt.Errorf("attach config file %s error,%s", s, err))
+				panic(fmt.Errorf("attach config file %q error,%s", s, err))
 			}
 			o.includeFiles = append(o.includeFiles, s)
 		}

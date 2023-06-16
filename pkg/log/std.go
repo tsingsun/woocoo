@@ -11,15 +11,16 @@ __ |/ |/ // /_/ / /_/ / /__ / /_/ / /_/ /
 ____/|__/ \____/\____/\___/ \____/\____/
 `
 
-// StdPrintln use native log.Println
-func StdPrintln(v ...any) {
+// Println wrapper native log.Println
+func Println(v ...any) {
 	log.Println(v...)
 }
 
-func StdPrintf(format string, v ...any) {
+// Printf wrapper native log.Printf
+func Printf(format string, v ...any) {
 	log.Printf(format, v...)
 }
 
 func PrintLogo() {
-	StdPrintln(logo)
+	log.Println(logo)
 }

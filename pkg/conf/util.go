@@ -10,7 +10,7 @@ import (
 
 // TLS is the TLS configuration for TLS connections
 // TLS content can be file or cert string,depend on your application access
-// notice: TLS is experimental
+// notice: TLS is experimental,and only support file path in configuration
 type TLS struct {
 	CA                 string `json:"ca" yaml:"ca"`
 	Cert               string `json:"cert" yaml:"cert"`
@@ -19,19 +19,19 @@ type TLS struct {
 }
 
 // NewTLS creates a new TLS configuration. It will initialize the same defaults as the tls.Config struct.
-func NewTLS(cfg *Configuration) *TLS {
+func NewTLS(cnf *Configuration) *TLS {
 	t := &TLS{}
-	t.Apply(cfg)
+	t.Apply(cnf)
 	return t
 }
 
-func (t *TLS) Apply(cfg *Configuration) {
-	if err := cfg.Unmarshal(t); err != nil {
+func (t *TLS) Apply(cnf *Configuration) {
+	if err := cnf.Unmarshal(t); err != nil {
 		panic(err)
 	}
-	t.CA = cfg.Abs(t.CA)
-	t.Cert = cfg.Abs(t.Cert)
-	t.Key = cfg.Abs(t.Key)
+	t.CA = cnf.Abs(t.CA)
+	t.Cert = cnf.Abs(t.Cert)
+	t.Key = cnf.Abs(t.Key)
 }
 
 func (t *TLS) BuildTlsConfig() (*tls.Config, error) {
@@ -75,5 +75,5 @@ func GetIP(useIPv6 bool) string {
 			}
 		}
 	}
-	panic("Unable to determine local IP address (non loopback). Exiting.")
+	panic("Unable to determine local IP address (non loopback).")
 }

@@ -2,6 +2,7 @@ package testdata
 
 import (
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -68,4 +69,16 @@ func Tmp(rel string) string {
 		panic(err)
 	}
 	return filepath.Join(tmpPath, rel)
+}
+
+func FileBytes(rel string) []byte {
+	f, err := os.Open(Path(rel))
+	if err != nil {
+		panic(err)
+	}
+	v, err := io.ReadAll(f)
+	if err != nil {
+		panic(err)
+	}
+	return v
 }

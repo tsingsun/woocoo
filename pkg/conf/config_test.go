@@ -20,6 +20,7 @@ func TestNew(t *testing.T) {
 		name  string
 		args  args
 		check func(cnf *Configuration)
+		panic bool
 	}{
 		{
 			name: "default",
@@ -34,6 +35,12 @@ func TestNew(t *testing.T) {
 			check: func(cnf *Configuration) {
 				assert.Equal(t, cnf.opts.localPath, testdata.Path(testdata.DefaultConfigFile))
 			},
+		},
+		{
+			name:  "local no file",
+			args:  args{opt: []Option{WithLocalPath(testdata.Path("xxxx"))}},
+			check: nil,
+			panic: true,
 		},
 		{
 			name: "basedir",
@@ -56,6 +63,15 @@ func TestNew(t *testing.T) {
 			},
 		},
 		{
+			name: "attach-nofile",
+			args: args{opt: []Option{
+				WithBaseDir(testdata.BaseDir()),
+				WithLocalPath(testdata.DefaultConfigFile),
+				WithIncludeFiles(testdata.Path("xxxx.yaml"))}},
+			check: nil,
+			panic: true,
+		},
+		{
 			name: "global",
 			args: args{opt: []Option{WithGlobal(true),
 				WithLocalPath(testdata.Path(testdata.DefaultConfigFile))}},
@@ -69,6 +85,12 @@ func TestNew(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.panic {
+				assert.Panics(t, func() {
+					New(tt.args.opt...)
+				})
+				return
+			}
 			got := New(tt.args.opt...)
 			tt.check(got)
 		})

@@ -40,7 +40,7 @@ type Config struct {
 	ZapConfigs []zap.Config `json:"cores" yaml:"cores"`
 	// Rotate is for log rotate
 	Rotate *rotate `json:"rotate" yaml:"rotate"`
-	// Disable automatic timestamps in output if use textEncoder
+	// Disable automatic timestamps in output if use TextEncoder
 	DisableTimestamp bool `json:"disableTimestamp" yaml:"disableTimestamp"`
 	// DisableErrorVerbose stops annotating logs with the full verbose error
 	// message.
@@ -98,7 +98,7 @@ func NewConfig(cfg *conf.Configuration) (*Config, error) {
 // DefaultTimeEncoder serializes time.Time to a human-readable formatted string
 func DefaultTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	s := t.Format("2006/01/02 15:04:05.000 -07:00")
-	if e, ok := enc.(*textEncoder); ok {
+	if e, ok := enc.(*TextEncoder); ok {
 		for _, c := range []byte(s) {
 			e.buf.AppendByte(c)
 		}
@@ -133,7 +133,7 @@ func (c *Config) fixZapConfig(zc *zap.Config) error {
 func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 	once.Do(func() {
 		// register encoder
-		encoder := NewTextEncoder(c)
+		encoder := buildTextEncoder(c)
 		// text encode
 		err = zap.RegisterEncoder("text", func(zapcore.EncoderConfig) (zapcore.Encoder, error) {
 			return encoder, nil

@@ -38,7 +38,7 @@ func TestRouter_FindGroup(t *testing.T) {
 		want   *RouterGroup
 	}{
 		{
-			name: "find",
+			name: "find empty",
 			fields: fields{
 				Engine:                       gin.New(),
 				Groups:                       []*RouterGroup{{basePath: "/"}},
@@ -46,9 +46,22 @@ func TestRouter_FindGroup(t *testing.T) {
 				AfterRegisterInternalHandler: nil,
 			},
 			args: args{
-				basePath: "/",
+				basePath: "",
 			},
 			want: &RouterGroup{basePath: "/"},
+		},
+		{
+			name: "find",
+			fields: fields{
+				Engine:                       gin.New(),
+				Groups:                       []*RouterGroup{{basePath: "/index"}, {basePath: "/gql"}},
+				serverOptions:                &ServerOptions{},
+				AfterRegisterInternalHandler: nil,
+			},
+			args: args{
+				basePath: "/index",
+			},
+			want: &RouterGroup{basePath: "/index"},
 		},
 		{
 			name: "not found",

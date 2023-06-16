@@ -3,6 +3,7 @@ package gql
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"runtime/debug"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/authz"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/web"
 	"github.com/tsingsun/woocoo/web/handler"
@@ -186,7 +186,7 @@ func buildGraphqlServer(routerGroup *web.RouterGroup, server *gqlgen.Server, opt
 		handler.HandleRecoverError(gctx, err, 3)
 		gctx.AbortWithStatus(http.StatusInternalServerError)
 		if conf.Global().Development {
-			log.StdPrintln(err)
+			log.Println(err)
 			debug.PrintStack()
 		}
 		if ue, ok := err.(error); ok {

@@ -171,6 +171,7 @@ web:
 		}
 	})
 	t.Run("panic string", func(t *testing.T) {
+		conf.Global().Development = true
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		r := httptest.NewRequest("POST", "/graphql/query", bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`))).

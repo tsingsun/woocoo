@@ -44,12 +44,14 @@ func TestMiddleware_NewConfig(t *testing.T) {
 			otlecfg := otelwoocoo.NewConfig(tt.args.cfg.Sub("otel"))
 			defer otlecfg.Shutdown()
 			h := NewMiddleware()
+			assert.Equal(t, "otel", h.Name())
 			router := gin.New()
 			router.Use(h.ApplyFunc(tt.args.cfg))
 			router.GET("/ping", tt.handlerFunc)
 			r := httptest.NewRequest("GET", "/ping", nil)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, r)
+			assert.NoError(t, h.Shutdown(context.Background()))
 		})
 	}
 }

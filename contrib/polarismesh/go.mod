@@ -7,7 +7,7 @@ require (
 	github.com/polarismesh/polaris-go v1.4.3
 	github.com/polarismesh/specification v1.2.1
 	github.com/stretchr/testify v1.8.3
-	github.com/tsingsun/woocoo v0.2.8-0.20230614124800-bd693977499b
+	github.com/tsingsun/woocoo v0.2.8-0.20230616160717-3500ebcd775f
 	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0
 )
@@ -46,7 +46,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sync v0.2.0 // indirect
+	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect

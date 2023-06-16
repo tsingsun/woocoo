@@ -2,7 +2,6 @@ package interceptor
 
 import (
 	"context"
-
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
@@ -43,8 +42,8 @@ func (w *WrappedServerStream) Context() context.Context {
 
 // WrapServerStream returns a ServerStream that has the ability to overwrite context.
 func WrapServerStream(stream grpc.ServerStream) *WrappedServerStream {
-	if existing, ok := stream.(*WrappedServerStream); ok {
-		return existing
+	if ws, ok := stream.(*WrappedServerStream); ok {
+		return ws
 	}
 	return &WrappedServerStream{ServerStream: stream, WrappedContext: stream.Context()}
 }

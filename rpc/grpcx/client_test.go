@@ -46,6 +46,10 @@ grpc:
       - block:
       - timeout: 5s
       - serviceConfig: '{ "loadBalancingConfig": [{"round_robin": {}}] }'
+      - connectParams:
+          backoff:
+            maxDelay: 10s
+          minConnectTimeout: 5s
       - unaryInterceptors:
           - otel:
 `)

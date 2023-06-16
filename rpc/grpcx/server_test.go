@@ -63,6 +63,8 @@ grpc:
     - accessLog:
         timestampFormat: "2006-01-02 15:04:05"
     - recovery:
+  - streamInterceptors:
+    - accessLog:
 `)
 	// testdata.Path("x509/test.pem"), testdata.Path("x509/test.key")
 	cfg := conf.NewFromBytes(b)
@@ -151,7 +153,6 @@ grpc:
   - unaryInterceptors:
     - accessLog:  
 `)
-	// testdata.Path("x509/test.pem"), testdata.Path("x509/test.key")
 	cfg := conf.NewFromBytes(b)
 	cfg.SetBaseDir(testdata.BaseDir())
 	cfg.Load()
@@ -160,5 +161,59 @@ grpc:
 	)
 	assert.IsType(t, log.Component(log.GrpcComponentName).Logger().ContextLogger(), &interceptor.GrpcContextLogger{})
 	assert.IsType(t, log.Component(interceptor.AccessLogComponentName).Logger().ContextLogger(), &interceptor.GrpcContextLogger{})
+	assert.NotNil(t, s)
+}
+
+func TestCustomRegisterGrpc(t *testing.T) {
+	RegisterGrpcServerOption("sopt", func(configuration *conf.Configuration) grpc.ServerOption {
+		return grpc.EmptyServerOption{}
+	})
+	RegisterGrpcUnaryInterceptor("uiopt", func(configuration *conf.Configuration) grpc.UnaryServerInterceptor {
+		return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+			return nil, nil
+		}
+	})
+	RegisterGrpcStreamInterceptor("siopt", func(configuration *conf.Configuration) grpc.StreamServerInterceptor {
+		return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+			return nil
+		}
+	})
+	RegisterUnaryClientInterceptor("uciopt", func(configuration *conf.Configuration) grpc.UnaryClientInterceptor {
+		return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+			return nil
+		}
+	})
+	RegisterStreamClientInterceptor("sciopt", func(configuration *conf.Configuration) grpc.StreamClientInterceptor {
+		return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+			return nil, nil
+		}
+	})
+	RegisterDialOption("dopt", func(configuration *conf.Configuration) grpc.DialOption {
+		return grpc.EmptyDialOption{}
+	})
+	b := []byte(`
+grpc:
+  server:
+    addr: 127.0.0.1:0
+  engine:
+  - sopt: 
+  - unaryInterceptors:
+    - uiopt:
+    - recovery:
+  - streamInterceptors:
+    - siopt:
+  client:
+    dialOption:
+    - dopt:
+    - block:
+    - unaryInterceptors:
+      - uciopt:
+    - streamInterceptors:
+      - sciopt:
+`)
+	cfg := conf.NewFromBytes(b)
+	cfg.SetBaseDir(testdata.BaseDir())
+	cfg.Load()
+	s := New(WithConfiguration(cfg.Sub("grpc")))
 	assert.NotNil(t, s)
 }

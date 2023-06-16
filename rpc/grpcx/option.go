@@ -2,8 +2,6 @@ package grpcx
 
 import (
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/pkg/log"
-	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor"
 	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
@@ -32,16 +30,6 @@ func WithGrpcLogger() Option {
 			grpclog.SetLoggerV2(zgl)
 		})
 	}
-}
-
-func useContextLogger() *log.Logger {
-	glog := log.Component(log.GrpcComponentName)
-	if lg := glog.Logger(); lg != nil {
-		if _, ok := lg.ContextLogger().(*log.DefaultContextLogger); ok {
-			lg.SetContextLogger(interceptor.NewGrpcContextLogger())
-		}
-	}
-	return glog.Logger()
 }
 
 func WithGrpcOption(opts ...grpc.ServerOption) Option {

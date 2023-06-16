@@ -18,6 +18,7 @@ grpc:
               pubKey: config/pubKey.pem
               tenantHeader: Qeelyn-Org-Id
       - streamInterceptors:
+          - accessLog:
   registry:
     scheme: etcd
     ttl: 600s

@@ -3,13 +3,12 @@ package interceptor
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/tsingsun/woocoo/pkg/auth"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"strings"
 )
 
 // ValuesExtractor defines a function for extracting values (keys/tokens) from the given context.
@@ -55,73 +54,64 @@ func (JWT) Name() string {
 	return "jwt"
 }
 
-// SteamServerInterceptor jwt ServerInterceptor for stream server.
-func (JWT) SteamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterceptor {
-	options := NewJWTOptions()
-	options.Apply(cfg)
-	var extractor = createExtractor(options)
-	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		authstr, err := extractor(ss.Context())
-		if err != nil {
-			return auth.ErrJWTMissing
-		}
-		var lastTokenErr error
-		for _, s := range authstr {
-			token, err := options.ParseTokenFunc(ss.Context(), s)
-			if err != nil {
-				lastTokenErr = err
-				continue
-			}
-			newctx := context.WithValue(ss.Context(), jwtKey{}, token)
-			ws := WrapServerStream(ss)
-			ws.WrappedContext = newctx
-			return handler(srv, ws)
-		}
-		if err != nil {
-			return err
-		}
-		if lastTokenErr != nil {
-			return err
-		}
-		// Continue execution of handler after ensuring a valid token.
-		return auth.ErrJWTMissing
-	}
-}
-
 // UnaryServerInterceptor ensures a valid token exists within a request's metadata. If
 // the token is missing or invalid, the interceptor blocks execution of the
 // handler and returns an error. Otherwise, the interceptor invokes the unary
 // handler.
-func (JWT) UnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInterceptor {
-	interceptor := NewJWTOptions()
-	interceptor.Apply(cfg)
-	var extractor = createExtractor(interceptor)
+func (itcp JWT) UnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServerInterceptor {
+	options := NewJWTOptions()
+	options.Apply(cfg)
+	var extractor = createExtractor(options)
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		// The keys within metadata.MD are normalized to lowercase.
 		// See: https://godoc.org/google.golang.org/grpc/metadata#New
-		authstr, err := extractor(ctx)
-		if err != nil {
-			return nil, auth.ErrJWTMissing
-		}
-		var lastTokenErr error
-		for _, s := range authstr {
-			token, err := interceptor.ParseTokenFunc(ctx, s)
-			if err != nil {
-				lastTokenErr = err
-				continue
-			}
-			newctx := context.WithValue(ctx, jwtKey{}, token)
-			return handler(newctx, req)
-		}
+		newctx, err := itcp.withToken(extractor, options, ctx)
 		if err != nil {
 			return nil, err
 		}
-		if lastTokenErr != nil {
-			return nil, err
+		return handler(newctx, req)
+	}
+}
+
+// SteamServerInterceptor jwt ServerInterceptor for stream server.
+func (itcp JWT) SteamServerInterceptor(cfg *conf.Configuration) grpc.StreamServerInterceptor {
+	options := NewJWTOptions()
+	options.Apply(cfg)
+	var extractor = createExtractor(options)
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		newctx, err := itcp.withToken(extractor, options, ss.Context())
+		if err != nil {
+			return err
 		}
-		// Continue execution of handler after ensuring a valid token.
+		ws := WrapServerStream(ss)
+		ws.WrappedContext = newctx
+		return handler(srv, ws)
+	}
+}
+
+func (JWT) withToken(extractor ValuesExtractor, options *JWTOptions, ctx context.Context) (context.Context, error) {
+	authstr, err := extractor(ctx)
+	if err != nil {
 		return nil, auth.ErrJWTMissing
 	}
+	var lastTokenErr error
+	for _, s := range authstr {
+		token, err := options.ParseTokenFunc(ctx, s)
+		if err != nil {
+			lastTokenErr = err
+			continue
+		}
+		newctx := context.WithValue(ctx, jwtKey{}, token)
+		return newctx, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if lastTokenErr != nil {
+		return nil, lastTokenErr
+	}
+	// Continue execution of handler after ensuring a valid token.
+	return nil, auth.ErrJWTMissing
 }
 
 func valuesFromMetadata(key string, valuePrefix string) ValuesExtractor {

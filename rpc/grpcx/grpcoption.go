@@ -121,6 +121,7 @@ func RegisterUnaryClientInterceptor(name string, f func(configuration *conf.Conf
 func RegisterStreamClientInterceptor(name string, f func(configuration *conf.Configuration) grpc.StreamClientInterceptor) {
 	optionsManager.cs[name] = f
 }
+
 func (c grpcOptionManager) buildServerChainUnary(root string, cnf *conf.Configuration) grpc.ServerOption {
 	var opts []grpc.UnaryServerInterceptor
 	cnf.Each(root, func(root string, sub *conf.Configuration) {

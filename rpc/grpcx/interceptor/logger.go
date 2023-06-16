@@ -2,10 +2,6 @@ package interceptor
 
 import (
 	"context"
-	"path"
-	"strings"
-	"time"
-
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
@@ -15,6 +11,9 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+	"path"
+	"strings"
+	"time"
 )
 
 var defaultLoggerOptions = &LoggerOptions{
@@ -61,71 +60,21 @@ func (AccessLogger) Name() string {
 }
 
 // UnaryServerInterceptor returns a new unary server interceptors that adds a zap.Logger to the context.
-func (AccessLogger) UnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInterceptor {
+func (al AccessLogger) UnaryServerInterceptor(cnf *conf.Configuration) grpc.UnaryServerInterceptor {
 	o := defaultLoggerOptions
 	o.Apply(cnf)
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		start := time.Now()
-		newCtx := newLoggerForCall(ctx, info.FullMethod, start, o.TimestampFormat)
+		newCtx := al.newLoggerForCall(ctx, info.FullMethod, start, o.TimestampFormat)
 		resp, err := handler(newCtx, req)
-
 		latency := time.Since(start)
-		code := status.Code(err)
-		fds := []zap.Field{
-			zap.Int("status", int(code)),
-			zap.Duration("latency", latency),
-		}
-		if o.logRequest {
-			fds = append(fds, zap.Any("request", req))
-		}
-		if o.logResponse {
-			fds = append(fds, zap.Any("response", resp))
-		}
-		if err != nil {
-			fds = append(fds, zap.Error(err))
-		}
-		level := DefaultCodeToLevel(code)
-		loggerOutPut(o.logger, newCtx, level, fds)
+		al.finalCollectFields(newCtx, o, latency, err, req, resp)
 		return resp, err
 	}
 }
 
-func loggerOutPut(l log.ComponentLogger, ctx context.Context, level zapcore.Level, fields []zapcore.Field) {
-	// must be ok
-	carr, _ := log.FromIncomingContext(ctx)
-	if len(fields) > 0 {
-		carr.Fields = append(carr.Fields, fields...)
-	}
-	clog := l.Ctx(ctx)
-	clog.Log(level, "", carr.Fields)
-}
-
-// StreamServerInterceptor returns a new streaming server interceptors that adds a zap.Logger to the context.
-func (AccessLogger) StreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerInterceptor {
-	o := defaultLoggerOptions
-	o.Apply(cnf)
-	return func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		start := time.Now()
-		newCtx := newLoggerForCall(stream.Context(), info.FullMethod, start, o.TimestampFormat)
-		wrapped := WrapServerStream(stream)
-		wrapped.WrappedContext = newCtx
-		err := handler(srv, wrapped)
-		latency := time.Since(start)
-		code := status.Code(err)
-		fds := []zap.Field{
-			zap.Int("status", int(code)),
-			zap.Duration("latency", latency),
-		}
-		if err != nil {
-			fds = append(fds, zap.Error(err))
-		}
-		level := DefaultCodeToLevel(code)
-		loggerOutPut(o.logger, newCtx, level, fds)
-		return err
-	}
-}
-
-func newLoggerForCall(ctx context.Context, fullMethodString string, start time.Time, timestampFormat string) context.Context {
+// init context with base fields for log method called.
+func (al AccessLogger) newLoggerForCall(ctx context.Context, fullMethodString string, start time.Time, timestampFormat string) context.Context {
 	var f = make([]zapcore.Field, 0, 5)
 	f = append(f, zap.String("grpc.start_time", start.Format(timestampFormat)))
 	if d, ok := ctx.Deadline(); ok {
@@ -134,16 +83,53 @@ func newLoggerForCall(ctx context.Context, fullMethodString string, start time.T
 	if cl, ok := peer.FromContext(ctx); ok {
 		f = append(f, zap.Any("peer.address", cl.Addr.String()))
 	}
-	callLog := &log.FieldCarrier{Fields: append(f, serverCallFields(fullMethodString)...)}
+	callLog := &log.FieldCarrier{Fields: append(f, al.serverCallFields(fullMethodString)...)}
 	return log.NewIncomingContext(ctx, callLog)
 }
 
-func serverCallFields(fullMethodString string) []zapcore.Field {
+func (al AccessLogger) serverCallFields(fullMethodString string) []zapcore.Field {
 	service := path.Dir(fullMethodString)[1:]
 	method := path.Base(fullMethodString)
 	return []zapcore.Field{
 		zap.String("grpc.service", service),
 		zap.String("grpc.method", method),
+	}
+}
+
+func (al AccessLogger) finalCollectFields(ctx context.Context, opts *LoggerOptions, latency time.Duration,
+	err error, req, resp any) {
+	code := status.Code(err)
+	fds := make([]zap.Field, 0, 10)
+	fds = append(fds, zap.Int("status", int(code)), zap.Duration("latency", latency))
+	if opts.logRequest {
+		fds = append(fds, zap.Any("request", req))
+	}
+	if opts.logResponse {
+		fds = append(fds, zap.Any("response", resp))
+	}
+	if err != nil {
+		fds = append(fds, zap.Error(err))
+	}
+	level := DefaultCodeToLevel(code)
+	// must be ok
+	carr, _ := log.FromIncomingContext(ctx)
+	fds = append(fds, carr.Fields...)
+	opts.logger.Ctx(ctx).Log(level, "", fds)
+}
+
+// StreamServerInterceptor returns a new streaming server interceptors that adds a zap.Logger to the context.
+func (al AccessLogger) StreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerInterceptor {
+	o := defaultLoggerOptions
+	o.Apply(cnf)
+	return func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		start := time.Now()
+		newCtx := al.newLoggerForCall(stream.Context(), info.FullMethod, start, o.TimestampFormat)
+		wrapped := WrapServerStream(stream)
+		wrapped.WrappedContext = newCtx
+		err := handler(srv, wrapped)
+		latency := time.Since(start)
+		al.finalCollectFields(newCtx, o, latency, err, nil, nil)
+		return err
 	}
 }
 
@@ -187,6 +173,17 @@ func DefaultCodeToLevel(code codes.Code) zapcore.Level {
 	default:
 		return zap.ErrorLevel
 	}
+}
+
+// UseContextLogger replace the default context logger with grpc context logger.
+func UseContextLogger() *log.Logger {
+	glog := log.Component(log.GrpcComponentName).Logger(log.WithContextLogger())
+	if glog != nil {
+		if _, ok := glog.ContextLogger().(*log.DefaultContextLogger); ok {
+			glog.SetContextLogger(NewGrpcContextLogger())
+		}
+	}
+	return glog
 }
 
 type GrpcContextLogger struct {

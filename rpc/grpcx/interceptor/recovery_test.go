@@ -2,6 +2,7 @@ package interceptor
 
 import (
 	"context"
+	"errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -12,6 +13,9 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"strings"
 	"testing"
 )
@@ -124,3 +128,48 @@ func TestHandleRecoverError(t *testing.T) {
 		require.Contains(t, line, "interceptor.TestHandleRecoverError")
 	})
 }
+
+func TestRecoveryStreamServerInterceptor(t *testing.T) {
+	interceptor := Recovery{}
+	assert.Equal(t, "recovery", interceptor.Name())
+	logdata := &logtest.Buffer{}
+	log.New(logtest.NewBuffLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
+
+	t.Run("no panic", func(t *testing.T) {
+		handlerCalled := false
+		stream := &mockStream{}
+		handler := func(srv any, stream grpc.ServerStream) error {
+			handlerCalled = true
+			return nil
+		}
+		err := interceptor.StreamServerInterceptor(conf.New())(nil, stream, nil, handler)
+		require.NoError(t, err)
+		assert.True(t, handlerCalled)
+	})
+
+	t.Run("panic", func(t *testing.T) {
+		panicErr := errors.New("panic error")
+		handler := func(srv any, stream grpc.ServerStream) error {
+			panic(panicErr)
+		}
+		err := interceptor.StreamServerInterceptor(conf.New())(nil, &mockStream{}, nil, handler)
+		assert.Equal(t, codes.Unknown, status.Code(err))
+		assert.Equal(t, "panic error", err.Error())
+	})
+}
+
+type mockStream struct {
+	md metadata.MD
+}
+
+func (s *mockStream) SetHeader(metadata.MD) error  { return nil }
+func (s *mockStream) SendHeader(metadata.MD) error { return nil }
+func (s *mockStream) SetTrailer(metadata.MD)       {}
+func (s *mockStream) Context() context.Context {
+	if s.md == nil {
+		return context.Background()
+	}
+	return metadata.NewIncomingContext(context.Background(), s.md)
+}
+func (s *mockStream) SendMsg(m interface{}) error { return nil }
+func (s *mockStream) RecvMsg(m interface{}) error { return nil }

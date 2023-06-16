@@ -50,7 +50,6 @@ func (Recovery) StreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServ
 	if err := cnf.Unmarshal(&defaultRecoveryOptions); err != nil {
 		panic(err)
 	}
-
 	return func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 		panicked := true
 		defer func() {

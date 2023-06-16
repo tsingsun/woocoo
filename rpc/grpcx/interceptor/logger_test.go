@@ -2,6 +2,9 @@ package interceptor
 
 import (
 	"context"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zapcore"
+	"google.golang.org/grpc/codes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -104,6 +107,64 @@ func TestLoggerUnaryServerInterceptor(t *testing.T) {
 				return
 			}
 			assert.Nil(t, got)
+		})
+	}
+}
+
+func TestLoggerStreamServerInterceptor(t *testing.T) {
+	interceptor := AccessLogger{}
+	assert.Equal(t, "accessLog", interceptor.Name())
+	logdata := &logtest.Buffer{}
+	log.New(logtest.NewBuffLogger(logdata, zap.AddStacktrace(zap.ErrorLevel))).AsGlobal()
+	UseContextLogger()
+	t.Run("no panic", func(t *testing.T) {
+		handlerCalled := false
+		stream := &mockStream{}
+		handler := func(srv any, stream grpc.ServerStream) error {
+			// 2 log,this and access log
+			logger.Ctx(stream.Context()).Info("test")
+			handlerCalled = true
+			return nil
+		}
+		err := interceptor.StreamServerInterceptor(conf.NewFromStringMap(map[string]any{
+			"Format": "request,response",
+		}))(nil, stream, &grpc.StreamServerInfo{FullMethod: "stream"}, handler)
+		require.NoError(t, err)
+		assert.True(t, handlerCalled)
+		assert.Contains(t, logdata.String(), "info")
+		assert.Contains(t, logdata.String(), "")
+	})
+}
+
+func TestDefaultCodeToLevel(t *testing.T) {
+	tests := []struct {
+		code  codes.Code
+		level zapcore.Level
+	}{
+		{codes.OK, zap.InfoLevel},
+		{codes.Canceled, zap.InfoLevel},
+		{codes.Unknown, zap.ErrorLevel},
+		{codes.InvalidArgument, zap.InfoLevel},
+		{codes.DeadlineExceeded, zap.WarnLevel},
+		{codes.NotFound, zap.InfoLevel},
+		{codes.AlreadyExists, zap.InfoLevel},
+		{codes.PermissionDenied, zap.WarnLevel},
+		{codes.Unauthenticated, zap.InfoLevel},
+		{codes.ResourceExhausted, zap.WarnLevel},
+		{codes.FailedPrecondition, zap.WarnLevel},
+		{codes.Aborted, zap.WarnLevel},
+		{codes.OutOfRange, zap.WarnLevel},
+		{codes.Unimplemented, zap.ErrorLevel},
+		{codes.Internal, zap.ErrorLevel},
+		{codes.Unavailable, zap.WarnLevel},
+		{codes.DataLoss, zap.ErrorLevel},
+		{9999, zap.ErrorLevel}, // Unknown code
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.code.String(), func(t *testing.T) {
+			level := DefaultCodeToLevel(tt.code)
+			assert.Equal(t, tt.level, level)
 		})
 	}
 }

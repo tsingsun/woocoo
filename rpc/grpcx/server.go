@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
+	"github.com/tsingsun/woocoo/rpc/grpcx/interceptor"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
@@ -58,7 +59,7 @@ func New(opts ...Option) *Server {
 		},
 		exit: make(chan chan error),
 	}
-	useContextLogger()
+	interceptor.UseContextLogger()
 	for _, o := range opts {
 		o(&s.opts)
 	}

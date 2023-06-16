@@ -97,7 +97,6 @@ func TestRegistryMultiService(t *testing.T) {
 	_, err = grpc.DialContext(ctx, fmt.Sprintf("etcd://%s/", sn), grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
 	require.NoError(t, err)
-
 }
 
 func TestRegisterResolver(t *testing.T) {

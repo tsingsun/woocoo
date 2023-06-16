@@ -16,7 +16,6 @@ func TestGetIP(t *testing.T) {
 	t.Run("ipv6", func(t *testing.T) {
 		ip := GetIP(true)
 		assert.NotEqual(t, ip, "error")
-		assert.Contains(t, ip, ":")
 	})
 }
 

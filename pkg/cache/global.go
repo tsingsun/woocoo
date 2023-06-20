@@ -3,13 +3,11 @@ package cache
 import (
 	"context"
 	"fmt"
-	"time"
 )
 
 var (
-	_manager          = newManager()
-	DefaultDriverName = "redis"
-	_defaultDriver    Cache
+	_manager       = newManager()
+	_defaultDriver Cache
 )
 
 type manager struct {
@@ -22,12 +20,13 @@ func newManager() *manager {
 	}
 }
 
+// SetDefault sets the default driver to use the static functions.
 func SetDefault(driver string) error {
-	DefaultDriverName = driver
-	_defaultDriver = _manager.drivers[DefaultDriverName]
+	_defaultDriver = _manager.drivers[driver]
 	return nil
 }
 
+// RegisterCache registers a cache driver.
 func RegisterCache(name string, cache Cache) error {
 	if _, ok := _manager.drivers[name]; ok {
 		return fmt.Errorf("driver already registered for name %q", name)
@@ -44,12 +43,12 @@ func GetCache(driver string) Cache {
 	return _manager.drivers[driver]
 }
 
-func Get(ctx context.Context, key string, v any) error {
-	return _defaultDriver.Get(ctx, key, v)
+func Get(ctx context.Context, key string, v any, opts ...Option) error {
+	return _defaultDriver.Get(ctx, key, v, opts...)
 }
 
-func Set(ctx context.Context, key string, v any, ttl time.Duration) error {
-	return _defaultDriver.Set(ctx, key, v, ttl)
+func Set(ctx context.Context, key string, v any, opts ...Option) error {
+	return _defaultDriver.Set(ctx, key, v, opts...)
 }
 
 func Has(ctx context.Context, key string) bool {
@@ -58,10 +57,6 @@ func Has(ctx context.Context, key string) bool {
 
 func Del(ctx context.Context, key string) error {
 	return _defaultDriver.Del(ctx, key)
-}
-
-func Take(ctx context.Context, v any, key string, ttl time.Duration, query func() (any, error)) error {
-	return _defaultDriver.Take(ctx, v, key, ttl, query)
 }
 
 func IsNotFound(err error) bool {

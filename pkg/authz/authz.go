@@ -2,7 +2,6 @@ package authz
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	"github.com/casbin/casbin/v2"
@@ -11,7 +10,6 @@ import (
 	fileadapter "github.com/casbin/casbin/v2/persist/file-adapter"
 	rediswatcher "github.com/casbin/redis-watcher/v2"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/pkg/security"
 )
 
@@ -59,6 +57,10 @@ func WithRequestParseFunc(f RequestParserFunc) Option {
 //	    channel: "/casbin"
 //	model: /path/to/model.conf
 //	policy: /path/to/policy.csv
+//
+// .
+// autoSave in watcher callback should be false. but set false will cause casbin main nodes lost save data.
+// we will improve in the future.current use database unique index to avoid duplicate data.
 func NewAuthorization(cnf *conf.Configuration, opts ...Option) (au *Authorization, err error) {
 	au = &Authorization{
 		RequestParser: defaultRequestParser,
@@ -111,7 +113,7 @@ func (au *Authorization) buildWatcher(cnf *conf.Configuration) (err error) {
 		return
 	}
 	watcherOptions := rediswatcher.WatcherOptions{
-		OptionalUpdateCallback: defaultUpdateCallback(au.Enforcer),
+		OptionalUpdateCallback: rediswatcher.DefaultUpdateCallback(au.Enforcer),
 	}
 	err = cnf.Sub("watcherOptions").Unmarshal(&watcherOptions)
 	if err != nil {
@@ -155,47 +157,4 @@ func SetDefaultAuthorization(au *Authorization) {
 // you should set this first if not default.
 func SetDefaultRequestParserFunc(f RequestParserFunc) {
 	defaultRequestParser = f
-}
-
-// autoSave in watcher callback should be false. but set false will cause casbin main nodes lost save data.
-// we will improve in the future.current use database unique index to avoid duplicate data.
-func defaultUpdateCallback(e casbin.IEnforcer) func(string) {
-	return func(msg string) {
-		msgStruct := &rediswatcher.MSG{}
-
-		err := msgStruct.UnmarshalBinary([]byte(msg))
-		if err != nil {
-			log.Error(err)
-			return
-		}
-
-		var res bool
-		switch msgStruct.Method {
-		case rediswatcher.Update, rediswatcher.UpdateForSavePolicy:
-			err = e.LoadPolicy()
-			res = true
-		case rediswatcher.UpdateForAddPolicy:
-			res, err = e.SelfAddPolicy(msgStruct.Sec, msgStruct.Ptype, msgStruct.NewRule)
-		case rediswatcher.UpdateForAddPolicies:
-			res, err = e.SelfAddPolicies(msgStruct.Sec, msgStruct.Ptype, msgStruct.NewRules)
-		case rediswatcher.UpdateForRemovePolicy:
-			res, err = e.SelfRemovePolicy(msgStruct.Sec, msgStruct.Ptype, msgStruct.NewRule)
-		case rediswatcher.UpdateForRemoveFilteredPolicy:
-			res, err = e.SelfRemoveFilteredPolicy(msgStruct.Sec, msgStruct.Ptype, msgStruct.FieldIndex, msgStruct.FieldValues...)
-		case rediswatcher.UpdateForRemovePolicies:
-			res, err = e.SelfRemovePolicies(msgStruct.Sec, msgStruct.Ptype, msgStruct.NewRules)
-		case rediswatcher.UpdateForUpdatePolicy:
-			res, err = e.SelfUpdatePolicy(msgStruct.Sec, msgStruct.Ptype, msgStruct.OldRule, msgStruct.NewRule)
-		case rediswatcher.UpdateForUpdatePolicies:
-			res, err = e.SelfUpdatePolicies(msgStruct.Sec, msgStruct.Ptype, msgStruct.OldRules, msgStruct.NewRules)
-		default:
-			err = errors.New("[woocoo-authz]update callback unknown update type")
-		}
-		if err != nil {
-			log.Error(err)
-		}
-		if !res {
-			log.Error("[woocoo-authz]callback update policy failed")
-		}
-	}
 }

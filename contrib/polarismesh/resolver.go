@@ -112,6 +112,20 @@ func (pr *polarisNamingResolver) onInstancesUpdate(_ *model.InstancesResponse, s
 		pr.cc.ReportError(err)
 		return
 	}
+	if skipRouteFilter {
+		// filter unhealthy and isolated instances
+		usedInstances := make([]model.Instance, 0, len(resp.Instances))
+		totalWeight := 0
+		for _, instance := range resp.Instances {
+			if !instance.IsHealthy() || instance.IsIsolated() {
+				continue
+			}
+			usedInstances = append(usedInstances, instance)
+			totalWeight += instance.GetWeight()
+		}
+		resp.Instances = usedInstances
+		resp.TotalWeight = totalWeight
+	}
 
 	state := &resolver.State{
 		Attributes: attributes.New(keyDialOptions, pr.options).WithValue(keyResponse, resp),

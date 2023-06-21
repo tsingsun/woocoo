@@ -283,3 +283,7 @@ func (cd *Redisc) DeleteFromLocalCache(key string) {
 		cd.local.Del(context.Background(), key) //nolint:errcheck
 	}
 }
+
+func (cd *Redisc) Stats() *cache.Stats {
+	return cd.stats
+}

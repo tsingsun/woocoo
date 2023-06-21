@@ -31,6 +31,7 @@ redis:
 	mr.Select(cfg.Int("redis.db"))
 	cfg.Parser().Set("redis.addrs", []string{mr.Addr()})
 	redisc := New(cfg.Sub("redis"))
+	assert.NotNil(t, redisc.Stats())
 	return redisc, mr
 }
 

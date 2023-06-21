@@ -2,18 +2,20 @@ package helloworld
 
 import (
 	"context"
-	"log"
 )
 
 // Server is used to implement helloworld.GreeterServer.
 type Server struct {
 	UnimplementedGreeterServer
 	count int
+	Tag   string
 }
 
 // SayHello implements helloworld.GreeterServer
 func (s *Server) SayHello(ctx context.Context, in *HelloRequest) (*HelloReply, error) {
 	s.count++
-	log.Printf("Received %d: %v", s.count, in.GetName())
-	return &HelloReply{Message: "Hello " + in.GetName()}, nil
+	if s.Tag != "" {
+		s.Tag = s.Tag + " "
+	}
+	return &HelloReply{Message: s.Tag + "Hello " + in.GetName()}, nil
 }

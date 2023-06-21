@@ -16,6 +16,7 @@ import (
 )
 
 func TestErrorHandleMiddleware_ApplyFunc(t *testing.T) {
+	mkerr := errors.New("mock error")
 	type args struct {
 		cfg *conf.Configuration
 	}
@@ -26,17 +27,82 @@ func TestErrorHandleMiddleware_ApplyFunc(t *testing.T) {
 		check  func(t *testing.T, r *httptest.ResponseRecorder, middleware *ErrorHandleMiddleware)
 	}{
 		{
-			name: "default", handle: func(c *gin.Context) {
-				c.Error(fmt.Errorf("standError")) //nolint:errcheck
-			}, args: args{cfg: conf.NewFromStringMap(nil)},
+			name: "default",
+			handle: func(c *gin.Context) {
+				c.Error(mkerr) //nolint:errcheck
+			},
+			args: args{cfg: conf.NewFromStringMap(nil)},
 			check: func(t *testing.T, r *httptest.ResponseRecorder, middleware *ErrorHandleMiddleware) {
 				assert.Equal(t, http.StatusInternalServerError, r.Code)
-				assert.Contains(t, r.Body.String(), "standError")
+				assert.Contains(t, r.Body.String(), mkerr.Error())
 			},
 		},
 		{
-			name: "Negotiate", handle: func(c *gin.Context) {
-				c.Error(fmt.Errorf("standError")) //nolint:errcheck
+			name: "written header",
+			handle: func(c *gin.Context) {
+				c.AbortWithStatus(http.StatusCreated)
+				c.Error(mkerr)
+			},
+			args: args{cfg: conf.NewFromStringMap(nil)},
+			check: func(t *testing.T, r *httptest.ResponseRecorder, middleware *ErrorHandleMiddleware) {
+				assert.Equal(t, http.StatusCreated, r.Code)
+				assert.Contains(t, r.Body.String(), mkerr.Error())
+			},
+		},
+		{
+			name: "keep custom status",
+			handle: func(c *gin.Context) {
+				c.Status(http.StatusCreated)
+				c.Error(mkerr)
+			},
+			args: args{cfg: conf.NewFromStringMap(nil)},
+			check: func(t *testing.T, r *httptest.ResponseRecorder, middleware *ErrorHandleMiddleware) {
+				assert.Equal(t, http.StatusCreated, r.Code)
+			},
+		},
+		{
+			name: "gin error type",
+			handle: func(c *gin.Context) {
+				ge := c.Error(mkerr)
+				ge.Type = 0
+			},
+			check: func(t *testing.T, r *httptest.ResponseRecorder, middleware *ErrorHandleMiddleware) {
+				assert.Equal(t, http.StatusInternalServerError, r.Code)
+				assert.NotContains(t, r.Body.String(), "code")
+			},
+		},
+		{
+			name: "public error will be shown",
+			args: args{cfg: conf.NewFromStringMap(map[string]any{
+				"message": "public message can be shown",
+			})},
+			handle: func(c *gin.Context) {
+				ge := c.Error(mkerr)
+				ge.Type = gin.ErrorTypePublic
+			},
+			check: func(t *testing.T, r *httptest.ResponseRecorder, middleware *ErrorHandleMiddleware) {
+				assert.Equal(t, http.StatusInternalServerError, r.Code)
+				assert.Contains(t, r.Body.String(), mkerr.Error())
+				assert.NotContains(t, r.Body.String(), "public message can be shown")
+			},
+		},
+		{
+			name: "deny private error",
+			args: args{cfg: conf.NewFromStringMap(map[string]any{
+				"message": "public message can be shown",
+			})},
+			handle: func(c *gin.Context) {
+				c.Error(mkerr)
+			},
+			check: func(t *testing.T, r *httptest.ResponseRecorder, middleware *ErrorHandleMiddleware) {
+				assert.Equal(t, http.StatusInternalServerError, r.Code)
+				assert.NotContains(t, r.Body.String(), mkerr.Error())
+				assert.Contains(t, r.Body.String(), "public message can be shown")
+			},
+		},
+		{
+			name: "negotiate", handle: func(c *gin.Context) {
+				c.Error(mkerr) //nolint:errcheck
 			}, args: args{cfg: conf.NewFromStringMap(map[string]any{
 				"name":    "Negotiate",
 				"accepts": strings.Join([]string{binding.MIMEJSON, binding.MIMEMSGPACK2}, ","),
@@ -44,7 +110,7 @@ func TestErrorHandleMiddleware_ApplyFunc(t *testing.T) {
 			check: func(t *testing.T, r *httptest.ResponseRecorder, middleware *ErrorHandleMiddleware) {
 				assert.Len(t, middleware.config.NegotiateFormat, 2)
 				assert.Equal(t, http.StatusInternalServerError, r.Code)
-				assert.Contains(t, r.Body.String(), "standError")
+				assert.Contains(t, r.Body.String(), mkerr.Error())
 			},
 		},
 	}

@@ -2,6 +2,7 @@ package etcd3
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,6 +19,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"net"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -51,6 +53,7 @@ grpc:
 	if len(r.opts.EtcdConfig.Endpoints) == 0 {
 		t.Error("apply error")
 	}
+	r.Close()
 }
 
 func TestRegistryMultiService(t *testing.T) {
@@ -146,16 +149,32 @@ func TestRegisterResolver(t *testing.T) {
 		res, err := reg.client.Get(context.Background(), sn, clientv3.WithPrefix())
 		assert.NoError(t, err)
 		assert.EqualValues(t, res.Count, 2)
-		RegisterResolver(etcdConfg)
-		c, err := grpc.Dial(fmt.Sprintf("etcd://%s/", sn), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
-		assert.NoError(t, err)
-		defer c.Close()
-		client := helloworld.NewGreeterClient(c)
-		for i := 0; i < 5; i++ {
-			resp, err := client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
+
+		t.Run("test resolver register", func(t *testing.T) {
+			RegisterResolver(etcdConfg)
+			opts := []grpc.DialOption{
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+				grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)),
+			}
+			c, err := grpc.Dial(fmt.Sprintf("etcd://%s/", sn), opts...)
 			assert.NoError(t, err)
-			assert.Equal(t, resp.Message, "Hello round robin")
-		}
+			c.Close()
+
+			drv, ok := registry.GetRegistry(scheme)
+			require.True(t, ok)
+			drv = drv.(*Driver)
+			rb, err := drv.ResolverBuilder(conf.New())
+			require.NoError(t, err)
+			rb.(*etcdBuilder).etcdConfig = etcdConfg
+
+			c, err = grpc.Dial(fmt.Sprintf("etcd://%s/", sn), append(opts, grpc.WithResolvers(rb))...)
+			client := helloworld.NewGreeterClient(c)
+			for i := 0; i < 5; i++ {
+				resp, err := client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
+				assert.NoError(t, err)
+				assert.Equal(t, resp.Message, "Hello round robin")
+			}
+		})
 	})
 	t.Run("2-exists-node", func(t *testing.T) {
 		t.Logf("must run after pretest and renew reg")
@@ -179,19 +198,20 @@ func TestRegistryGrpcx(t *testing.T) {
 	require.NoError(t, err)
 	_, _ = etcdCli.Delete(context.Background(), sn, clientv3.WithPrefix())
 	var srv, srv2 *grpcx.Server
-	err = wctest.RunWait(t, time.Second, func() error {
+	var buildSvr = func(tag string) *grpcx.Server {
 		cfg := testcnf.Sub("grpc")
 		cfg.Parser().Set("server.namespace", sn)
-		cfg.Parser().Set("server.addr", "127.0.0.1:50053")
-		srv = grpcx.New(grpcx.WithConfiguration(cfg))
-		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
+		cfg.Parser().Set("server.addr", "127.0.0.1:0")
+		s := grpcx.New(grpcx.WithConfiguration(cfg))
+		helloworld.RegisterGreeterServer(s.Engine(), &helloworld.Server{Tag: tag})
+		return s
+	}
+	var tag1, tag2 string = "t1", "t2"
+	err = wctest.RunWait(t, time.Second, func() error {
+		srv = buildSvr(tag1)
 		return srv.Run()
 	}, func() error {
-		cfg := testcnf.Sub("grpc")
-		cfg.Parser().Set("server.namespace", sn)
-		cfg.Parser().Set("server.addr", "127.0.0.1:50054")
-		srv2 = grpcx.New(grpcx.WithConfiguration(cfg))
-		helloworld.RegisterGreeterServer(srv2.Engine(), &helloworld.Server{})
+		srv2 = buildSvr(tag2)
 		return srv2.Run()
 	})
 	require.NoError(t, err)
@@ -203,23 +223,49 @@ func TestRegistryGrpcx(t *testing.T) {
 	assert.NotNil(t, c)
 	defer c.Close()
 	client := helloworld.NewGreeterClient(c)
-	for i := 0; i < 5; i++ {
-		resp, err := client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
-		assert.NoError(t, err)
-		assert.Equal(t, resp.Message, "Hello round robin")
-	}
-	{
+	t.Run("request", func(t *testing.T) {
+		for i := 0; i < 5; i++ {
+			resp, err := client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
+			assert.NoError(t, err)
+			assert.Contains(t, resp.Message, "Hello round robin")
+		}
+	})
+	t.Run("control remove one", func(t *testing.T) {
 		// delete one of the service,srv2 should be worked
+		//srv.Stop(context.Background())
 		for _, info := range srv.ServiceInfos {
 			_, err = etcdCli.Delete(context.Background(), info.BuildKey())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
-		time.Sleep(time.Millisecond * 100)
-		_, err = client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
-		assert.NoError(t, err)
-		// todo robin validate
-	}
-	{
+		time.Sleep(time.Second * 1)
+		for i := 0; i < 5; i++ {
+			resp, err := client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "to srv two"})
+			assert.NoError(t, err)
+			assert.Contains(t, resp.Message, tag2)
+		}
+
+		t.Run("control add one", func(t *testing.T) {
+			for _, info := range srv.ServiceInfos {
+				v, _ := json.Marshal(info)
+				_, err = etcdCli.Put(context.Background(), info.BuildKey(), string(v))
+				require.NoError(t, err)
+			}
+			time.Sleep(time.Second * 1)
+			var expect1, expect2 bool
+			for i := 0; i < 5; i++ {
+				resp, err := client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "to srv two"})
+				assert.NoError(t, err)
+				if strings.Contains(resp.Message, tag1) {
+					expect1 = true
+				}
+				if strings.Contains(resp.Message, tag2) {
+					expect2 = true
+				}
+			}
+			assert.True(t, expect1 && expect2)
+		})
+	})
+	t.Run("all down", func(t *testing.T) {
 		assert.NoError(t, srv.Stop(context.Background()))
 		assert.NoError(t, srv2.Stop(context.Background()))
 		// sleep let unregistry work,the latency 500 work fine, below will failure
@@ -227,5 +273,5 @@ func TestRegistryGrpcx(t *testing.T) {
 		resp, err := client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
 		assert.Nil(t, resp)
 		assert.Error(t, err)
-	}
+	})
 }

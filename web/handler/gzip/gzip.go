@@ -3,17 +3,16 @@ package gzip
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"path/filepath"
-	"strings"
-	"sync"
-
 	"github.com/gin-gonic/gin"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/klauspost/compress/gzhttp/writer"
 	"github.com/klauspost/compress/gzhttp/writer/gzkp"
 	"github.com/klauspost/compress/gzip"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"net/http"
+	"path/filepath"
+	"strings"
+	"sync"
 )
 
 var (
@@ -105,20 +104,13 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			level:          opt.Level,
 			minSize:        opt.MinSize,
 		}
-		// gzkp.NewWriter(c.gzipWriter, opt.Level) has reset the gzipWriter, so we don't need to reset it again.
-		// gw.Reset(c.gzipWriter)
-		ggrw := &GinResponseWriter{
-			ResponseWriter: c.Writer,
-			gzipWriter:     gw,
-		}
-		c.Writer = ggrw
+		c.Writer = gw
 		c.Header("Vary", "Accept-Encoding")
-		defer func() {
-			gw.Close()
-			h.grwPool.Put(gw)
-			c.Header("Content-Length", fmt.Sprint(c.Writer.Size()))
-		}()
 		c.Next()
+
+		gw.Close()
+		c.Header("Content-Length", fmt.Sprint(c.Writer.Size()))
+		h.grwPool.Put(gw)
 	}
 }
 

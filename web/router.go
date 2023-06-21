@@ -16,12 +16,10 @@ type RouterGroup struct {
 }
 
 // Router is base on Gin
-// you can use AfterRegisterInternalHandler to replace an inline HandlerFunc or add a new
 type Router struct {
 	*gin.Engine
-	Groups                       []*RouterGroup
-	serverOptions                *ServerOptions
-	AfterRegisterInternalHandler func(*Router)
+	Groups        []*RouterGroup
+	serverOptions *ServerOptions
 }
 
 func NewRouter(options *ServerOptions) *Router {
@@ -44,9 +42,6 @@ func (r *Router) Apply(cnf *conf.Configuration) (err error) {
 		return err
 	}
 
-	if r.AfterRegisterInternalHandler != nil {
-		r.AfterRegisterInternalHandler(r)
-	}
 	cnf.Each("routerGroups", func(group string, sub *conf.Configuration) {
 		var mdl []gin.HandlerFunc
 		sub.Each("middlewares", func(name string, mid *conf.Configuration) {

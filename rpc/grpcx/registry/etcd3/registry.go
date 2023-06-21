@@ -26,16 +26,16 @@ type Driver struct {
 }
 
 // CreateRegistry creates a new registry.
-func (drv *Driver) CreateRegistry(cfg *conf.Configuration) (registry.Registry, error) {
+func (drv *Driver) CreateRegistry(cnf *conf.Configuration) (registry.Registry, error) {
 	drv.mu.Lock()
 	defer drv.mu.Unlock()
-	ccfg := cfg
-	ref := cfg.String("ref")
+	ccfg := cnf
+	ref := cnf.String("ref")
 	if ref != "" {
 		if v, ok := drv.cache[ref]; ok {
 			return v, nil
 		}
-		ccfg = cfg.Root().Sub(ref)
+		ccfg = cnf.Root().Sub(ref)
 	}
 	r := New()
 	r.Apply(ccfg)
@@ -46,13 +46,13 @@ func (drv *Driver) CreateRegistry(cfg *conf.Configuration) (registry.Registry, e
 }
 
 // ResolverBuilder creates a new resolver builder.
-func (drv *Driver) ResolverBuilder(cfg *conf.Configuration) (resolver.Builder, error) {
+func (drv *Driver) ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, error) {
 	drv.mu.Lock()
 	defer drv.mu.Unlock()
 	var opts Options
-	ccfg := cfg
-	if ref := cfg.String("ref"); ref != "" {
-		ccfg = cfg.Root().Sub(ref)
+	ccfg := cnf
+	if ref := cnf.String("ref"); ref != "" {
+		ccfg = cnf.Root().Sub(ref)
 	}
 	if err := ccfg.Unmarshal(&opts); err != nil {
 		return nil, err

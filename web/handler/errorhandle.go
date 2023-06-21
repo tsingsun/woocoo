@@ -74,9 +74,6 @@ func (em *ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerF
 		c.Next()
 		if len(c.Errors) > 0 {
 			code, e := em.config.ErrorParser(c, messageError)
-			if c.Writer.Written() { // if the status has been written,must not write again
-				code = c.Writer.Status()
-			}
 			NegotiateResponse(c, code, e, em.config.NegotiateFormat)
 		}
 	}
@@ -111,10 +108,18 @@ func (em *ErrorHandleMiddleware) Shutdown(_ context.Context) error {
 
 // NegotiateResponse calls different Render according to acceptably Accept format.
 //
+// HTTP Status Code behavior: 1. response has sent can not change it.  2. if code not default,use it.
+// 3. if code is default,use passed code.
+//
 // no support format described:
 //
 //	protobuf: gin.H is not protoreflect.ProtoMessage
 func NegotiateResponse(c *gin.Context, code int, data any, offered []string) {
+	if c.Writer.Written() { // if the status has been written,must not write again
+		code = c.Writer.Status()
+	} else if c.Writer.Status() != http.StatusOK {
+		code = c.Writer.Status()
+	}
 	switch c.NegotiateFormat(offered...) {
 	case binding.MIMEJSON:
 		c.JSON(code, data)

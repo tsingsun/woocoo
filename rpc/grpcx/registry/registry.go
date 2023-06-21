@@ -146,5 +146,8 @@ func (si ServiceInfo) BuildKey() string {
 
 // return service instance key
 func nodePath(namespace, name, version, addr string) string {
+	if !strings.HasPrefix(namespace, "/") {
+		namespace = "/" + namespace
+	}
 	return strings.Join([]string{namespace, name, version, addr}, "/")
 }

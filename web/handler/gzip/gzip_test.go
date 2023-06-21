@@ -52,10 +52,10 @@ func newServer(config map[string]interface{}) *gin.Engine {
 	rServer := httptest.NewServer(new(rServer))
 	target, _ := url.Parse(rServer.URL)
 	rp := httputil.NewSingleHostReverseProxy(target)
-
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
-
-	router.Use(gzip.Gzip().ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(config))))
+	mid := gzip.Gzip()
+	router.Use(mid.ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(config))))
 	router.GET("/", func(c *gin.Context) {
 		c.Header("Content-Length", strconv.Itoa(len(testResponse)))
 		c.String(200, testResponse)
@@ -130,7 +130,8 @@ func TestExcludedExtensions(t *testing.T) {
 	req.Header.Add("Accept-Encoding", "gzip")
 
 	router := gin.New()
-	router.Use(gzip.Gzip().ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+	mid := gzip.Gzip()
+	router.Use(mid.ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
 		"minSize":            1,
 		"excludedExtensions": []string{".html"},
 	}))))
@@ -146,6 +147,7 @@ func TestExcludedExtensions(t *testing.T) {
 	assert.Equal(t, "", w.Header().Get("Vary"))
 	assert.Equal(t, "this is a HTML!", w.Body.String())
 	assert.Equal(t, "", w.Header().Get("Content-Length"))
+	assert.NoError(t, mid.Shutdown(context.Background()))
 }
 
 func unzipBody(r io.Reader) (string, error) {
@@ -156,23 +158,6 @@ func unzipBody(r io.Reader) (string, error) {
 	defer gr.Close()
 	body, _ := io.ReadAll(gr)
 	return string(body), nil
-}
-
-func TestNoGzip(t *testing.T) {
-	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/", nil)
-
-	t.Run("lt minSize", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		r := newServer(map[string]interface{}{
-			"minSize": 20,
-		})
-		r.ServeHTTP(w, req)
-
-		assert.Equal(t, w.Code, 200)
-		assert.Equal(t, w.Header().Get("Content-Encoding"), "")
-		assert.Equal(t, w.Header().Get("Content-Length"), "19")
-		assert.Equal(t, w.Body.String(), testResponse)
-	})
 }
 
 func TestGzipWithReverseProxy(t *testing.T) {
@@ -206,7 +191,7 @@ web:
       - default:
           middlewares:
             - gzip:
-                minSize: 1
+                minSize: 20
                 excludedExtensions: [".html"]
                 level: 1
 `
@@ -217,14 +202,60 @@ web:
 		c.Header("Content-Length", strconv.Itoa(len(testResponse)))
 		c.String(200, testResponse)
 	})
-	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/", nil)
-	req.Header.Add("Accept-Encoding", "gzip")
-	w := httptest.NewRecorder()
-	srv.Router().ServeHTTP(w, req)
-	assert.Equal(t, w.Code, 200)
-	wantBody, err := unzipBody(w.Body)
-	assert.NoError(t, err)
-	assert.Equal(t, wantBody, testResponse)
+	t.Run("lt minSize", func(t *testing.T) {
+		req, _ := http.NewRequestWithContext(context.Background(), "GET", "/", nil)
+		req.Header.Add("Accept-Encoding", "gzip")
+		w := httptest.NewRecorder()
+		srv.Router().ServeHTTP(w, req)
+		assert.Equal(t, w.Code, 200)
+		assert.NotZero(t, w.Header().Get("Content-Length"))
+		t.Log(w.Header().Get("Content-Length"))
+		got, _ := io.ReadAll(w.Body)
+		assert.Equal(t, testResponse, string(got))
+	})
+	t.Run("gt minSize", func(t *testing.T) {
+		srv.Router().GET("/usezip", func(c *gin.Context) {
+			gt := testResponse + "great than minSize"
+			c.String(200, gt)
+		})
+		req, _ := http.NewRequestWithContext(context.Background(), "GET", "/usezip", nil)
+		req.Header.Add("Accept-Encoding", "gzip")
+		w := httptest.NewRecorder()
+		srv.Router().ServeHTTP(w, req)
+		assert.Equal(t, w.Code, 200)
+		assert.NotZero(t, w.Header().Get("Content-Length"))
+		wantBody, err := unzipBody(w.Body)
+		assert.NoError(t, err)
+		assert.Contains(t, wantBody, "great than minSize")
+	})
+	t.Run("miss header no zip", func(t *testing.T) {
+		req, _ := http.NewRequestWithContext(context.Background(), "GET", "/", nil)
+		w := httptest.NewRecorder()
+		srv.Router().ServeHTTP(w, req)
+		assert.Equal(t, w.Code, 200)
+		assert.Equal(t, w.Header().Get("Content-Encoding"), "")
+		assert.Equal(t, w.Header().Get("Content-Length"), "19")
+		assert.Equal(t, w.Body.String(), testResponse)
+	})
+	t.Run("json", func(t *testing.T) {
+		srv.Router().GET("/json", func(c *gin.Context) {
+			c.JSON(200, []gin.H{
+				{"message": testResponse, "int": 1, "bool": true},
+				{"message": testResponse, "int": 2, "bool": true},
+				{"message": testResponse, "int": 3, "bool": true},
+			},
+			)
+		})
+		req, _ := http.NewRequestWithContext(context.Background(), "GET", "/json", nil)
+		req.Header.Add("Accept-Encoding", "gzip")
+		w := httptest.NewRecorder()
+		srv.Router().ServeHTTP(w, req)
+		assert.Equal(t, w.Code, 200)
+		assert.Equal(t, w.Header().Get("Content-Encoding"), "gzip")
+		wantBody, err := unzipBody(w.Body)
+		assert.NoError(t, err)
+		assert.Contains(t, wantBody, testResponse)
+	})
 }
 
 func BenchmarkGzip_S2k(b *testing.B) { benchmarkGzip(b, false, 2048, nativeGzip.DefaultCompression) }

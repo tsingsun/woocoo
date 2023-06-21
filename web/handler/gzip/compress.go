@@ -1,57 +1,41 @@
 package gzip
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/klauspost/compress/gzhttp/writer"
 )
 
 // ResponseWriter is a wrapper for the http.ResponseWriter that compresses
 type ResponseWriter struct {
-	http.ResponseWriter
+	gin.ResponseWriter
 	gzipWriter writer.GzipWriter
 	minSize    int
 	level      int
+	useZip     bool
 }
 
-func (r *ResponseWriter) Close() error {
-	err := r.gzipWriter.Close()
+func (r *ResponseWriter) Close() (err error) {
+	if r.useZip {
+		err = r.gzipWriter.Close()
+	}
 	r.gzipWriter = nil
-	r.ResponseWriter = nil
 	return err
 }
 
 func (r *ResponseWriter) Write(data []byte) (int, error) {
-	r.Header().Del("Content-Length")
-	if len(data) < r.minSize {
+	r.useZip = len(data) >= r.minSize
+	if !r.useZip {
 		return r.ResponseWriter.Write(data)
 	}
-	r.Header().Set("Content-Encoding", "gzip")
+	r.ResponseWriter.Header().Del("Content-Length")
+	r.ResponseWriter.Header().Set("Content-Encoding", "gzip")
 	return r.gzipWriter.Write(data)
 }
 
-// GinResponseWriter is a wrapper response write using GZIP for Gin
-type GinResponseWriter struct {
-	gin.ResponseWriter
-	gzipWriter *ResponseWriter
+func (r *ResponseWriter) WriteHeader(code int) {
+	r.ResponseWriter.WriteHeader(code)
 }
 
-// WriteString writes the string into the response body.
-func (g *GinResponseWriter) WriteString(s string) (int, error) {
-	return g.gzipWriter.Write([]byte(s))
-}
-
-func (g *GinResponseWriter) Write(data []byte) (int, error) {
-	return g.gzipWriter.Write(data)
-}
-
-func (g *GinResponseWriter) Flush() {
-	g.Header().Del("Content-Length")
-	g.gzipWriter.gzipWriter.Flush()
-}
-
-func (g *GinResponseWriter) WriteHeader(code int) {
-	g.Header().Del("Content-Length")
-	g.ResponseWriter.WriteHeader(code)
+func (r *ResponseWriter) WriteString(s string) (int, error) {
+	return r.Write([]byte(s))
 }

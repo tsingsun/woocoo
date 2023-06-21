@@ -54,3 +54,30 @@ func TestCompressionOption_ServerOption(t *testing.T) {
 		})
 	}
 }
+
+func TestCompressionOption_DialOption(t *testing.T) {
+	type args struct {
+		cfg *conf.Configuration
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "gzip",
+			args: args{
+				cfg: conf.NewFromStringMap(map[string]interface{}{
+					"name":  "gzip",
+					"level": 1,
+				}),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			co := CompressionOption{}
+			got := co.DialOption(tt.args.cfg)
+			assert.NotNil(t, got)
+		})
+	}
+}

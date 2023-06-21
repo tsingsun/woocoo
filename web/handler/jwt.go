@@ -25,9 +25,6 @@ type (
 		// The order of precedence is user-defined TokenLookupFuncs, and TokenLookup.
 		// You can also provide both if you want.
 		TokenLookupFuncs []ValuesExtractor
-		// SuccessHandler defines a function which is executed for a valid token before middleware chain continues with next
-		// middleware or handler.
-		SuccessHandler func(c *gin.Context)
 		// LogoutHandler defines a function which is executed for user logout system.It clear something like cache.
 		LogoutHandler func(*gin.Context)
 		// ErrorHandler defines a function which is executed for an invalid token.
@@ -173,9 +170,6 @@ func (mw *JWTMiddleware) middleware() gin.HandlerFunc {
 						lastTokenErr = err
 						continue
 					}
-				}
-				if mw.Config.SuccessHandler != nil {
-					mw.Config.SuccessHandler(c)
 				}
 				return
 			}

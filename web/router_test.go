@@ -23,10 +23,9 @@ func TestRouter_AddRule(t *testing.T) {
 
 func TestRouter_FindGroup(t *testing.T) {
 	type fields struct {
-		Engine                       *gin.Engine
-		Groups                       []*RouterGroup
-		serverOptions                *ServerOptions
-		AfterRegisterInternalHandler func(*Router)
+		Engine        *gin.Engine
+		Groups        []*RouterGroup
+		serverOptions *ServerOptions
 	}
 	type args struct {
 		basePath string
@@ -40,10 +39,9 @@ func TestRouter_FindGroup(t *testing.T) {
 		{
 			name: "find empty",
 			fields: fields{
-				Engine:                       gin.New(),
-				Groups:                       []*RouterGroup{{basePath: "/"}},
-				serverOptions:                &ServerOptions{},
-				AfterRegisterInternalHandler: nil,
+				Engine:        gin.New(),
+				Groups:        []*RouterGroup{{basePath: "/"}},
+				serverOptions: &ServerOptions{},
 			},
 			args: args{
 				basePath: "",
@@ -53,10 +51,9 @@ func TestRouter_FindGroup(t *testing.T) {
 		{
 			name: "find",
 			fields: fields{
-				Engine:                       gin.New(),
-				Groups:                       []*RouterGroup{{basePath: "/index"}, {basePath: "/gql"}},
-				serverOptions:                &ServerOptions{},
-				AfterRegisterInternalHandler: nil,
+				Engine:        gin.New(),
+				Groups:        []*RouterGroup{{basePath: "/index"}, {basePath: "/gql"}},
+				serverOptions: &ServerOptions{},
 			},
 			args: args{
 				basePath: "/index",
@@ -66,10 +63,9 @@ func TestRouter_FindGroup(t *testing.T) {
 		{
 			name: "not found",
 			fields: fields{
-				Engine:                       gin.New(),
-				Groups:                       []*RouterGroup{{basePath: "/"}},
-				serverOptions:                &ServerOptions{},
-				AfterRegisterInternalHandler: nil,
+				Engine:        gin.New(),
+				Groups:        []*RouterGroup{{basePath: "/"}},
+				serverOptions: &ServerOptions{},
 			},
 			args: args{
 				basePath: "/xxx",
@@ -80,10 +76,9 @@ func TestRouter_FindGroup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Router{
-				Engine:                       tt.fields.Engine,
-				Groups:                       tt.fields.Groups,
-				serverOptions:                tt.fields.serverOptions,
-				AfterRegisterInternalHandler: tt.fields.AfterRegisterInternalHandler,
+				Engine:        tt.fields.Engine,
+				Groups:        tt.fields.Groups,
+				serverOptions: tt.fields.serverOptions,
 			}
 			assert.Equalf(t, tt.want, r.FindGroup(tt.args.basePath), "FindGroup(%v)", tt.args.basePath)
 		})

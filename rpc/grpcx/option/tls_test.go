@@ -49,4 +49,23 @@ func TestTLSOption(t *testing.T) {
 		}, conf.WithBaseDir(testdata.BaseDir()))
 		assert.NotNil(t, opt.DialOption(cfg))
 	})
+	t.Run("insecure DialOption ok", func(t *testing.T) {
+		opt := TLSOption{}
+		cfg := conf.NewFromStringMap(map[string]interface{}{
+			"cert": "",
+			"key":  "",
+		})
+		assert.NotNil(t, opt.DialOption(cfg))
+	})
+	t.Run("error cert", func(t *testing.T) {
+		opt := TLSOption{}
+		cfg := conf.NewFromStringMap(map[string]interface{}{
+			"cert": "x509/client.key",
+			"key":  "",
+		}, conf.WithBaseDir(testdata.BaseDir()))
+
+		assert.Panics(t, func() {
+			opt.DialOption(cfg)
+		})
+	})
 }

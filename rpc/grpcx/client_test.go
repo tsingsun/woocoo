@@ -2,6 +2,8 @@ package grpcx
 
 import (
 	"context"
+	"github.com/stretchr/testify/require"
+	"github.com/tsingsun/woocoo/testco/wctest"
 	"testing"
 	"time"
 
@@ -173,6 +175,7 @@ grpc:
 	resp, err := gc.SayHello(context.Background(), &helloworld.HelloRequest{Name: "woocoo"})
 	assert.NoError(t, err)
 	assert.Equal(t, resp.Message, "Hello woocoo")
+
 }
 
 func TestClient_DialRegistry(t *testing.T) {
@@ -189,9 +192,6 @@ service:
     scheme: etcd
     ttl: 600s
     etcd:
-      tls:
-        cert: "x509/server.crt"
-        key: "x509/server.key"
       endpoints:
         - 127.0.0.1:2379
       dial-timeout: 3s
@@ -205,26 +205,25 @@ service:
     dialOption:
       - insecure:
       - block:
-      - timeout: 5s
-      - tls:
-          cert: "x509/server.crt" 
       - unaryInterceptors:
           - otel:
 `)
 	cfg := conf.NewFromBytes(b, conf.WithBaseDir(testdata.BaseDir()))
 	srv := New(WithConfiguration(cfg.Sub("service")))
-	go func() {
-		if err := srv.Run(); err != nil {
-			t.Error(err)
-			return
-		}
-	}()
-	time.Sleep(2000)
+	helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
+	require.NoError(t, wctest.RunWait(t, time.Second, func() error {
+		return srv.Run()
+	}))
+	defer srv.Stop(context.Background())
 	cli := NewClient(cfg.Sub("service"))
 	assert.Equal(t, cli.registryOptions.Namespace, "woocoo")
 	assert.Equal(t, cli.registryOptions.ServiceName, "helloworld.Greeter")
 	assert.EqualValues(t, cli.registryOptions.Metadata, map[string]string{"version": "1.0"})
 	_, err := cli.Dial("")
-	assert.Error(t, err)
-	srv.Stop(context.Background())
+	assert.NoError(t, err)
+
+	t.Run("downgrade", func(t *testing.T) {
+		_, err := cli.Dial(cfg.String("service.server.addr"))
+		require.NoError(t, err)
+	})
 }

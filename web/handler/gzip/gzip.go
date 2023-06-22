@@ -61,16 +61,6 @@ func convertToMap(slice []string) map[string]bool {
 	return m
 }
 
-func gzipCompressPool(minSize int) sync.Pool {
-	return sync.Pool{
-		New: func() any {
-			return &ResponseWriter{
-				minSize: minSize,
-			}
-		},
-	}
-}
-
 // Handler is a gzip handler
 type Handler struct {
 	writerFactory writer.GzipWriterFactory

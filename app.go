@@ -67,7 +67,7 @@ func (a *App) Run() error {
 		wg.Add(1)
 		eg.Go(func() error {
 			wg.Done()
-			return srv.Start(context.Background())
+			return srv.Start(a.ctx)
 		})
 	}
 	wg.Wait()

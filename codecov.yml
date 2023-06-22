@@ -1,0 +1,10 @@
+codecov:
+  ci:
+    - github.com
+  require_ci_to_pass: true
+
+ignore:
+  - "**/*.pb.go"
+  - "**/*.pb.gw.go"
+  - "test/**/*"
+  - "third_party/"

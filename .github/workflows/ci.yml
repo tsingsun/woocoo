@@ -1,0 +1,77 @@
+name: GoTest
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - 'readme*.md'
+      - 'cmd/**'
+      - '.github/**'
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'readme*.md'
+      - 'cmd/**'
+      - '.github/**'
+jobs:
+#  lint:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v3
+#      - name: Run linters
+#        uses: golangci/golangci-lint-action@v2.5.2
+#        with:
+#          version: v1.45.2
+
+  build:
+    runs-on: ubuntu-latest
+    services:
+      etcd:
+        image: bitnami/etcd:3.4
+        ports:
+          - "2379:2379"
+          - "2380:2380"
+        env:
+          ALLOW_NONE_AUTHENTICATION: yes
+          ETCD_ADVERTISE_CLIENT_URLS: "http://127.0.0.1:2379"
+      polaris:
+        image: polarismesh/polaris-standalone:latest
+        ports:
+          - "8090:8090"
+          - "8091:8091"
+          - "8093:8093"
+          - "8100:8100"
+          - "8101:8101"
+          - "9090:9090"
+          - "9091:9091"
+      otel:
+        image: otel/opentelemetry-collector-contrib:0.79.0
+        ports:
+          - "4317:4317"
+          - "4318:4318"
+          - "8888:8888"
+          - "8889:8889"
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.19','1.20']
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go }}
+
+    - uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Build
+      run: make build
+
+    - name: Run coverage
+      run: make test-coverage
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3

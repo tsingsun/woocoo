@@ -1,0 +1,39 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen/codegen.Graph */}}
+
+{{ define "interface" }}
+
+{{ template "header" $ }}
+
+{{ template "import" $ }}
+
+{{ range $n:=$.Nodes }}
+    {{ $serviceName := pascal $n.Name }}
+    // {{ $serviceName }}Server is the server API for {{ $serviceName }} service.
+    type {{ $serviceName }}Server interface {
+    {{- range $n.Operations }}
+        {{- if .IgnoreInterface }}
+            {{- continue }}
+        {{- end }}
+    // ({{ .Method }} {{ .Path }})
+    {{ .Name }}(*gin.Context{{ if .HasRequest }}, *{{ .RequestName }}{{ end }})(
+    {{- if .HasResponse }}{{ .ResponseOK.Schema.Type.String }}, {{ end }}error)
+    {{- end }}
+    }
+
+{{ end }}
+{{ range $n:=$.Nodes }}
+    {{ $serviceName := pascal $n.Name }}
+    type Unimplemented{{ $serviceName }}Server struct {
+    }
+    {{- range $n.Operations }}
+        {{- if .IgnoreInterface }}
+            {{- continue }}
+        {{- end }}
+        func (Unimplemented{{ $serviceName }}Server) {{ .Name }}(c *gin.Context{{ if .HasRequest }}, req *{{ .RequestName }}{{ end }})(
+        {{- if .HasResponse}}_ {{ .ResponseOK.Schema.Type.String }}, {{ end }}err error) {
+        err = fmt.Errorf("method {{ .Name }} not implemented")
+        return
+        }
+    {{ end }}
+{{ end }}
+{{ end }}

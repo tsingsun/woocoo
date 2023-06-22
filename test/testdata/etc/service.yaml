@@ -1,0 +1,44 @@
+grpc:
+  server:
+    addr: 127.0.0.1:20000
+    namespace: /woocoo/service
+    version: "1.0"
+    engine:
+      - keepalive:
+          time: 1h
+      - unaryInterceptors:
+          - accessLog:
+              timestampFormat: "2006-01-02 15:04:05"
+          - recovery:
+          - auth:
+              signingAlgorithm: HS256
+              realm: woocoo
+              secret: 123456
+              privKey: config/privKey.pem
+              pubKey: config/pubKey.pem
+              tenantHeader: Qeelyn-Org-Id
+      - streamInterceptors:
+          - accessLog:
+  registry:
+    scheme: etcd
+    ttl: 600s
+    etcd:
+      endpoints:
+        - 127.0.0.1:2379
+      dial-timeout: 3s
+      dial-keep-alive-time: 3s
+  prometheus:
+    addr: 0.0.0.0:2222
+  client:
+    target:
+      namespace: woocoo
+      serviceName: helloworld.Greeter
+      metadata:
+        version: "1.0"
+    dialOption:
+      - insecure:
+      - block:
+      - timeout: 5s
+      - unaryInterceptors:
+          - trace:
+

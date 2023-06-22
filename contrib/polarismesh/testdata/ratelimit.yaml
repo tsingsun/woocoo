@@ -1,0 +1,38 @@
+namespace: ratelimit
+grpc:
+  server:
+    addr: 127.0.0.1:20012
+  engine:
+    - unaryInterceptors:
+        - recovery:
+        - polarisRateLimit:
+  registry:
+    scheme: polaris
+    ttl: 10s
+    global: true
+    polaris:
+      global:
+        serverConnector:
+          addresses:
+            - 127.0.0.1:8091
+        statReporter:
+          enable: true
+          chain:
+            - prometheus
+          plugin:
+            prometheus:
+              type: push
+              address: 127.0.0.1:9091
+              interval: 1s
+  client:
+    target:
+      namespace: ratelimit
+      serviceName: helloworld.Greeter
+      metadata:
+        srcService: helloworld.Greeter
+        header_rateLimit: text # key case-sensitive
+    dialOption:
+      - tls:
+      - block:
+      - timeout: 10s
+      - serviceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }'

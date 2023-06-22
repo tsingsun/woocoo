@@ -1,0 +1,39 @@
+grpc:
+  server:
+    addr: 127.0.0.1:21112
+    namespace: woocoo_1
+    version: "1.0"
+    engine:
+      - unaryInterceptors:
+          - rateLimit:
+          - recovery:
+      - streamInterceptors:
+  registry:
+    scheme: polaris
+    ttl: 10s
+    polaris:
+      global:
+        serverConnector:
+          addresses:
+            - 127.0.0.1:8091
+        statReporter:
+          enable: true
+          chain:
+            - prometheus
+          plugin:
+            prometheus:
+              type: push
+              address: 127.0.0.1:9091
+              interval: 1s
+  client:
+    target:
+      namespace: woocoo_1
+      serviceName: helloworld.Greeter
+      metadata:
+        version: "1.0"
+        header_tag: tag1
+    dialOption:
+      - tls:
+      - block:
+      - timeout: 10s
+      - serviceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }'

@@ -1,0 +1,17 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/project.Graph */}}
+
+{{ define "import" }}
+import (
+    "fmt"
+    {{- range $.Config.Imports }}
+        "{{ . }}"
+    {{- end }}
+    {{- if not (eq $.Config.Package $.Package) }}
+        {{- template "import/tags" }}
+    {{- end }}
+    "github.com/tsingsun/woocoo"
+)
+{{ end }}
+
+{{ define "import/tags" }}
+{{ end }}

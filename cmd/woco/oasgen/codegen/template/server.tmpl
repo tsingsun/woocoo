@@ -1,0 +1,87 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen/codegen.Graph */}}
+
+{{ define "server" }}
+
+{{- with extend $ "Package" "server" -}}
+    {{ template "header" . }}
+{{ end }}
+
+{{ template "import" $ }}
+import(
+    "github.com/gin-gonic/gin/binding"
+    "github.com/tsingsun/woocoo/web/handler"
+)
+{{ range .Nodes }}
+    {{ $serviceName := pascal .Name }}
+    {{ $pkgName := pkgName .Config.Package}}
+    // Register{{ $serviceName }}Handlers creates http.Handler with routing matching OpenAPI spec.
+    func Register{{ $serviceName }}Handlers(router *gin.RouterGroup, si {{$pkgName}}.{{ $serviceName }}Server) {
+    {{- range .Operations }}
+        {{- if .IgnoreInterface }}
+            {{- continue }}
+        {{- end }}
+        router.{{ .Method }}("{{ .Path | oasUriToGinUri }}", wrap{{pascal .Name }}(si))
+    {{- end }}
+    }
+{{ end }}
+{{ range .Nodes }}
+    {{ $serviceName := pascal .Name }}
+    {{ $pkgName := pkgName .Config.Package}}
+    {{ range .Operations }}
+        {{- if .IgnoreInterface }}
+            {{- continue }}
+        {{- end }}
+    func wrap{{pascal .Name }}(si {{$pkgName}}.{{ $serviceName }}Server) func(c *gin.Context) {
+        return func(c *gin.Context) {
+        {{- if .HasRequest }}
+            var req {{$pkgName}}.{{ .RequestName }}
+            {{- if .Request.BindUri}}
+                if err := c.ShouldBindUri(&req.UriParams); err != nil {
+                    handler.AbortWithError(c,http.StatusBadRequest, err)
+                    return
+                }
+            {{- end }}
+            {{- if .Request.BindHeader }}
+                if err := c.ShouldBindHeader(&req.HeaderParams); err != nil {
+                    handler.AbortWithError(c,http.StatusBadRequest, err)
+                    return
+                }
+            {{- end }}
+            {{- if .Request.BindBody }}
+                if err := c.ShouldBind(&req.Body); err != nil {
+                    handler.AbortWithError(c,http.StatusBadRequest, err)
+                    return
+                }
+            {{- end }}
+        {{- end }}
+        {{- if .HasResponse }}
+            resp, err := si.{{ .Name }}(c,{{ if .HasRequest }}&req, {{ end }})
+            if err != nil {
+                c.Error(err)
+                return
+            }
+            {{- if and .ResponseNotFound .ResponseOK.Schema.Type.Nillable }}
+                if resp == nil {
+                    handler.AbortWithError(c,http.StatusBadRequest, errors.New("{{ .ResponseNotFound.Description }}"))
+                    return
+                }
+            {{- end }}
+            {{- if .ResponseOK.ContentTypes }}
+                {{- if isSupportNegotiate .ResponseOK.ContentTypes }}
+                    handler.NegotiateResponse(c, http.StatusOK, resp, []string{{"{"}}{{joinQuote .ResponseOK.ContentTypes ","}}{{"}"}})
+                {{- else if isBytes .ResponseOK.Schema.Type.Type }}
+                    c.Data(http.StatusOK, {{index .ResponseOK.ContentTypes 0 | quote }}, resp)
+                {{- end }}
+            {{- end}}
+        {{- else }}
+            err := si.{{ .Name }}(c,{{ if .HasRequest }}&req, {{ end }})
+            if err != nil {
+                c.Error(err)
+                return
+            }
+        {{- end }}
+        }
+    }
+    {{ end }}
+{{ end }}
+{{ end }}

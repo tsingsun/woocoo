@@ -1,0 +1,39 @@
+appName: woocoo
+version: 0.0.1
+development: true
+log:
+  # zap.AddCallerSkip
+  cores:
+    - level: debug
+      disableCaller: true
+      disableStacktrace: true
+      encoding: json
+      encoderConfig:
+        timeEncoder: iso8601
+      outputPaths:
+        - stdout
+      errorOutputPaths:
+        - stderr
+  rotate:
+    maxsize: 1
+    maxage: 1
+    maxbackups: 1
+    localtime: true
+    compress: false
+trace:
+
+cache:
+  redis:
+    #    type: cluster
+    #    addrs:
+    #      - 127.0.0.1:6379
+    type: standalone
+    addr: 127.0.0.1:6379
+    db: 1
+    local:
+      size: 1000
+      ttl: 60
+includeFiles:
+  - etc/attach.yaml
+  - etc/router.yaml
+  - etc/service.yaml

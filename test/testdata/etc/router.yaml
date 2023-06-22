@@ -1,0 +1,32 @@
+web:
+  server:
+    addr: 0.0.0.0:30000
+  engine:
+    redirectTrailingSlash: false
+    remoteIPHeaders:
+      - X-Forwarded-For
+      - X-Real-XIP
+    routerGroups:
+      - default:
+          middlewares:
+            - otel:
+            - accessLog:
+                requestBody: true
+                exclude:
+                  - IntrospectionQuery
+            - recovery:
+      - auth:
+          basePath: "/auth"
+          middlewares:
+            - auth:
+                signingKey: secret
+                # use pem format
+                # signingKey: "file:///./jwt_public_key.pem"
+      - graphql:
+          basePath: "/graphql"
+          middlewares:
+            - graphql:
+                queryPath: "/query"
+                docPath: "/"
+                group: "graphql"
+                subDomain: ""

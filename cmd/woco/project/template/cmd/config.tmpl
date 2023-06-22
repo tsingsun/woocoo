@@ -1,0 +1,63 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/project.Graph */}}
+{{- define "config" -}}
+namespace: default
+appName: {{ pkgName $.Package}}
+version: 0.0.1
+development: true
+log:
+  cores:
+    - level: debug
+      outputPaths:
+        - stdout
+{{- if .HasModule "otel"}}
+otel:
+  traceExporterEndpoint: stdout
+  metricExporterEndpoint: stdout
+{{- end}}
+{{- if .HasStore }}
+store:
+{{- end }}
+{{- if .HasModule "db"}}
+  db:
+    driverName: mysql
+    dsn: "root:root@tcp(localhost:3306)/database?parseTime=true&loc=Local"
+{{- end }}
+{{- if .HasModule "web"}}
+web:
+  server:
+    addr: 127.0.0.1:8080
+  engine:
+    routerGroups:
+      - default:
+          middlewares:
+  {{- if .HasModule "otel" }}
+            - otel:
+  {{- end}}
+            - accessLog:
+            - recovery:
+            - errorHandle:
+{{- end }}
+{{- if .HasModule "grpc"}}
+grpc:
+  server:
+    addr: 127.0.0.1:8081
+  engine:
+    - unaryInterceptors:
+  {{- if .HasModule "otel" }}
+        - otel:
+  {{- end}}
+        - accessLog:
+        - recovery:
+{{- end }}
+{{- if .HasModule "cache"}}
+cache:
+  redis:
+    type: standalone
+    addr: 127.0.0.1:6379
+    db: 1
+    local:
+      size: 10000
+      ttl: 10m
+{{- end }}
+
+{{- end }}

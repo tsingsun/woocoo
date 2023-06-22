@@ -1,0 +1,76 @@
+rbac:
+  model: |
+    [request_definition]
+    r = sub, obj, act
+    [policy_definition]
+    p = sub, obj, act
+    [role_definition]
+    g = _, _
+    [policy_effect]
+    e = some(where (p.eft == allow))
+    [matchers]
+    m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
+  policy: |
+    p, alice, data1, read
+    p, bob, data2, write
+    p, data2_admin, data2, read
+    p, data2_admin, data2, write
+    g, alice, data2_admin
+redis:
+  model: |
+    [request_definition]
+    r = sub, obj, act
+    [policy_definition]
+    p = sub, obj, act
+    [role_definition]
+    g = _, _
+    [policy_effect]
+    e = some(where (p.eft == allow))
+    [matchers]
+    m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
+  policy: |
+    p, alice, data1, read
+    p, bob, data2, write
+    p, data2_admin, data2, read
+    p, data2_admin, data2, write
+    g, alice, data2_admin
+callback:
+  model: |
+    [request_definition]
+    r = sub, obj, act
+    [policy_definition]
+    p = sub, obj, act
+    [role_definition]
+    g = _, _
+    [policy_effect]
+    e = some(where (p.eft == allow))
+    [matchers]
+    m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
+  policy: |
+    p, alice, data1, remove
+    p, bob, data2, write
+    p, data2_admin, data2, read
+    p, data2_admin, data2, write
+    g, alice, data2_admin
+conditions:
+  model: |
+    [request_definition]
+    r = sub, obj, act
+
+    [policy_definition]
+    p = sub, sub_rule, act
+
+    [role_definition]
+    g = _, _
+
+    [policy_effect]
+    e = some(where (p.eft == allow))
+
+    [matchers]
+    m = g(r.sub, p.sub) && eval(p.sub_rule) && r.act == p.act
+  policy: |
+    p, alice, r.obj.price < 25, read
+    p, admin, r.obj.category_id = 2, read
+    p, bob, r.obj.author = bob, write
+
+    g, alice, admin

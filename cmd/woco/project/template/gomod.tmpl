@@ -1,0 +1,17 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/project.Graph */}}
+{{- define "mod" -}}
+module {{ .Config.Package }}
+
+go 1.18
+
+require (
+    {{- range .Mods }}
+    {{ . }}
+    {{- end }}
+    google.golang.org/grpc v1.51.0
+)
+
+require (
+    cloud.google.com/go/compute v1.10.0 // indirect
+)
+{{ end }}

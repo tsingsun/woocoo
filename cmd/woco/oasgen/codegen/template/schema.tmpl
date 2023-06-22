@@ -1,0 +1,33 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen/codegen.Graph */}}
+
+{{ define "schema"}}
+
+{{ $pkg := base $.Config.Package }}
+{{ template "header" $ }}
+
+{{ template "import" $ }}
+
+{{- range .Schemas}}
+    {{- if not .IsReplace}}
+        {{- if not .Properties }}
+            type {{ pascal .Name }} {{ .Type }}
+        {{ else }}
+            type {{ pascal .Name }} struct {
+                {{ template "help/properties" .}}
+            }
+        {{ end}}
+    {{- end }}
+
+{{- end}}
+
+{{ end }}
+
+{{ define "help/properties" }}
+    {{- range .Properties }}
+        {{- if .IsInline }}
+            {{ .Type }} `json:",inline"`
+        {{- else }}
+            {{ pascal .Name }} {{ .Type }} {{ .StructTagsString }}
+        {{- end }}
+    {{- end }}
+{{ end}}

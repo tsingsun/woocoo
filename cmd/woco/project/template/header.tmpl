@@ -1,0 +1,8 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/project.Graph */}}
+
+{{ define "header" }}
+{{ with $.Header }}{{ . }}{{ end }}
+
+{{ $pkg := base $.Config.Package }}
+package {{ $pkg }}
+{{ end }}

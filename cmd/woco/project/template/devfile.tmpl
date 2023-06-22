@@ -1,0 +1,41 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/project.Graph */}}
+{{ define "makefile"}}
+version := $(shell /bin/date "+%Y-%m-%d %H:%M")
+BUILD_NAME={{ pkgName $.Package}}
+
+build:
+{{"\t"}}go build -ldflags="-s -w" -ldflags="-X 'main.BuildTime=$(version)'" -o ./cmd/$(BUILD_NAME) ./cmd/main.go
+mac:
+{{"\t"}}GOOS=darwin go build -ldflags="-s -w" -ldflags="-X 'main.BuildTime=$(version)'" -o ./cmd/$(BUILD_NAME)-darwin ./cmd/main.go
+{{"\t"}}$(if $(shell command -v upx), upx $(BUILD_NAME)-darwin)
+win:
+{{"\t"}}GOOS=windows go build -ldflags="-s -w" -ldflags="-X 'main.BuildTime=$(version)'" -o ./cmd/$(BUILD_NAME).exe ./cmd/main.go
+{{"\t"}}$(if $(shell command -v upx), upx $(BUILD_NAME).exe)
+linux:
+{{"\t"}}GOOS=linux go build -ldflags="-s -w" -ldflags="-X 'main.BuildTime=$(version)'" -o ./cmd/$(BUILD_NAME)-linux ./cmd/main.go
+{{"\t"}}$(if $(shell command -v upx), upx $(BUILD_NAME)-linux)
+{{ end }}
+
+{{ define "gitignore" }}
+### Go template
+go.work*
+.vscode
+.idea
+.run
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+*.log
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+{{ end }}

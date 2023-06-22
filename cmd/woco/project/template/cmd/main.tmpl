@@ -1,0 +1,47 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/project.Graph */}}
+
+{{ define "main" }}
+package main
+
+import(
+    "github.com/tsingsun/woocoo/pkg/log"
+    "github.com/tsingsun/woocoo/rpc/grpcx"
+)
+func main(){
+    app := woocoo.New()
+    {{- if .HasModule "otel" }}
+    if app.AppConfiguration().IsSet("otel"){
+        otelCnf := app.AppConfiguration().Sub("otel")
+        otelcfg := telemetry.NewConfig(otelCnf)
+        defer otelcfg.Shutdown()
+    }
+    {{- end }}
+    {{- if .HasModule "web" }}
+        webSrv := newWebServer(app.AppConfiguration())
+        app.RegisterServer(webSrv)
+    {{- end }}
+    {{ if .HasModule "grpc"}}
+        grpcSrv := newGRPCServer(app.AppConfiguration())
+        app.RegisterServer(grpcSrv)
+    {{- end }}
+    if err := app.Run(); err != nil {
+        log.Panic(err)
+    }
+}
+{{ if .HasModule "web" }}
+    func newWebServer(cnf *conf.AppConfiguration) *web.Server {
+        webSrv := web.New(web.WithConfiguration(cnf.Sub("web")), web.WithGracefulStop())
+        // TODO add your web server handler
+        return webSrv
+    }
+{{- end }}
+
+{{ if .HasModule "grpc"}}
+    func newGRPCServer(cnf *conf.AppConfiguration) *grpcx.Server {
+        grpcSrv := grpcx.New(grpcx.WithConfiguration(cnf.Sub("grpc")), grpcx.WithGracefulStop(),grpcx.UseLogger())
+        // TODO register grpc service
+        return grpcSrv
+    }
+{{ end }}
+
+{{ end }}

@@ -8,6 +8,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/web/handler/gzip"
 	"net/url"
+	"strings"
 )
 
 var (
@@ -67,7 +68,7 @@ func DefaultSkipper(c *gin.Context) bool {
 
 // PathSkip returns a skipper function that skips middleware if the request path
 func PathSkip(list []string, url *url.URL) bool {
-	src := url.Path
+	src := strings.TrimRight(url.Path, "/")
 	if src == "" || src[0] != '/' {
 		src = "/" + src
 	}

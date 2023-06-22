@@ -129,7 +129,7 @@ func TestPathSkip(t *testing.T) {
 			want: true,
 		},
 		{
-			name: " no exist",
+			name: "no exist",
 			args: args{
 				list: []string{"/abc"},
 				url:  &url.URL{Path: "/ab"},
@@ -137,12 +137,20 @@ func TestPathSkip(t *testing.T) {
 			want: false,
 		},
 		{
-			name: " empty list",
+			name: "empty list",
 			args: args{
 				list: []string{},
 				url:  &url.URL{Path: "/ab"},
 			},
 			want: false,
+		},
+		{
+			name: "end splash",
+			args: args{
+				list: []string{"/abc"},
+				url:  &url.URL{Path: "/abc/"},
+			},
+			want: true,
 		},
 	}
 	for _, tt := range tests {

@@ -116,8 +116,8 @@ func TestNew(t *testing.T) {
 		{
 			name: "cluster",
 			args: args{
-				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
-					"local": map[string]interface{}{
+				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
+					"local": map[string]any{
 						"size": 1000,
 						"ttl":  "60s",
 					},

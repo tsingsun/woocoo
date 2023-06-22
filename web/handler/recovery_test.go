@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -76,7 +77,7 @@ func TestHandleRecoverError(t *testing.T) {
 				logdata := wctest.InitBuffWriteSyncer()
 				return logdata
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				ss := i[0].(*logtest.Buffer)
 				assert.Len(t, ss.Lines(), 0)
 				fc := GetLogCarrierFromGinContext(i[1].(*gin.Context))
@@ -98,7 +99,7 @@ func TestHandleRecoverError(t *testing.T) {
 				logdata := wctest.InitBuffWriteSyncer()
 				return logdata
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				assert.Contains(t, all, "request")
@@ -127,7 +128,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 	}
 	rargs := func(p any) args {
 		return args{
-			cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+			cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
 				"format": "error",
 			})),
 			handler: func(c *gin.Context) {
@@ -148,7 +149,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 				wctest.InitGlobalLogger(true)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
@@ -169,7 +170,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 				wctest.InitGlobalLogger(true)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
@@ -188,7 +189,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 				wctest.InitGlobalLogger(false)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
@@ -209,7 +210,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 				wctest.InitGlobalLogger(false)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
@@ -230,7 +231,8 @@ func TestRecoveryMiddleware(t *testing.T) {
 			want := tt.want()
 			gin.SetMode(gin.ReleaseMode)
 			srv := gin.New()
-			srv.Use(Recovery().ApplyFunc(tt.args.cfg))
+			mid := Recovery()
+			srv.Use(mid.ApplyFunc(tt.args.cfg))
 			srv.GET("/", func(c *gin.Context) {
 				tt.args.handler(c)
 			})
@@ -239,6 +241,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 			if !tt.wantErr(t, nil, want, withoutLogger) {
 				return
 			}
+			assert.NoError(t, mid.Shutdown(context.Background()))
 		})
 	}
 }

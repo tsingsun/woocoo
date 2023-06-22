@@ -68,13 +68,13 @@ func TestMiniApp(t *testing.T) {
 	}{
 		{"background ctx", args{ctx: context.Background(), timeout: 0, servers: []Server{&server1{}, &server2{}}}, assert.NoError},
 		{"timeout ctx", args{ctx: context.Background(), timeout: time.Millisecond * 500, servers: []Server{&server1{}, &server2{timeout: true}}},
-			func(t assert.TestingT, err error, i ...interface{}) bool {
+			func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorIs(t, err, context.DeadlineExceeded)
 			}},
 		{"parent timeout ctx", args{ctx: func() context.Context {
 			ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*500) //nolint:govet
 			return ctx
-		}(), timeout: 0, servers: []Server{&server1{}, &server2{timeout: true}}}, func(t assert.TestingT, err error, i ...interface{}) bool {
+		}(), timeout: 0, servers: []Server{&server1{}, &server2{timeout: true}}}, func(t assert.TestingT, err error, i ...any) bool {
 			return assert.ErrorIs(t, err, context.DeadlineExceeded)
 		}},
 	}
@@ -156,7 +156,7 @@ func TestGroupRun(t *testing.T) {
 						return nil
 					},
 				}
-			}(), wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			}(), wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorIs(t, err, context.DeadlineExceeded)
 			},
 		},

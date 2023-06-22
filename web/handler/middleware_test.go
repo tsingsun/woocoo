@@ -2,12 +2,12 @@ package handler
 
 import (
 	"context"
-	"testing"
-
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
+	"net/url"
+	"testing"
 )
 
 func TestNewSimpleMiddleware(t *testing.T) {
@@ -58,7 +58,7 @@ func TestManager(t *testing.T) {
 		name   string
 		fields fields
 		args   args
-		want   interface{}
+		want   any
 	}{
 		{
 			name: "override",
@@ -98,6 +98,56 @@ func TestManager(t *testing.T) {
 				assert.NoError(t, got.Shutdown(context.Background()))
 			}
 			assert.NoError(t, m.Shutdown(context.Background()))
+		})
+	}
+}
+
+func TestPathSkip(t *testing.T) {
+	type args struct {
+		list []string
+		url  *url.URL
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "start slash",
+			args: args{
+				list: []string{"/"},
+				url:  &url.URL{Path: "/"},
+			},
+			want: true,
+		},
+		{
+			name: "empty path",
+			args: args{
+				list: []string{"/"},
+				url:  func() *url.URL { u, _ := url.Parse("http://www.example.com"); return u }(),
+			},
+			want: true,
+		},
+		{
+			name: " no exist",
+			args: args{
+				list: []string{"/abc"},
+				url:  &url.URL{Path: "/ab"},
+			},
+			want: false,
+		},
+		{
+			name: " empty list",
+			args: args{
+				list: []string{},
+				url:  &url.URL{Path: "/ab"},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, PathSkip(tt.args.list, tt.args.url), "PathSkip(%v, %v)", tt.args.list, tt.args.url)
 		})
 	}
 }

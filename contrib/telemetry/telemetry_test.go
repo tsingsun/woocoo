@@ -24,7 +24,7 @@ func TestAttribute(t *testing.T) {
 	type aliasS string
 	type aliasB bool
 	tests := []struct {
-		value interface{}
+		value any
 		want  attribute.KeyValue
 	}{
 		{nil, attribute.String("key", "<nil>")},

@@ -3,10 +3,6 @@ package handler
 import (
 	"context"
 	"errors"
-	"net/http/httptest"
-	"strings"
-	"testing"
-
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -14,9 +10,13 @@ import (
 	"github.com/tsingsun/woocoo/testco/logtest"
 	"github.com/tsingsun/woocoo/testco/wctest"
 	"go.uber.org/zap"
+	"net/http/httptest"
+	"strings"
+	"testing"
 )
 
 func TestLoggerMiddleware(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
 	type args struct {
 		cfg     *conf.Configuration
 		handler gin.HandlerFunc
@@ -30,11 +30,11 @@ func TestLoggerMiddleware(t *testing.T) {
 		{
 			name: "allType but fatal",
 			args: args{
-				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+				cfg: conf.NewFromStringMap(map[string]any{
 					"format": "id,remoteIp,host,method,uri,userAgent,status,error,latency,bytesIn,bytesOut," +
 						"path,protocol,referer,latencyHuman,header:Accept,query:q1,form:username," +
 						"cookie:c1,context:ctx1",
-				})),
+				}),
 				handler: func(c *gin.Context) {
 					l := log.Component(log.WebComponentName)
 					l.Debug("error", zap.Error(errors.New("debugx")))
@@ -42,6 +42,7 @@ func TestLoggerMiddleware(t *testing.T) {
 					l.Warn("error", zap.Error(errors.New("warnx")))
 					l.Error("error", zap.Error(errors.New("errorx")))
 					l.DPanic("error", zap.Error(errors.New("dpanicx")))
+					c.Set("ctx1", "from context")
 					l.Panic("error", zap.Error(errors.New("panicx")))
 					e := c.Error(errors.New("errorx"))
 					e.Type = gin.ErrorTypePublic
@@ -51,7 +52,7 @@ func TestLoggerMiddleware(t *testing.T) {
 				wctest.InitGlobalLogger(false)
 				return wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				ss := i[0].(*logtest.Buffer)
 				lines := ss.Lines()
 				assert.Contains(t, lines[0], "debugx")
@@ -66,15 +67,16 @@ func TestLoggerMiddleware(t *testing.T) {
 				assert.Contains(t, lines[6], AccessLogComponentName)
 				assert.Contains(t, lines[6], "internal server error")
 				assert.Contains(t, strings.Split(lines[6], "\\n\\t")[1], "zapcore/entry.go")
+				assert.Contains(t, lines[6], "from context")
 				return true
 			},
 		},
 		{
 			name: "private error",
 			args: args{
-				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+				cfg: conf.NewFromStringMap(map[string]any{
 					"format": "error",
-				})),
+				}),
 				handler: func(c *gin.Context) {
 					ce := c.Error(errors.New("private error"))
 					ce.Type = gin.ErrorTypePrivate
@@ -84,7 +86,7 @@ func TestLoggerMiddleware(t *testing.T) {
 				logdata := wctest.InitBuffWriteSyncer(zap.AddStacktrace(zap.ErrorLevel))
 				return logdata
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
@@ -96,7 +98,7 @@ func TestLoggerMiddleware(t *testing.T) {
 		{
 			name: "panic error",
 			args: args{
-				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+				cfg: conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
 					"format": "error",
 				})),
 				handler: func(c *gin.Context) {
@@ -108,7 +110,7 @@ func TestLoggerMiddleware(t *testing.T) {
 				logdata := wctest.InitBuffWriteSyncer()
 				return logdata
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				// panic
@@ -116,6 +118,47 @@ func TestLoggerMiddleware(t *testing.T) {
 				assert.Contains(t, all, "request")
 				assert.Contains(t, all, "stacktrace")
 				assert.Contains(t, all, "public error")
+				return true
+			},
+		},
+		{
+			name: "skip path",
+			args: args{
+				cfg: conf.NewFromStringMap(map[string]any{
+					"exclude": []string{"/"},
+				}),
+				handler: func(c *gin.Context) {
+				},
+			},
+			want: func() any {
+				logdata := wctest.InitBuffWriteSyncer()
+				return logdata
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				ss := i[0].(*logtest.Buffer)
+				all := ss.String()
+				assert.Emptyf(t, all, "skip path must not log")
+				return true
+			},
+		},
+		{
+			name: "skip path must not ignore error",
+			args: args{
+				cfg: conf.NewFromStringMap(map[string]any{
+					"exclude": []string{"/"},
+				}),
+				handler: func(c *gin.Context) {
+					c.Error(errors.New("errorx"))
+				},
+			},
+			want: func() any {
+				logdata := wctest.InitBuffWriteSyncer()
+				return logdata
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				ss := i[0].(*logtest.Buffer)
+				all := ss.String()
+				assert.Contains(t, all, "errorx")
 				return true
 			},
 		},
@@ -128,7 +171,6 @@ func TestLoggerMiddleware(t *testing.T) {
 			accessLog := AccessLog()
 			defer accessLog.Shutdown(context.TODO())
 			middleware := accessLog.ApplyFunc(tt.args.cfg)
-			gin.SetMode(gin.ReleaseMode)
 			srv := gin.New()
 			srv.Use(middleware, Recovery().ApplyFunc(tt.args.cfg))
 			srv.GET("/", func(c *gin.Context) {

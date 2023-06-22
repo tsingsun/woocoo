@@ -167,7 +167,7 @@ func (cd *Redisc) getSetItemGroup(ctx context.Context, key string, value any, op
 		}
 	}
 
-	v, err, _ := cd.group.Do(key, func() (interface{}, error) {
+	v, err, _ := cd.group.Do(key, func() (any, error) {
 		data, err := cd.getRemoteData(ctx, key, opt.Skip)
 		if errors.Is(err, cache.ErrCacheMiss) {
 			if opt.Getter == nil {

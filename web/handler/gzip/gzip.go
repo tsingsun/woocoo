@@ -17,6 +17,12 @@ import (
 
 var (
 	defaultExcludedExtensions = []string{".png", "gif", "jpg", "jpeg"}
+
+	gwPool = sync.Pool{
+		New: func() any {
+			return &ResponseWriter{}
+		},
+	}
 )
 
 // Config is the configuration for the gzip middleware.
@@ -55,16 +61,24 @@ func convertToMap(slice []string) map[string]bool {
 	return m
 }
 
+func gzipCompressPool(minSize int) sync.Pool {
+	return sync.Pool{
+		New: func() any {
+			return &ResponseWriter{
+				minSize: minSize,
+			}
+		},
+	}
+}
+
 // Handler is a gzip handler
 type Handler struct {
-	grwPool       sync.Pool
 	writerFactory writer.GzipWriterFactory
 }
 
 // Gzip returns a new gzip middleware.
 func Gzip() *Handler {
 	return &Handler{
-		grwPool: gzipCompressPool(),
 		writerFactory: writer.GzipWriterFactory{
 			Levels: gzkp.Levels,
 			New:    gzkp.NewWriter,
@@ -87,30 +101,26 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if err := cfg.Unmarshal(&opt); err != nil {
 		panic(err)
 	}
-
 	if err := opt.validate(); err != nil {
 		panic(err)
 	}
 	opt.excludedExtensionsMap = convertToMap(opt.ExcludedExtensions)
-
 	return func(c *gin.Context) {
 		if !h.shouldCompress(c.Request, opt) {
 			return
 		}
-		gw := h.grwPool.Get().(*ResponseWriter)
-		*gw = ResponseWriter{
-			ResponseWriter: c.Writer,
-			gzipWriter:     opt.writerFactory.New(c.Writer, opt.Level),
-			level:          opt.Level,
-			minSize:        opt.MinSize,
-		}
+		gw := gwPool.Get().(*ResponseWriter)
+		gw.ResponseWriter = c.Writer
+		gw.gzipWriter = opt.writerFactory.New(c.Writer, opt.Level)
+		gw.minSize = opt.MinSize
 		c.Writer = gw
 		c.Header("Vary", "Accept-Encoding")
+		defer func() {
+			gw.Close()
+			c.Header("Content-Length", fmt.Sprint(c.Writer.Size()))
+			gwPool.Put(gw)
+		}()
 		c.Next()
-
-		gw.Close()
-		c.Header("Content-Length", fmt.Sprint(c.Writer.Size()))
-		h.grwPool.Put(gw)
 	}
 }
 
@@ -129,12 +139,4 @@ func (h *Handler) shouldCompress(req *http.Request, opt Config) bool {
 		return false
 	}
 	return true
-}
-
-func gzipCompressPool() sync.Pool {
-	return sync.Pool{
-		New: func() any {
-			return &ResponseWriter{}
-		},
-	}
 }

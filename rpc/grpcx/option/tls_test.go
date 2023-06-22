@@ -17,14 +17,14 @@ func TestTLSOption_Name(t *testing.T) {
 func TestTLSOption(t *testing.T) {
 	t.Run("Empty", func(t *testing.T) {
 		opt := TLSOption{}
-		cfg := conf.NewFromStringMap(map[string]interface{}{})
+		cfg := conf.NewFromStringMap(map[string]any{})
 		assert.Panics(t, func() {
 			opt.ServerOption(cfg)
 		})
 	})
 	t.Run("Error ServerOption files", func(t *testing.T) {
 		opt := TLSOption{}
-		cfg := conf.NewFromStringMap(map[string]interface{}{
+		cfg := conf.NewFromStringMap(map[string]any{
 			"cert": "testdata/cert.pem",
 			"key":  "testdata/key.pem",
 		})
@@ -34,7 +34,7 @@ func TestTLSOption(t *testing.T) {
 	})
 	t.Run("ServerOption ok", func(t *testing.T) {
 		opt := TLSOption{}
-		cfg := conf.NewFromStringMap(map[string]interface{}{
+		cfg := conf.NewFromStringMap(map[string]any{
 			"cert": "x509/client.crt",
 			"key":  "x509/client.key",
 		}, conf.WithBaseDir(testdata.BaseDir()))
@@ -43,7 +43,7 @@ func TestTLSOption(t *testing.T) {
 
 	t.Run("DialOption ok", func(t *testing.T) {
 		opt := TLSOption{}
-		cfg := conf.NewFromStringMap(map[string]interface{}{
+		cfg := conf.NewFromStringMap(map[string]any{
 			"cert": "x509/client.crt",
 			"key":  "x509/client.key",
 		}, conf.WithBaseDir(testdata.BaseDir()))
@@ -51,7 +51,7 @@ func TestTLSOption(t *testing.T) {
 	})
 	t.Run("insecure DialOption ok", func(t *testing.T) {
 		opt := TLSOption{}
-		cfg := conf.NewFromStringMap(map[string]interface{}{
+		cfg := conf.NewFromStringMap(map[string]any{
 			"cert": "",
 			"key":  "",
 		})
@@ -59,7 +59,7 @@ func TestTLSOption(t *testing.T) {
 	})
 	t.Run("error cert", func(t *testing.T) {
 		opt := TLSOption{}
-		cfg := conf.NewFromStringMap(map[string]interface{}{
+		cfg := conf.NewFromStringMap(map[string]any{
 			"cert": "x509/client.key",
 			"key":  "",
 		}, conf.WithBaseDir(testdata.BaseDir()))

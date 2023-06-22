@@ -10,7 +10,6 @@ type ResponseWriter struct {
 	gin.ResponseWriter
 	gzipWriter writer.GzipWriter
 	minSize    int
-	level      int
 	useZip     bool
 }
 

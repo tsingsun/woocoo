@@ -2,14 +2,13 @@ package handler
 
 import (
 	"context"
+	"github.com/gin-gonic/gin"
+	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"strings"
 	"time"
-
-	"github.com/gin-gonic/gin"
-	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/pkg/log"
 )
 
 type loggerTagType int
@@ -61,9 +60,9 @@ type LoggerConfig struct {
 }
 
 type loggerTag struct {
-	v string
-	t loggerTagType
-	k string
+	fullKey string
+	typ     loggerTagType
+	key     string
 }
 
 // LoggerMiddleware is a middleware that logs each request.
@@ -74,10 +73,10 @@ type LoggerMiddleware struct {
 // AccessLog a new LoggerMiddleware,it is for handler registry
 func AccessLog() *LoggerMiddleware {
 	operator := logger.Logger(log.WithOriginalLogger()).WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
-	logger := log.Component(AccessLogComponentName)
-	logger.SetLogger(operator)
+	lg := log.Component(AccessLogComponentName)
+	lg.SetLogger(operator)
 	al := &LoggerMiddleware{
-		logger: logger,
+		logger: lg,
 	}
 	return al
 }
@@ -91,17 +90,17 @@ func (h *LoggerMiddleware) buildTag(format string) (tags []loggerTag) {
 	for _, tag := range ts {
 		switch {
 		case strings.HasPrefix(tag, "header:"):
-			tags = append(tags, loggerTag{v: tag, t: loggerTagTypeHeader, k: tag[7:]})
+			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeHeader, key: tag[7:]})
 		case strings.HasPrefix(tag, "query:"):
-			tags = append(tags, loggerTag{v: tag, t: loggerTagTypeQuery, k: tag[6:]})
+			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeQuery, key: tag[6:]})
 		case strings.HasPrefix(tag, "form:"):
-			tags = append(tags, loggerTag{v: tag, t: loggerTagTypeForm, k: tag[5:]})
+			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeForm, key: tag[5:]})
 		case strings.HasPrefix(tag, "cookie:"):
-			tags = append(tags, loggerTag{v: tag, t: loggerTagTypeCookie, k: tag[7:]})
+			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeCookie, key: tag[7:]})
 		case strings.HasPrefix(tag, "context:"):
-			tags = append(tags, loggerTag{v: tag, t: loggerTagTypeContext, k: tag[8:]})
+			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeContext, key: tag[8:]})
 		default:
-			tags = append(tags, loggerTag{v: tag, t: loggerTagTypeString})
+			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeString})
 		}
 	}
 	return
@@ -131,6 +130,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if traceIDKey == "" {
 		traceIDKey = log.TraceIDKey
 	}
+
 	return func(c *gin.Context) {
 		start := time.Now()
 		logCarrier := log.NewCarrier()
@@ -148,7 +148,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		fields := make([]zap.Field, len(opts.tags))
 		privateErr := false
 		for i, tag := range opts.tags {
-			switch tag.v {
+			switch tag.fullKey {
 			case "id":
 				id := req.Header.Get("X-Request-Id")
 				fields[i] = zap.String(traceIDKey, id)
@@ -178,7 +178,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 					v := c.Errors.ByType(gin.ErrorTypePrivate).String()
 					if v != "" {
 						privateErr = true
-						fields[i] = zap.String("error", c.Errors.ByType(gin.ErrorTypePrivate).String())
+						fields[i] = zap.String("error", v)
 					}
 				}
 			case "latency":
@@ -190,22 +190,22 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			case "bytesOut":
 				fields[i] = zap.Int("bytesOut", res.Size())
 			default:
-				switch tag.t {
+				switch tag.typ {
 				case loggerTagTypeHeader:
-					fields[i] = zap.String(tag.v, c.Request.Header.Get(tag.k))
+					fields[i] = zap.String(tag.fullKey, c.Request.Header.Get(tag.key))
 				case loggerTagTypeQuery:
-					fields[i] = zap.String(tag.v, c.Query(tag.k))
+					fields[i] = zap.String(tag.fullKey, c.Query(tag.key))
 				case loggerTagTypeForm:
-					fields[i] = zap.String(tag.v, c.PostForm(tag.k))
+					fields[i] = zap.String(tag.fullKey, c.PostForm(tag.key))
 				case loggerTagTypeCookie:
-					cookie, err := c.Cookie(tag.k)
+					cookie, err := c.Cookie(tag.key)
 					if err == nil {
-						fields[i] = zap.String(tag.v, cookie)
+						fields[i] = zap.String(tag.fullKey, cookie)
 					}
 				case loggerTagTypeContext:
-					val, ok := c.Get(tag.k)
-					if ok {
-						fields[i] = zap.Any(tag.v, val)
+					val := c.Value(tag.key)
+					if val != nil {
+						fields[i] = zap.Any(tag.fullKey, val)
 					}
 				}
 			}

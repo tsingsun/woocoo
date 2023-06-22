@@ -1,8 +1,14 @@
 package gzip_test
 
 import (
+	nativeGzip "compress/gzip"
 	"context"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/web"
+	"github.com/tsingsun/woocoo/web/handler/gzip"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,13 +17,6 @@ import (
 	"os"
 	"strconv"
 	"testing"
-
-	nativeGzip "compress/gzip"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/web"
-	"github.com/tsingsun/woocoo/web/handler/gzip"
 )
 
 const (
@@ -47,7 +46,7 @@ func (c *closeNotifyingRecorder) CloseNotify() <-chan bool {
 	return c.closed
 }
 
-func newServer(config map[string]interface{}) *gin.Engine {
+func newServer(config map[string]any) *gin.Engine {
 	// init reverse proxy server
 	rServer := httptest.NewServer(new(rServer))
 	target, _ := url.Parse(rServer.URL)
@@ -68,13 +67,13 @@ func newServer(config map[string]interface{}) *gin.Engine {
 
 func TestConfig(t *testing.T) {
 	assert.NotPanics(t, func() {
-		newServer(map[string]interface{}{
+		newServer(map[string]any{
 			"minSize": 1,
 			"level":   -1,
 		})
 	})
 	assert.Panics(t, func() {
-		newServer(map[string]interface{}{
+		newServer(map[string]any{
 			"minSize": 1,
 			"level":   -5,
 		})
@@ -86,7 +85,7 @@ func TestGzip(t *testing.T) {
 	req.Header.Add("Accept-Encoding", "gzip")
 
 	w := httptest.NewRecorder()
-	r := newServer(map[string]interface{}{
+	r := newServer(map[string]any{
 		"minSize": 1,
 	})
 	r.ServeHTTP(w, req)
@@ -108,7 +107,7 @@ func TestGzipPNG(t *testing.T) {
 	req.Header.Add("Accept-Encoding", "gzip")
 
 	router := gin.New()
-	router.Use(gzip.Gzip().ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+	router.Use(gzip.Gzip().ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
 		"minSize": 1,
 	}))))
 	router.GET("/image.png", func(c *gin.Context) {
@@ -131,7 +130,7 @@ func TestExcludedExtensions(t *testing.T) {
 
 	router := gin.New()
 	mid := gzip.Gzip()
-	router.Use(mid.ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(map[string]interface{}{
+	router.Use(mid.ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
 		"minSize":            1,
 		"excludedExtensions": []string{".html"},
 	}))))
@@ -165,7 +164,7 @@ func TestGzipWithReverseProxy(t *testing.T) {
 	req.Header.Add("Accept-Encoding", "gzip")
 
 	w := newCloseNotifyingRecorder()
-	r := newServer(map[string]interface{}{
+	r := newServer(map[string]any{
 		"minSize": 1,
 	})
 	r.ServeHTTP(w, req)

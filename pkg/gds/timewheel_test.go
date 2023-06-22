@@ -35,7 +35,7 @@ func TestTimeWheel_AddTimerOnce(t *testing.T) {
 func TestTimeWheel_AddTimerTwice(t *testing.T) {
 	ticker := time.NewTicker(waitTime)
 
-	var cb = func(k, v interface{}) {
+	var cb = func(k, v any) {
 		assert.Equal(t, "any", k)
 		assert.Equal(t, 5, v.(int))
 		ticker.Stop()
@@ -52,16 +52,16 @@ func TestTimeWheel_AddWrongDelay(t *testing.T) {
 	tw, _ := newTimeWheelWithTicker(defaultTickerDuration, 10, ticker)
 	defer tw.Stop()
 	assert.NotPanics(t, func() {
-		tw.AddTask(3, -defaultTickerDuration, func(key interface{}, data interface{}) {})
+		tw.AddTask(3, -defaultTickerDuration, func(key any, data any) {})
 	})
 }
 
 func TestTimeWheel_AddAfterStop(t *testing.T) {
 	tw, _ := NewTimeWheel(defaultTickerDuration, 10)
 	tw.Stop()
-	_, err := tw.AddTask("data", defaultTickerDuration, func(key interface{}, data interface{}) {})
+	_, err := tw.AddTask("data", defaultTickerDuration, func(key any, data any) {})
 	assert.Error(t, err)
-	assert.Error(t, tw.AddTimer("any", "data", defaultTickerDuration, func(key interface{}, data interface{}) {}))
+	assert.Error(t, tw.AddTimer("any", "data", defaultTickerDuration, func(key any, data any) {}))
 }
 
 func TestTimeWheel_AddTimerAndRun(t *testing.T) {
@@ -107,7 +107,7 @@ func TestTimeWheel_AddTimerAndRun(t *testing.T) {
 			ticker := time.NewTicker(waitTime)
 			var actual int32
 			done := make(chan struct{})
-			var cb = func(k, v interface{}) {
+			var cb = func(k, v any) {
 				assert.Equal(t, 1, k.(int))
 				assert.Equal(t, 2, v.(int))
 				actual = atomic.LoadInt32(&count)
@@ -135,7 +135,7 @@ func TestTimeWheel_AddTimerAndRun(t *testing.T) {
 
 func TestTimeWheel_ResetTask(t *testing.T) {
 	count := int64(0)
-	cb := func(k, v interface{}) {
+	cb := func(k, v any) {
 		assert.Equal(t, "any", k)
 		assert.Equal(t, 3, v.(int))
 		assert.EqualValues(t, atomic.LoadInt64(&count), 1)
@@ -154,7 +154,7 @@ func TestTimeWheel_ResetTask(t *testing.T) {
 
 func TestMoveAndRemoveTask(t *testing.T) {
 	var keys []int
-	cb := func(id, data interface{}) {
+	cb := func(id, data any) {
 		assert.Equal(t, "any", id)
 		assert.Equal(t, 3, data.(int))
 		keys = append(keys, data.(int))
@@ -170,7 +170,7 @@ func TestMoveAndRemoveTask(t *testing.T) {
 
 func BenchmarkTimingWheel(b *testing.B) {
 	b.ReportAllocs()
-	cb := func(taskID interface{}, data interface{}) {
+	cb := func(taskID any, data any) {
 		// do nothing
 	}
 	tw, _ := NewTimeWheel(time.Second, 100)

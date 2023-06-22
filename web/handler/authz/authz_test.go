@@ -2,6 +2,8 @@ package authz
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -14,15 +16,7 @@ import (
 	"github.com/tsingsun/woocoo/web/handler"
 )
 
-func TestNewAuthorizer(t *testing.T) {
-	authz.SetAdapter(stringadapter.NewAdapter(`p, 1, /, GET`))
-	tests := []struct {
-		name string
-		cfg  *conf.Configuration
-	}{
-		{
-			name: "NewAuthorizer",
-			cfg: conf.NewFromBytes([]byte(`
+var cnf = `
 authz:
   autoSave: false
   model: |
@@ -35,27 +29,75 @@ authz:
     [policy_effect]
     e = some(where (p.eft == allow))
     [matchers]
-    m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
+    %s
 
 handler:
   appCode: "test"
   ConfigPath: "authz"
-`)).Sub("handler"),
+`
+
+func TestAuthorizer(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	tcnf := fmt.Sprintf(cnf, "m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act")
+	authz.SetAdapter(stringadapter.NewAdapter(`p, 1, /, GET`))
+	tests := []struct {
+		name  string
+		cfg   *conf.Configuration
+		req   *http.Request
+		check func(t *testing.T, w *httptest.ResponseRecorder)
+	}{
+		{
+			name: "pass",
+			cfg:  conf.NewFromBytes([]byte(tcnf)).Sub("handler"),
+			req: httptest.NewRequest("GET", "/", nil).
+				WithContext(security.WithContext(context.Background(),
+					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
+			check: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, w.Code)
+			},
+		},
+		{
+			name: "no pass",
+			cfg:  conf.NewFromBytes([]byte(tcnf)).Sub("handler"),
+			req: httptest.NewRequest("GET", "/unauth", nil).
+				WithContext(security.WithContext(context.Background(), security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
+			check: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusForbidden, w.Code)
+			},
+		},
+		{
+			name: "match error",
+			cfg: func() *conf.Configuration {
+				nm := fmt.Sprintf(cnf, "m = g(r.sub, p.sub) && r.obj1 == p.obj && r.act != p.act")
+				c := conf.NewFromBytes([]byte(nm)).Sub("handler")
+				return c
+			}(),
+			req: httptest.NewRequest("GET", "/", nil).
+				WithContext(security.WithContext(context.Background(),
+					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
+			check: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusForbidden, w.Code)
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := New()
+			defer got.Shutdown(context.Background())
 			h := handler.NewSimpleMiddleware("authz", got.ApplyFunc)
-			req := httptest.NewRequest("GET", "/", nil).
-				WithContext(security.WithContext(context.Background(), security.NewGenericPrincipalByClaims(map[string]interface{}{"sub": "1"})))
 			w := httptest.NewRecorder()
 			_, e := gin.CreateTestContext(w)
 			e.ContextWithFallback = true
 			e.Use(h.ApplyFunc(tt.cfg))
-			e.ServeHTTP(w, req)
-			assert.Equal(t, 404, w.Code) // no found router is right
-			assert.NoError(t, got.Shutdown(context.Background()))
+			e.GET("/", func(c *gin.Context) {
+				c.String(200, "ok")
+			})
+			e.GET("/unauth", func(c *gin.Context) {
+				c.String(200, "ok")
+			})
+
+			e.ServeHTTP(w, tt.req)
+			tt.check(t, w)
 		})
 	}
 }

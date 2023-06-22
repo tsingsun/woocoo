@@ -32,14 +32,14 @@ type (
 		currentTaskID uint64
 	}
 	// TimeWheelTaskCallback defined the method to run task while timeout.
-	TimeWheelTaskCallback func(taskID interface{}, data interface{})
+	TimeWheelTaskCallback func(taskID any, data any)
 
 	timeWheelTaskID uint64
 
 	timeWheelTask struct {
-		taskID interface{}
+		taskID any
 		// Data is the data of the task
-		data interface{}
+		data any
 		// Func is callback when timeout
 		callback TimeWheelTaskCallback
 	}
@@ -54,7 +54,7 @@ type (
 
 	baseSlot struct {
 		delay  time.Duration
-		taskID interface{}
+		taskID any
 	}
 
 	timeWheelPos struct {
@@ -82,7 +82,7 @@ func newTimeWheelWithTicker(interval time.Duration, slotNum uint16, ticker *time
 		slots:          make([]*list.List, slotNum),
 		currentPos:     slotNum - 1, // when run, currentPos will be start 0
 		addTaskChan:    make(chan timeWheelSlot),
-		removeTaskChan: make(chan interface{}),
+		removeTaskChan: make(chan any),
 		moveTaskChan:   make(chan baseSlot),
 		stopChan:       make(chan struct{}),
 	}
@@ -123,7 +123,7 @@ func (tw *TimeWheel) Stop() {
 }
 
 // AddTask add a task to the time wheel, return the task id
-func (tw *TimeWheel) AddTask(data interface{}, delay time.Duration, callback TimeWheelTaskCallback) (taskID interface{}, err error) {
+func (tw *TimeWheel) AddTask(data any, delay time.Duration, callback TimeWheelTaskCallback) (taskID any, err error) {
 	if delay <= 0 {
 		return 0, ErrTimeWheelArgumentDelay
 	}
@@ -135,7 +135,7 @@ func (tw *TimeWheel) AddTask(data interface{}, delay time.Duration, callback Tim
 }
 
 // AddTimer add a timer task, if task id exists, do reset operator
-func (tw *TimeWheel) AddTimer(taskID, data interface{}, delay time.Duration, callback TimeWheelTaskCallback) error {
+func (tw *TimeWheel) AddTimer(taskID, data any, delay time.Duration, callback TimeWheelTaskCallback) error {
 	if delay <= 0 {
 		return ErrTimeWheelArgumentDelay
 	}
@@ -151,7 +151,7 @@ func (tw *TimeWheel) AddTimer(taskID, data interface{}, delay time.Duration, cal
 }
 
 // ResetTask reset timer by the given key to the given delay.
-func (tw *TimeWheel) ResetTask(taskID interface{}, delay time.Duration) error {
+func (tw *TimeWheel) ResetTask(taskID any, delay time.Duration) error {
 	if delay <= 0 || taskID == nil {
 		return ErrTimeWheelArgument
 	}
@@ -163,7 +163,7 @@ func (tw *TimeWheel) ResetTask(taskID interface{}, delay time.Duration) error {
 	}
 }
 
-func (tw *TimeWheel) RemoveTask(taskID interface{}) error {
+func (tw *TimeWheel) RemoveTask(taskID any) error {
 	if taskID == nil {
 		return ErrTimeWheelArgument
 	}
@@ -244,7 +244,7 @@ func (tw *TimeWheel) getPositionAndCircle(d time.Duration) (pos, circle uint16) 
 	return
 }
 
-func (tw *TimeWheel) removeTask(taskID interface{}) {
+func (tw *TimeWheel) removeTask(taskID any) {
 	position, ok := tw.timers.Load(taskID)
 	if !ok { // taskID not exist
 		return

@@ -169,17 +169,17 @@ func TestCustomRegisterGrpc(t *testing.T) {
 		return grpc.EmptyServerOption{}
 	})
 	RegisterGrpcUnaryInterceptor("uiopt", func(configuration *conf.Configuration) grpc.UnaryServerInterceptor {
-		return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 			return nil, nil
 		}
 	})
 	RegisterGrpcStreamInterceptor("siopt", func(configuration *conf.Configuration) grpc.StreamServerInterceptor {
-		return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 			return nil
 		}
 	})
 	RegisterUnaryClientInterceptor("uciopt", func(configuration *conf.Configuration) grpc.UnaryClientInterceptor {
-		return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		return func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 			return nil
 		}
 	})

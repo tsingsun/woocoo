@@ -8,7 +8,7 @@ import (
 )
 
 // Attribute returns an attribute.KeyValue from a key and any value.
-func Attribute(key string, value interface{}) attribute.KeyValue {
+func Attribute(key string, value any) attribute.KeyValue {
 	switch value := value.(type) {
 	case nil:
 		return attribute.String(key, "<nil>")

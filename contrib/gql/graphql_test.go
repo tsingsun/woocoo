@@ -161,7 +161,7 @@ web:
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		r := httptest.NewRequest("POST", "/graphql/query", bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`))).
-			WithContext(security.WithContext(c, security.NewGenericPrincipalByClaims(map[string]interface{}{"sub": "1"})))
+			WithContext(security.WithContext(c, security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"})))
 		r.Header.Set("Content-Type", "application/json")
 
 		c.Request = r
@@ -175,7 +175,7 @@ web:
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		r := httptest.NewRequest("POST", "/graphql/query", bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`))).
-			WithContext(security.WithContext(c, security.NewGenericPrincipalByClaims(map[string]interface{}{"sub": "1"})))
+			WithContext(security.WithContext(c, security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"})))
 		r.Header.Set("Content-Type", "application/json")
 
 		c.Request = r
@@ -188,7 +188,7 @@ web:
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		r := httptest.NewRequest("POST", "/graphql/query", bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`))).
-			WithContext(security.WithContext(c, security.NewGenericPrincipalByClaims(map[string]interface{}{"sub": "1"})))
+			WithContext(security.WithContext(c, security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"})))
 		r.Header.Set("Content-Type", "application/json")
 
 		c.Request = r
@@ -201,7 +201,7 @@ web:
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		r := httptest.NewRequest("POST", "/graphql/query", bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`))).
-			WithContext(security.WithContext(c, security.NewGenericPrincipalByClaims(map[string]interface{}{"sub": "2"})))
+			WithContext(security.WithContext(c, security.NewGenericPrincipalByClaims(map[string]any{"sub": "2"})))
 		r.Header.Set("Content-Type", "application/json")
 
 		c.Request = r

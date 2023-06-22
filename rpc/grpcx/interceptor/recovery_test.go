@@ -171,5 +171,5 @@ func (s *mockStream) Context() context.Context {
 	}
 	return metadata.NewIncomingContext(context.Background(), s.md)
 }
-func (s *mockStream) SendMsg(m interface{}) error { return nil }
-func (s *mockStream) RecvMsg(m interface{}) error { return nil }
+func (s *mockStream) SendMsg(m any) error { return nil }
+func (s *mockStream) RecvMsg(m any) error { return nil }

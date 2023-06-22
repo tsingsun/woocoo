@@ -55,7 +55,7 @@ func (a *Authorizer) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			Operator: c.Request.Method,
 		})
 		if err != nil {
-			c.Error(fmt.Errorf("authorization failed: %w", err)) //nolint:errcheck
+			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %w", err))
 			return
 		}
 		if !allowed {

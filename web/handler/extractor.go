@@ -3,10 +3,9 @@ package handler
 import (
 	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"net/textproto"
 	"strings"
-
-	"github.com/gin-gonic/gin"
 )
 
 const (

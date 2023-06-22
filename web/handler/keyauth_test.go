@@ -3,11 +3,6 @@ package handler_test
 import (
 	"context"
 	"errors"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
-	"testing"
-
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -17,6 +12,10 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web"
 	"github.com/tsingsun/woocoo/web/handler"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"testing"
 )
 
 func TestKeyAuth(t *testing.T) {

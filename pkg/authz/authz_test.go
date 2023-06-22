@@ -52,7 +52,7 @@ func TestNewAuthorization(t *testing.T) {
 			args: args{
 				cnf: func() *conf.Configuration {
 					casbinFilePrepare("rbac")
-					return conf.NewFromStringMap(map[string]interface{}{
+					return conf.NewFromStringMap(map[string]any{
 						"autoSave": true,
 						"model":    testdata.Tmp(`rbac_model.conf`),
 						"policy":   testdata.Tmp(`rbac_policy.csv`),
@@ -80,10 +80,10 @@ func TestNewAuthorization(t *testing.T) {
 				cnf: func() *conf.Configuration {
 					casbinFilePrepare("redis")
 					mr := miniredis.RunT(t)
-					return conf.NewFromStringMap(map[string]interface{}{
+					return conf.NewFromStringMap(map[string]any{
 						"expireTime": 10 * time.Second,
-						"watcherOptions": map[string]interface{}{
-							"options": map[string]interface{}{
+						"watcherOptions": map[string]any{
+							"options": map[string]any{
 								"addr": mr.Addr(),
 							},
 						},
@@ -117,10 +117,10 @@ func TestNewAuthorization(t *testing.T) {
 			args: args{
 				cnf: func() *conf.Configuration {
 					casbinFilePrepare("rbac")
-					return conf.NewFromStringMap(map[string]interface{}{
+					return conf.NewFromStringMap(map[string]any{
 						"expireTime": 10 * time.Second,
-						"watcherOptions": map[string]interface{}{
-							"options": map[string]interface{}{
+						"watcherOptions": map[string]any{
+							"options": map[string]any{
 								"addr": "wrong addr",
 							},
 						},

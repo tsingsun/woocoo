@@ -1,10 +1,9 @@
 package handler_test
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/web/handler"
+	"net/http"
 )
 
 // ExampleErrorHandleMiddleware_customErrorParser is the example for customer ErrorHandle

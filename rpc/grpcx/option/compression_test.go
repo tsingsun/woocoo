@@ -20,7 +20,7 @@ func TestCompressionOption_ServerOption(t *testing.T) {
 		{
 			name: "gzip",
 			args: args{
-				cfg: conf.NewFromStringMap(map[string]interface{}{
+				cfg: conf.NewFromStringMap(map[string]any{
 					"name":  "gzip",
 					"level": 1,
 				}),
@@ -32,7 +32,7 @@ func TestCompressionOption_ServerOption(t *testing.T) {
 		{
 			name: "no exist",
 			args: args{
-				cfg: conf.NewFromStringMap(map[string]interface{}{
+				cfg: conf.NewFromStringMap(map[string]any{
 					"name":  "none",
 					"level": 1,
 				}),
@@ -66,7 +66,7 @@ func TestCompressionOption_DialOption(t *testing.T) {
 		{
 			name: "gzip",
 			args: args{
-				cfg: conf.NewFromStringMap(map[string]interface{}{
+				cfg: conf.NewFromStringMap(map[string]any{
 					"name":  "gzip",
 					"level": 1,
 				}),

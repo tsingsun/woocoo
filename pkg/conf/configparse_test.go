@@ -206,7 +206,7 @@ func TestParser_Unmarshal(t *testing.T) {
 				key: "struct.target",
 				dst: parseInline{},
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				assert.NoError(t, err)
 				assert.Equal(t, parseInline{InLineTarget{Inline: 1}}, i[1])
 				return false

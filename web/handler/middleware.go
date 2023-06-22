@@ -3,13 +3,11 @@ package handler
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"strings"
-
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/web/handler/gzip"
+	"net/url"
 )
 
 var (
@@ -70,8 +68,8 @@ func DefaultSkipper(c *gin.Context) bool {
 // PathSkip returns a skipper function that skips middleware if the request path
 func PathSkip(list []string, url *url.URL) bool {
 	src := url.Path
-	if src != "/" && strings.HasSuffix(src, "/") {
-		src = url.Path[:len(url.Path)-1]
+	if src == "" || src[0] != '/' {
+		src = "/" + src
 	}
 	for _, skip := range list {
 		if skip == src {

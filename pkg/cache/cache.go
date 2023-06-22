@@ -78,8 +78,8 @@ func (s *Stats) AddMiss() {
 }
 
 type (
-	MarshalFunc   func(interface{}) ([]byte, error)
-	UnmarshalFunc func([]byte, interface{}) error
+	MarshalFunc   func(any) ([]byte, error)
+	UnmarshalFunc func([]byte, any) error
 )
 
 func DefaultMarshalFunc(value any) ([]byte, error) {

@@ -39,14 +39,16 @@ func (a *Authorizer) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if err := cfg.Unmarshal(&opt); err != nil {
 		panic(err)
 	}
-	opt.Authorization = authz.DefaultAuthorization
-	if opt.Authorization == nil {
+	if opt.ConfigPath != "" {
 		var err error
 		opt.Authorization, err = authz.NewAuthorization(cfg.Root().Sub(opt.ConfigPath))
 		if err != nil {
 			panic(fmt.Errorf("[web]authz: %w", err))
 		}
+	} else {
+		opt.Authorization = authz.DefaultAuthorization
 	}
+
 	return func(c *gin.Context) {
 		gp := security.GenericIdentityFromContext(c)
 		allowed, err := opt.Authorization.CheckPermission(c, gp, &security.PermissionItem{

@@ -3,7 +3,7 @@
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
 [![codecov](https://codecov.io/gh/tsingsun/woocoo/branch/main/graph/badge.svg)](https://codecov.io/gh/tsingsun/woocoo)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tsingsun/woocoo)](https://goreportcard.com/report/github.com/tsingsun/woocoo)
-[![Build Status](https://github.com/tsingsun/woocoo/actions/workflows/gotest.yml/badge.svg?branch=main)](https://github.com/tsingsun/woocoo/actions?query=branch%3Amain)
+[![Build Status](https://github.com/tsingsun/woocoo/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/tsingsun/woocoo/actions?query=branch%3Amain)
 [![Release](https://img.shields.io/github/release/tsingsun/woocoo.svg?style=flat-square)](https://github.com/tsingsun/woocoo/releases)
 [![GoDoc](https://pkg.go.dev/badge/github.com/tsingsun/woocoo?status.svg)](https://pkg.go.dev/github.com/tsingsun/woocoo?tab=doc)
 

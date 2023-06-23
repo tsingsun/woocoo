@@ -52,8 +52,7 @@ grpc:
       serviceName: helloworld.Greeter
       metadata: 
         version: "1.0"
-    dialOption:
-      - insecure:
+    dialOption:      
       - block:
       - timeout: 5s
       - tls:
@@ -89,11 +88,8 @@ grpc:
   registry:
     scheme: etcd
     ttl: 600s
-    # 同scheme
+    # 节点名与scheme相同
     etcd:
-      tls:
-        sslCertificate: ""
-        sslCertificateKey: ""
       endpoints:
         - 127.0.0.1:12379
       dial-timeout: 3s

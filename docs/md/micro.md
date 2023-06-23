@@ -22,7 +22,7 @@ go get github.com/tsingsun/woocoo/polarismesh
 - [x] 节点熔断
 - [x] 访问限流:部分能力
     - 根据请求方法进行限流.
-- [] 配置管理
+- [ ] 配置管理
 - [x] 可观测性
 
 可以查看[示例](https://github.com/tsingsun/woocoo-example/tree/main/grpc/polaris)

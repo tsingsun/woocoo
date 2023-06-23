@@ -25,7 +25,14 @@ const sidebars = {
     {
       type: 'category',
       label: '乘风',
-      items: ['install','conf','web','grpc'],
+      items: ['install','conf',
+        {
+          type: 'category',
+          label: 'Web',
+          items: ['web','graphql']
+        },
+        'grpc','cache'
+      ],
       collapsed: false,
     },
     {

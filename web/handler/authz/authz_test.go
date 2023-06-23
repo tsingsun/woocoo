@@ -3,6 +3,7 @@ package authz
 import (
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -47,6 +48,26 @@ func TestAuthorizer(t *testing.T) {
 		check func(t *testing.T, w *httptest.ResponseRecorder)
 	}{
 		{
+			name: "use global",
+			cfg: func() *conf.Configuration {
+				var err error
+				authz.DefaultAuthorization, err = authz.NewAuthorization(
+					conf.NewFromBytes([]byte(tcnf)).Load().Sub("authz"),
+				)
+				require.NoError(t, err)
+				return conf.NewFromStringMap(map[string]any{
+					"appCode":    "test",
+					"configPath": "",
+				})
+			}(),
+			req: httptest.NewRequest("GET", "/", nil).
+				WithContext(security.WithContext(context.Background(),
+					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
+			check: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, w.Code)
+			},
+		},
+		{
 			name: "pass",
 			cfg:  conf.NewFromBytes([]byte(tcnf)).Sub("handler"),
 			req: httptest.NewRequest("GET", "/", nil).
@@ -60,7 +81,8 @@ func TestAuthorizer(t *testing.T) {
 			name: "no pass",
 			cfg:  conf.NewFromBytes([]byte(tcnf)).Sub("handler"),
 			req: httptest.NewRequest("GET", "/unauth", nil).
-				WithContext(security.WithContext(context.Background(), security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
+				WithContext(security.WithContext(context.Background(),
+					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
 			check: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert.Equal(t, http.StatusForbidden, w.Code)
 			},

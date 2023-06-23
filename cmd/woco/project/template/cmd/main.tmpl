@@ -38,7 +38,7 @@ func main(){
 
 {{ if .HasModule "grpc"}}
     func newGRPCServer(cnf *conf.AppConfiguration) *grpcx.Server {
-        grpcSrv := grpcx.New(grpcx.WithConfiguration(cnf.Sub("grpc")), grpcx.WithGracefulStop(),grpcx.UseLogger())
+        grpcSrv := grpcx.New(grpcx.WithConfiguration(cnf.Sub("grpc")), grpcx.WithGracefulStop(),grpcx.WithGrpcLogger())
         // TODO register grpc service
         return grpcSrv
     }

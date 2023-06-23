@@ -2,13 +2,14 @@
 {{- define "mod" -}}
 module {{ .Config.Package }}
 
-go 1.18
+go 1.20
 
 require (
     {{- range .Mods }}
     {{ . }}
     {{- end }}
-    google.golang.org/grpc v1.51.0
+    google.golang.org/grpc v1.55.0
+    github.com/tsingsun/woocoo/contrib/telemetry v0.0.0-20230622093715-adcb50dd333b
 )
 
 require (

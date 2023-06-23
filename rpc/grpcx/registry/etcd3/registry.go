@@ -114,6 +114,7 @@ func BuildFromConfig(config *Options) (*Registry, error) {
 	if config == nil {
 		r.opts = Options{
 			EtcdConfig: clientv3.Config{
+				Endpoints:   []string{"127.0.0.1:2379"},
 				DialTimeout: 5 * time.Second,
 			},
 		}

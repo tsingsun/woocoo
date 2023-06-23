@@ -22,5 +22,5 @@ func Printf(format string, v ...any) {
 }
 
 func PrintLogo() {
-	log.Println(logo)
+	Println(logo)
 }

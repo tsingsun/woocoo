@@ -62,7 +62,7 @@ func TestJWTMiddleware_ApplyFunc(t *testing.T) {
 				opts: []handler.MiddlewareOption{
 					handler.WithMiddlewareConfig(func() any {
 						nc := &handler.JWTConfig{
-							JWTOptions: *auth.NewJWT(),
+							JWTOptions: *auth.NewJWTOptions(),
 						}
 						nc.JWTOptions.SigningKey = "wrong"
 						return nc
@@ -117,7 +117,7 @@ ZwIDAQAB
 				opts: []handler.MiddlewareOption{
 					handler.WithMiddlewareConfig(func() any {
 						nc := &handler.JWTConfig{
-							JWTOptions: *auth.NewJWT(),
+							JWTOptions: *auth.NewJWTOptions(),
 							ErrorHandler: func(c *gin.Context, err error) error {
 								c.AbortWithStatusJSON(http.StatusNotAcceptable, 1)
 								return errors.New("error")

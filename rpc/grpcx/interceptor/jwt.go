@@ -27,7 +27,7 @@ type (
 
 func NewJWTOptions() *JWTOptions {
 	return &JWTOptions{
-		JWTOptions: *auth.NewJWT(),
+		JWTOptions: *auth.NewJWTOptions(),
 	}
 }
 
@@ -35,7 +35,7 @@ func (mw *JWTOptions) Apply(cfg *conf.Configuration) {
 	if err := cfg.Unmarshal(&mw); err != nil {
 		panic(err)
 	}
-	if err := mw.JWTOptions.Apply(); err != nil {
+	if err := mw.JWTOptions.Init(); err != nil {
 		panic(err)
 	}
 }

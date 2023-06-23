@@ -176,12 +176,9 @@ func TestRegisterResolver(t *testing.T) {
 			}
 		})
 	})
-	t.Run("2-exists-node", func(t *testing.T) {
+	t.Run("2-exists-node-nil-config", func(t *testing.T) {
 		t.Logf("must run after pretest and renew reg")
-		reg, err = BuildFromConfig(&Options{
-			EtcdConfig: etcdConfg,
-			TTL:        10 * time.Minute,
-		})
+		reg, err = BuildFromConfig(nil)
 		require.NoError(t, err)
 		runfunc(sn, "grpc2", "127.0.0.1", 9998, false)
 	})

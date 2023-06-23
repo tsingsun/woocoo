@@ -68,13 +68,13 @@ func (mw *JWTMiddleware) build(cfg *conf.Configuration) {
 		opts = mw.opts.configFunc().(*JWTConfig)
 	} else {
 		opts = &JWTConfig{
-			JWTOptions: *auth.NewJWT(),
+			JWTOptions: *auth.NewJWTOptions(),
 		}
 	}
 	if err := cfg.Unmarshal(&opts); err != nil {
 		panic(err)
 	}
-	if err := opts.Apply(); err != nil {
+	if err := opts.Init(); err != nil {
 		panic(err)
 	}
 

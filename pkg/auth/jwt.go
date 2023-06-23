@@ -100,9 +100,33 @@ var (
 	}
 )
 
-func NewJWT() *JWTOptions {
+// NewJWTOptions return a new JWTOptions
+func NewJWTOptions() *JWTOptions {
 	v := defaultJWTOptions
 	return &v
+}
+
+// Init initial JWTOptions
+func (opts *JWTOptions) Init() (err error) {
+	if opts.SigningKey == nil && len(opts.SigningKeys) == 0 && opts.KeyFunc == nil && opts.ParseTokenFunc == nil {
+		return fmt.Errorf("jwt middleware requires signing key")
+	}
+	if sk, ok := opts.SigningKey.(string); ok {
+		opts.SigningKey, err = ParseSigningKeyFromString(sk, opts.SigningMethod, false)
+		if err != nil {
+			return err
+		}
+	}
+	if opts.KeyFunc == nil {
+		opts.KeyFunc = opts.defaultKeyFunc
+	}
+	if opts.ParseTokenFunc == nil {
+		opts.ParseTokenFunc = opts.defaultParseToken
+	}
+	if opts.GetTokenIDFunc == nil {
+		opts.GetTokenIDFunc = opts.defaultGetTokenID
+	}
+	return nil
 }
 
 func (opts *JWTOptions) defaultParseToken(ctx context.Context, authStr string) (token *jwt.Token, err error) {
@@ -177,32 +201,11 @@ func ParseSigningKeyFromString(keystr, method string, privateKey bool) (any, err
 		}
 		return jwt.ParseRSAPublicKeyFromPEM(bt)
 	case "ES256", "ES384", "ES512":
+		fallthrough
 	case "PS256", "PS384", "PS512":
+		fallthrough
 	case "HS256", "HS384", "HS512":
 		return []byte(keystr), nil
 	}
 	return nil, fmt.Errorf("jwt middleware requires signing method")
-}
-
-// Apply initial JWTOptions
-func (opts *JWTOptions) Apply() (err error) {
-	if opts.SigningKey == nil && len(opts.SigningKeys) == 0 && opts.KeyFunc == nil && opts.ParseTokenFunc == nil {
-		return fmt.Errorf("jwt middleware requires signing key")
-	}
-	if sk, ok := opts.SigningKey.(string); ok {
-		opts.SigningKey, err = ParseSigningKeyFromString(sk, opts.SigningMethod, false)
-		if err != nil {
-			return err
-		}
-	}
-	if opts.KeyFunc == nil {
-		opts.KeyFunc = opts.defaultKeyFunc
-	}
-	if opts.ParseTokenFunc == nil {
-		opts.ParseTokenFunc = opts.defaultParseToken
-	}
-	if opts.GetTokenIDFunc == nil {
-		opts.GetTokenIDFunc = opts.defaultGetTokenID
-	}
-	return nil
 }

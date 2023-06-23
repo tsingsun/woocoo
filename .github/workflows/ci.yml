@@ -5,13 +5,13 @@ on:
     branches: [ main ]
     paths-ignore:
       - 'docs/**'
-      - 'readme*.md'
+      - '*.md'
       - 'cmd/**'
       - '.github/**'
   pull_request:
     paths-ignore:
       - 'docs/**'
-      - 'readme*.md'
+      - '*.md'
       - 'cmd/**'
       - '.github/**'
 jobs:

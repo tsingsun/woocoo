@@ -116,9 +116,6 @@ func (s *miniServer) Stop(ctx context.Context) error {
 // MiniApp is a simple way to run multi goroutine base on simplified App.
 func MiniApp(ctx context.Context, timeout time.Duration, servers ...Server) (run, stop func() error) {
 	app := &App{}
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	if timeout > 0 {
 		app.ctx, app.cancel = context.WithTimeout(ctx, timeout)
 	} else {

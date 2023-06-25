@@ -57,6 +57,7 @@ func (r *Router) Apply(cnf *conf.Configuration) (err error) {
 			if gr.basePath == "" {
 				gr.basePath = "/"
 			}
+			gr.Group = &r.Engine.RouterGroup
 			r.Engine.Use(mdl...)
 		} else {
 			if gr.basePath == "" {

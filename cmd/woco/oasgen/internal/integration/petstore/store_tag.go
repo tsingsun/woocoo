@@ -19,5 +19,5 @@ type GetOrderByIdRequestUriParams struct {
 }
 
 type PlaceOrderRequest struct {
-	Body Order
+	Order Order
 }

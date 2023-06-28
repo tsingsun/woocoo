@@ -46,7 +46,7 @@ func RegisterUserHandlers(router *gin.RouterGroup, si petstore.UserServer) {
 func wrapAddPet(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.AddPetRequest
-		if err := c.ShouldBind(&req.Body); err != nil {
+		if err := c.ShouldBind(&req.NewPet); err != nil {
 			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
@@ -81,7 +81,7 @@ func wrapDeletePet(si petstore.PetServer) func(c *gin.Context) {
 func wrapFindPetsByStatus(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.FindPetsByStatusRequest
-		if err := c.ShouldBind(&req.Body); err != nil {
+		if err := c.ShouldBind(&req.Status); err != nil {
 			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
@@ -97,7 +97,7 @@ func wrapFindPetsByStatus(si petstore.PetServer) func(c *gin.Context) {
 func wrapFindPetsByTags(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.FindPetsByTagsRequest
-		if err := c.ShouldBind(&req.Body); err != nil {
+		if err := c.ShouldBind(&req.Tags); err != nil {
 			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
@@ -133,7 +133,7 @@ func wrapGetPetById(si petstore.PetServer) func(c *gin.Context) {
 func wrapUpdatePet(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.UpdatePetRequest
-		if err := c.ShouldBind(&req.Body); err != nil {
+		if err := c.ShouldBind(&req.Pet); err != nil {
 			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
@@ -238,7 +238,7 @@ func wrapGetOrderById(si petstore.StoreServer) func(c *gin.Context) {
 func wrapPlaceOrder(si petstore.StoreServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.PlaceOrderRequest
-		if err := c.ShouldBind(&req.Body); err != nil {
+		if err := c.ShouldBind(&req.Order); err != nil {
 			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
@@ -254,7 +254,7 @@ func wrapPlaceOrder(si petstore.StoreServer) func(c *gin.Context) {
 func wrapCreateUser(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.CreateUserRequest
-		if err := c.ShouldBind(&req.Body); err != nil {
+		if err := c.ShouldBind(&req.User); err != nil {
 			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
@@ -270,7 +270,7 @@ func wrapCreateUser(si petstore.UserServer) func(c *gin.Context) {
 func wrapCreateUsersWithArrayInput(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.CreateUsersWithArrayInputRequest
-		if err := c.ShouldBind(&req.Body); err != nil {
+		if err := c.ShouldBind(&req.CreateUsersWithArrayInputRequest); err != nil {
 			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
@@ -285,7 +285,7 @@ func wrapCreateUsersWithArrayInput(si petstore.UserServer) func(c *gin.Context) 
 func wrapCreateUsersWithListInput(si petstore.UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.CreateUsersWithListInputRequest
-		if err := c.ShouldBind(&req.Body); err != nil {
+		if err := c.ShouldBind(&req.CreateUsersWithListInputRequest); err != nil {
 			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
@@ -365,7 +365,7 @@ func wrapUpdateUser(si petstore.UserServer) func(c *gin.Context) {
 			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
-		if err := c.ShouldBind(&req.Body); err != nil {
+		if err := c.ShouldBind(&req.User); err != nil {
 			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}

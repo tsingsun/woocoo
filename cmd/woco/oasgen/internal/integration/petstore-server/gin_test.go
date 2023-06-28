@@ -9,6 +9,7 @@ import (
 	"github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration/petstore/server"
 	"github.com/tsingsun/woocoo/web/handler"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -30,9 +31,13 @@ func (s *ginTestSuite) SetupSuite() {
 }
 
 func (s *ginTestSuite) TestAddPet() {
-	r := httptest.NewRequest("POST", "/pet", nil)
+	sr := strings.NewReader(`{"id":1,"name":"name","photoUrls":["localhost"],"owner":{"email":"owner@example.com"},"timestamp":"2023-01-01T00:00:00Z"}`)
+	r := httptest.NewRequest("POST", "/pet", sr)
+	r.Header.Add("Content-Type", binding.MIMEJSON)
 	w := httptest.NewRecorder()
 	s.Router.ServeHTTP(w, r)
+	assert.Equal(s.T(), 200, w.Code)
+	assert.Contains(s.T(), w.Body.String(), `"id":1,"name":"name"`)
 }
 
 func (s *ginTestSuite) TestDeletePet() {

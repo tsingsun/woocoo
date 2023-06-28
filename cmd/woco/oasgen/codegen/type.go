@@ -167,6 +167,17 @@ func genBodyFromContent(c *Config, name string, content openapi3.Content, requir
 	return
 }
 
+func (op *Operation) BodyName() string {
+	if sb := op.SimpleBody(); sb != nil {
+		if sb.Schema.Spec.Ref != "" {
+			n := schemaNameFromRef(sb.Schema.Spec.Ref)
+			return title.String(n)
+		}
+		return title.String(sb.Schema.Name)
+	}
+	return "Body"
+}
+
 func (op *Operation) GenSecurity(ssSpec openapi3.SecuritySchemes) {
 	if op.Spec.Security == nil {
 		return

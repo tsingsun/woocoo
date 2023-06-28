@@ -18,7 +18,7 @@
             CookieParams {{ .RequestName }}CookieParams
         {{- end }}
         {{- if .Request.BindBody }}
-            Body {{ if not .SimpleBody }}{{ .RequestName }}Body {{ else }}{{ .SimpleBody.Schema.Type.StructString }} {{ .SimpleBody.Schema.StructTagsString }}{{ end }}
+            {{ .BodyName }} {{ if not .SimpleBody }}{{ .RequestName }}Body {{ else }}{{ .SimpleBody.Schema.Type.StructString }} {{ .SimpleBody.Schema.StructTagsString }}{{ end }}
         {{- end }}
         }
         {{ if .Request.BindUri }}

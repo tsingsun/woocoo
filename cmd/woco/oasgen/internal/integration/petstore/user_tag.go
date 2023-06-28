@@ -3,7 +3,7 @@
 package petstore
 
 type CreateUserRequest struct {
-	Body User
+	User User
 }
 
 type CreateUserResponse struct {
@@ -11,11 +11,11 @@ type CreateUserResponse struct {
 }
 
 type CreateUsersWithArrayInputRequest struct {
-	Body []*User
+	CreateUsersWithArrayInputRequest []*User
 }
 
 type CreateUsersWithListInputRequest struct {
-	Body []*User
+	CreateUsersWithListInputRequest []*User
 }
 
 type DeleteUserRequest struct {
@@ -45,7 +45,7 @@ type LoginUserRequestBody struct {
 
 type UpdateUserRequest struct {
 	UriParams UpdateUserRequestUriParams
-	Body      User
+	User      User
 }
 
 type UpdateUserRequestUriParams struct {

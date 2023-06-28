@@ -48,7 +48,7 @@ import(
                 }
             {{- end }}
             {{- if .Request.BindBody }}
-                if err := c.ShouldBind(&req.Body); err != nil {
+                if err := c.ShouldBind(&req.{{ .BodyName }}); err != nil {
                     handler.AbortWithError(c,http.StatusBadRequest, err)
                     return
                 }

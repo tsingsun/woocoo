@@ -3,7 +3,7 @@
 package petstore
 
 type AddPetRequest struct {
-	Body NewPet
+	NewPet NewPet
 }
 
 type DeletePetRequest struct {
@@ -19,11 +19,11 @@ type DeletePetRequestHeaderParams struct {
 }
 
 type FindPetsByStatusRequest struct {
-	Body []string `binding:"required" form:"status"`
+	Status []string `binding:"required" form:"status"`
 }
 
 type FindPetsByTagsRequest struct {
-	Body []string `binding:"required" form:"tags"`
+	Tags []string `binding:"required" form:"tags"`
 }
 
 type GetPetByIdRequest struct {
@@ -35,7 +35,7 @@ type GetPetByIdRequestUriParams struct {
 }
 
 type UpdatePetRequest struct {
-	Body Pet
+	Pet Pet
 }
 
 type UpdatePetWithFormRequest struct {

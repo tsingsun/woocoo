@@ -145,7 +145,7 @@ func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 					"labels": {
 						Name: "labels",
 						Type: &code.TypeInfo{
-							Ident:    "labelSet",
+							Ident:    "LabelSet",
 							Type:     code.TypeOther,
 							Nillable: true,
 						},

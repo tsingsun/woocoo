@@ -16,7 +16,7 @@ import (
 var (
 	pathParamRE *regexp.Regexp
 	pattenMap   map[string]string
-	title       = cases.Title(language.English)
+	title       = cases.Title(language.English, cases.NoLower)
 
 	funcs = template.FuncMap{
 		"extend":             extend,

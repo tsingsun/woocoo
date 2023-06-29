@@ -2,21 +2,12 @@ package helper
 
 import (
 	"bufio"
-	"embed"
-	"entgo.io/ent/entc/gen"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
-	"text/template"
 )
-
-func ParseT(path string, templates embed.FS, funcs template.FuncMap) *gen.Template {
-	return gen.MustParse(gen.NewTemplate(path).
-		Funcs(gen.Funcs).
-		Funcs(funcs).
-		ParseFS(templates, path))
-}
 
 // IsBuildError reports if the given error is an error from the Go command (e.g. syntax error).
 func IsBuildError(err error) bool {
@@ -66,6 +57,17 @@ func checkFile(path string) error {
 		if l := scan.Text(); strings.HasPrefix(l, conflictMarker) {
 			return fmt.Errorf("vcs conflict %s:%d", path, i+1)
 		}
+	}
+	return nil
+}
+
+func RunCmd(root string, name string, arg ...string) error {
+	cmd := exec.Command(name, arg...)
+	cmd.Dir = root
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("go mod tidy failed: %w", err)
 	}
 	return nil
 }

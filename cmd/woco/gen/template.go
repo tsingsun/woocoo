@@ -1,33 +1,25 @@
-package helper
+package gen
 
 import (
+	"bytes"
+	"embed"
 	"fmt"
-	"github.com/tsingsun/woocoo/cmd/woco/code"
+	"go/parser"
+	"go/token"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 	"text/template/parse"
 )
 
-var (
-	Funcs = template.FuncMap{
-		"lower":     strings.ToLower,
-		"hasPrefix": strings.HasPrefix,
-		"hasSuffix": strings.HasSuffix,
-		"upper":     strings.ToUpper,
-		"trim":      strings.Trim,
-		"replace":   strings.ReplaceAll,
-		"hasField":  HasField,
-		"pascal":    Pascal,
-		"base":      filepath.Base,
-		"pkgName":   code.PkgShortName,
-		"join":      Join,
-		"quote":     Quote,
-		"joinQuote": JoinQuote,
-	}
-)
+type ExtensionTemplate struct {
+	Name           string
+	Format         string
+	ExtendPatterns []string
+}
 
 // Template wraps the standard template.Template to
 // provide additional functionality for ent extensions.
@@ -121,4 +113,31 @@ func MustParse(t *Template, err error) *Template {
 		panic(err)
 	}
 	return t
+}
+
+func ParseT(path string, templates embed.FS, funcs template.FuncMap) *Template {
+	return MustParse(NewTemplate(path).
+		Funcs(Funcs).
+		Funcs(funcs).
+		ParseFS(templates, path))
+}
+
+// InitTemplates initializes the given templates with the given patterns and return import package by specified importname template.
+func InitTemplates(templateDir embed.FS, importname string, checkData any, patterns ...string) (templates *Template, importPkg map[string]string) {
+	templates = MustParse(NewTemplate("templates").
+		ParseFS(templateDir, patterns...))
+	if importname == "" {
+		return templates, nil
+	}
+	b := bytes.NewBuffer([]byte("package main\n"))
+	CheckGraphError(templates.ExecuteTemplate(b, importname, checkData), "load imports")
+	f, err := parser.ParseFile(token.NewFileSet(), "", b, parser.ImportsOnly)
+	CheckGraphError(err, "parse imports")
+	importPkg = make(map[string]string)
+	for _, spec := range f.Imports {
+		path, err := strconv.Unquote(spec.Path.Value)
+		CheckGraphError(err, "unquote import path")
+		importPkg[filepath.Base(path)] = path
+	}
+	return
 }

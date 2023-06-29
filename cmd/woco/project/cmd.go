@@ -39,7 +39,7 @@ var InitCmd = &cli.Command{
 			Target:  fd,
 			Modules: c.StringSlice("modules"),
 		}
-
-		return generateWeb(cfg)
+		var opts []Option
+		return Generate(cfg, opts...)
 	},
 }

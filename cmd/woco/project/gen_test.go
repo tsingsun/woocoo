@@ -6,9 +6,10 @@ import (
 	"testing"
 )
 
-func Test_generateWeb(t *testing.T) {
+func Test_Generate(t *testing.T) {
 	type args struct {
-		cfg *Config
+		cfg  *Config
+		opts []Option
 	}
 	tests := []struct {
 		name    string
@@ -19,13 +20,14 @@ func Test_generateWeb(t *testing.T) {
 			name: "test",
 			args: args{
 				cfg: &Config{
-					Package: "github.com/tsingsun/woocoo/example",
+					Package: "github.com/tsingsun/woocoo/alltest",
+					Header:  "//go:build ignore",
 					Target: func() string {
-						fd, err := filepath.Abs("../../../../wocotest")
+						fd, err := filepath.Abs("internal/integration/alltest")
 						require.NoError(t, err)
 						return fd
 					}(),
-					Modules: []string{"cache", "db", "otel", "web", "grpc"},
+					Modules: []string{"otel", "web", "grpc"},
 				},
 			},
 		},
@@ -33,9 +35,10 @@ func Test_generateWeb(t *testing.T) {
 			name: "empty-module",
 			args: args{
 				cfg: &Config{
-					Package: "github.com/tsingsun/woocoo/example",
+					Package: "github.com/tsingsun/wocotest",
+					Header:  "//go:build ignore",
 					Target: func() string {
-						fd, err := filepath.Abs("../../../../wocotest")
+						fd, err := filepath.Abs("internal/integration/wocotest")
 						require.NoError(t, err)
 						return fd
 					}(),
@@ -46,8 +49,8 @@ func Test_generateWeb(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := generateWeb(tt.args.cfg); (err != nil) != tt.wantErr {
-				t.Errorf("generateWeb() error = %v, wantErr %v", err, tt.wantErr)
+			if err := Generate(tt.args.cfg, tt.args.opts...); (err != nil) != tt.wantErr {
+				t.Errorf("generate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

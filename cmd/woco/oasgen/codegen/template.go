@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
-	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
+	"github.com/tsingsun/woocoo/cmd/woco/gen"
 	"go/parser"
 	"go/token"
 	"path/filepath"
@@ -55,7 +55,7 @@ var (
 		"additional/*",
 	}
 	// templates holds the Go templates for the code generation.
-	templates *helper.Template
+	templates *gen.Template
 	//go:embed template/*
 	templateDir embed.FS
 	// importPkg are the import packages used for code generation.
@@ -72,15 +72,15 @@ var (
 )
 
 func initTemplates() {
-	templates = helper.MustParse(NewTemplate("templates").
+	templates = gen.MustParse(NewTemplate("templates").
 		ParseFS(templateDir, "template/*.tmpl"))
 	b := bytes.NewBuffer([]byte("package main\n"))
-	helper.CheckGraphError(templates.ExecuteTemplate(b, "import", Tag{Config: &Config{}}), "load imports")
+	gen.CheckGraphError(templates.ExecuteTemplate(b, "import", Tag{Config: &Config{}}), "load imports")
 	f, err := parser.ParseFile(token.NewFileSet(), "", b, parser.ImportsOnly)
-	helper.CheckGraphError(err, "parse imports")
+	gen.CheckGraphError(err, "parse imports")
 	for _, spec := range f.Imports {
 		path, err := strconv.Unquote(spec.Path.Value)
-		helper.CheckGraphError(err, "unquote import path")
+		gen.CheckGraphError(err, "unquote import path")
 		importPkg[filepath.Base(path)] = path
 	}
 }
@@ -101,7 +101,7 @@ func match(patterns []string, name string) bool {
 }
 
 // NewTemplate creates an empty template with the standard codegen functions.
-func NewTemplate(name string) *helper.Template {
-	t := helper.NewTemplate(name)
+func NewTemplate(name string) *gen.Template {
+	t := gen.NewTemplate(name)
 	return t.Funcs(funcs)
 }

@@ -1,13 +1,8 @@
 package project
 
 import (
-	"bytes"
 	"embed"
-	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
-	"go/parser"
-	"go/token"
-	"path/filepath"
-	"strconv"
+	"github.com/tsingsun/woocoo/cmd/woco/gen"
 )
 
 type (
@@ -20,7 +15,7 @@ type (
 
 var (
 	// templates holds the Go templates for the code generation.
-	templates *helper.Template
+	templates *gen.Template
 	//go:embed template/*
 	templateDir embed.FS
 	importPkg   = map[string]string{
@@ -64,20 +59,16 @@ var (
 )
 
 func initTemplates() {
-	templates = helper.MustParse(helper.NewTemplate("templates").
-		ParseFS(templateDir, "template/*.tmpl", "template/*/*.tmpl"))
-	b := bytes.NewBuffer([]byte("package main\n"))
-	helper.CheckGraphError(templates.ExecuteTemplate(b, "import", Graph{Config: &Config{}}), "load imports")
-	f, err := parser.ParseFile(token.NewFileSet(), "", b, parser.ImportsOnly)
-	helper.CheckGraphError(err, "parse imports")
-	for _, spec := range f.Imports {
-		path, err := strconv.Unquote(spec.Path.Value)
-		helper.CheckGraphError(err, "unquote import path")
-		importPkg[filepath.Base(path)] = path
+	tpkgs := make(map[string]string)
+	templates, tpkgs = gen.InitTemplates(templateDir, "import",
+		Graph{Config: &Config{}},
+		"template/*.tmpl", "template/*/*.tmpl")
+	for k, v := range tpkgs {
+		importPkg[k] = v
 	}
 }
 
-func prepareTemplates(g *Graph) *helper.Template {
+func prepareTemplates(g *Graph) *gen.Template {
 	initTemplates()
 	return templates
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/tsingsun/woocoo/cmd/woco/code"
+	"github.com/tsingsun/woocoo/cmd/woco/gen"
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"go/parser"
 	"go/token"
@@ -31,7 +32,7 @@ type (
 		//
 		// Note that, additional templates are executed on the Graph object and
 		// the execution output is stored in a file derived by the template name.
-		Templates []*helper.Template
+		Templates []*gen.Template
 		// Hooks holds an optional list of Hooks to apply on the graph before/after the code-generation.
 		Hooks []Hook
 
@@ -114,7 +115,7 @@ func (c *Config) AddSchema(ref string, schema *Schema) {
 // NewGraph creates a new Graph for the code generation from the given Spec definitions.
 // It fails if one of the schemas is invalid.
 func NewGraph(c *Config, schema *openapi3.T) (g *Graph, err error) {
-	defer helper.CatchGraphError(&err)
+	defer gen.CatchGraphError(&err)
 	g = &Graph{
 		Config: c,
 		Nodes:  make([]*Tag, 0, len(schema.Paths)),
@@ -143,7 +144,7 @@ func (g *Graph) Gen() error {
 // generate is the default Generator implementation.
 func generate(g *Graph) error {
 	var (
-		assets   helper.Assets
+		assets   gen.Assets
 		external []GraphTemplate
 	)
 	templates, external = g.templates()
@@ -187,7 +188,7 @@ func generate(g *Graph) error {
 
 // templates returns the Template to execute on the Graph,
 // and a list of optional external templates if provided.
-func (g *Graph) templates() (*helper.Template, []GraphTemplate) {
+func (g *Graph) templates() (*gen.Template, []GraphTemplate) {
 	initTemplates()
 	var (
 		roots    = make(map[string]struct{})
@@ -216,7 +217,7 @@ func (g *Graph) templates() (*helper.Template, []GraphTemplate) {
 				})
 				roots[name] = struct{}{}
 			}
-			templates = helper.MustParse(templates.AddParseTree(name, tmpl.Tree))
+			templates = gen.MustParse(templates.AddParseTree(name, tmpl.Tree))
 		}
 	}
 	for name := range helpers {
@@ -344,7 +345,7 @@ func PrepareEnv(c *Config) (undo func() error, err error) {
 
 // cleanOldNodes removes all files that were generated
 // for nodes that were removed from the Spec.
-func cleanOldNodes(assets helper.Assets, target string) {
+func cleanOldNodes(assets gen.Assets, target string) {
 	d, err := os.ReadDir(target)
 	if err != nil {
 		return

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/tsingsun/woocoo/cmd/woco/code"
+	"github.com/tsingsun/woocoo/cmd/woco/gen"
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"github.com/tsingsun/woocoo/cmd/woco/oasgen/codegen"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -19,7 +20,7 @@ type Option func(*codegen.Config) error
 // TemplateDir parses the template definitions from the files in the directory
 // and associates the resulting templates with codegen templates.
 func TemplateDir(path string) Option {
-	return templateOption(func(t *helper.Template) (*helper.Template, error) {
+	return templateOption(func(t *gen.Template) (*gen.Template, error) {
 		return t.ParseDir(path)
 	})
 }
@@ -27,7 +28,7 @@ func TemplateDir(path string) Option {
 // TemplateFiles parses the named files and associates the resulting templates
 // with codegen templates.
 func TemplateFiles(filenames ...string) Option {
-	return templateOption(func(t *helper.Template) (*helper.Template, error) {
+	return templateOption(func(t *gen.Template) (*gen.Template, error) {
 		return t.ParseFiles(filenames...)
 	})
 }
@@ -109,7 +110,7 @@ func Generate(schemaPath string, cfg *codegen.Config, options ...Option) error {
 
 // templateOption ensures the template instantiate
 // once for config and execute the given Option.
-func templateOption(next func(t *helper.Template) (*helper.Template, error)) Option {
+func templateOption(next func(t *gen.Template) (*gen.Template, error)) Option {
 	return func(cfg *codegen.Config) (err error) {
 		tmpl, err := next(codegen.NewTemplate("external"))
 		if err != nil {

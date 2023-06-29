@@ -1,26 +1,14 @@
 package helper
 
 import (
-	"entgo.io/ent/entc/gen"
 	"fmt"
+	"github.com/tsingsun/woocoo/cmd/woco/gen"
 	"go/token"
 	"net/url"
 	"path"
-	"sort"
-	"strconv"
+	"path/filepath"
 	"strings"
 )
-
-// Camel converts the given name into a camelCase.
-//
-//	user_info  => userInfo
-//	full_name  => fullName
-//	user_id    => userID
-//	full-admin => fullAdmin
-func Camel(s string) string {
-	cf := gen.Funcs["camel"].(func(string) string)
-	return cf(s)
-}
 
 func stringToGoCommentWithPrefix(in, prefix string) string {
 	if len(in) == 0 || len(strings.TrimSpace(in)) == 0 { // ignore empty comment
@@ -82,12 +70,6 @@ func Snake(s string) string {
 	return cf(s)
 }
 
-// HasField determines if a struct has a field with the given name.
-func HasField(v any, name string) bool {
-	cf := gen.Funcs["hasField"].(func(any, string) bool)
-	return cf(v, name)
-}
-
 // Pascal converts the given name into a PascalCase.
 //
 //	user_info 	=> UserInfo
@@ -97,26 +79,6 @@ func HasField(v any, name string) bool {
 func Pascal(s string) string {
 	cf := gen.Funcs["pascal"].(func(string) string)
 	return cf(s)
-}
-
-// Quote only strings.
-func Quote(v any) any {
-	cf := gen.Funcs["quote"].(func(any) any)
-	return cf(v)
-}
-
-// Join is a wrapper around strings.Join to provide consistent output.
-func Join(a []string, sep string) string {
-	cf := gen.Funcs["join"].(func([]string, string) string)
-	return cf(a, sep)
-}
-
-func JoinQuote(a []string, sep string) string {
-	sort.Strings(a)
-	for i, s := range a {
-		a[i] = strconv.Quote(s)
-	}
-	return strings.Join(a, sep)
 }
 
 func NormalizePkg(pkg string) (nlpkg string, err error) {
@@ -131,4 +93,15 @@ func NormalizePkg(pkg string) (nlpkg string, err error) {
 		return
 	}
 	return
+}
+
+// PathMatch reports if the given name matches the extended pattern.
+func PathMatch(patterns []string, name string) bool {
+	for _, pat := range patterns {
+		matched, _ := filepath.Match(pat, name)
+		if matched {
+			return true
+		}
+	}
+	return false
 }

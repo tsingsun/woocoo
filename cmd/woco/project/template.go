@@ -60,9 +60,8 @@ var (
 
 func initTemplates() {
 	tpkgs := make(map[string]string)
-	templates, tpkgs = gen.InitTemplates(templateDir, "import",
-		Graph{Config: &Config{}},
-		"template/*.tmpl", "template/*/*.tmpl")
+	templates = gen.ParseT("templates", templateDir, nil, "template/*.tmpl", "template/*/*.tmpl")
+	tpkgs = gen.InitTemplates(templates, "import", Graph{Config: &Config{}})
 	for k, v := range tpkgs {
 		importPkg[k] = v
 	}

@@ -1,14 +1,10 @@
-package codegen
+package oasgen
 
 import (
-	"bytes"
 	"embed"
 	"fmt"
 	"github.com/tsingsun/woocoo/cmd/woco/gen"
-	"go/parser"
-	"go/token"
 	"path/filepath"
-	"strconv"
 )
 
 type (
@@ -72,16 +68,11 @@ var (
 )
 
 func initTemplates() {
-	templates = gen.MustParse(NewTemplate("templates").
-		ParseFS(templateDir, "template/*.tmpl"))
-	b := bytes.NewBuffer([]byte("package main\n"))
-	gen.CheckGraphError(templates.ExecuteTemplate(b, "import", Tag{Config: &Config{}}), "load imports")
-	f, err := parser.ParseFile(token.NewFileSet(), "", b, parser.ImportsOnly)
-	gen.CheckGraphError(err, "parse imports")
-	for _, spec := range f.Imports {
-		path, err := strconv.Unquote(spec.Path.Value)
-		gen.CheckGraphError(err, "unquote import path")
-		importPkg[filepath.Base(path)] = path
+	tpkgs := make(map[string]string)
+	templates = gen.ParseT("templates", templateDir, funcs, "template/*.tmpl")
+	tpkgs = gen.InitTemplates(templates, "import", Tag{Config: &Config{}})
+	for k, v := range tpkgs {
+		importPkg[k] = v
 	}
 }
 

@@ -1,4 +1,4 @@
-package codegen
+package oasgen
 
 import (
 	"bytes"
@@ -9,7 +9,6 @@ import (
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"go/parser"
 	"go/token"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -34,10 +33,10 @@ type (
 		// the execution output is stored in a file derived by the template name.
 		Templates []*gen.Template
 		// Hooks holds an optional list of Hooks to apply on the graph before/after the code-generation.
-		Hooks []Hook
-
-		Models  map[string]*ModelMap `json:"models,omitempty"`
-		TypeMap map[string]*code.TypeInfo
+		Hooks          []gen.Hook
+		GeneratedHooks []gen.GeneratedHook
+		Models         map[string]*ModelMap `json:"models,omitempty"`
+		TypeMap        map[string]*code.TypeInfo
 		// Schemas is the list of all schemas reference in the spec.
 		Schemas []*Schema
 		schemas map[string]*Schema
@@ -53,35 +52,25 @@ type (
 		nodes map[string]*Tag
 		Spec  *openapi3.T
 	}
-
-	Generator interface {
-		// Generate generates the ent artifacts for the given graph.
-		Generate(*Graph) error
-	}
-
-	// The GenerateFunc type is an adapter to allow the use of ordinary
-	// function as Generator. If f is a function with the appropriate signature,
-	// GenerateFunc(f) is a Generator that calls f.
-	GenerateFunc func(*Graph) error
-
-	// Hook defines the "generate middleware". A function that gets a Generator
-	// and returns a Generator. For example:
-	//
-	//	hook := func(next gen.Generator) gen.Generator {
-	//		return gen.GenerateFunc(func(g *Graph) error {
-	//			fmt.Println("Graph:", g)
-	//			return next.Generate(g)
-	//		})
-	//	}
-	//
-	Hook func(Generator) Generator
 )
 
-func (f GenerateFunc) Generate(g *Graph) error {
-	return f(g)
+func (g *Graph) Name() string {
+	return "OpenAPI-Generator"
 }
 
-func (c Config) Imports() []string {
+func (g *Graph) Templates() []*gen.Template {
+	return g.Config.Templates
+}
+
+func (g *Graph) Hooks() []gen.Hook {
+	return g.Config.Hooks
+}
+
+func (g *Graph) GeneratedHooks() []gen.GeneratedHook {
+	return g.Config.GeneratedHooks
+}
+
+func (c *Config) Imports() []string {
 	var imp []string
 	for _, t := range c.TypeMap {
 		if t.PkgPath != c.Package {
@@ -134,15 +123,12 @@ func NewGraph(c *Config, schema *openapi3.T) (g *Graph, err error) {
 
 // Gen generates the artifacts for the graph.
 func (g *Graph) Gen() error {
-	var gen Generator = GenerateFunc(generate)
-	for i := len(g.Hooks) - 1; i >= 0; i-- {
-		gen = g.Hooks[i](gen)
-	}
-	return gen.Generate(g)
+	return gen.ExecGen(generate, g)
 }
 
 // generate is the default Generator implementation.
-func generate(g *Graph) error {
+func generate(gg gen.Extension) error {
+	g := gg.(*Graph)
 	var (
 		assets   gen.Assets
 		external []GraphTemplate
@@ -178,8 +164,6 @@ func generate(g *Graph) error {
 	if err := assets.Write(); err != nil {
 		return err
 	}
-	// cleanup Assets that are not needed anymore.
-	cleanOldNodes(assets, g.Config.Target)
 	// We can't run "imports" on files when the state is not completed.
 	// Because, "goimports" will drop undefined package. Therefore, it
 	// is suspended to the end of the writing.
@@ -191,48 +175,32 @@ func generate(g *Graph) error {
 func (g *Graph) templates() (*gen.Template, []GraphTemplate) {
 	initTemplates()
 	var (
-		roots    = make(map[string]struct{})
-		helpers  = make(map[string]struct{})
-		external = make([]GraphTemplate, 0, len(g.Templates))
+		roots = make(map[string]struct{})
 	)
-	for _, rootT := range g.Templates {
+	gt := make([]GraphTemplate, 0, len(g.Config.Templates))
+	for _, rootT := range g.Config.Templates {
 		templates.Funcs(rootT.FuncMap)
-		for _, tmpl := range rootT.Templates() {
-			if parse.IsEmptyTree(tmpl.Root) {
+		for _, tpl := range rootT.Templates() {
+			if parse.IsEmptyTree(tpl.Root) {
 				continue
 			}
-			name := tmpl.Name()
+			name := tpl.Name()
 			switch {
-			// Helper templates can be either global (prefixed with "helper/"),
-			// or local, where their names follow the Format: "<root-tmpl>/helper/.+").
-			case strings.HasPrefix(name, "helper/"):
-			case strings.Contains(name, "/helper/"):
-				helpers[name] = struct{}{}
 			case templates.Lookup(name) == nil && !extendExisting(name):
-				// If the template does not override or extend one of
-				// the builtin templates, generate it in a new file.
-				external = append(external, GraphTemplate{
+				format := helper.Snake(name)
+				if filepath.Ext(name) == "" {
+					format += ".go"
+				}
+				gt = append(gt, GraphTemplate{
 					Name:   name,
-					Format: helper.Snake(name) + ".go",
+					Format: format,
 				})
 				roots[name] = struct{}{}
 			}
-			templates = gen.MustParse(templates.AddParseTree(name, tmpl.Tree))
+			templates = gen.MustParse(templates.AddParseTree(name, tpl.Tree))
 		}
 	}
-	for name := range helpers {
-		root := name[:strings.Index(name, "/helper/")]
-		// If the name is prefixed with a name of a root
-		// template, we treat it as a local helper template.
-		if _, ok := roots[root]; ok {
-			continue
-		}
-		external = append(external, GraphTemplate{
-			Name:   name,
-			Format: helper.Snake(name) + ".go",
-		})
-	}
-	return templates, external
+	return templates, gt
 }
 
 func (g *Graph) addTag(schema *openapi3.T) {
@@ -341,47 +309,6 @@ func PrepareEnv(c *Config) (undo func() error, err error) {
 		return nil, err
 	}
 	return func() error { return os.WriteFile(path, out, 0644) }, nil
-}
-
-// cleanOldNodes removes all files that were generated
-// for nodes that were removed from the Spec.
-func cleanOldNodes(assets gen.Assets, target string) {
-	d, err := os.ReadDir(target)
-	if err != nil {
-		return
-	}
-	// Find deleted nodes by selecting one generated
-	// file from standard templates (<T>_query.go).
-	var deleted []*Tag
-	for _, f := range d {
-		if !strings.HasSuffix(f.Name(), "_query.go") {
-			continue
-		}
-		return
-		//typ := &Operation{}
-		//path := filepath.Join(target, typ.PackageDir())
-		//if _, ok := Assets.dirs[path]; ok {
-		//	continue
-		//}
-		//// If it is a node, it must have a model file and a dir (e.g. ent/t.go, ent/t).
-		//_, err1 := os.Stat(path + ".go")
-		//f2, err2 := os.Stat(path)
-		//if err1 == nil && err2 == nil && f2.IsDir() {
-		//	deleted = append(deleted, typ)
-		//}
-	}
-	for _, typ := range deleted {
-		for _, t := range Templates {
-			err := os.Remove(filepath.Join(target, t.Format(typ)))
-			if err != nil && !os.IsNotExist(err) {
-				log.Printf("remove old file %s: %s\n", filepath.Join(target, t.Format(typ)), err)
-			}
-		}
-		err := os.Remove(filepath.Join(target, typ.PackageDir()))
-		if err != nil && !os.IsNotExist(err) {
-			log.Printf("remove old dir %s: %s\n", filepath.Join(target, typ.PackageDir()), err)
-		}
-	}
 }
 
 func extendExisting(name string) bool {

@@ -1,4 +1,4 @@
-package codegen
+package oasgen
 
 import (
 	"github.com/getkin/kin-openapi/openapi3"

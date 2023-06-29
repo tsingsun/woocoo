@@ -7,7 +7,7 @@ import (
 
 var InitCmd = &cli.Command{
 	Name:  "init",
-	Usage: "a tool for generate woocoo web code from OpenAPI 3 specifications",
+	Usage: "a tool for generate woocoo project",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "package",

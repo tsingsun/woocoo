@@ -1,4 +1,4 @@
-package codegen
+package oasgen
 
 const (
 	goTag          = "x-go-tag"

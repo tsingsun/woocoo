@@ -1,7 +1,6 @@
 package oasgen
 
 import (
-	"github.com/tsingsun/woocoo/cmd/woco/oasgen/codegen"
 	"github.com/urfave/cli/v2"
 	"strings"
 )
@@ -37,7 +36,7 @@ var OasGenCmd = &cli.Command{
 				opts = append(opts, TemplateFiles(tmpl))
 			}
 		}
-		cfg := &codegen.Config{}
+		cfg := &Config{}
 		cnfPath := c.String("config")
 		err = LoadConfig(cfg, cnfPath)
 		if err != nil {

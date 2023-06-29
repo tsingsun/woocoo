@@ -115,19 +115,17 @@ func MustParse(t *Template, err error) *Template {
 	return t
 }
 
-func ParseT(path string, templates embed.FS, funcs template.FuncMap) *Template {
-	return MustParse(NewTemplate(path).
+func ParseT(name string, templates embed.FS, funcs template.FuncMap, pattern ...string) *Template {
+	return MustParse(NewTemplate(name).
 		Funcs(Funcs).
 		Funcs(funcs).
-		ParseFS(templates, path))
+		ParseFS(templates, pattern...))
 }
 
 // InitTemplates initializes the given templates with the given patterns and return import package by specified importname template.
-func InitTemplates(templateDir embed.FS, importname string, checkData any, patterns ...string) (templates *Template, importPkg map[string]string) {
-	templates = MustParse(NewTemplate("templates").
-		ParseFS(templateDir, patterns...))
+func InitTemplates(templates *Template, importname string, checkData any) (importPkg map[string]string) {
 	if importname == "" {
-		return templates, nil
+		return nil
 	}
 	b := bytes.NewBuffer([]byte("package main\n"))
 	CheckGraphError(templates.ExecuteTemplate(b, importname, checkData), "load imports")

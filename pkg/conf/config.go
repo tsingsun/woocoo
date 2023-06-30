@@ -133,15 +133,11 @@ func (c *Configuration) loadInternal() (err error) {
 
 	if c.IsSet("includeFiles") {
 		for _, v := range c.StringSlice("includeFiles") {
-			path := v
-			if !filepath.IsAbs(path) {
-				path = filepath.Join(c.GetBaseDir(), v)
-			}
-			if _, err := os.Stat(path); err != nil {
+			path, err := tryAbs(c.GetBaseDir(), v)
+			if err != nil {
 				panic(fmt.Errorf("config file no exists:%s,cause by:%s", path, err))
-			} else {
-				c.opts.includeFiles = append(c.opts.includeFiles, path)
 			}
+			c.opts.includeFiles = append(c.opts.includeFiles, path)
 		}
 	}
 	// make sure the "include files" in attach files is not working
@@ -153,6 +149,19 @@ func (c *Configuration) loadInternal() (err error) {
 		}
 	}
 	return err
+}
+
+func tryAbs(basedir, path string) (string, error) {
+	if !filepath.IsAbs(path) {
+		_, err := os.Stat(path)
+		if err == nil {
+			path, err = filepath.Abs(path)
+			return path, err
+		}
+		path = filepath.Join(basedir, path)
+	}
+	_, err := os.Stat(path)
+	return path, err
 }
 
 // Merge an input config stream,parameter b is YAML stream

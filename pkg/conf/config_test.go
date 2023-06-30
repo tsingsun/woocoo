@@ -3,6 +3,7 @@ package conf
 import (
 	"fmt"
 	"path"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -32,6 +33,13 @@ func TestNew(t *testing.T) {
 		{
 			name: "local",
 			args: args{opt: []Option{WithLocalPath(testdata.Path(testdata.DefaultConfigFile))}},
+			check: func(cnf *Configuration) {
+				assert.Equal(t, cnf.opts.localPath, testdata.Path(testdata.DefaultConfigFile))
+			},
+		},
+		{
+			name: "local-ref",
+			args: args{opt: []Option{WithLocalPath(filepath.Join("../../test/testdata", testdata.DefaultConfigFile))}},
 			check: func(cnf *Configuration) {
 				assert.Equal(t, cnf.opts.localPath, testdata.Path(testdata.DefaultConfigFile))
 			},

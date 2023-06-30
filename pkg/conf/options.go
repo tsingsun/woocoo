@@ -23,14 +23,11 @@ type Option func(*options)
 // A s is file path
 func WithLocalPath(s string) Option {
 	return func(o *options) {
-		if !filepath.IsAbs(s) {
-			s = filepath.Join(o.basedir, s)
-		}
-		_, err := os.Stat(s)
+		abs, err := tryAbs(o.basedir, s)
 		if err != nil {
 			panic(fmt.Sprintf("local file %q is not exists", s))
 		}
-		o.localPath = s
+		o.localPath = abs
 	}
 }
 

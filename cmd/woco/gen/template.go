@@ -116,6 +116,9 @@ func MustParse(t *Template, err error) *Template {
 }
 
 func ParseT(name string, templates embed.FS, funcs template.FuncMap, pattern ...string) *Template {
+	if len(pattern) == 0 {
+		pattern = []string{name}
+	}
 	return MustParse(NewTemplate(name).
 		Funcs(Funcs).
 		Funcs(funcs).

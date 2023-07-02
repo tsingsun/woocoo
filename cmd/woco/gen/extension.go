@@ -45,8 +45,8 @@ func ExecGen(entry GenerateFunc, g Extension) error {
 		return err
 	}
 	generatedHooks := entryex.GeneratedHooks()
-	for i := len(generatedHooks) - 1; i >= 0; i-- {
-		err = generatedHooks[i](entryex)
+	for _, hook := range generatedHooks {
+		err = hook(entryex)
 		if err != nil {
 			return err
 		}

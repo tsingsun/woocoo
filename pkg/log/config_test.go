@@ -18,6 +18,53 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+func TestNewConfig(t *testing.T) {
+	type args struct {
+		cfg *conf.Configuration
+	}
+	tests := []struct {
+		name    string
+		args    args
+		check   func(*Config)
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "miss cores",
+			args: args{
+				cfg: conf.NewFromBytes([]byte("log:\n")),
+			},
+			check: func(cfg *Config) {
+				assert.Nil(t, cfg)
+			},
+			wantErr: assert.Error,
+		},
+		{
+			name: "default rotate",
+			args: args{
+				cfg: conf.NewFromBytes([]byte(`
+cores:
+  - level: debug
+rotate:
+  localtime: true
+`)),
+			},
+			check: func(cfg *Config) {
+				assert.True(t, cfg.useRotate, true)
+			},
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewConfig(tt.args.cfg)
+			if !tt.wantErr(t, err, fmt.Sprintf("NewConfig(%v)", tt.args.cfg)) {
+				return
+			}
+			tt.check(got)
+		})
+	}
+}
+
 func TestNewConfigSolo(t *testing.T) {
 	var cfgStr = `
 development: true
@@ -263,35 +310,5 @@ func lineCounter(r io.Reader) (int, error) {
 		case err != nil:
 			return count, err
 		}
-	}
-}
-
-func TestNewConfig(t *testing.T) {
-	type args struct {
-		cfg *conf.Configuration
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    *Config
-		wantErr assert.ErrorAssertionFunc
-	}{
-		{
-			name: "miss cores",
-			args: args{
-				cfg: conf.NewFromBytes([]byte("log:\n")),
-			},
-			want:    nil,
-			wantErr: assert.Error,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewConfig(tt.args.cfg)
-			if !tt.wantErr(t, err, fmt.Sprintf("NewConfig(%v)", tt.args.cfg)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "NewConfig(%v)", tt.args.cfg)
-		})
 	}
 }

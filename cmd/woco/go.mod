@@ -14,7 +14,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/iancoleman/strcase v0.2.0
 	github.com/stretchr/testify v1.8.3
-	github.com/tsingsun/woocoo v0.0.0-20230622090725-3f1aa9ca4b02
+	github.com/tsingsun/woocoo v0.3.1-0.20230703031137-259d6d0990b3
 	github.com/urfave/cli/v2 v2.25.0
 	golang.org/x/text v0.9.0
 	golang.org/x/tools v0.9.2
@@ -88,6 +88,7 @@ require (
 	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
+	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect

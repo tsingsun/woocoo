@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -57,17 +56,6 @@ func checkFile(path string) error {
 		if l := scan.Text(); strings.HasPrefix(l, conflictMarker) {
 			return fmt.Errorf("vcs conflict %s:%d", path, i+1)
 		}
-	}
-	return nil
-}
-
-func RunCmd(root string, name string, arg ...string) error {
-	cmd := exec.Command(name, arg...)
-	cmd.Dir = root
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stdout
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("go mod tidy failed: %w", err)
 	}
 	return nil
 }

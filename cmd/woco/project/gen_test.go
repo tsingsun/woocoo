@@ -44,6 +44,7 @@ func Test_Generate(t *testing.T) {
 					}(),
 					Modules: []string{},
 				},
+				opts: []Option{SkipModTidy()},
 			},
 		},
 	}

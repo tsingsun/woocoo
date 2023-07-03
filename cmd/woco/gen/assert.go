@@ -48,12 +48,8 @@ func (a Assets) Format() error {
 		if filepath.Ext(path) != ".go" {
 			continue
 		}
-		src, err := imports.Process(path, content, nil)
-		if err != nil {
-			return fmt.Errorf("format file %s: %w", path, err)
-		}
-		if err := os.WriteFile(path, src, 0644); err != nil {
-			return fmt.Errorf("write file %s: %w", path, err)
+		if err := FormatGoFile(path, content); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -66,6 +62,28 @@ func (a Assets) ModTidy(root string) error {
 	tidyCmd.Stderr = os.Stdout
 	if err := tidyCmd.Run(); err != nil {
 		return fmt.Errorf("go mod tidy failed: %w", err)
+	}
+	return nil
+}
+
+func RunCmd(root string, name string, arg ...string) error {
+	cmd := exec.Command(name, arg...)
+	cmd.Dir = root
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("run cmd %q %v in %q failed: %w", name, arg, root, err)
+	}
+	return nil
+}
+
+func FormatGoFile(path string, content []byte) error {
+	src, err := imports.Process(path, content, nil)
+	if err != nil {
+		return fmt.Errorf("format file %s: %w", path, err)
+	}
+	if err := os.WriteFile(path, src, 0644); err != nil {
+		return fmt.Errorf("format file:write file %s: %w", path, err)
 	}
 	return nil
 }

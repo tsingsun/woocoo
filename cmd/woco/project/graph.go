@@ -23,12 +23,20 @@ type (
 		// Hooks holds an optional list of Hooks to apply on the graph before/after the code-generation.
 		Hooks          []gen.Hook
 		GeneratedHooks []gen.GeneratedHook
+		SkipModTidy    bool
 	}
 	Graph struct {
 		*Config
 		Mods []string
 	}
 )
+
+func SkipModTidy() Option {
+	return func(config *Config) error {
+		config.SkipModTidy = true
+		return nil
+	}
+}
 
 func Extensions(extensions ...gen.Extension) Option {
 	return func(config *Config) error {
@@ -101,7 +109,10 @@ func Generate(cfg *Config, opts ...Option) error {
 
 	cfg.Package = np
 	cfg.GeneratedHooks = append(cfg.GeneratedHooks, func(extension gen.Extension) error {
-		return helper.RunCmd(cfg.Target, "go", "mod", "tidy")
+		if cfg.SkipModTidy {
+			return nil
+		}
+		return gen.RunCmd(cfg.Target, "go", "mod", "tidy")
 	})
 
 	for _, opt := range opts {

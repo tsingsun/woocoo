@@ -175,6 +175,8 @@ polarisGetServiceInfos:
 	r, err := drv.(*Driver).CreateRegistry(cnf.Sub("registry"))
 	require.NoError(t, err)
 	require.NoError(t, r.Register(info))
+	r, err = drv.GetRegistry("noExist")
+	assert.Error(t, err)
 	r, err = drv.GetRegistry("polarisGetServiceInfos")
 	require.NoError(t, err)
 	time.Sleep(time.Second * 2)

@@ -177,7 +177,7 @@ polarisGetServiceInfos:
 	require.NoError(t, r.Register(info))
 	r, err = drv.GetRegistry("polarisGetServiceInfos")
 	require.NoError(t, err)
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 	infos, err := r.GetServiceInfos(strings.Join([]string{info.Namespace, info.Name}, "/"))
 	require.NoError(t, err)
 	require.Equal(t, 1, len(infos))

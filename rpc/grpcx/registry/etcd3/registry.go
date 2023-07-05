@@ -3,6 +3,7 @@ package etcd3
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/mitchellh/hashstructure/v2"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
@@ -41,6 +42,17 @@ func (drv *Driver) CreateRegistry(cnf *conf.Configuration) (registry.Registry, e
 	r.Apply(ccfg)
 	if ref != "" {
 		drv.cache[ref] = r
+	}
+	return r, nil
+}
+
+// GetRegistry gets a registry by name.
+//
+// only a reference registry can be got.see the config example
+func (drv *Driver) GetRegistry(name string) (registry.Registry, error) {
+	r, ok := drv.cache[name]
+	if !ok {
+		return nil, errors.New("registry not found,may not set it a reference registry")
 	}
 	return r, nil
 }
@@ -260,6 +272,25 @@ func (r *Registry) Unregister(node *registry.ServiceInfo) error {
 
 func (r *Registry) Close() {
 	r.client.Close()
+}
+
+// GetServiceInfos implements registry interface
+func (r *Registry) GetServiceInfos(service string) ([]*registry.ServiceInfo, error) {
+	if r.client == nil {
+		return nil, errors.New("etcd client is nil")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), r.opts.EtcdConfig.DialTimeout)
+	defer cancel()
+	resp, err := r.client.Get(ctx, service, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+	nodeInfos, err := extractAddrs(resp)
+	if err != nil {
+		return nil, err
+	}
+	return nodeInfos, nil
 }
 
 func (r *Registry) TTL() time.Duration {

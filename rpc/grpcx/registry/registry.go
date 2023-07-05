@@ -32,6 +32,8 @@ var (
 type Driver interface {
 	// CreateRegistry create a registry which for server side
 	CreateRegistry(cnf *conf.Configuration) (Registry, error)
+	// GetRegistry try to get a registry from driver cache. but driver may cache accord with some condition.
+	GetRegistry(name string) (Registry, error)
 	// ResolverBuilder returns a resolver.Builder for client side
 	ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, error)
 	// WithDialOptions injects grpc.DialOption for grpc client dial if speciality of driver is needed.
@@ -47,7 +49,13 @@ type Registry interface {
 	// TTL returns the time to live of the service node, if it is not available, return 0.
 	// every tick will call Register function to refresh.
 	TTL() time.Duration
+	// Close release the resource
 	Close()
+	// GetServiceInfos returns the members of the cluster by service name
+	// # Experimental
+	//
+	// notice: this function is a convenient function for consumer side, it is not a part of service discovery.
+	GetServiceInfos(string) ([]*ServiceInfo, error)
 }
 
 // RegisterDriver register a new Registry could be: conf.Configurable,and will be lazy loaded in server.Apply function

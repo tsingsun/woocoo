@@ -120,7 +120,7 @@ func (w *etcdResolver) GetAllAddresses() (ret []resolver.Address) {
 		grpclog.Errorf("GetAllAddresses error:%v", err)
 		return
 	}
-	nodeInfos := extractAddrs(resp)
+	nodeInfos, _ := extractAddrs(resp)
 	if len(nodeInfos) > 0 {
 		for _, node := range nodeInfos {
 			addr := resolver.Address{
@@ -179,25 +179,26 @@ func (w *etcdResolver) watchChan() chan []resolver.Address {
 	return out
 }
 
-func extractAddrs(resp *clientv3.GetResponse) []registry.ServiceInfo {
-	var addrs []registry.ServiceInfo
-
+func extractAddrs(resp *clientv3.GetResponse) (infos []*registry.ServiceInfo, err error) {
 	if resp == nil || resp.Kvs == nil {
-		return addrs
+		return
 	}
-
+	var lasterr error
+	infos = make([]*registry.ServiceInfo, 0, len(resp.Kvs))
 	for i := range resp.Kvs {
 		if v := resp.Kvs[i].Value; v != nil {
-			nodeData := registry.ServiceInfo{}
-			err := json.Unmarshal(v, &nodeData)
+			nodeData := &registry.ServiceInfo{}
+			err = json.Unmarshal(v, &nodeData)
 			if err != nil {
+				lasterr = err
 				grpclog.Info("Parse node data error:", err)
 				continue
 			}
-			addrs = append(addrs, nodeData)
+			infos = append(infos, nodeData)
 		}
 	}
-	return addrs
+	err = lasterr
+	return
 }
 
 func (w *etcdResolver) cloneAddresses(in []resolver.Address) []resolver.Address {

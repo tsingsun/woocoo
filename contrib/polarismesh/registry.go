@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/polarismesh/polaris-go"
 	"github.com/polarismesh/polaris-go/api"
+	"github.com/polarismesh/polaris-go/pkg/model"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
@@ -57,6 +60,7 @@ type (
 	}
 
 	RegisterContext struct {
+		sdkctx           api.SDKContext
 		providerAPI      api.ProviderAPI
 		registerRequests []*api.InstanceRegisterRequest
 		cancel           context.CancelFunc
@@ -68,6 +72,14 @@ type (
 		registerContext *RegisterContext
 	}
 )
+
+func (drv *Driver) GetRegistry(name string) (registry.Registry, error) {
+	r, ok := drv.refRegtries[name]
+	if !ok {
+		return nil, errors.New("registry not found,may not set it a reference registry")
+	}
+	return r, nil
+}
 
 // CreateRegistry creates a polaris registry.
 func (drv *Driver) CreateRegistry(cnf *conf.Configuration) (registry.Registry, error) {
@@ -126,6 +138,18 @@ func (drv *Driver) WithDialOptions(registryOpt registry.DialOptions) (opts []grp
 	}
 	opts = append(opts, grpc.WithChainUnaryInterceptor(injectCallerInfo(do)), grpc.WithDefaultServiceConfig(LoadBalanceConfig))
 	return
+}
+
+func New() *Registry {
+	_, cancel := context.WithCancel(context.Background())
+	registerContext := &RegisterContext{
+		cancel: cancel,
+	}
+	r := &Registry{
+		opts:            Options{},
+		registerContext: registerContext,
+	}
+	return r
 }
 
 func (r *Registry) Register(serviceInfo *registry.ServiceInfo) error {
@@ -187,16 +211,43 @@ func (r *Registry) Close() {
 	r.registerContext.cancel()
 }
 
-func New() *Registry {
-	_, cancel := context.WithCancel(context.Background())
-	registerContext := &RegisterContext{
-		cancel: cancel,
+// GetServiceInfos implements the registry interface
+func (r *Registry) GetServiceInfos(service string) ([]*registry.ServiceInfo, error) {
+	namespace := DefaultNamespace
+	parts := strings.Split(service, "/")
+	if lp := len(parts); lp > 1 {
+		service = parts[lp-1]
+		namespace = strings.Join(parts[:lp-1], "/")
 	}
-	r := &Registry{
-		opts:            Options{},
-		registerContext: registerContext,
+	consumerAPI := polaris.NewConsumerAPIByContext(r.registerContext.sdkctx)
+	instancesRequest := &polaris.GetInstancesRequest{
+		GetInstancesRequest: model.GetInstancesRequest{
+			Service:         service,
+			Namespace:       namespace,
+			SkipRouteFilter: true,
+		},
 	}
-	return r
+
+	resp, err := consumerAPI.GetInstances(instancesRequest)
+	if err != nil {
+		return nil, err
+	}
+	var infos = make([]*registry.ServiceInfo, 0, len(resp.Instances))
+	for _, instance := range resp.Instances {
+		if !instance.IsHealthy() || instance.IsIsolated() {
+			continue
+		}
+		infos = append(infos, &registry.ServiceInfo{
+			Namespace: instance.GetNamespace(),
+			Name:      instance.GetService(),
+			Host:      instance.GetHost(),
+			Port:      int(instance.GetPort()),
+			Version:   instance.GetVersion(),
+			Protocol:  instance.GetProtocol(),
+			Metadata:  instance.GetMetadata(),
+		})
+	}
+	return infos, nil
 }
 
 // Apply the configuration to the registry and set the first config as the default global config
@@ -206,6 +257,7 @@ func (r *Registry) Apply(cnf *conf.Configuration) {
 	if err != nil {
 		panic(err)
 	}
+	r.registerContext.sdkctx = ctx
 	r.registerContext.providerAPI = api.NewProviderAPIByContext(ctx)
 }
 

@@ -43,6 +43,11 @@ func (mr *MockRegistry) Close() {
 
 }
 
+// GetServiceInfos returns the members of the cluster by service name
+func (mr *MockRegistry) GetServiceInfos(_ string) ([]*registry.ServiceInfo, error) {
+	return nil, nil
+}
+
 func TestNew(t *testing.T) {
 	b := []byte(`
 grpc:

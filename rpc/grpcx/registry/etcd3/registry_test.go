@@ -79,27 +79,45 @@ func TestRegistryMultiService(t *testing.T) {
 		testproto.RegisterTestServiceServer(srv.Engine(), &testproto.TestPingService{})
 		return srv.Run()
 	})
-	require.NoError(t, err)
-	RegisterResolver(etcdConfg)
-	c, err := grpc.Dial(fmt.Sprintf("etcd://%s/", sn), grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
-	require.NoError(t, err)
-
-	hlClient := helloworld.NewGreeterClient(c)
-	tsClient := testproto.NewTestServiceClient(c)
-	for i := 0; i < 5; i++ {
-		resp, err := hlClient.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
+	t.Run("dial services", func(t *testing.T) {
 		require.NoError(t, err)
-		assert.Equal(t, resp.Message, "Hello round robin")
-		respts, err := tsClient.Ping(context.Background(), &testproto.PingRequest{Value: "ping"})
-		assert.NoError(t, err)
-		assert.Equal(t, respts.Value, "ping")
-	}
-	ctx, cxl = context.WithTimeout(context.Background(), time.Second*3)
-	defer cxl()
-	_, err = grpc.DialContext(ctx, fmt.Sprintf("etcd://%s/", sn), grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
-	require.NoError(t, err)
+		RegisterResolver(etcdConfg)
+		c, err := grpc.Dial(fmt.Sprintf("etcd://%s/", sn), grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
+		require.NoError(t, err)
+
+		hlClient := helloworld.NewGreeterClient(c)
+		tsClient := testproto.NewTestServiceClient(c)
+		for i := 0; i < 5; i++ {
+			resp, err := hlClient.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
+			require.NoError(t, err)
+			assert.Equal(t, resp.Message, "Hello round robin")
+			respts, err := tsClient.Ping(context.Background(), &testproto.PingRequest{Value: "ping"})
+			assert.NoError(t, err)
+			assert.Equal(t, respts.Value, "ping")
+		}
+		ctx, cxl = context.WithTimeout(context.Background(), time.Second*3)
+		defer cxl()
+		_, err = grpc.DialContext(ctx, fmt.Sprintf("etcd://%s/", sn), grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithDefaultServiceConfig(fmt.Sprintf(`{ "loadBalancingConfig": [{"%v": {}}] }`, roundrobin.Name)))
+		require.NoError(t, err)
+	})
+	t.Run("getServiceInfos", func(t *testing.T) {
+		drv, ok := registry.GetRegistry(scheme)
+		require.True(t, ok)
+		// not exists because the config registry is not ref
+		_, err := drv.GetRegistry(scheme)
+		assert.Error(t, err)
+		r, err := drv.CreateRegistry(testcnf.Sub("grpc.registry"))
+		require.NoError(t, err)
+		infos, err := r.GetServiceInfos("/woocoo/multi")
+		require.NoError(t, err)
+		assert.Equal(t, len(infos), 2)
+		infos, err = r.GetServiceInfos("/woocoo/multi/TestService")
+		require.NoError(t, err)
+		assert.Equal(t, len(infos), 1)
+		assert.Equal(t, infos[0].Address(), "127.0.0.1:20010")
+	})
 }
 
 func TestRegisterResolver(t *testing.T) {

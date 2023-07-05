@@ -167,7 +167,7 @@ func genBodyFromContent(c *Config, name string, content openapi3.Content, requir
 	return
 }
 
-func (op *Operation) BodyName() string {
+func (op *Operation) RequestBodyName() string {
 	if sb := op.SimpleBody(); sb != nil {
 		if sb.Schema.Spec.Ref != "" {
 			n := schemaNameFromRef(sb.Schema.Spec.Ref)
@@ -176,6 +176,16 @@ func (op *Operation) BodyName() string {
 		return title.String(sb.Schema.Name)
 	}
 	return "Body"
+}
+
+// IsBindRequest check whether the request is bind request object.
+// if body is struct or not base type, it will be BodyObject
+func (op *Operation) IsBindRequest() bool {
+	bd := op.SimpleBody()
+	if bd == nil {
+		return false
+	}
+	return len(bd.Schema.StructTags) != 0
 }
 
 func (op *Operation) GenSecurity(ssSpec openapi3.SecuritySchemes) {

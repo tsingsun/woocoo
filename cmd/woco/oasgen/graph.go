@@ -115,9 +115,6 @@ func NewGraph(c *Config, schema *openapi3.T) (g *Graph, err error) {
 	g.addModels(schema)
 	// gen operations
 	g.addNode(schema)
-	for _, schema := range g.Schemas {
-		g.modelXmlTag(schema)
-	}
 	return
 }
 
@@ -249,6 +246,10 @@ func (g *Graph) addNode(schema *openapi3.T) {
 				node.Operations = append(node.Operations, op)
 			}
 		}
+	}
+	for _, sch := range g.Schemas {
+		g.modelXmlTag(sch)
+		sch.SortStructTags()
 	}
 }
 

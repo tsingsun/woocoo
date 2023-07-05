@@ -81,7 +81,7 @@ func wrapDeletePet(si petstore.PetServer) func(c *gin.Context) {
 func wrapFindPetsByStatus(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.FindPetsByStatusRequest
-		if err := c.ShouldBind(&req.Status); err != nil {
+		if err := c.ShouldBind(&req); err != nil {
 			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}
@@ -97,7 +97,7 @@ func wrapFindPetsByStatus(si petstore.PetServer) func(c *gin.Context) {
 func wrapFindPetsByTags(si petstore.PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req petstore.FindPetsByTagsRequest
-		if err := c.ShouldBind(&req.Tags); err != nil {
+		if err := c.ShouldBind(&req); err != nil {
 			handler.AbortWithError(c, http.StatusBadRequest, err)
 			return
 		}

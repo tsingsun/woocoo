@@ -91,27 +91,36 @@ func (s *ginTestSuite) TestGetOrderById() {
 }
 
 func (s *ginTestSuite) TestUpdateUser() {
-	t := s.T()
-	t.Run("email validator", func(t *testing.T) {
+	s.Run("email validator", func() {
 		bf := bytes.NewBufferString(`{"id":1,"email":"email"}`)
 		r := httptest.NewRequest("PUT", "/user/1", bf)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		assert.Equal(t, 400, w.Code)
+		s.Equal(400, w.Code)
 	})
-	t.Run("email omitempty", func(t *testing.T) {
+	s.Run("email omitempty", func() {
 		bf := bytes.NewBufferString(`{"id":1}`)
 		r := httptest.NewRequest("PUT", "/user/1", bf)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		assert.Equal(s.T(), 400, w.Code)
+		s.Equal(400, w.Code)
 	})
-	t.Run("email ok", func(t *testing.T) {
+	s.Run("email ok", func() {
 		bf := bytes.NewBufferString(`{"id":1,"email":"test@woocoo.net"}`)
 		r := httptest.NewRequest("PUT", "/user/1", bf)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		assert.Equal(s.T(), 400, w.Code)
+		s.Equal(400, w.Code)
+	})
+}
+
+func (s *ginTestSuite) TestFindPetsByStatusRequest() {
+	s.Run("empty status", func() {
+		r := httptest.NewRequest("GET", "/pet/findByStatus?status=available", nil)
+		w := httptest.NewRecorder()
+		s.Router.ServeHTTP(w, r)
+		s.Contains(w.Body.String(), "available")
+		s.Equal(200, w.Code)
 	})
 }
 

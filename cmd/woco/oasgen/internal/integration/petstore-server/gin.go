@@ -42,6 +42,16 @@ func (s Server) FindPetsByTags(ctx *gin.Context, req *petstore.FindPetsByTagsReq
 	}, nil
 }
 
+func (s Server) FindPetsByStatus(c *gin.Context, req *petstore.FindPetsByStatusRequest) ([]*petstore.Pet, error) {
+	st := "unknown"
+	if len(req.Status) > 0 {
+		st = req.Status[0]
+	}
+	return []*petstore.Pet{
+		{ID: 1, Name: "dog", Status: st},
+	}, nil
+}
+
 func (s Server) UpdatePetWithForm(ctx *gin.Context, req *petstore.UpdatePetWithFormRequest) (err error) {
 	return errors.New("UpdatePetWithForm Error")
 }

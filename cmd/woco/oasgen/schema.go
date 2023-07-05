@@ -9,6 +9,7 @@ import (
 	"github.com/tsingsun/woocoo/cmd/woco/code"
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -292,7 +293,7 @@ func (sch *Schema) IsObjectArray() bool {
 	return sch.IsArray
 }
 
-func (sch Schema) StructTagsString() string {
+func (sch *Schema) StructTagsString() string {
 	if len(sch.StructTags) == 0 {
 		return ""
 	}
@@ -389,6 +390,10 @@ func (sch *Schema) CheckRequired() {
 			}
 		}
 	}
+}
+
+func (sch *Schema) SortStructTags() {
+	sort.Strings(sch.StructTags)
 }
 
 func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required bool) *Schema {

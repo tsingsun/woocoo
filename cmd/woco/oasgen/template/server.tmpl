@@ -1,4 +1,4 @@
-{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen/codegen.Graph */}}
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen.Graph */}}
 
 {{ define "server" }}
 
@@ -48,7 +48,11 @@ import(
                 }
             {{- end }}
             {{- if .Request.BindBody }}
-                if err := c.ShouldBind(&req.{{ .BodyName }}); err != nil {
+                {{- $bindName  := (printf "&req.%s" .RequestBodyName) }}
+                {{- if .IsBindRequest }}
+                    {{- $bindName = "&req"}}
+                {{- end }}
+                if err := c.ShouldBind({{$bindName}}); err != nil {
                     handler.AbortWithError(c,http.StatusBadRequest, err)
                     return
                 }

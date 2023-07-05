@@ -35,7 +35,6 @@ go get github.com/tsingsun/woocoo/polarismesh
 grpc:
   registry:
     scheme: polaris # 必须指定为polaris
-    global: true #该节点配置是否做为全局配置.
     ttl: 30s # 心跳时间,[0-60]s
     polaris:
       ... # 该节占下同北极星网格本身的配置  
@@ -62,7 +61,6 @@ woocoo微服务中的客户端可以采用标准的GRPC客户端.但更简单的
 grpc:
   registry:
     scheme: polaris
-    global: true
     ttl: 30s # 心跳时间,[0-60]s
     polaris:
       global:

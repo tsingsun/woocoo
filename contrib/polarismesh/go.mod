@@ -9,7 +9,7 @@ require (
 	github.com/stretchr/testify v1.8.3
 	github.com/tsingsun/woocoo v0.3.1-0.20230705042813-702cc6bce502
 	google.golang.org/grpc v1.55.0
-	google.golang.org/protobuf v1.30.0
+	google.golang.org/protobuf v1.31.0
 )
 
 require (

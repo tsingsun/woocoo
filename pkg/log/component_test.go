@@ -1,6 +1,7 @@
 package log
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -8,6 +9,12 @@ import (
 	"github.com/tsingsun/woocoo/testco/logtest"
 	"go.uber.org/zap"
 )
+
+func TestStaticUse(t *testing.T) {
+	sl := Component("static")
+	sl.Info("static")
+	sl.Ctx(context.Background()).Info("ctx static")
+}
 
 func TestComponent(t *testing.T) {
 	type fields struct {

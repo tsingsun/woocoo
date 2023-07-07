@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"strconv"
 	"strings"
 	"testing"
@@ -468,4 +470,31 @@ func TestPrintLogo(t *testing.T) {
 			PrintLogo()
 		})
 	}
+}
+
+func TestLogger_IOWriter(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		logdata := &logtest.Buffer{}
+		zp := logtest.NewBuffLogger(logdata)
+		l := &Logger{
+			Logger: zp,
+		}
+		golog := log.New(io.Discard, "", log.LstdFlags)
+		golog.SetOutput(l.IOWriter(zapcore.DebugLevel))
+		golog.Println("standard log")
+		assert.Contains(t, logdata.String(), "standard log")
+	})
+	t.Run("with-level", func(t *testing.T) {
+		logdata := &logtest.Buffer{}
+		zp := logtest.NewBuffLogger(logdata)
+		l := &Logger{
+			Logger: zp.WithOptions(zap.IncreaseLevel(zapcore.InfoLevel)),
+		}
+		golog := log.New(io.Discard, "", log.LstdFlags)
+		golog.SetOutput(l.IOWriter(zapcore.DebugLevel))
+		golog.Println("[DEBUG] Debugging")
+		assert.NotContains(t, logdata.String(), "Debugging")
+		golog.Print("[WARN] Warning")
+		assert.Contains(t, logdata.String(), "Warning")
+	})
 }

@@ -3,6 +3,7 @@ package log
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -146,6 +147,14 @@ func (l *Logger) SetContextLogger(f ContextLogger) {
 // Ctx returns a new logger with the context.
 func (l *Logger) Ctx(ctx context.Context) *LoggerWithCtx {
 	return NewLoggerWithCtx(ctx, l)
+}
+
+// IOWriter wrap to Io.Writer which can be used in golang builtin log. Level is the log level which will be written.
+func (l *Logger) IOWriter(level zapcore.Level) io.Writer {
+	return &Writer{
+		Log:   l.Logger,
+		Level: level,
+	}
 }
 
 // Sync calls the underlying Core's Sync method, flushing any buffered log

@@ -247,6 +247,7 @@ func TestLogger_Ctx(t *testing.T) {
 				TraceIDKey:    tt.fields.TraceIDKey,
 				contextLogger: tt.fields.contextLogger,
 			}
+			assert.NotNil(t, l.ContextLogger())
 			l.Ctx(tt.args.ctx).Debug("debug", zap.String("key", "value"))
 			l.Ctx(tt.args.ctx).Info("info", zap.String("key", "value"))
 			l.Ctx(tt.args.ctx).Warn("warn", zap.String("key", "value"))

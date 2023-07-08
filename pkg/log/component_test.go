@@ -1,7 +1,6 @@
 package log
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -9,12 +8,6 @@ import (
 	"github.com/tsingsun/woocoo/testco/logtest"
 	"go.uber.org/zap"
 )
-
-func TestStaticUse(t *testing.T) {
-	sl := Component("static")
-	sl.Info("static")
-	sl.Ctx(context.Background()).Info("ctx static")
-}
 
 func TestComponent(t *testing.T) {
 	type fields struct {
@@ -35,6 +28,7 @@ func TestComponent(t *testing.T) {
 			}
 			l.AsGlobal()
 			got := tt.fields.logger
+			assert.NotNil(t, got.Logger())
 			got.SetLogger(l)
 			got.Debug("debug", zap.String("key", "value"))
 			got.Info("info", zap.String("key", "value"))
@@ -70,7 +64,7 @@ func TestComponent_With(t *testing.T) {
 		// will set "component" field twice
 		Component("component-log").SetLogger(Global().Logger())
 		Component("component-log").Debug("debug", zap.String("key", "value"))
-		assert.Equal(t, 2, strings.Count(logdata.String(), `"component"`))
+		assert.Equal(t, 1, strings.Count(logdata.String(), `"component"`))
 	})
 	t.Run("WithContextLogger", func(t *testing.T) {
 		logdata := &logtest.Buffer{}
@@ -84,6 +78,9 @@ func TestComponent_With(t *testing.T) {
 		got := Global().Logger(WithContextLogger())
 		assert.NotEqual(t, got, l)
 		got.Debug("debug", zap.String("key", "value"))
+		assert.Equal(t, 0, strings.Count(logdata.String(), `"component"`))
+		logdata.Reset()
+		c.Debug("debug", zap.String("key", "value"))
 		assert.Equal(t, 1, strings.Count(logdata.String(), `"component"`))
 	})
 }

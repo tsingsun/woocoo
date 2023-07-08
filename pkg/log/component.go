@@ -10,7 +10,9 @@ import (
 // ComponentLogger is sample and base using for component that also carries a context.Context. It uses the global logger.
 type (
 	ComponentLogger interface {
-		// Logger return component's logger.
+		// Logger return component's logger and init it if not exist.
+		// The logger will be lazy init before logger SetLogger or use AsGlobal,
+		// so you can call Logger() to init yourself in some scene,it will use global logger by default.
 		// Notice GetComponentLoggerOption
 		//   if you want to get the original logger, you can use WithOriginalLogger() option.
 		//   If you want to get the logger with context, you can use WithContextLogger() option.
@@ -36,7 +38,7 @@ type (
 
 	component struct {
 		name          string
-		logger        *Logger
+		logger        *Logger // this will lazy init
 		l             *Logger
 		cl            *Logger
 		builtInFields []zap.Field
@@ -73,16 +75,20 @@ func Component(name string, fields ...zap.Field) ComponentLogger {
 		builtInFields: append(fields, zap.String(ComponentKey, name)),
 		useGlobal:     true,
 	}
-	c.SetLogger(global)
 	components[name] = c
+	return c
+}
+
+func (c *component) Init() *component {
+	if c.logger == nil {
+		c.SetLogger(global)
+	}
 	return c
 }
 
 // Logger return component's logger
 func (c *component) Logger(opts ...GetComponentLoggerOption) *Logger {
-	if c.logger == nil {
-		c.SetLogger(global)
-	}
+	c.Init()
 	options := GetComponentLoggerOptions{}
 	for _, opt := range opts {
 		opt(&options)

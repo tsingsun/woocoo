@@ -20,7 +20,10 @@ var (
 )
 
 func init() {
-	globalComponent = Component("global")
+	globalComponent = &component{
+		name:      "global",
+		useGlobal: true,
+	}
 	InitGlobalLogger()
 }
 
@@ -77,7 +80,7 @@ func NewBuiltIn() *Logger {
 	return global
 }
 
-// Global return the global logger
+// Global return struct logger if you want to use zap style logging.
 func Global() ComponentLogger {
 	return globalComponent
 }
@@ -85,6 +88,7 @@ func Global() ComponentLogger {
 // AsGlobal set the Logger as global logger
 func (l *Logger) AsGlobal() *Logger {
 	global = l
+	globalComponent.SetLogger(l)
 	// reset component,don't reset user defined
 	for _, cp := range components {
 		if cp.useGlobal {

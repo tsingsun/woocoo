@@ -123,3 +123,33 @@ grpc:
 Error的处理根据grpc的状态码来判断: 详见`interceptor.DefaultCodeToLevel`函数
 
 Panic的处理: 额外记录stacktrace
+
+## 结合标准库
+
+在使用某些第三方库时.如果支持设置`io.Writer`,则可转化为woocoo的日志.log库内置了实现`io.Writer`类,可直接使用.
+
+```go
+import (
+	"log"
+	wclog "github.com/tsingsun/woocoo/pkg/log"
+)
+w := &wclog.Writer{
+    Log:   wclog.Global().Logger(),
+	// Level 默认级别
+    Level: zap.InfoLevel,
+}
+log.SetOutput(w)
+// 或者使用Component时,可以直接使用
+logger = wclog.Component("web")
+log.SetOutput(logger.Logger().IOWriter(zapcore.DebugLevel))
+```
+
+除了转换功能外,还可通过识别如`[{level}]`文本提取日志级别,并记录到日志中.
+
+支持的文本有: debug,info,warn,error,fatal,panic, 例如:
+```go
+// 使用标准库记录
+log.Print("[debug]hello world")
+log.Print("[DEBUG]hello world")
+log.Println("Web [info] hello world")
+```

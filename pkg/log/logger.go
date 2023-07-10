@@ -3,6 +3,7 @@ package log
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -19,7 +20,10 @@ var (
 )
 
 func init() {
-	globalComponent = Component("global")
+	globalComponent = &component{
+		name:      "global",
+		useGlobal: true,
+	}
 	InitGlobalLogger()
 }
 
@@ -76,7 +80,7 @@ func NewBuiltIn() *Logger {
 	return global
 }
 
-// Global return the global logger
+// Global return struct logger if you want to use zap style logging.
 func Global() ComponentLogger {
 	return globalComponent
 }
@@ -84,6 +88,7 @@ func Global() ComponentLogger {
 // AsGlobal set the Logger as global logger
 func (l *Logger) AsGlobal() *Logger {
 	global = l
+	globalComponent.SetLogger(l)
 	// reset component,don't reset user defined
 	for _, cp := range components {
 		if cp.useGlobal {
@@ -146,6 +151,14 @@ func (l *Logger) SetContextLogger(f ContextLogger) {
 // Ctx returns a new logger with the context.
 func (l *Logger) Ctx(ctx context.Context) *LoggerWithCtx {
 	return NewLoggerWithCtx(ctx, l)
+}
+
+// IOWriter wrap to Io.Writer which can be used in golang builtin log. Level is the log level which will be written.
+func (l *Logger) IOWriter(level zapcore.Level) io.Writer {
+	return &Writer{
+		Log:   l.Logger,
+		Level: level,
+	}
 }
 
 // Sync calls the underlying Core's Sync method, flushing any buffered log

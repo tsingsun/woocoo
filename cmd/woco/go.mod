@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	ariga.io/atlas v0.10.0
-	entgo.io/ent v0.12.1
+	entgo.io/ent v0.12.2
 	github.com/ClickHouse/clickhouse-go/v2 v2.7.0
 	github.com/getkin/kin-openapi v0.118.0
 	github.com/gin-gonic/gin v1.9.1
@@ -88,7 +88,6 @@ require (
 	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect

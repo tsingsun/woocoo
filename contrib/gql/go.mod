@@ -3,12 +3,12 @@ module github.com/tsingsun/woocoo/contrib/gql
 go 1.20
 
 require (
-	github.com/99designs/gqlgen v0.17.34
+	github.com/99designs/gqlgen v0.17.35
 	github.com/casbin/casbin/v2 v2.71.1
 	github.com/gin-gonic/gin v1.9.1
 	github.com/stretchr/testify v1.8.3
 	github.com/tsingsun/woocoo v0.3.1-0.20230703031137-259d6d0990b3
-	github.com/vektah/gqlparser/v2 v2.5.4
+	github.com/vektah/gqlparser/v2 v2.5.7
 )
 
 require (

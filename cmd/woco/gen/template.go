@@ -120,7 +120,6 @@ func ParseT(name string, templates embed.FS, funcs template.FuncMap, pattern ...
 		pattern = []string{name}
 	}
 	return MustParse(NewTemplate(name).
-		Funcs(Funcs).
 		Funcs(funcs).
 		ParseFS(templates, pattern...))
 }

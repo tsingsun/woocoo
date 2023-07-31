@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	DefaultNegotiateFormat = []string{binding.MIMEJSON, binding.MIMEXML}
+	DefaultNegotiateFormat = []string{binding.MIMEJSON}
 )
 
 type (
@@ -147,7 +147,7 @@ func SetContextError(c *gin.Context, code int, err error) {
 	ce.Type = gin.ErrorType(code)
 }
 
-// AbortWithError gin context's AbortWithError prevent to reset response header, so we need to replace it
+// AbortWithError gin context's AbortWithError prevent to reset response header, so we need to replace it.
 func AbortWithError(c *gin.Context, code int, err error) {
 	c.Abort()
 	c.Error(err) // nolint: errcheck

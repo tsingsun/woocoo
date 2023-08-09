@@ -3,13 +3,16 @@ package httpx
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
+	"golang.org/x/oauth2"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,38 +28,49 @@ const (
 	clientKey  = "x509/client.key"
 )
 
-func newTestServer(handler func(w http.ResponseWriter, r *http.Request)) (*httptest.Server, error) {
+func newTestServer(handler func(w http.ResponseWriter, r *http.Request), usetls bool) (*httptest.Server, error) {
 	testServer := httptest.NewUnstartedServer(http.HandlerFunc(handler))
+	if usetls {
+		tlsCAChain, err := os.ReadFile(testdata.Path(TLSCAChain))
+		if err != nil {
+			return nil, fmt.Errorf("can't read ca file")
+		}
+		serverCertificate, err := tls.LoadX509KeyPair(testdata.Path(serverCert), testdata.Path(serverKey))
+		if err != nil {
+			return nil, fmt.Errorf("can't load X509 key pair %s - %s", serverCert, serverKey)
+		}
 
-	tlsCAChain, err := os.ReadFile(testdata.Path(TLSCAChain))
-	if err != nil {
-		return nil, fmt.Errorf("can't read ca file")
+		rootCAs := x509.NewCertPool()
+		rootCAs.AppendCertsFromPEM(tlsCAChain)
+
+		testServer.TLS = &tls.Config{
+			Certificates: make([]tls.Certificate, 1),
+			RootCAs:      rootCAs,
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			ClientCAs:    rootCAs}
+		testServer.TLS.Certificates[0] = serverCertificate
+
+		testServer.StartTLS()
+	} else {
+		testServer.Start()
 	}
-	serverCertificate, err := tls.LoadX509KeyPair(testdata.Path(serverCert), testdata.Path(serverKey))
-	if err != nil {
-		return nil, fmt.Errorf("can't load X509 key pair %s - %s", serverCert, serverKey)
-	}
-
-	rootCAs := x509.NewCertPool()
-	rootCAs.AppendCertsFromPEM(tlsCAChain)
-
-	testServer.TLS = &tls.Config{
-		Certificates: make([]tls.Certificate, 1),
-		RootCAs:      rootCAs,
-		ClientAuth:   tls.RequireAndVerifyClientCert,
-		ClientCAs:    rootCAs}
-	testServer.TLS.Certificates[0] = serverCertificate
-
-	testServer.StartTLS()
 
 	return testServer, nil
 }
 
-func TestNewClient(t *testing.T) {
+type customerTokenSource struct {
+}
+
+func (c customerTokenSource) Token() (*oauth2.Token, error) {
+	return &oauth2.Token{
+		AccessToken: "test",
+	}, nil
+}
+
+func TestNewClient_TLS(t *testing.T) {
 	expectedRes := "Hello"
 	type args struct {
-		base http.RoundTripper
-		cfg  ClientConfig
+		cfg ClientConfig
 	}
 	tests := []struct {
 		name    string
@@ -67,7 +81,6 @@ func TestNewClient(t *testing.T) {
 		{
 			name: "tls",
 			args: args{
-				base: nil,
 				cfg: ClientConfig{
 					TransportConfig: TransportConfig{
 						TLS: &conf.TLS{
@@ -86,7 +99,6 @@ func TestNewClient(t *testing.T) {
 		{
 			name: "tls with proxy",
 			args: args{
-				base: nil,
 				cfg: ClientConfig{
 					TransportConfig: TransportConfig{
 						TLS: &conf.TLS{
@@ -105,15 +117,25 @@ func TestNewClient(t *testing.T) {
 				_, _ = fmt.Fprint(w, expectedRes)
 			},
 		},
+		{
+			name: "with empty options",
+			args: args{
+				cfg: NewClientConfig(),
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				_, _ = fmt.Fprint(w, expectedRes)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotC, err := NewClient(tt.args.base, tt.args.cfg)
+			gotC, err := NewClient(tt.args.cfg)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewClient() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			ts, err := newTestServer(tt.handler)
+			usetls := tt.args.cfg.TLS != nil
+			ts, err := newTestServer(tt.handler, usetls)
 			require.NoError(t, err)
 			defer ts.Close()
 			res, err := gotC.Get(ts.URL)
@@ -162,15 +184,19 @@ func TestClientConfig_Validate(t *testing.T) {
 		{
 			name: "missing oauth2 clientID",
 			cfg: ClientConfig{
-				OAuth2: &OAuth2{},
+				OAuth2: &OAuth2Config{
+					Config: &oauth2.Config{},
+				},
 			},
 			wantErr: true,
 		},
 		{
 			name: "missing oauth2 clientSecret",
 			cfg: ClientConfig{
-				OAuth2: &OAuth2{
-					ClientID: "id1",
+				OAuth2: &OAuth2Config{
+					Config: &oauth2.Config{
+						ClientID: "id1",
+					},
 				},
 			},
 			wantErr: true,
@@ -178,10 +204,11 @@ func TestClientConfig_Validate(t *testing.T) {
 		{
 			name: "missing oauth2 tokenURL",
 			cfg: ClientConfig{
-				OAuth2: &OAuth2{
-					ClientID:     "id1",
-					ClientSecret: "secret1",
-				},
+				OAuth2: &OAuth2Config{
+					Config: &oauth2.Config{
+						ClientID:     "id1",
+						ClientSecret: "secret1",
+					}},
 			},
 			wantErr: true,
 		},
@@ -272,6 +299,183 @@ func TestProxyFunc(t *testing.T) {
 			} else {
 				assert.Equal(t, tt.want, u.String())
 			}
+		})
+	}
+}
+
+func TestNewClient_Option(t *testing.T) {
+	expectedRes := "Hello"
+	type args struct {
+		cfg ClientConfig
+	}
+	tests := []struct {
+		name    string
+		args    args
+		handler func(w http.ResponseWriter, r *http.Request)
+		wantErr bool
+	}{
+		{
+			name: "with empty options",
+			args: args{
+				cfg: NewClientConfig(),
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				_, _ = fmt.Fprint(w, expectedRes)
+			},
+		},
+		{
+			name: "with basic transport",
+			args: args{
+				cfg: NewClientConfig(WithBase(&http.Transport{})),
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				_, _ = fmt.Fprint(w, expectedRes)
+			},
+		},
+		{
+			name: "with cnf",
+			args: args{
+				NewClientConfig(WithConfiguration(conf.NewFromStringMap(map[string]any{
+					"basicAuth": map[string]any{
+						"username": "user",
+						"password": "pass",
+					},
+				}))),
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				username, password, ok := r.BasicAuth()
+				require.True(t, ok)
+				require.Equal(t, "user", username)
+				require.Equal(t, "pass", password)
+				_, _ = fmt.Fprint(w, expectedRes)
+			},
+		},
+		{
+			name: "with middleware",
+			args: args{
+				cfg: NewClientConfig(WithMiddleware(func(next http.RoundTripper) http.RoundTripper {
+					return internalRoundTripper(func(r *http.Request) (*http.Response, error) {
+						r.Header.Set("X-Test", "test")
+						return next.RoundTrip(r)
+					})
+				}, func(next http.RoundTripper) http.RoundTripper {
+					return internalRoundTripper(func(r *http.Request) (*http.Response, error) {
+						r.Header.Set("X-Test2", "test2")
+						return next.RoundTrip(r)
+					})
+				})),
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, "test", r.Header.Get("X-Test"))
+				require.Equal(t, "test2", r.Header.Get("X-Test2"))
+				_, _ = fmt.Fprint(w, expectedRes)
+			},
+		},
+		{
+			name: "tokensource",
+			args: args{
+				cfg: func() ClientConfig {
+					ts := &customerTokenSource{}
+					return NewClientConfig(WithMiddleware(TokenSource(ts)))
+				}(),
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				_, _ = fmt.Fprint(w, expectedRes)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotC, err := NewClient(tt.args.cfg)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewClient() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			usetls := tt.args.cfg.TLS != nil
+			ts, err := newTestServer(tt.handler, usetls)
+			require.NoError(t, err)
+			defer ts.Close()
+			res, err := gotC.Get(ts.URL)
+			require.NoError(t, err)
+			bd, err := io.ReadAll(res.Body)
+			require.NoError(t, err)
+			require.Equal(t, expectedRes, string(bd))
+		})
+	}
+}
+
+func TestOAuth2(t *testing.T) {
+	tokencount := 0
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.String() {
+		case "/token":
+			tokencount++
+			w.Header().Set("Content-Type", "application/json")
+			d, err := json.Marshal(map[string]string{
+				"access_token": "90d64460d14870c08c81352a05dedd3465940a7c",
+				"expires_in":   "11", // defaultExpiryDelta = 10 * time.Second, so set 11 seconds and sleep 1 second
+				"scope":        "user",
+				"token_type":   "bearer",
+			})
+			require.NoError(t, err)
+			w.Write(d)
+		case "/get":
+			require.Equal(t, r.Header.Get("Authorization"), "Bearer 90d64460d14870c08c81352a05dedd3465940a7c")
+			_, _ = fmt.Fprint(w, "Hello")
+		default:
+			t.Errorf("Unexpected exchange request URL %q", r.URL)
+		}
+	}))
+	ts.Start()
+	defer ts.Close()
+	client, err := NewClient(ClientConfig{
+		Timeout: 2 * time.Second,
+		OAuth2: &OAuth2Config{
+			Config: &oauth2.Config{
+				ClientID: "client",
+				Endpoint: oauth2.Endpoint{
+					TokenURL: ts.URL + "/token",
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	res, err := client.Get(ts.URL + "/get")
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, res.StatusCode)
+	res, err = client.Get(ts.URL + "/get")
+	require.NoError(t, err)
+	time.Sleep(1 * time.Second)
+	res, err = client.Get(ts.URL + "/get")
+	require.NoError(t, err)
+	assert.Equal(t, 2, tokencount)
+}
+
+func TestNewClientFromCnf(t *testing.T) {
+	type args struct {
+		cnf *conf.Configuration
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "cnf",
+			args: args{cnf: conf.NewFromBytes([]byte(`
+
+`)),
+			},
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewClientFromCnf(tt.args.cnf)
+			if !tt.wantErr(t, err) {
+				return
+			}
+			require.NotNil(t, got)
 		})
 	}
 }

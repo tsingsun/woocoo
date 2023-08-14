@@ -10,7 +10,7 @@ import (
 type dialOptions struct {
 	Namespace string `yaml:"namespace" json:"namespace"`
 	Service   string `yaml:"service" json:"service"`
-	// Headers will be added to the outgoing context,are fixed values,parse from meatedata
+	// Headers will be added to the outgoing context,are fixed values,parse from metadata
 	Headers map[string]string `yaml:"-" json:"-"`
 	// the service name of the caller
 	SrcService     string `yaml:"srcService" json:"srcService"`
@@ -22,13 +22,17 @@ func injectCallerInfo(options *dialOptions) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn,
 		invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 
-		if _, ok := metadata.FromOutgoingContext(ctx); !ok {
-			ctx = metadata.NewOutgoingContext(context.Background(), metadata.MD{})
+		if options.SrcService != "" || len(options.Headers) != 0 {
+			if _, ok := metadata.FromOutgoingContext(ctx); !ok {
+				ctx = metadata.NewOutgoingContext(context.Background(), metadata.MD{})
+			}
 		}
 
 		if options.SrcService != "" {
-			ctx = metadata.AppendToOutgoingContext(ctx, polarisCallerServiceKey, options.SrcService)
-			ctx = metadata.AppendToOutgoingContext(ctx, polarisCallerNamespaceKey, options.Namespace)
+			ctx = metadata.AppendToOutgoingContext(ctx,
+				polarisCallerServiceKey, options.SrcService,
+				polarisCallerNamespaceKey, options.Namespace,
+			)
 		}
 
 		for k, v := range options.Headers {

@@ -11,8 +11,11 @@ import (
 )
 
 const (
-	polarisRequestLbHashKey = "polaris.balancer.request.hashKey"
-	polarisRequestLbPolicy  = "polaris.balancer.request.lbPolicy"
+	polarisRequestLbHashKey   = "polaris.balancer.request.hashKey"
+	polarisRequestLbPolicy    = "polaris.balancer.request.lbPolicy"
+	polarisCallerServiceKey   = "polaris.request.caller.service"
+	polarisCallerNamespaceKey = "polaris.request.caller.namespace"
+	registerServiceTokenKey   = "token"
 )
 
 var (
@@ -20,12 +23,6 @@ var (
 	DefaultNamespace = "default"
 	// LoadBalanceConfig config for do the balance
 	LoadBalanceConfig = fmt.Sprintf("{\n  \"loadBalancingConfig\": [ { \"%s\": {} } ]}", scheme)
-)
-
-var (
-	polarisCallerServiceKey   = "polaris.request.caller.service"
-	polarisCallerNamespaceKey = "polaris.request.caller.namespace"
-	registerServiceTokenKey   = "token"
 )
 
 var (

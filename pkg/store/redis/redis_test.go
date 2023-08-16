@@ -27,35 +27,35 @@ store:
       - localhost:7000
 `
 	tests := []struct {
-		name      string
-		cfg       *conf.Configuration
-		newFunc   func() *Client
-		wantPanic bool
+		name    string
+		cfg     *conf.Configuration
+		newFunc func() (*Client, error)
+		wantErr bool
 	}{
 		{
 			name: "builtin",
-			newFunc: func() *Client {
+			newFunc: func() (*Client, error) {
 				rds := miniredis.RunT(t)
 				cfg := conf.NewFromBytes([]byte(b)).Load()
 				cfg.Parser().Set("store.redis.addr", rds.Addr())
 				cfg.AsGlobal()
-				return NewBuiltIn()
+				return NewBuiltIn(), nil
 			},
 		},
 		{
 			name: "standalone",
-			newFunc: func() *Client {
+			newFunc: func() (*Client, error) {
 				rds := miniredis.RunT(t)
 				cfg := conf.NewFromBytes([]byte(b)).Load().Sub("store.redis")
 				cfg.Parser().Set("addr", rds.Addr())
-				cli := NewClient(cfg)
+				cli, err := NewClient(cfg)
 				assert.Equal(t, cli.redisOptions.(*redis.UniversalOptions).DialTimeout, cfg.Duration("dialTimeout"))
-				return cli
+				return cli, err
 			},
 		},
 		{
 			name: "cluster",
-			newFunc: func() *Client {
+			newFunc: func() (*Client, error) {
 				rds := miniredis.RunT(t)
 				rds1 := miniredis.RunT(t)
 				cfg := conf.NewFromBytes([]byte(b)).Load().Sub("store.redis1")
@@ -65,7 +65,7 @@ store:
 		},
 		{
 			name: "fail over",
-			newFunc: func() *Client {
+			newFunc: func() (*Client, error) {
 				rds := miniredis.RunT(t)
 				cfg := conf.NewFromBytes([]byte(b)).Load().Sub("store.redisr")
 				cfg.Parser().Set("addrs", []string{rds.Addr()})
@@ -75,18 +75,14 @@ store:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var client *Client
-			if tt.name == "builtin" {
-				client = tt.newFunc()
-			} else {
-				if tt.wantPanic {
-					assert.Panics(t, func() {
-						tt.newFunc()
-					})
-					return
-				}
-
-				client = tt.newFunc()
+			var (
+				client *Client
+				err    error
+			)
+			client, err = tt.newFunc()
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
 			}
 			client.Ping(context.Background())
 			assert.NoError(t, client.Close())

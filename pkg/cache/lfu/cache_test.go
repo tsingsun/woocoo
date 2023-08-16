@@ -20,10 +20,11 @@ func TestTinyLFU_Get_CorruptionOnExpiry(t *testing.T) {
 		return fmt.Sprintf("key-%00000d", i)
 	}
 
-	mycache := NewTinyLFU(conf.NewFromStringMap(map[string]any{
+	mycache, err := NewTinyLFU(conf.NewFromStringMap(map[string]any{
 		"size":    "100000",
 		"samples": "100000",
 	}))
+	require.NoError(t, err)
 	size := 50000
 	// Put a bunch of stuff in the cache with a TTL of 1 second
 	for i := 0; i < size; i++ {
@@ -57,10 +58,11 @@ loop:
 }
 
 func TestTinyLFU_Get(t *testing.T) {
-	local := NewTinyLFU(conf.NewFromStringMap(map[string]any{
+	local, err := NewTinyLFU(conf.NewFromStringMap(map[string]any{
 		"size":    "100000",
 		"samples": "100000",
 	}))
+	require.NoError(t, err)
 	t.Parallel()
 	t.Run("string with ttl", func(t *testing.T) {
 		assert.NoError(t, local.Set(context.Background(), "key", "value"))

@@ -104,13 +104,11 @@ grpc:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewClient(tt.args.cfg)
 			if tt.panic {
-				assert.Panics(t, func() {
-					NewClient(tt.args.cfg)
-				})
+				assert.Error(t, err)
 				return
 			}
-			got := NewClient(tt.args.cfg)
 			assert.NotNil(t, got)
 		})
 	}
@@ -162,7 +160,8 @@ grpc:
 		}
 	}()
 	time.Sleep(time.Second)
-	cli := NewClient(cfg.Sub("grpc"))
+	cli, err := NewClient(cfg.Sub("grpc"))
+	require.NoError(t, err)
 	assert.True(t, cli.withTransportCredentials)
 	conn, err := cli.Dial(cfg.String("grpc.server.addr"))
 	assert.NoError(t, err)
@@ -215,11 +214,12 @@ service:
 		return srv.Run()
 	}))
 	defer srv.Stop(context.Background())
-	cli := NewClient(cfg.Sub("service"))
+	cli, err := NewClient(cfg.Sub("service"))
+	require.NoError(t, err)
 	assert.Equal(t, cli.registryOptions.Namespace, "woocoo")
 	assert.Equal(t, cli.registryOptions.ServiceName, "helloworld.Greeter")
 	assert.EqualValues(t, cli.registryOptions.Metadata, map[string]string{"version": "1.0"})
-	_, err := cli.Dial("")
+	_, err = cli.Dial("")
 	assert.NoError(t, err)
 
 	t.Run("downgrade", func(t *testing.T) {

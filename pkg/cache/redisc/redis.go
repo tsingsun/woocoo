@@ -39,48 +39,66 @@ func WithRedisClient(cli redis.UniversalClient) Option {
 	}
 }
 
-func New(cfg *conf.Configuration, opts ...Option) *Redisc {
+// New creates a new redis cache with the provided configuration.
+//
+// Cache Configuration:
+//
+//	driverName: redis # optional, default is redis
+//	addrs: # required
+//	db: 0
+//	... # other redis configuration
+//	local: # local cache,optional, default is nil
+//	  size: 1000 # optional, default is 1000
+//	  samples: 100000 # optional, default is 100000
+//	  ttl: 1m # optional, default is 1m
+//
+// If you want to register to cache manager, set a `driverName` in configuration.
+func New(cfg *conf.Configuration, opts ...Option) (*Redisc, error) {
 	c := &Redisc{
 		driverName: "redis",
 	}
 	for _, opt := range opts {
 		opt(c)
 	}
-	c.Apply(cfg)
-	return c
+	if err := c.Apply(cfg); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
-func NewBuiltIn() *Redisc {
-	c := New(conf.Global().Sub("cache.redis"))
-	return c
-}
-
+// Register cache to cache manager
 func (cd *Redisc) Register() error {
 	return cache.RegisterCache(cd.driverName, cd)
 }
 
 // Apply conf.configurable
-func (cd *Redisc) Apply(cfg *conf.Configuration) {
+func (cd *Redisc) Apply(cfg *conf.Configuration) (err error) {
 	if cfg.Bool("stats") {
 		cd.stats = &cache.Stats{}
 	}
 	if cfg.IsSet("local") {
-		cd.local = lfu.NewTinyLFU(cfg.Sub("local"))
+		cd.local, err = lfu.NewTinyLFU(cfg.Sub("local"))
+		if err != nil {
+			return err
+		}
 	}
 	if cd.redis == nil {
 		if cfg.IsSet("addrs") {
-			remote := store.NewClient(cfg)
+			remote, err := store.NewClient(cfg)
+			if err != nil {
+				return err
+			}
 			cd.redis = remote
 		}
 	}
 	if k := cfg.String("driverName"); k != "" {
 		cd.driverName = k
-		if err := cd.Register(); err != nil {
-			panic(err)
+		if err = cd.Register(); err != nil {
+			return err
 		}
 	}
 	if cd.redis == nil && cd.local == nil {
-		panic("redis cache must have a redis client or local cache")
+		err = errors.New("redis cache must have a redis client or local cache")
 	}
 	if cd.marshal == nil {
 		cd.marshal = cache.DefaultMarshalFunc
@@ -88,6 +106,7 @@ func (cd *Redisc) Apply(cfg *conf.Configuration) {
 	if cd.unmarshal == nil {
 		cd.unmarshal = cache.DefaultUnmarshalFunc
 	}
+	return
 }
 
 // Get returns the value associated with the given key.

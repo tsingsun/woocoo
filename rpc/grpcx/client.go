@@ -39,22 +39,24 @@ type Client struct {
 	withTransportCredentials bool
 }
 
-func NewClient(cfg *conf.Configuration) *Client {
+func NewClient(cfg *conf.Configuration) (*Client, error) {
 	c := &Client{}
 	c.registryOptions.Namespace = cfg.Root().Namespace()
-	c.Apply(cfg)
-	return c
+	if err := c.Apply(cfg); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
-func (c *Client) Apply(cfg *conf.Configuration) {
+func (c *Client) Apply(cfg *conf.Configuration) error {
 	// server info
 	if err := cfg.Parser().Unmarshal("server", &c.serverConfig); err != nil {
-		panic(err)
+		return err
 	}
 	// target info
 	if k := conf.Join("client", "target"); cfg.IsSet(k) {
 		if err := cfg.Sub(k).Unmarshal(&c.registryOptions); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -73,21 +75,22 @@ func (c *Client) Apply(cfg *conf.Configuration) {
 		c.scheme = cfg.String(conf.Join(k, "scheme"))
 		drv, ok := registry.GetRegistry(c.scheme)
 		if !ok {
-			panic(fmt.Errorf("registry driver not found:%s", c.scheme))
+			return fmt.Errorf("registry driver not found:%s", c.scheme)
 		}
 		rb, err := drv.ResolverBuilder(cfg.Sub(k))
 		if err != nil {
-			panic(err)
+			return err
 		}
 		rdo, err := drv.WithDialOptions(c.registryOptions)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		pluginOptions = append(pluginOptions, rdo...)
 		pluginOptions = append(pluginOptions, grpc.WithResolvers(rb))
 	}
-	// custom dial options, highest priority
+	// custom dial options, the highest priority
 	c.dialOptions = append(pluginOptions, c.dialOptions...)
+	return nil
 }
 
 func (c *Client) targetPrefix() string {
@@ -97,7 +100,7 @@ func (c *Client) targetPrefix() string {
 	return c.scheme + "://"
 }
 
-// Dial creates a gRPC client connection with the given target,and covert to DialContext if client.timeout > 0
+// Dial creates a gRPC client connection with the given target, and covert to DialContext if client.timeout > 0
 func (c *Client) Dial(target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	if c.timeout == 0 {
 		return c.DialContext(context.Background(), target, opts...)

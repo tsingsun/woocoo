@@ -21,10 +21,12 @@ import (
 func TestKeyAuth(t *testing.T) {
 	mredis := miniredis.RunT(t)
 	err := cache.RegisterCache("keyAuthStore", func() cache.Cache {
-		return redisc.New(conf.NewFromStringMap(map[string]any{
+		rd, err := redisc.New(conf.NewFromStringMap(map[string]any{
 			"type":  "standalone",
 			"addrs": []string{mredis.Addr()},
 		}))
+		require.NoError(t, err)
+		return rd
 	}())
 	require.NoError(t, err)
 	type args struct {

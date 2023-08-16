@@ -20,8 +20,8 @@ type Configurable interface {
 	// cnf is the Configuration of the component, and it's sub configuration of root
 	// path is the relative path to root,if root is the component,path will be empty
 	// Apply also use for lazy load scene
-	// notice: if any error in apply process,use panic to expose error,and stop application.
-	Apply(cnf *Configuration)
+	// notice: if any error in apply process,you should choose use panic to expose error,and stop application.
+	Apply(cnf *Configuration) error
 }
 
 const (
@@ -239,7 +239,7 @@ func (c *Configuration) passRoot(sub *Configuration) {
 	}
 }
 
-// Each iterate the slice path of the Configuration.
+// Each iterates the slice path of the Configuration.
 func (c *Configuration) Each(path string, cb func(root string, sub *Configuration)) {
 	ops := c.ParserOperator().Slices(path)
 	for _, op := range ops {
@@ -277,14 +277,14 @@ func (c *Configuration) Namespace() string {
 
 // AppName indicates the application's name
 //
-// return the path 'appName' value if exists
+// returns the path 'appName' value if exists
 func (c *Configuration) AppName() string {
 	return c.String("appName")
 }
 
 // Version indicates the application's sem version
 //
-// return the path 'version' value, no set return empty
+// returns the path 'version' value, no set return empty
 func (c *Configuration) Version() string {
 	return c.String("version")
 }
@@ -292,6 +292,12 @@ func (c *Configuration) Version() string {
 // Unmarshal map data of config into a struct, values are merged.
 //
 // Tags on the fields of the structure must be properly set.
+// Notice: if use nested struct, should tag `,inline` and can't use pointer: like
+//
+//		type Config struct {
+//		    BaseConfig `yaml:",inline"`
+//	     // should not *BaseConfig
+//	 }
 func (c *Configuration) Unmarshal(dst any) (err error) {
 	return c.parser.Unmarshal("", dst)
 }

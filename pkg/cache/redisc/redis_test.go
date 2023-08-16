@@ -30,7 +30,8 @@ redis:
 	mr := miniredis.RunT(t)
 	mr.Select(cfg.Int("redis.db"))
 	cfg.Parser().Set("redis.addrs", []string{mr.Addr()})
-	redisc := New(cfg.Sub("redis"))
+	redisc, err := New(cfg.Sub("redis"))
+	require.NoError(t, err)
 	assert.NotNil(t, redisc.Stats())
 	return redisc, mr
 }
@@ -133,7 +134,8 @@ func TestNew(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := New(tt.args.cfg, tt.args.opts...)
+			got, err := New(tt.args.cfg, tt.args.opts...)
+			require.NoError(t, err)
 			tt.want(got, t)
 		})
 	}
@@ -225,38 +227,6 @@ func TestRedisc(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.do()
-		})
-	}
-}
-
-func TestNewBuiltIn(t *testing.T) {
-	tests := []struct {
-		name    string
-		cnf     *conf.Configuration
-		wantErr bool
-	}{
-		{
-			name: "builtin",
-			cnf: conf.NewFromStringMap(map[string]any{
-				"cache": map[string]any{
-					"redis": map[string]any{
-						"addrs": "127.0.0.1:6379",
-						"db":    1,
-					},
-				},
-			}),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.cnf.AsGlobal()
-			if tt.wantErr {
-				assert.Panics(t, func() {
-					NewBuiltIn()
-				})
-				return
-			}
-			assert.NotNil(t, NewBuiltIn())
 		})
 	}
 }

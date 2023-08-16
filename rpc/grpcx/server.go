@@ -44,7 +44,7 @@ type Server struct {
 
 	registry     registry.Registry
 	registryDone bool
-	// ServiceInfos is for service discovery,it converts from grpc service info
+	// ServiceInfos is for service discovery, it converts from grpc service info
 	ServiceInfos []*registry.ServiceInfo
 
 	mu sync.RWMutex
@@ -69,14 +69,16 @@ func New(opts ...Option) *Server {
 	if cnf := s.opts.configuration; cnf != nil {
 		s.opts.Version = cnf.Root().Version()
 		s.opts.Namespace = cnf.Root().Namespace()
-		s.Apply(s.opts.configuration)
+		if err := s.Apply(s.opts.configuration); err != nil {
+			panic(err)
+		}
 	}
 	s.engine = grpc.NewServer(s.opts.grpcOptions...)
 	return s
 }
 
 // Apply the configuration to the server.
-func (s *Server) Apply(cfg *conf.Configuration) {
+func (s *Server) Apply(cfg *conf.Configuration) error {
 	err := cfg.Parser().Unmarshal("server", &s.opts)
 	if err != nil {
 		panic(err)
@@ -85,10 +87,10 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 		rgcfg := cfg.Sub(k)
 		drv, ok := registry.GetRegistry(rgcfg.String("scheme"))
 		if !ok {
-			panic(fmt.Errorf("registry driver not found"))
+			return fmt.Errorf("registry driver not found:%s", rgcfg.String("scheme"))
 		}
 		if s.registry, err = drv.CreateRegistry(rgcfg); err != nil {
-			panic(err)
+			return err
 		}
 	}
 	// engine
@@ -96,6 +98,7 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 		cnfOpts := optionsManager.BuildServerOptions(cfg, k)
 		s.opts.grpcOptions = append(cnfOpts, s.opts.grpcOptions...)
 	}
+	return nil
 }
 
 // ListenAndServe call net listen to start grpc server and registry service
@@ -228,7 +231,7 @@ func (s *Server) Run() error {
 
 	// Wait for interrupt signal to gracefully runAndClose the server with
 	// a timeout of 5 seconds.
-	// kill (no param) default send syscall.SIGTERM
+	// kill (no param) default sends syscall.SIGTERM
 	// kill -2 is syscall.SIGINT
 	// kill -9 is syscall.SIGKILL but can't be caught, so don't need add it
 	quit := make(chan os.Signal, 1)

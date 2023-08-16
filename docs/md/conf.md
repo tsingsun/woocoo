@@ -93,3 +93,26 @@ web:
 ```
 
 各组件的配置将在对应组件文档中说明.
+
+##  嵌套结构
+
+当要为某个组件配置时,经常到遇自定义配置类,嵌套底层组件配置.
+
+```yaml
+component:
+  addr: :8080
+  # 以下底层组件配置
+  name: base  
+```
+
+```go
+type Component struct {
+    BaseComponentConfig `,inline`
+    Addr string `json:"addr"`
+}
+
+var cfg Component
+conf.Unmarshal(&cfg)
+```
+> 通过`inline`标签时,不支持指针类型,需要注意.
+

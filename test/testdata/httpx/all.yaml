@@ -1,0 +1,15 @@
+oauth-with-cache:
+  timeout: 2s
+  oauth2:
+    clientID: client_id
+    clientSecret: client_secret
+    endpoint:
+      tokenURL: /token
+      authURL: /auth
+    scopes:
+      - scope1
+      - scope2
+    endpointParams:
+      param1: [value1]
+    cache:
+      type: redis

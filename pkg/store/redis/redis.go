@@ -11,15 +11,21 @@ type Client struct {
 	redisOptions any
 }
 
-func NewClient(cfg *conf.Configuration) *Client {
+func NewClient(cfg *conf.Configuration) (*Client, error) {
 	v := &Client{}
-	v.Apply(cfg)
-	return v
+	if err := v.Apply(cfg); err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 // NewBuiltIn return a Client through application default
 func NewBuiltIn() *Client {
-	return NewClient(conf.Global().Sub("store.redis"))
+	c, err := NewClient(conf.Global().Sub("store.redis"))
+	if err != nil {
+		panic(err)
+	}
+	return c
 }
 
 func (c *Client) Close() error {
@@ -29,12 +35,14 @@ func (c *Client) Close() error {
 	return c.UniversalClient.Close()
 }
 
-func (c *Client) Apply(cfg *conf.Configuration) {
+// Apply implements the conf.Configurable interface
+func (c *Client) Apply(cfg *conf.Configuration) error {
 	opts := redis.UniversalOptions{}
 	err := cfg.Unmarshal(&opts)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	c.redisOptions = &opts
 	c.UniversalClient = redis.NewUniversalClient(&opts)
+	return nil
 }

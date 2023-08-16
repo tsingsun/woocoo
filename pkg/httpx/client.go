@@ -3,6 +3,10 @@ package httpx
 import (
 	"context"
 	"fmt"
+	"github.com/mitchellh/hashstructure/v2"
+	"github.com/tsingsun/woocoo/pkg/cache"
+	"github.com/tsingsun/woocoo/pkg/cache/lfu"
+	"github.com/tsingsun/woocoo/pkg/cache/redisc"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 	"net/http"
@@ -15,6 +19,11 @@ import (
 )
 
 type (
+	// TokenStorage is an interface to store and retrieve oauth2 token
+	TokenStorage interface {
+		Token() (*oauth2.Token, error)
+		SetToken(*oauth2.Token) error
+	}
 	// ClientConfig configures an HTTP client.
 	ClientConfig struct {
 		TransportConfig
@@ -42,8 +51,11 @@ type (
 	}
 
 	OAuth2Config struct {
-		*oauth2.Config
+		oauth2.Config  `yaml:",inline" json:",inline"`
 		EndpointParams url.Values
+
+		ts      oauth2.TokenSource
+		storage TokenStorage
 	}
 
 	TransportConfig struct {
@@ -51,30 +63,31 @@ type (
 		// TLSConfig to use to connect to the targets.
 		TLS *conf.TLS `yaml:"tls,omitempty"`
 	}
-
-	ProxyConfig struct {
-		// HTTP proxy server to use to connect to the targets.
-		ProxyURL string `yaml:"proxyUrl,omitempty" json:"proxyUrl,omitempty"`
-		// NoProxy contains addresses that should not use a proxy.
-		NoProxy string `yaml:"noProxy,omitempty" json:"noProxy,omitempty"`
-		// ProxyConnectHeader optionally specifies headers to send to
-		// proxies during CONNECT requests. Assume that at least _some_ of
-		// these headers are going to contain secrets and use Secret as the
-		// value type instead of string.
-		ProxyConnectHeader http.Header `yaml:"proxyConnectHeader,omitempty" json:"proxyConnectHeader,omitempty"`
-	}
 )
 
 // NewClientConfig creates a new ClientConfig by options.
-func NewClientConfig(opts ...Option) ClientConfig {
-	cfg := ClientConfig{}
+func NewClientConfig(cnf *conf.Configuration, opts ...Option) (cfg *ClientConfig, err error) {
+	cfg = &ClientConfig{}
+	if err = cnf.Unmarshal(cfg); err != nil {
+		return
+	}
 	for _, opt := range opts {
-		opt(&cfg)
+		opt(cfg)
+	}
+	if err := cfg.Validate(); err != nil {
+		return cfg, err
 	}
 	if cfg.BasicAuth != nil {
 		cfg.base = chain(cfg.base, BaseAuth(cfg.BasicAuth.Username, cfg.BasicAuth.Password))
 	}
-	return cfg
+	if cfg.OAuth2 != nil && cnf.IsSet("cache") {
+		storage, err := newCacheTokenStorage(cnf, cfg)
+		if err != nil {
+			return cfg, err
+		}
+		cfg.OAuth2.storage = storage
+	}
+	return cfg, nil
 }
 
 func (c *ClientConfig) Validate() error {
@@ -88,7 +101,7 @@ func (c *ClientConfig) Validate() error {
 			return fmt.Errorf("authorization type %q no support", c.Authorization.Type)
 		}
 	}
-	if c.OAuth2 != nil && c.OAuth2.Config != nil {
+	if c.OAuth2 != nil {
 		if c.OAuth2.ClientID == "" {
 			return fmt.Errorf("oauth2 clientId must be configured")
 		}
@@ -100,6 +113,18 @@ func (c *ClientConfig) Validate() error {
 		}
 	}
 	return nil
+}
+
+type ProxyConfig struct {
+	// HTTP proxy server to use to connect to the targets.
+	ProxyURL string `yaml:"proxyUrl,omitempty" json:"proxyUrl,omitempty"`
+	// NoProxy contains addresses that should not use a proxy.
+	NoProxy string `yaml:"noProxy,omitempty" json:"noProxy,omitempty"`
+	// ProxyConnectHeader optionally specifies headers to send to
+	// proxies during CONNECT requests. Assume that at least _some_ of
+	// these headers are going to contain secrets and use Secret as the
+	// value type instead of string.
+	ProxyConnectHeader http.Header `yaml:"proxyConnectHeader,omitempty" json:"proxyConnectHeader,omitempty"`
 }
 
 func (p ProxyConfig) Validate() error {
@@ -121,6 +146,89 @@ func (p ProxyConfig) ProxyFunc() func(req *http.Request) (*url.URL, error) {
 	return func(req *http.Request) (*url.URL, error) {
 		return fn(req.URL)
 	}
+}
+
+type TokenSource struct {
+	storage TokenStorage
+	base    oauth2.TokenSource
+}
+
+func (t *TokenSource) Token() (*oauth2.Token, error) {
+	if t.storage == nil {
+		return t.base.Token()
+	}
+	if token, err := t.storage.Token(); err == nil && token.Valid() {
+		return token, err
+	}
+	token, err := t.base.Token()
+	if err != nil {
+		return token, err
+	}
+	if err := t.storage.SetToken(token); err != nil {
+		return nil, err
+	}
+	return token, nil
+}
+
+// cacheTokenStorage is an implementation of TokenStorage that stores the token in a cache.Cache.
+type cacheTokenStorage struct {
+	config *ClientConfig
+	cache  cache.Cache
+
+	tokenCacheKey string
+}
+
+// cnf is the client configuration
+func newCacheTokenStorage(cnf *conf.Configuration, cfg *ClientConfig) (*cacheTokenStorage, error) {
+	dc, err := buildCache(cnf)
+	if err != nil {
+		return nil, err
+	}
+	return &cacheTokenStorage{
+		config:        cfg,
+		cache:         dc,
+		tokenCacheKey: tokenKey(cfg.OAuth2),
+	}, nil
+}
+
+func tokenKey(config *OAuth2Config) string {
+	// hash cfg
+	hash, err := hashstructure.Hash(config, hashstructure.FormatV2, nil)
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s:token:%d", config.ClientID, hash)
+}
+
+func buildCache(cnf *conf.Configuration) (cache.Cache, error) {
+	if cnf.IsSet("cache") {
+		switch {
+		case cnf.IsSet("cache.redis"):
+			return redisc.New(cnf.Sub("cache.redis"))
+		case cnf.IsSet("cache.local"):
+			return lfu.NewTinyLFU(cnf.Sub("cache.lfu"))
+		}
+	}
+	return nil, nil
+}
+
+func (c *cacheTokenStorage) Token() (*oauth2.Token, error) {
+	if c.cache == nil {
+		return nil, nil
+	}
+	t := &oauth2.Token{}
+	err := c.cache.Get(context.Background(), c.tokenCacheKey, t)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+func (c *cacheTokenStorage) SetToken(t *oauth2.Token) error {
+	if !t.Valid() {
+		return fmt.Errorf("invalid token")
+	}
+	return c.cache.Set(context.Background(), c.tokenCacheKey, t, cache.WithTTL(t.Expiry.Sub(time.Now())))
 }
 
 // NewTransport creates a new HTTP transport base on TransportConfig and http.DefaultTransport.
@@ -151,10 +259,56 @@ func NewTransport(cfg TransportConfig) (http.RoundTripper, error) {
 	return ts, nil
 }
 
+// Exchange converts an authorization code into a token if you use oauth2 config.
+func (c *ClientConfig) Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
+	if c.OAuth2 == nil {
+		return nil, fmt.Errorf("oauth2 config not found")
+	}
+	tk, err := c.OAuth2.Config.Exchange(ctx, code, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if c.OAuth2.storage != nil {
+		if err := c.OAuth2.storage.SetToken(tk); err != nil {
+			return nil, err
+		}
+	}
+	return tk, nil
+}
+
+// Client returns an HTTP client using the provided token.
+func (c *ClientConfig) Client(ctx context.Context, t *oauth2.Token) (*http.Client, error) {
+	if t != nil && c.OAuth2 == nil {
+		return nil, fmt.Errorf("oauth2 config not found")
+	}
+	if t != nil && c.OAuth2 != nil && c.OAuth2.ts == nil {
+		c.OAuth2.ts = c.OAuth2.Config.TokenSource(ctx, t)
+	}
+	return NewClient(c)
+}
+
+// TokenSource returns a default token source base on clientcredentials.Config. it called in NewClient
+func (c *ClientConfig) TokenSource(ctx context.Context) oauth2.TokenSource {
+	config := &clientcredentials.Config{
+		ClientID:       c.OAuth2.ClientID,
+		ClientSecret:   c.OAuth2.ClientSecret,
+		Scopes:         c.OAuth2.Scopes,
+		TokenURL:       c.OAuth2.Endpoint.TokenURL,
+		EndpointParams: c.OAuth2.EndpointParams,
+	}
+	hc := &http.Client{Transport: c.base, Timeout: c.Timeout}
+	ctx = context.WithValue(ctx, oauth2.HTTPClient, hc)
+	base := config.TokenSource(context.WithValue(ctx, oauth2.HTTPClient, hc))
+	return &TokenSource{
+		storage: c.OAuth2.storage,
+		base:    base,
+	}
+}
+
 // NewClient creates a new HTTP client.
 //
 // OAuth2 Client from Configuration is use client credentials flow.You can use TokenSource to custom Source.
-func NewClient(cfg ClientConfig) (c *http.Client, err error) {
+func NewClient(cfg *ClientConfig) (c *http.Client, err error) {
 	if cfg.base == nil {
 		cfg.base, err = NewTransport(cfg.TransportConfig)
 		if err != nil {
@@ -163,30 +317,19 @@ func NewClient(cfg ClientConfig) (c *http.Client, err error) {
 	}
 	c = &http.Client{Transport: cfg.base, Timeout: cfg.Timeout}
 	if cfg.OAuth2 != nil {
-		config := &clientcredentials.Config{
-			ClientID:       cfg.OAuth2.ClientID,
-			ClientSecret:   cfg.OAuth2.ClientSecret,
-			Scopes:         cfg.OAuth2.Scopes,
-			TokenURL:       cfg.OAuth2.Endpoint.TokenURL,
-			EndpointParams: cfg.OAuth2.EndpointParams,
+		if cfg.OAuth2.ts != nil {
+			c.Transport = &oauth2.Transport{
+				Base:   c.Transport,
+				Source: cfg.OAuth2.ts,
+			}
+			return
+		} else {
+			c.Transport = &oauth2.Transport{
+				Base:   c.Transport,
+				Source: cfg.TokenSource(context.Background()),
+			}
+			return
 		}
-		hc := &http.Client{Transport: cfg.base}
-		ctx := context.WithValue(context.Background(), oauth2.HTTPClient, hc)
-		c.Transport = &oauth2.Transport{
-			Base:   hc.Transport,
-			Source: config.TokenSource(ctx),
-		}
-
-		return
 	}
 	return
-}
-
-// NewClientFromCnf creates a new HTTP client from config.
-func NewClientFromCnf(cnf *conf.Configuration) (*http.Client, error) {
-	cfg := NewClientConfig(WithConfiguration(cnf))
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-	return NewClient(cfg)
 }

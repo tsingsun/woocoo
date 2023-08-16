@@ -64,7 +64,7 @@ func (r *Router) Apply(cnf *conf.Configuration) (err error) {
 				err = fmt.Errorf("router group: %s must have a basePath", group)
 			}
 			gr.Group = r.Engine.Group(gr.basePath)
-			// clear handlers,let group use self config
+			// clear handlers, let group use self-config
 			gr.Group.Handlers = gin.HandlersChain{}
 			gr.Group.Use(mdl...)
 		}

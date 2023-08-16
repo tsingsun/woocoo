@@ -56,7 +56,9 @@ func New(opts ...Option) *Server {
 		s.router = NewRouter(&s.opts)
 	}
 	if s.opts.configuration != nil {
-		s.Apply(s.opts.configuration)
+		if err := s.Apply(s.opts.configuration); err != nil {
+			panic(err)
+		}
 	}
 	s.httpSrv = &http.Server{
 		Addr:    s.opts.Addr,
@@ -79,10 +81,11 @@ func (s *Server) Router() *Router {
 	return s.router
 }
 
-func (s *Server) Apply(cfg *conf.Configuration) {
+// Apply implement conf.Configuration
+func (s *Server) Apply(cfg *conf.Configuration) error {
 	if k := "server"; cfg.IsSet(k) {
 		if err := cfg.Parser().Unmarshal(k, &s.opts); err != nil {
-			panic(err)
+			return err
 		}
 	}
 	if k := "server.tls"; cfg.IsSet(k) {
@@ -90,9 +93,10 @@ func (s *Server) Apply(cfg *conf.Configuration) {
 	}
 	if k := "engine"; cfg.IsSet(k) {
 		if err := s.router.Apply(cfg.Sub(k)); err != nil {
-			panic(err)
+			return err
 		}
 	}
+	return nil
 }
 
 func (s *Server) beforeRun() error {

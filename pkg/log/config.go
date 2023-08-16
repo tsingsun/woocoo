@@ -61,7 +61,7 @@ type rotate struct {
 
 // Sync implement zap.Sink interface
 //
-// need nothing to do, see https://github.com/natefinch/lumberjack/pull/47
+// needs nothing to do, see https://github.com/natefinch/lumberjack/pull/47
 func (r *rotate) Sync() error {
 	return nil
 }

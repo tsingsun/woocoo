@@ -25,7 +25,8 @@ var _ cache.Cache = (*TinyLFU)(nil)
 
 // TinyLFU is a cache implementation of TinyLFU algorithm. It forces the cache data to have an expiration time.
 //
-// default ttl is 1 minute.Notice that the ttl will be less the setting,randomly reduced by a value between 0 and the offset.
+// Default ttl is 1 minute.Notice that the ttl will be less the setting,
+// randomly reduced by a value between 0 and the offset.
 type TinyLFU struct {
 	mu            sync.Mutex
 	rand          *rand.Rand
@@ -39,7 +40,8 @@ type TinyLFU struct {
 	unmarshal cache.UnmarshalFunc
 }
 
-func (c *TinyLFU) Apply(cnf *conf.Configuration) {
+// Apply implements the conf.Configurable interface
+func (c *TinyLFU) Apply(cnf *conf.Configuration) error {
 	c.size = cnf.Int("size")
 	c.samples = cnf.Int("samples")
 	c.ttl = cnf.Duration("ttl")
@@ -54,22 +56,25 @@ func (c *TinyLFU) Apply(cnf *conf.Configuration) {
 		c.samples = defaultSamples
 	}
 	c.lfu = tinylfu.New(c.size, c.samples)
+	return nil
 }
 
-func NewTinyLFU(cnf *conf.Configuration) *TinyLFU {
+func NewTinyLFU(cnf *conf.Configuration) (*TinyLFU, error) {
 	lfu := TinyLFU{
 		rand:      rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec
 		deviation: 10,
 	}
-	lfu.Apply(cnf)
+	if err := lfu.Apply(cnf); err != nil {
+		return nil, err
+	}
 	if lfu.marshal == nil {
 		lfu.marshal = cache.DefaultMarshalFunc
 		lfu.unmarshal = cache.DefaultUnmarshalFunc
 	}
-	return &lfu
+	return &lfu, nil
 }
 
-// Get returns the value for the given key, or ErrCacheMiss. if value is nil, the value will not be set
+// Get returns the value for the given key, or ErrCacheMiss. If the value is nil, the value will not be set
 func (c *TinyLFU) Get(ctx context.Context, key string, value any, opts ...cache.Option) (err error) {
 	opt := cache.ApplyOptions(opts...)
 	return c.GetInner(ctx, key, value, opt)

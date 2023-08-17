@@ -39,22 +39,16 @@ func WithBase(base http.RoundTripper) Option {
 	}
 }
 
-// WithTokenSource set oauth2 token source
+// WithTokenSource set oauth2 token source after oauth2 config initialized
 func WithTokenSource(source oauth2.TokenSource) Option {
 	return func(c *ClientConfig) {
-		if c.OAuth2 == nil {
-			c.OAuth2 = &OAuth2Config{}
-		}
 		c.OAuth2.ts = source
 	}
 }
 
-// WithTokenStorage set oauth2 token storage
+// WithTokenStorage set oauth2 token storage after oauth2 config initialized
 func WithTokenStorage(storage TokenStorage) Option {
 	return func(c *ClientConfig) {
-		if c.OAuth2 == nil {
-			c.OAuth2 = &OAuth2Config{}
-		}
 		c.OAuth2.storage = storage
 	}
 }

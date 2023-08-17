@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/mitchellh/hashstructure/v2"
 	"github.com/tsingsun/woocoo/pkg/cache"
-	"github.com/tsingsun/woocoo/pkg/cache/lfu"
 	"github.com/tsingsun/woocoo/pkg/cache/redisc"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
@@ -24,7 +23,7 @@ type (
 		Token() (*oauth2.Token, error)
 		SetToken(*oauth2.Token) error
 	}
-	// ClientConfig configures an HTTP client.
+	// ClientConfig is for an extension http.Client. It can be used to configure a client with configuration.
 	ClientConfig struct {
 		TransportConfig
 		Timeout time.Duration `yaml:"timeout" json:"timeout"`
@@ -71,11 +70,12 @@ func NewClientConfig(cnf *conf.Configuration, opts ...Option) (cfg *ClientConfig
 	if err = cnf.Unmarshal(cfg); err != nil {
 		return
 	}
-	for _, opt := range opts {
-		opt(cfg)
-	}
 	if err := cfg.Validate(); err != nil {
 		return cfg, err
+	}
+
+	for _, opt := range opts {
+		opt(cfg)
 	}
 	if cfg.BasicAuth != nil {
 		cfg.base = chain(cfg.base, BaseAuth(cfg.BasicAuth.Username, cfg.BasicAuth.Password))
@@ -205,8 +205,6 @@ func buildCache(cnf *conf.Configuration) (cache.Cache, error) {
 		switch {
 		case cnf.IsSet("cache.redis"):
 			return redisc.New(cnf.Sub("cache.redis"))
-		case cnf.IsSet("cache.local"):
-			return lfu.NewTinyLFU(cnf.Sub("cache.lfu"))
 		}
 	}
 	return nil, nil

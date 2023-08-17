@@ -363,7 +363,8 @@ func TestClient_Dial(t *testing.T) {
 		return srv.Run()
 	})
 	require.NoError(t, err)
-	cli := grpcx.NewClient(cfg.Sub("grpc"))
+	cli, err := grpcx.NewClient(cfg.Sub("grpc"))
+	require.NoError(t, err)
 	conn, err := cli.Dial("")
 	require.NoError(t, err)
 	require.NotNil(t, conn)
@@ -404,7 +405,8 @@ func TestClient_DialMultiServerAndDown(t *testing.T) {
 		return srv2.Run()
 	})
 	require.NoError(t, err)
-	cli := grpcx.NewClient(cfg.Sub("grpc"))
+	cli, err := grpcx.NewClient(cfg.Sub("grpc"))
+	require.NoError(t, err)
 	c, err := cli.Dial("")
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -523,7 +525,8 @@ func TestClientRouting(t *testing.T) {
 	})
 
 	t.Run("route-rule-match-cn", func(t *testing.T) {
-		cli := grpcx.NewClient(cnf.Sub("grpc"))
+		cli, err := grpcx.NewClient(cnf.Sub("grpc"))
+		require.NoError(t, err)
 		conn, err := cli.Dial("", grpc.WithDefaultServiceConfig(`{ "loadBalancingConfig": [{"routing": {}}] }`))
 		require.NoError(t, err)
 		require.NotNil(t, conn)
@@ -569,7 +572,8 @@ func TestClientCircleBreaker(t *testing.T) {
 
 	meshapi(t).getToken().circuitBreaker()
 
-	cli := grpcx.NewClient(cnf.Sub("grpc"))
+	cli, err := grpcx.NewClient(cnf.Sub("grpc"))
+	require.NoError(t, err)
 	balancer.Register(NewBalancerBuilder("circuit_breaker", getPolarisContext(t, "circuitBreakerRegistry")))
 	c, err := cli.Dial("", grpc.WithDefaultServiceConfig(`{ "loadBalancingConfig": [{"circuit_breaker": {}}] }`))
 	require.NoError(t, err)

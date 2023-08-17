@@ -11,6 +11,9 @@ import (
 )
 
 const (
+	CacheKindRedis = "redis"
+	CacheKindLocal = "lfu"
+
 	defaultItemTTL = time.Hour
 
 	timeLen              = 4

@@ -62,7 +62,8 @@ func TestRateLimitUnaryServerInterceptor(t *testing.T) {
 		return srv.Run()
 	})
 	require.NoError(t, err)
-	cli := grpcx.NewClient(cfg.Sub("grpc"))
+	cli, err := grpcx.NewClient(cfg.Sub("grpc"))
+	require.NoError(t, err)
 	c, err := cli.Dial("")
 	if !assert.NoError(t, err) {
 		t.FailNow()

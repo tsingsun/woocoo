@@ -329,7 +329,9 @@ func TestProxyFunc(t *testing.T) {
 func TestNewClient_Option(t *testing.T) {
 	expectedRes := "Hello"
 	type args struct {
-		cfg *ClientConfig
+		cnf  *conf.Configuration
+		opts []Option
+		cfg  *ClientConfig
 	}
 	tests := []struct {
 		name    string
@@ -340,11 +342,7 @@ func TestNewClient_Option(t *testing.T) {
 		{
 			name: "with empty options",
 			args: args{
-				cfg: func() *ClientConfig {
-					c, err := NewClientConfig(conf.New())
-					require.NoError(t, err)
-					return c
-				}(),
+				cnf: conf.New(),
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				_, _ = fmt.Fprint(w, expectedRes)
@@ -353,11 +351,10 @@ func TestNewClient_Option(t *testing.T) {
 		{
 			name: "with basic transport",
 			args: args{
-				cfg: func() *ClientConfig {
-					c, err := NewClientConfig(conf.New(), WithBase(&http.Transport{}))
-					require.NoError(t, err)
-					return c
-				}(),
+				cnf: conf.New(),
+				opts: []Option{
+					WithBase(&http.Transport{}),
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				_, _ = fmt.Fprint(w, expectedRes)
@@ -366,16 +363,12 @@ func TestNewClient_Option(t *testing.T) {
 		{
 			name: "with cnf",
 			args: args{
-				cfg: func() *ClientConfig {
-					c, err := NewClientConfig(conf.NewFromStringMap(map[string]any{
-						"basicAuth": map[string]any{
-							"username": "user",
-							"password": "pass",
-						},
-					}))
-					require.NoError(t, err)
-					return c
-				}(),
+				cnf: conf.NewFromStringMap(map[string]any{
+					"basicAuth": map[string]any{
+						"username": "user",
+						"password": "pass",
+					},
+				}),
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				username, password, ok := r.BasicAuth()
@@ -388,8 +381,9 @@ func TestNewClient_Option(t *testing.T) {
 		{
 			name: "with middleware",
 			args: args{
-				cfg: func() *ClientConfig {
-					c, err := NewClientConfig(conf.New(), WithMiddleware(func(next http.RoundTripper) http.RoundTripper {
+				cnf: conf.New(),
+				opts: []Option{
+					WithMiddleware(func(next http.RoundTripper) http.RoundTripper {
 						return internalRoundTripper(func(r *http.Request) (*http.Response, error) {
 							r.Header.Set("X-Test", "test")
 							return next.RoundTrip(r)
@@ -399,10 +393,8 @@ func TestNewClient_Option(t *testing.T) {
 							r.Header.Set("X-Test2", "test2")
 							return next.RoundTrip(r)
 						})
-					}))
-					require.NoError(t, err)
-					return c
-				}(),
+					}),
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				require.Equal(t, "test", r.Header.Get("X-Test"))
@@ -413,38 +405,70 @@ func TestNewClient_Option(t *testing.T) {
 		{
 			name: "tokensource",
 			args: args{
-				cfg: func() *ClientConfig {
-					ts := &customerTokenSource{}
-					c, err := NewClientConfig(conf.NewFromStringMap(map[string]any{
-						"oauth2": map[string]any{
-							"clientID":     "id1",
-							"clientSecret": "secret1",
-							"endpoint": map[string]any{
-								"tokenUrl": "http://localhost:8080/token",
-							},
+				cnf: conf.NewFromStringMap(map[string]any{
+					"oauth2": map[string]any{
+						"clientID":     "id1",
+						"clientSecret": "secret1",
+						"endpoint": map[string]any{
+							"tokenUrl": "http://localhost:8080/token",
 						},
-					}), WithTokenSource(ts), WithTokenStorage(customerTokenStorage{}))
-					require.NoError(t, err)
-					return c
-				}(),
+					},
+				}),
+				opts: []Option{
+					WithTokenSource(&customerTokenSource{}), WithTokenStorage(customerTokenStorage{}),
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				_, _ = fmt.Fprint(w, expectedRes)
 			},
 		},
+		{
+			name: "tokensource with error",
+			args: args{
+				cnf: conf.NewFromStringMap(map[string]any{
+					"oauth2": map[string]any{
+						"clientSecret": "secret1",
+					},
+				}),
+				opts: []Option{
+					WithTokenSource(&customerTokenSource{}),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "cache not support",
+			args: args{
+				cnf: conf.NewFromStringMap(map[string]any{
+					"oauth2": map[string]any{
+						"clientID":     "id1",
+						"clientSecret": "secret1",
+						"endpoint": map[string]any{
+							"tokenUrl": "http://localhost:8080/token",
+						},
+						"cache": map[string]any{
+							"type": "mock",
+						},
+					},
+				}),
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotC, err := NewClient(tt.args.cfg)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewClient() error = %v, wantErr %v", err, tt.wantErr)
+			gotC, err := NewClientConfig(tt.args.cnf, tt.args.opts...)
+			if tt.wantErr {
+				assert.Error(t, err)
 				return
 			}
-			usetls := tt.args.cfg.TLS != nil
+			client, err := gotC.Client(context.Background(), nil)
+			require.NoError(t, err)
+			usetls := gotC.TLS != nil
 			ts, err := newTestServer(tt.handler, usetls)
 			require.NoError(t, err)
 			defer ts.Close()
-			res, err := gotC.Get(ts.URL)
+			res, err := client.Get(ts.URL)
 			require.NoError(t, err)
 			bd, err := io.ReadAll(res.Body)
 			require.NoError(t, err)
@@ -508,7 +532,7 @@ func TestOAuth2(t *testing.T) {
 	t.Run("with cache", func(t *testing.T) {
 		mr := miniredis.RunT(t)
 		cnf := conf.New(conf.WithLocalPath(testdata.Path("httpx/all.yaml"))).Load().Sub("oauth-with-cache")
-		cnf.Parser().Set("cache.redis.addrs", []string{mr.Addr()})
+		cnf.Parser().Set("oauth2.cache.addrs", []string{mr.Addr()})
 		cnf.Parser().Set("oauth2.endpoint.tokenURL", ts.URL+cnf.String("oauth2.endpoint.tokenURL"))
 		cnf.Parser().Set("oauth2.endpoint.authURL", ts.URL+cnf.String("oauth2.endpoint.authURL"))
 		cfg, err := NewClientConfig(cnf)

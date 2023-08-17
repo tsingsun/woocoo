@@ -70,8 +70,8 @@ func NewClientConfig(cnf *conf.Configuration, opts ...Option) (cfg *ClientConfig
 	if err = cnf.Unmarshal(cfg); err != nil {
 		return
 	}
-	if err := cfg.Validate(); err != nil {
-		return cfg, err
+	if err = cfg.Validate(); err != nil {
+		return
 	}
 
 	for _, opt := range opts {
@@ -80,7 +80,7 @@ func NewClientConfig(cnf *conf.Configuration, opts ...Option) (cfg *ClientConfig
 	if cfg.BasicAuth != nil {
 		cfg.base = chain(cfg.base, BaseAuth(cfg.BasicAuth.Username, cfg.BasicAuth.Password))
 	}
-	if cfg.OAuth2 != nil && cnf.IsSet("cache") {
+	if cfg.OAuth2 != nil && cnf.IsSet("oauth2.cache") {
 		storage, err := newCacheTokenStorage(cnf, cfg)
 		if err != nil {
 			return cfg, err
@@ -201,13 +201,11 @@ func tokenKey(config *OAuth2Config) string {
 }
 
 func buildCache(cnf *conf.Configuration) (cache.Cache, error) {
-	if cnf.IsSet("cache") {
-		switch {
-		case cnf.IsSet("cache.redis"):
-			return redisc.New(cnf.Sub("cache.redis"))
-		}
+	switch cnf.String("oauth2.cache.type") {
+	case cache.CacheKindRedis:
+		return redisc.New(cnf.Sub("oauth2.cache"))
 	}
-	return nil, nil
+	return nil, fmt.Errorf("oauth2 cache type %q no support", cnf.String("oauth2.cache.type"))
 }
 
 func (c *cacheTokenStorage) Token() (*oauth2.Token, error) {

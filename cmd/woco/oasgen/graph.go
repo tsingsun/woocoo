@@ -249,7 +249,6 @@ func (g *Graph) addNode(schema *openapi3.T) {
 	}
 	for _, sch := range g.Schemas {
 		g.modelXmlTag(sch)
-		sch.SortStructTags()
 	}
 }
 

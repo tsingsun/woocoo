@@ -100,7 +100,27 @@ func TestGenerateAfter(t *testing.T) {
 			// check binding
 			assert.EqualValues(t, `email,omitempty`, usert.Field(0).Tag.Get("binding"))
 		})
-
+		t.Run("user", func(t *testing.T) {
+			user := User{}
+			userType := reflect.TypeOf(user)
+			assert.EqualValues(t, `email,omitempty`, userType.Field(0).Tag.Get("binding"))
+			assert.EqualValues(t, `email,omitempty`, userType.Field(0).Tag.Get("json"))
+			assert.EqualValues(t, `string`, userType.Field(0).Type.String())
+			assert.EqualValues(t, `firstName,omitempty`, userType.Field(1).Tag.Get("json"))
+			assert.EqualValues(t, `string`, userType.Field(1).Type.String())
+			assert.EqualValues(t, `id,omitempty`, userType.Field(2).Tag.Get("json"))
+			assert.EqualValues(t, `int64`, userType.Field(2).Type.String())
+			assert.EqualValues(t, `lastName,omitempty`, userType.Field(3).Tag.Get("json"))
+			assert.EqualValues(t, `string`, userType.Field(3).Type.String())
+			assert.EqualValues(t, `password,omitempty`, userType.Field(4).Tag.Get("json"))
+			assert.EqualValues(t, `string`, userType.Field(4).Type.String())
+			assert.EqualValues(t, `phone,omitempty`, userType.Field(5).Tag.Get("json"))
+			assert.EqualValues(t, `string`, userType.Field(5).Type.String())
+			assert.EqualValues(t, `user_status,omitempty`, userType.Field(6).Tag.Get("json"))
+			assert.EqualValues(t, `int32`, userType.Field(6).Type.String())
+			assert.EqualValues(t, `username,omitempty`, userType.Field(7).Tag.Get("json"))
+			assert.EqualValues(t, `string`, userType.Field(7).Type.String())
+		})
 	})
 	t.Run("checkModel-allof", func(t *testing.T) {
 		newpet := reflect.TypeOf(NewPet{})

@@ -24,20 +24,20 @@
         {{ if .Request.BindUri }}
             type {{ .RequestName }}UriParams struct {
             {{- range .Request.UriParameters }}
-                {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
+                {{ pascal .Name }} {{ .Schema.Type.String }} {{ .Schema.StructTagsString }}{{ end }}
             }
 
         {{- end }}
         {{- if .Request.BindHeader }}
             type {{ .RequestName }}HeaderParams struct {
             {{- range .Request.HeaderParameters }}
-                {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
+                {{ pascal .Name }} {{ .Schema.Type.String }} {{ .Schema.StructTagsString }}{{ end }}
             }
         {{- end }}
         {{- if .Request.BindCookie }}
             type {{ .RequestName }}CookieParams struct {
             {{- range .Request.CookieParameters }}
-                {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
+                {{ pascal .Name }} {{ .Schema.Type.String }} {{ .Schema.StructTagsString }}{{ end }}
             }
         {{- end }}
         {{- if and .Request.BindBody (not .SimpleBody ) }}
@@ -46,7 +46,7 @@
                 {{- if .Schema.IsInline }}
                     {{ .Schema.Type }} `json:",inline"`
                 {{- else }}
-                    {{ pascal .Name }} {{ .Schema.Type.String }} `{{ join .Schema.StructTags " " }}`{{ end }}
+                    {{ pascal .Name }} {{ .Schema.Type.String }} {{ .Schema.StructTagsString }}{{ end }}
                 {{- end }}
             }
         {{- end }}

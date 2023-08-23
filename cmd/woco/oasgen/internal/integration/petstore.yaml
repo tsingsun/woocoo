@@ -685,7 +685,7 @@ components:
           type: string
         phone:
           type: string
-        userStatus:
+        user_status:
           type: integer
           format: int32
           description: User Status

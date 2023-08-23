@@ -9,6 +9,7 @@ import (
 	"golang.org/x/text/language"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"text/template"
 )
@@ -35,6 +36,7 @@ var (
 		"hasTag": func(ts []string, t string) bool {
 			return HasTag(ts, t)
 		},
+		"sortAsc": sortAsc,
 	}
 )
 
@@ -159,4 +161,9 @@ func IsSupportNegotiate(ress []string) bool {
 // IsBytes check if the response content type is bytes.
 func IsBytes(p code.Type) bool {
 	return p == code.TypeBytes
+}
+
+func sortAsc(ts []string) []string {
+	sort.Strings(ts)
+	return ts
 }

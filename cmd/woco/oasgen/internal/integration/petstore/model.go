@@ -12,16 +12,16 @@ type Category struct {
 type NewPet struct {
 	*Pet      `json:",inline"`
 	Owner     User      `binding:"required" json:"owner" xml:"User"`
-	Timestamp time.Time `time_format:"2006-01-02T15:04:05Z07:00" binding:"required" json:"timestamp" xml:"timestamp"`
+	Timestamp time.Time `binding:"required" json:"timestamp" time_format:"2006-01-02T15:04:05Z07:00" xml:"timestamp"`
 }
 
 type Order struct {
 	Complete  bool      `json:"complete,omitempty" xml:"complete"`
 	ID        int64     `json:"id,omitempty" xml:"id"`
-	OrderDate time.Time `time_format:"2006-01-02T15:04:05Z07:00" binding:"ltfield=ShipDate,omitempty" json:"orderDate,omitempty" xml:"orderDate"`
+	OrderDate time.Time `binding:"ltfield=ShipDate,omitempty" json:"orderDate,omitempty" time_format:"2006-01-02T15:04:05Z07:00" xml:"orderDate"`
 	PetId     int64     `json:"petId,omitempty" xml:"petId"`
 	Quantity  int32     `json:"quantity,omitempty" xml:"quantity"`
-	ShipDate  time.Time `time_format:"2006-01-02T15:04:05Z07:00" json:"shipDate,omitempty" xml:"shipDate"`
+	ShipDate  time.Time `json:"shipDate,omitempty" time_format:"2006-01-02T15:04:05Z07:00" xml:"shipDate"`
 	Status    string    `json:"status,omitempty" xml:"status"`
 }
 
@@ -47,7 +47,7 @@ type User struct {
 	LastName   string `json:"lastName,omitempty" xml:"lastName"`
 	Password   string `json:"password,omitempty" xml:"password"`
 	Phone      string `json:"phone,omitempty" xml:"phone"`
-	UserStatus int32  `json:"userStatus,omitempty" xml:"userStatus"`
+	UserStatus int32  `json:"user_status,omitempty" xml:"user_status"`
 	Username   string `json:"username,omitempty" xml:"username"`
 }
 

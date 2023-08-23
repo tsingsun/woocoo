@@ -5,11 +5,9 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/google/uuid"
-	"github.com/iancoleman/strcase"
 	"github.com/tsingsun/woocoo/cmd/woco/code"
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"reflect"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -218,7 +216,7 @@ func (sch *Schema) AppendContentTypeStructTag(c *Config, tagName string, content
 			if HasTag(sch.StructTags, "json") {
 				continue
 			}
-			tagName = strcase.ToLowerCamel(tagName)
+			//tagName = strcase.ToLowerCamel(tagName)
 			if sch.Required {
 				sch.StructTags = append(sch.StructTags, fmt.Sprintf(`json:"%s"`, tagName))
 			} else {
@@ -293,11 +291,12 @@ func (sch *Schema) IsObjectArray() bool {
 	return sch.IsArray
 }
 
+// StructTagsString return tag string when output in template.It will sort by asc.
 func (sch *Schema) StructTagsString() string {
 	if len(sch.StructTags) == 0 {
 		return ""
 	}
-	return "`" + strings.Join(sch.StructTags, " ") + "`"
+	return "`" + strings.Join(sortAsc(sch.StructTags), " ") + "`"
 }
 
 // CollectTags collects all struct tags from the schema and its children.
@@ -390,10 +389,6 @@ func (sch *Schema) CheckRequired() {
 			}
 		}
 	}
-}
-
-func (sch *Schema) SortStructTags() {
-	sort.Strings(sch.StructTags)
 }
 
 func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required bool) *Schema {

@@ -15,7 +15,7 @@ type RouterGroup struct {
 	Router   *Router
 }
 
-// Router is base on Gin
+// Router is base on Gin.
 type Router struct {
 	*gin.Engine
 	Groups        []*RouterGroup
@@ -34,6 +34,9 @@ func NewRouter(options *ServerOptions) *Router {
 	return r
 }
 
+// Apply implements the conf.Configurable interface.
+//
+// RouterGroups and Middlewares must init by order, so we use array-type in configuration.
 func (r *Router) Apply(cnf *conf.Configuration) (err error) {
 	if r.serverOptions == nil {
 		return errors.New("router apply must apply after Server")

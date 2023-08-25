@@ -464,6 +464,7 @@ func TestConfiguration_Each(t *testing.T) {
 	type fields struct {
 		cnf *Configuration
 	}
+	var namelist []string
 	type args struct {
 		path string
 		cb   func(name string, sub *Configuration)
@@ -472,6 +473,7 @@ func TestConfiguration_Each(t *testing.T) {
 		name   string
 		fields fields
 		args   args
+		check  func(keylist []string)
 	}{
 		{
 			name: "each",
@@ -530,11 +532,108 @@ path:
 				},
 			},
 		},
+		{
+			name: "keep order",
+			fields: fields{
+				cnf: NewFromBytes([]byte(`
+path:
+  groups:
+  - zgroup:
+      key: value
+  - agroup:  
+      key2: value2
+  - dgroup:
+      key3: value3
+  - cgroup:
+      key4: value4
+`)),
+			},
+			args: args{
+				path: "path.groups",
+				cb: func(name string, sub *Configuration) {
+					namelist = append(namelist, name)
+				},
+			},
+			check: func(keylist []string) {
+				assert.Equal(t, []string{"zgroup", "agroup", "dgroup", "cgroup"}, keylist)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			namelist = namelist[:0]
+			c := tt.fields.cnf
+			c.Each(tt.args.path, tt.args.cb)
+			if tt.check != nil {
+				tt.check(namelist)
+			}
+		})
+	}
+}
+
+func TestConfiguration_Map(t *testing.T) {
+	type fields struct {
+		cnf *Configuration
+	}
+	type args struct {
+		path string
+		cb   func(name string, sub *Configuration)
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		panic  bool
+	}{
+		{
+			name: "not map value",
+			fields: fields{
+				cnf: NewFromBytes([]byte(`
+path:
+  groups: 
+    key: value
+    key1: value1
+`)),
+			},
+			args: args{
+				path: "path.groups",
+				cb: func(name string, sub *Configuration) {
+					if !(name == "key" || name == "key1") {
+						t.Error("name should be key or key1")
+					}
+				},
+			},
+			panic: true,
+		},
+		{
+			name: "map",
+			fields: fields{
+				cnf: NewFromBytes([]byte(`
+path:
+  groups: 
+    key: 
+      key1: value1
+`)),
+			},
+			args: args{
+				path: "path.groups",
+				cb: func(name string, sub *Configuration) {
+					assert.Equal(t, "key", name)
+					assert.Equal(t, "value1", sub.String("key1"))
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := tt.fields.cnf
-			c.Each(tt.args.path, tt.args.cb)
+			if tt.panic {
+				assert.Panics(t, func() {
+					c.Map(tt.args.path, tt.args.cb)
+				})
+				return
+			}
+			c.Map(tt.args.path, tt.args.cb)
 		})
 	}
 }

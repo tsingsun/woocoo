@@ -5,11 +5,11 @@ package gen
 type Extension interface {
 	// Name is the plugin name
 	Name() string
-	// Templates specifies a list of alternative templates
+	// Templates specify a list of alternative templates
 	// to execute or to override the default.
 	Templates() []*Template
 
-	// Hooks holds an optional list of Hooks to apply
+	// Hooks hold an optional list of Hooks to apply
 	// on the graph before the code-generation.
 	Hooks() []Hook
 	// GeneratedHooks holds an optional list of Hooks to apply after the code-generation.
@@ -22,7 +22,7 @@ type Generator interface {
 }
 
 // The GenerateFunc type is an adapter to allow the use of ordinary
-// function as Generator. If f is a function with the appropriate signature,
+// function as a Generator. If f is a function with the appropriate signature,
 // GenerateFunc(f) is a Generator that calls f.
 type GenerateFunc func(Extension) error
 

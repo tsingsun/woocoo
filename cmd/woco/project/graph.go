@@ -20,7 +20,7 @@ type (
 		Templates []*gen.Template
 		Header    string   `json:"header,omitempty"`
 		Modules   []string `json:"modules,omitempty"`
-		// Hooks holds an optional list of Hooks to apply on the graph before/after the code-generation.
+		// Hooks hold an optional list of Hooks to apply on the graph before/after the code-generation.
 		Hooks          []gen.Hook
 		GeneratedHooks []gen.GeneratedHook
 		SkipModTidy    bool

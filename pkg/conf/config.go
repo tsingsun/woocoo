@@ -258,6 +258,16 @@ func (c *Configuration) Each(path string, cb func(root string, sub *Configuratio
 	}
 }
 
+// Map iterates the map path of the Configuration.It is sort by sort.Strings,
+// no guarantee of the order in the configuration file.
+// Each key in the path must be a map value, otherwise it will panic.
+func (c *Configuration) Map(path string, cb func(root string, sub *Configuration)) {
+	ops := c.ParserOperator().MapKeys(path)
+	for _, op := range ops {
+		cb(op, c.Sub(Join(path, op)))
+	}
+}
+
 func (c *Configuration) Copy() *Configuration {
 	return c.CutFromOperator(c.Parser().k.Copy())
 }

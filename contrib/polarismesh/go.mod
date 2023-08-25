@@ -4,8 +4,8 @@ go 1.19
 
 require (
 	github.com/knadh/koanf/parsers/yaml v0.1.0
-	github.com/polarismesh/polaris-go v1.5.2
-	github.com/polarismesh/specification v1.3.2
+	github.com/polarismesh/polaris-go v1.5.3
+	github.com/polarismesh/specification v1.4.0
 	github.com/stretchr/testify v1.8.4
 	github.com/tsingsun/woocoo v0.3.1-0.20230816133559-53b34958d00a
 	google.golang.org/grpc v1.57.0

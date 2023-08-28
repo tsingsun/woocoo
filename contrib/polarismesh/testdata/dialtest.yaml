@@ -39,7 +39,7 @@ grpc:
     dialOption:
       - tls:
       - block:
-      - timeout: 10s
+      - timeout: 1s
       - serviceConfig: '{ "loadBalancingConfig": [{"polaris": {}}] }'
       - unaryInterceptors:
           - trace:

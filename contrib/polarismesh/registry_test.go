@@ -12,9 +12,18 @@ import (
 	"time"
 )
 
+// GetPolarisContextFromDriver get polaris context from registry driver,the ref name is polaris registry config ref name.
+func getPolarisContextFromDriver(ref string) api.SDKContext {
+	drv, ok := registry.GetRegistry(scheme)
+	if !ok {
+		panic("polaris resolver not registered")
+	}
+	return drv.(*Driver).refBuilders[ref].(*resolverBuilder).sdkCtx
+}
+
 func getPolarisContext(t *testing.T, ref string) (ctx api.SDKContext) {
 	assert.NotPanics(t, func() {
-		ctx = GetPolarisContextFromDriver(ref)
+		ctx = getPolarisContextFromDriver(ref)
 	})
 	return
 }
@@ -56,7 +65,8 @@ grpc:
 				c := cfg.Sub("grpc.registry")
 				c.Parser().Set("polaris.configFile", "etc/polaris/polaris.yaml")
 				return c
-			}()}},
+			}()},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -167,7 +177,8 @@ polarisGetServiceInfos:
 		Host:      "127.0.0.1",
 		Port:      11111,
 		Metadata: map[string]string{
-			"version": "1.0.0",
+			"version":     "1.0.0",
+			"customField": "customValue",
 		},
 	}
 	drv, ok := registry.GetRegistry(scheme)
@@ -183,6 +194,15 @@ polarisGetServiceInfos:
 	infos, err := r.GetServiceInfos(strings.Join([]string{info.Namespace, info.Name}, "/"))
 	require.NoError(t, err)
 	require.Equal(t, 1, len(infos))
+
+	gotInfo := infos[0]
+	assert.Equal(t, info.Name, gotInfo.Name)
+	assert.Equal(t, info.Namespace, gotInfo.Namespace)
+	assert.Equal(t, info.Host, gotInfo.Host)
+	assert.Equal(t, info.Port, gotInfo.Port)
+	assert.Equal(t, info.Metadata["version"], gotInfo.Metadata["version"])
+	assert.Equal(t, info.Metadata["customField"], gotInfo.Metadata["customField"])
+
 	assert.NoError(t, r.Unregister(info), "check GetServiceInfos release consumer api influence.")
 
 	infos, err = r.GetServiceInfos(info.Name)

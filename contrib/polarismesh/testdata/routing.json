@@ -1,0 +1,196 @@
+[
+  {
+    "id": "byCountry",
+    "name": "byCountry",
+    "enable": true,
+    "description": "",
+    "priority": 0,
+    "routing_config": {
+      "@type": "type.googleapis.com/v2.RuleRoutingConfig",
+      "sources": [
+        {
+          "service": "*",
+          "namespace": "routingTest"
+        }
+      ],
+      "destinations": [
+        {
+          "service": "helloworld.Greeter",
+          "namespace": "routingTest"
+        }
+      ],
+      "rules": [
+        {
+          "name": "自定义规则0",
+          "sources": [
+            {
+              "service": "*",
+              "namespace": "routingTest",
+              "arguments": [
+                {
+                  "type": "CUSTOM",
+                  "key": "custom",
+                  "value": {
+                    "type": "EXACT",
+                    "value": "custom",
+                    "value_type": "TEXT"
+                  }
+                }
+              ]
+            }
+          ],
+          "destinations": [
+            {
+              "service": "helloworld.Greeter",
+              "namespace": "routingTest",
+              "labels": {
+                "custom": {
+                  "type": "EXACT",
+                  "value": "custom",
+                  "value_type": "TEXT"
+                }
+              },
+              "priority": 0,
+              "weight": 100,
+              "transfer": "",
+              "isolate": false,
+              "name": "group-0"
+            }
+          ]
+        },
+        {
+          "name": "规则0",
+          "sources": [
+            {
+              "service": "*",
+              "namespace": "routingTest",
+              "arguments": [
+                {
+                  "type": "HEADER",
+                  "key": "country",
+                  "value": {
+                    "type": "EXACT",
+                    "value": "CN",
+                    "value_type": "TEXT"
+                  }
+                }
+              ]
+            }
+          ],
+          "destinations": [
+            {
+              "service": "helloworld.Greeter",
+              "namespace": "routingTest",
+              "labels": {
+                "location": {
+                  "type": "EXACT",
+                  "value": "CN",
+                  "value_type": "TEXT"
+                }
+              },
+              "priority": 0,
+              "weight": 100,
+              "transfer": "",
+              "isolate": false,
+              "name": "group-0"
+            }
+          ]
+        },
+        {
+          "name": "规则1",
+          "sources": [
+            {
+              "service": "*",
+              "namespace": "routingTest",
+              "arguments": [
+                {
+                  "type": "HEADER",
+                  "key": "country",
+                  "value": {
+                    "type": "EXACT",
+                    "value": "US",
+                    "value_type": "TEXT"
+                  }
+                }
+              ]
+            }
+          ],
+          "destinations": [
+            {
+              "labels": {
+                "location": {
+                  "value": "US",
+                  "type": "EXACT",
+                  "value_type": "TEXT"
+                }
+              },
+              "weight": 0,
+              "isolate": false,
+              "service": "helloworld.Greeter",
+              "namespace": "routingTest",
+              "name": "group-0"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "guarantee",
+    "name": "guarantee",
+    "enable": true,
+    "description": "",
+    "priority": 1,
+    "routing_config": {
+      "@type": "type.googleapis.com/v2.RuleRoutingConfig",
+      "sources": [
+        {
+          "service": "*",
+          "namespace": "routingTest"
+        }
+      ],
+      "destinations": [
+        {
+          "service": "helloworld.Greeter",
+          "namespace": "routingTest"
+        }
+      ],
+      "rules": [
+        {
+          "name": "规则0",
+          "sources": [
+            {
+              "service": "*",
+              "namespace": "routingTest",
+              "arguments": [{
+                "type": "HEADER",
+                "key": "country",
+                "value": {
+                  "type": "NOT_IN",
+                  "value": "CN,US",
+                  "value_type": "TEXT"
+                }
+              }]
+            }
+          ],
+          "destinations": [
+            {
+              "service": "helloworld.Greeter",
+              "namespace": "routingTest",
+              "labels": {
+                "location": {
+                  "value": "default",
+                  "type": "EXACT",
+                  "value_type": "TEXT"
+                }
+              },
+              "weight": 100,
+              "isolate": false,
+              "name": "group-0"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

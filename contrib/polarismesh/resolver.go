@@ -7,11 +7,9 @@ import (
 	"github.com/polarismesh/polaris-go/api"
 	"github.com/polarismesh/polaris-go/pkg/model"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"google.golang.org/grpc/attributes"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/resolver"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -60,21 +58,6 @@ func (rb *resolverBuilder) Build(target resolver.Target, cc resolver.ClientConn,
 	return d, nil
 }
 
-func parseHost(target string) (string, int, error) {
-	splits := strings.Split(target, ":")
-	if len(splits) > 2 {
-		return "", 0, errors.New("error format host")
-	}
-	if len(splits) == 1 {
-		return target, 0, nil
-	}
-	port, err := strconv.Atoi(splits[1])
-	if err != nil {
-		return "", 0, err
-	}
-	return splits[0], port, nil
-}
-
 type polarisNamingResolver struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -93,7 +76,7 @@ type polarisNamingResolver struct {
 // OnInstancesUpdate The method is called by the polaris client when the service instance is updated.
 //
 // when watch all instances, but if single instance, response cluster instances will be nil.
-// so need get all instances again.
+// so we need to get all instances again.
 func (pr *polarisNamingResolver) OnInstancesUpdate(resp *model.InstancesResponse) {
 	pr.onInstancesUpdate(resp, true)
 }
@@ -142,8 +125,8 @@ func (pr *polarisNamingResolver) onInstancesUpdate(_ *model.InstancesResponse, s
 
 // ResolveNow The method is called by the gRPC framework to resolve the target name immediately.
 //
-// attention: this method trigger too high frequency to cause polaris server hung.
-// so do not anything until you know what you are doing.
+// attention: this method triggers too high frequency to cause polaris server hung.
+// so do not do anything until you know what you are doing.
 func (pr *polarisNamingResolver) ResolveNow(_ resolver.ResolveNowOptions) {
 	select {
 	case pr.rn <- struct{}{}:
@@ -203,13 +186,4 @@ func extractBareMethodName(fullMethodName string) string {
 		return ""
 	}
 	return fullMethodName[index+1:]
-}
-
-// GetPolarisContextFromDriver get polaris context from registry driver,the ref name is polaris registry config ref name.
-func GetPolarisContextFromDriver(ref string) api.SDKContext {
-	drv, ok := registry.GetRegistry(scheme)
-	if !ok {
-		panic("polaris resolver not registered")
-	}
-	return drv.(*Driver).refBuilders[ref].(*resolverBuilder).sdkCtx
 }

@@ -186,7 +186,7 @@ func (r *Registry) Register(serviceInfo *registry.ServiceInfo) error {
 	return nil
 }
 
-// Unregister  the service from the registry
+// Unregister the service from the registry
 // if the service is not registered, return nil
 func (r *Registry) Unregister(serviceInfo *registry.ServiceInfo) error {
 	deregisterRequest := &api.InstanceDeRegisterRequest{}
@@ -263,7 +263,7 @@ func (r *Registry) Apply(cnf *conf.Configuration) {
 
 // polaris parse the target to options
 //
-// target format :
+// target format:
 //  1. polaris://<namespace>/<service>?key1=value1&key2=value2
 //  2. polaris://<service>?<options=<jsonstr>>
 func targetToOptions(target resolver.Target) (options *dialOptions, err error) {
@@ -284,6 +284,7 @@ func targetToOptions(target resolver.Target) (options *dialOptions, err error) {
 			if len(optionValues) > 0 {
 				optionsStr = optionValues[0]
 			} else {
+				options.SrcMetadata = make(map[string]string)
 				for k, v := range values {
 					switch strings.ToLower(k) {
 					case keyDialOptionNamespace:
@@ -298,6 +299,10 @@ func targetToOptions(target resolver.Target) (options *dialOptions, err error) {
 							if err != nil {
 								return nil, fmt.Errorf("TargetToOptions:fail to parse route %s: %v", v[0], err)
 							}
+						}
+					default:
+						if strings.HasPrefix(k, "src_") {
+							options.SrcMetadata[k[4:]] = v[0]
 						}
 					}
 				}
@@ -327,6 +332,7 @@ func convertDialOptions(src *registry.DialOptions, tar *dialOptions) (err error)
 	tar.Namespace = src.Namespace
 	tar.Service = src.ServiceName
 	tar.Headers = filterMetadata(src, "header_")
+	tar.SrcMetadata = filterMetadata(src, "src_")
 	if v, ok := src.Metadata[keyDialOptionRoute]; ok {
 		if tar.Route, err = strconv.ParseBool(v); err != nil {
 			return fmt.Errorf("metadata:route %s: %v", v, err)

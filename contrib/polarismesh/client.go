@@ -10,12 +10,14 @@ import (
 type dialOptions struct {
 	Namespace string `yaml:"namespace" json:"namespace"`
 	Service   string `yaml:"service" json:"service"`
-	// Headers will be added to the outgoing context,are fixed values,parse from metadata
+	// Headers will be added to the outgoing context, are fixed values, parse from metadata
 	Headers map[string]string `yaml:"-" json:"-"`
 	// the service name of the caller
-	SrcService     string `yaml:"srcService" json:"srcService"`
-	Route          bool   `yaml:"route" json:"route"`
-	CircuitBreaker bool   `yaml:"circuitBreaker" json:"circuitBreaker"`
+	SrcService string `yaml:"srcService" json:"srcService"`
+	// SrcMetadata use for custom route.
+	SrcMetadata    map[string]string `json:"src_metadata"`
+	Route          bool              `yaml:"route" json:"route"`
+	CircuitBreaker bool              `yaml:"circuitBreaker" json:"circuitBreaker"`
 }
 
 func injectCallerInfo(options *dialOptions) grpc.UnaryClientInterceptor {

@@ -40,7 +40,7 @@ func PolarisContext() (ctx api.SDKContext, err error) {
 	return nil, errors.New("PolarisContext:polaris context not init")
 }
 
-// SetPolarisContextOnceByConfig set polaris context by config,if polaris context has init then do nothing
+// SetPolarisContextOnceByConfig set polaris context by config, if polaris context has init then do nothing
 func SetPolarisContextOnceByConfig(cfg config.Configuration) (err error) {
 	mutexPolarisContext.Lock()
 	defer mutexPolarisContext.Unlock()
@@ -58,7 +58,7 @@ func InitPolarisContext(cnf *conf.Configuration) (cfg config.Configuration, ctx 
 	var (
 		parser *conf.Parser
 	)
-	pcnf := cnf.Sub("polaris")
+	pcnf := cnf.Sub(scheme)
 	if pcnf.IsSet("configFile") {
 		parser, err = conf.NewParserFromFile(cnf.Abs(pcnf.String("configFile")))
 		if err != nil {

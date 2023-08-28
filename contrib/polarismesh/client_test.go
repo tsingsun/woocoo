@@ -74,166 +74,8 @@ func (api *httpAPI) routings() *httpAPI {
 		return api
 	}
 	// one route ,one guarantee
-	payload := strings.NewReader( /* JSON */ `
-[
-  {
-    "id": "byCountry",
-    "name": "byCountry",
-    "enable": true,
-    "description": "",
-    "priority": 0,
-    "routing_config": {
-      "@type": "type.googleapis.com/v2.RuleRoutingConfig",
-      "sources": [
-        {
-          "service": "*",
-          "namespace": "routingTest"
-        }
-      ],
-      "destinations": [
-        {
-          "service": "helloworld.Greeter",
-          "namespace": "routingTest"
-        }
-      ],
-      "rules": [
-        {
-          "name": "规则0",
-          "sources": [
-            {
-              "service": "*",
-              "namespace": "routingTest",
-              "arguments": [
-                {
-                  "type": "HEADER",
-                  "key": "country",
-                  "value": {
-                    "type": "EXACT",
-                    "value": "CN",
-                    "value_type": "TEXT"
-                  }
-                }
-              ]
-            }
-          ],
-          "destinations": [
-            {
-              "service": "helloworld.Greeter",
-              "namespace": "routingTest",
-              "labels": {
-                "location": {
-                  "type": "EXACT",
-                  "value": "CN",
-                  "value_type": "TEXT"
-                }
-              },
-              "priority": 0,
-              "weight": 100,
-              "transfer": "",
-              "isolate": false,
-              "name": "group-0"
-            }
-          ]
-        },
-        {
-          "name": "规则1",
-          "sources": [
-            {
-              "service": "*",
-              "namespace": "routingTest",
-              "arguments": [
-                {
-                  "type": "HEADER",
-                  "key": "country",
-                  "value": {
-                    "type": "EXACT",
-                    "value": "US",
-                    "value_type": "TEXT"
-                  }
-                }
-              ]
-            }
-          ],
-          "destinations": [
-            {
-              "labels": {
-                "location": {
-                  "value": "US",
-                  "type": "EXACT",
-                  "value_type": "TEXT"
-                }
-              },
-              "weight": 0,
-              "isolate": false,
-              "service": "helloworld.Greeter",
-              "namespace": "routingTest",
-              "name": "group-0"
-            }
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "id": "guarantee",
-    "name": "guarantee",
-    "enable": true,
-    "description": "",
-    "priority": 1,
-    "routing_config": {
-      "@type": "type.googleapis.com/v2.RuleRoutingConfig",
-      "sources": [
-        {
-          "service": "*",
-          "namespace": "routingTest"
-        }
-      ],
-      "destinations": [
-        {
-          "service": "helloworld.Greeter",
-          "namespace": "routingTest"
-        }
-      ],
-      "rules": [
-        {
-          "name": "规则0",
-          "sources": [
-            {
-              "service": "*",
-              "namespace": "routingTest",
-              "arguments": [{
-				"type": "HEADER",
-				"key": "country",
-				"value": {
-				  "type": "NOT_IN",
-				  "value": "CN,US",
-				  "value_type": "TEXT"
-                }
-              }]
-            }
-          ],
-          "destinations": [
-            {
-              "service": "helloworld.Greeter",
-              "namespace": "routingTest",
-              "labels": {
-                "location": {
-                  "value": "default",
-                  "type": "EXACT",
-                  "value_type": "TEXT"
-                }
-              },
-              "weight": 100,
-              "isolate": false,
-              "name": "group-0"
-            }
-          ]
-        }
-      ]
-    }
-  }
-]
-`)
+	payload, err := os.Open("./testdata/routing.json")
+	require.NoError(api.t, err)
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/naming/v2/routings", api.baseUrl), payload)
 	require.NoError(api.t, err)
 	bd, err := api.do(req)
@@ -363,15 +205,40 @@ func TestClient_Dial(t *testing.T) {
 		return srv.Run()
 	})
 	require.NoError(t, err)
-	cli, err := grpcx.NewClient(cfg.Sub("grpc"))
-	require.NoError(t, err)
-	conn, err := cli.Dial("")
-	require.NoError(t, err)
-	require.NotNil(t, conn)
-	gclient := helloworld.NewGreeterClient(conn)
-	resp, err := gclient.SayHello(context.Background(), &helloworld.HelloRequest{Name: "world"})
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
+	t.Run("normal", func(t *testing.T) {
+		cli, err := grpcx.NewClient(cfg.Sub("grpc"))
+		require.NoError(t, err)
+		conn, err := cli.Dial("")
+		require.NoError(t, err)
+		require.NotNil(t, conn)
+		gclient := helloworld.NewGreeterClient(conn)
+		resp, err := gclient.SayHello(context.Background(), &helloworld.HelloRequest{Name: "world"})
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+	})
+	t.Run("miss service", func(t *testing.T) {
+		sc := cfg.Sub("grpc")
+		sc.Parser().Set("client.target.serviceName", "")
+		cli, err := grpcx.NewClient(sc)
+		require.NoError(t, err)
+		_, err = cli.Dial("")
+		assert.ErrorContains(t, err, "resolver need a target host or service name")
+	})
+	t.Run("miss skdctx", func(t *testing.T) {
+		sc := cfg.Sub("grpc")
+		target := fmt.Sprintf("%s://%s/%s", scheme, sc.String("client.target.namespace"), sc.String("client.target.serviceName"))
+		rb := &resolverBuilder{}
+		_, err = grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithResolvers(rb))
+		assert.NoError(t, err)
+	})
+	t.Run("wrong target", func(t *testing.T) {
+		sc := cfg.Sub("grpc")
+		cli, err := grpcx.NewClient(sc)
+		require.NoError(t, err)
+		target := fmt.Sprintf("%s://%s/%s", scheme, "127.0.0.1:abc", "errorPort")
+		_, err = cli.Dial(target)
+		assert.Error(t, err)
+	})
 }
 
 func TestClient_DialMultiServerAndDown(t *testing.T) {
@@ -497,8 +364,7 @@ func TestClientRouting(t *testing.T) {
 	rb, err := drv.ResolverBuilder(rgcnf)
 	balancer.Register(NewBalancerBuilder("routing", getPolarisContext(t, "routingRegistry")))
 
-	t.Run("native-dial-without-src-service", func(t *testing.T) {
-
+	t.Run("native-dial-with-src-service", func(t *testing.T) {
 		require.NoError(t, err)
 		// api.routingsEnable("guarantee", false)
 		conn, err := grpc.Dial(scheme+"://routingTest/helloworld.Greeter?route=true&srcservice=helloworld.Greeter",
@@ -514,7 +380,6 @@ func TestClientRouting(t *testing.T) {
 		ctx := metadata.AppendToOutgoingContext(context.Background(), "country", "Not")
 		_, err = gcli.SayHello(ctx, &helloworld.HelloRequest{Name: "hello"})
 		require.NoError(t, err)
-
 		// route
 		for i := 0; i < 5; i++ {
 			ctx := metadata.AppendToOutgoingContext(context.Background(), "country", "CN")
@@ -523,7 +388,22 @@ func TestClientRouting(t *testing.T) {
 			assert.Equal(t, expectedMsg, resp.Message)
 		}
 	})
-
+	t.Run("native-dial-with-src-service-meta", func(t *testing.T) {
+		target := fmt.Sprintf("%s://routingTest/helloworld.Greeter?route=true&srcservice=helloworld.Greeter&%s=%s",
+			scheme, "src_custom", "custom")
+		conn, err := grpc.Dial(target,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithResolvers(rb),
+			grpc.WithDefaultServiceConfig(`{ "loadBalancingConfig": [{"routing": {}}] }`),
+		)
+		require.NoError(t, err)
+		require.NotNil(t, conn)
+		defer conn.Close()
+		gcli := helloworld.NewGreeterClient(conn)
+		resp, err := gcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "customer"})
+		require.NoError(t, err)
+		assert.Contains(t, resp.Message, "customer")
+	})
 	t.Run("route-rule-match-cn", func(t *testing.T) {
 		cli, err := grpcx.NewClient(cnf.Sub("grpc"))
 		require.NoError(t, err)

@@ -111,15 +111,11 @@ func NewBalancerBuilder(name string, ctx api.SDKContext) balancer.Builder {
 	}
 }
 
+// Build implements balancer.Builder interface.
 func (b balancerBuilder) Build(cc balancer.ClientConn, opts balancer.BuildOptions) balancer.Balancer {
 	grpclog.Infof("[Polaris][Balancer] start to build polaris balancer")
-	target := opts.Target
-	_, _, err := parseHost(target.URL.Host)
-	if err != nil {
-		grpclog.Errorln("[Polaris][Balancer] failed to create balancer: " + err.Error())
-		return nil
-	}
 	if b.sdkCtx == nil {
+		var err error
 		b.sdkCtx, err = PolarisContext()
 		if err != nil {
 			grpclog.Errorln("[Polaris][Balancer] failed to create balancer: " + err.Error())
@@ -142,7 +138,7 @@ func (b balancerBuilder) Name() string {
 	return b.name
 }
 
-// Build creates a picker,trigger when connection change to ready
+// Build creates a picker, trigger when connection changed to ready
 func (pb *pickerBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
 	grpclog.Infof("[Polaris][Balancer]: Build called with info: %v", info)
 	if len(info.ReadySCs) == 0 {
@@ -179,18 +175,25 @@ func (pb *pickerBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
 // Pick an instance from the ready instances
 func (pnp *polarisNamingPicker) Pick(info balancer.PickInfo) (balancer.PickResult, error) {
 	var resp *model.InstancesResponse
+	var srcService *model.ServiceInfo
+	customRoute := len(pnp.options.SrcMetadata) > 0
+	if pnp.options.SrcService != "" {
+		srcService = &model.ServiceInfo{
+			Service:   pnp.options.SrcService,
+			Namespace: getNamespace(pnp.options),
+			Metadata:  pnp.options.SrcMetadata,
+		}
+	}
 	if pnp.options.Route {
 		request := &polaris.ProcessRoutersRequest{}
 		request.DstInstances = pnp.response
-		if pnp.options.SrcService != "" {
-			request.SourceService = model.ServiceInfo{
-				Service:   pnp.options.SrcService,
-				Namespace: getNamespace(pnp.options),
-			}
+		if srcService != nil {
+			request.SourceService = *srcService
 		}
-
-		if err := pnp.addTrafficLabels(info, request); err != nil {
-			grpclog.Errorf("[Polaris][Balancer] fetch traffic labels fail : %+v", err)
+		if !customRoute {
+			if err := pnp.addTrafficLabels(info, request); err != nil {
+				grpclog.Errorf("[Polaris][Balancer] fetch traffic labels fail : %+v", err)
+			}
 		}
 
 		var err error
@@ -212,8 +215,10 @@ func (pnp *polarisNamingPicker) Pick(info balancer.PickInfo) (balancer.PickResul
 	subSc, ok := pnp.readySCs[addr]
 	if ok {
 		reporter := &resultReporter{
-			instance: targetInstance, consumerAPI: pnp.balancer.consumerAPI,
-			method: extractBareMethodName(info.FullMethodName), startTime: time.Now(),
+			instance:      targetInstance,
+			consumerAPI:   pnp.balancer.consumerAPI,
+			sourceService: srcService,
+			startTime:     time.Now(),
 		}
 		return balancer.PickResult{
 			SubConn: subSc,
@@ -319,10 +324,10 @@ func collectRouteLabels(routing *apitraffic.Routing) map[string]struct{} {
 }
 
 type resultReporter struct {
-	instance    model.Instance
-	consumerAPI polaris.ConsumerAPI
-	method      string
-	startTime   time.Time
+	instance      model.Instance
+	consumerAPI   polaris.ConsumerAPI
+	startTime     time.Time
+	sourceService *model.ServiceInfo
 }
 
 // use by balancer.PickResult.Done
@@ -334,8 +339,8 @@ func (r *resultReporter) report(info balancer.DoneInfo) {
 
 	callResult := &polaris.ServiceCallResult{}
 	callResult.CalledInstance = r.instance
-	callResult.Method = r.method
 	callResult.RetStatus = retStatus
+	callResult.SourceService = r.sourceService
 	callResult.SetDelay(time.Since(r.startTime))
 	callResult.SetRetCode(int32(code))
 	if err := r.consumerAPI.UpdateServiceCallResult(callResult); err != nil {

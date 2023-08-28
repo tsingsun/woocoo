@@ -8,6 +8,7 @@ grpc:
           - recovery:
     registryMeta:
       location: default
+      custom: custom
   registry:
     ref: routingRegistry
     scheme: polaris

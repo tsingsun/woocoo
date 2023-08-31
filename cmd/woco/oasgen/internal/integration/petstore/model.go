@@ -6,7 +6,7 @@ import "time"
 
 type Category struct {
 	ID   int64  `json:"id,omitempty" xml:"id"`
-	Name string `binding:"regex=oas_pattern_0,omitempty" json:"name,omitempty" xml:"name"`
+	Name string `binding:"omitempty,regex=oas_pattern_0" json:"name,omitempty" xml:"name"`
 }
 
 type NewPet struct {
@@ -18,7 +18,7 @@ type NewPet struct {
 type Order struct {
 	Complete  bool      `json:"complete,omitempty" xml:"complete"`
 	ID        int64     `json:"id,omitempty" xml:"id"`
-	OrderDate time.Time `binding:"ltfield=ShipDate,omitempty" json:"orderDate,omitempty" time_format:"2006-01-02T15:04:05Z07:00" xml:"orderDate"`
+	OrderDate time.Time `binding:"omitempty,ltfield=ShipDate" json:"orderDate,omitempty" time_format:"2006-01-02T15:04:05Z07:00" xml:"orderDate"`
 	PetId     int64     `json:"petId,omitempty" xml:"petId"`
 	Quantity  int32     `json:"quantity,omitempty" xml:"quantity"`
 	ShipDate  time.Time `json:"shipDate,omitempty" time_format:"2006-01-02T15:04:05Z07:00" xml:"shipDate"`
@@ -41,7 +41,7 @@ type Tag struct {
 }
 
 type User struct {
-	Email      string `binding:"email,omitempty" json:"email,omitempty" xml:"email"`
+	Email      string `binding:"omitempty,email" json:"email,omitempty" xml:"email"`
 	FirstName  string `json:"firstName,omitempty" xml:"firstName"`
 	ID         int64  `json:"id,omitempty" xml:"id"`
 	LastName   string `json:"lastName,omitempty" xml:"lastName"`

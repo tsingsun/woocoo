@@ -91,9 +91,10 @@ func (s *ginTestSuite) TestGetOrderById() {
 }
 
 func (s *ginTestSuite) TestUpdateUser() {
-	s.Run("email validator", func() {
+	s.Run("email format error", func() {
 		bf := bytes.NewBufferString(`{"id":1,"email":"email"}`)
 		r := httptest.NewRequest("PUT", "/user/1", bf)
+		r.Header.Add("Content-Type", binding.MIMEJSON)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
 		s.Equal(400, w.Code)
@@ -101,16 +102,18 @@ func (s *ginTestSuite) TestUpdateUser() {
 	s.Run("email omitempty", func() {
 		bf := bytes.NewBufferString(`{"id":1}`)
 		r := httptest.NewRequest("PUT", "/user/1", bf)
+		r.Header.Add("Content-Type", binding.MIMEJSON)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		s.Equal(400, w.Code)
+		s.Equal(200, w.Code)
 	})
 	s.Run("email ok", func() {
 		bf := bytes.NewBufferString(`{"id":1,"email":"test@woocoo.net"}`)
 		r := httptest.NewRequest("PUT", "/user/1", bf)
+		r.Header.Add("Content-Type", binding.MIMEJSON)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		s.Equal(400, w.Code)
+		s.Equal(200, w.Code)
 	})
 }
 
@@ -132,7 +135,7 @@ func (s *ginTestSuite) TestPostOrder() {
 		r.Header.Set("Content-Type", binding.MIMEJSON)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		assert.Equal(t, 400, w.Code)
+		assert.Equal(t, 200, w.Code)
 	})
 	t.Run("wrong time", func(t *testing.T) {
 		bf := bytes.NewBufferString(`{"id":1,"status":"placed","shipDate":"2006-01-02"}`)

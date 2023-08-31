@@ -84,7 +84,7 @@ func TestGenerateAfter(t *testing.T) {
 
 			orderDate, ok := orderType.FieldByName("OrderDate")
 			require.True(t, ok)
-			assert.EqualValues(t, `ltfield=ShipDate,omitempty`, orderDate.Tag.Get("binding"))
+			assert.EqualValues(t, `omitempty,ltfield=ShipDate`, orderDate.Tag.Get("binding"))
 			assert.EqualValues(t, `time.Time`, orderDate.Type.String())
 
 			status, ok := orderType.FieldByName("Status")
@@ -98,12 +98,12 @@ func TestGenerateAfter(t *testing.T) {
 
 			usert := reflect.TypeOf(User{})
 			// check binding
-			assert.EqualValues(t, `email,omitempty`, usert.Field(0).Tag.Get("binding"))
+			assert.EqualValues(t, `omitempty,email`, usert.Field(0).Tag.Get("binding"))
 		})
 		t.Run("user", func(t *testing.T) {
 			user := User{}
 			userType := reflect.TypeOf(user)
-			assert.EqualValues(t, `email,omitempty`, userType.Field(0).Tag.Get("binding"))
+			assert.EqualValues(t, `omitempty,email`, userType.Field(0).Tag.Get("binding"))
 			assert.EqualValues(t, `email,omitempty`, userType.Field(0).Tag.Get("json"))
 			assert.EqualValues(t, `string`, userType.Field(0).Type.String())
 			assert.EqualValues(t, `firstName,omitempty`, userType.Field(1).Tag.Get("json"))

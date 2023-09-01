@@ -8,9 +8,13 @@ import (
 	"path/filepath"
 )
 
+// Formatter is a function that formats a file.
+type Formatter func(path string, content []byte) error
+
 type Assets struct {
-	dirs  map[string]struct{}
-	files map[string][]byte
+	dirs       map[string]struct{}
+	files      map[string][]byte
+	formatters map[string]Formatter
 }
 
 func (a *Assets) Add(path string, content []byte) {
@@ -28,7 +32,7 @@ func (a *Assets) AddDir(path string) {
 }
 
 // Write files and dirs in the Assets.
-func (a Assets) Write() error {
+func (a *Assets) Write() error {
 	for dir := range a.dirs {
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 			return fmt.Errorf("create dir %q: %w", dir, err)
@@ -42,26 +46,33 @@ func (a Assets) Write() error {
 	return nil
 }
 
-// Format runs "goimports" on all Assets.
-func (a Assets) Format() error {
-	for path, content := range a.files {
-		if filepath.Ext(path) != ".go" {
-			continue
-		}
-		if err := FormatGoFile(path, content); err != nil {
-			return err
-		}
+// AddFormatter add a formatter for file extensions that are like `.go` got by `filepath.Ext`
+func (a *Assets) AddFormatter(fun Formatter, exts ...string) {
+	if a.formatters == nil {
+		a.formatters = make(map[string]Formatter)
 	}
-	return nil
+	for _, ext := range exts {
+		a.formatters[ext] = fun
+	}
 }
 
-func (a Assets) ModTidy(root string) error {
-	tidyCmd := exec.Command("go", "mod", "tidy")
-	tidyCmd.Dir = root
-	tidyCmd.Stdout = os.Stdout
-	tidyCmd.Stderr = os.Stdout
-	if err := tidyCmd.Run(); err != nil {
-		return fmt.Errorf("go mod tidy failed: %w", err)
+// Format runs format cmd on all Assets.
+//
+// defaultFormatter is goimports.
+func (a *Assets) Format() error {
+	for path, content := range a.files {
+		switch filepath.Ext(path) {
+		case ".go":
+			if err := FormatGoFile(path, content); err != nil {
+				return err
+			}
+		default:
+			if fun, ok := a.formatters[filepath.Ext(path)]; ok {
+				if err := fun(path, content); err != nil {
+					return err
+				}
+			}
+		}
 	}
 	return nil
 }

@@ -179,6 +179,14 @@ duration: 1s
 	assert.Equal(t, copyCfg.Duration("duration"), time.Second)
 }
 
+func TestConfiguration_Exists(t *testing.T) {
+	cnf := New()
+	assert.False(t, cnf.Exists())
+
+	cnf = New(WithBaseDir(testdata.BaseDir()))
+	assert.True(t, cnf.Exists())
+}
+
 func TestConfiguration_Load(t *testing.T) {
 	type fields struct {
 		cnf *Configuration

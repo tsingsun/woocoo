@@ -33,10 +33,15 @@ func New(opts ...Option) *App {
 		opt(&app.opts)
 	}
 	if app.opts.cnf == nil {
-		app.opts.cnf = &conf.AppConfiguration{Configuration: conf.New().Load()}
+		app.opts.cnf = &conf.AppConfiguration{Configuration: conf.New()}
+		if app.opts.cnf.Exists() {
+			app.opts.cnf.Load()
+		}
 	}
 	if app.opts.cnf.IsSet("log") {
 		log.NewBuiltIn()
+	} else {
+		log.InitGlobalLogger() // reset global logger, assign component logger.
 	}
 	app.ctx, app.cancel = context.WithCancel(context.Background())
 	return app

@@ -65,8 +65,8 @@ func init() {
 
 // New create an application configuration instance.
 //
-// New as global by default,if you want to create a local configuration,set global to false.
-// initialization such as:
+// New as global by default, if you want to create a local configuration, set global to false.
+// Initialization such as:
 //
 //	cnf := conf.New().Load()
 func New(opts ...Option) *Configuration {
@@ -94,7 +94,7 @@ func NewFromBytes(b []byte, opts ...Option) *Configuration {
 	return NewFromParse(p, opts...)
 }
 
-// NewFromStringMap create from string map
+// NewFromStringMap create from a string map
 func NewFromStringMap(data map[string]any, opts ...Option) *Configuration {
 	p := NewParserFromStringMap(data)
 	return NewFromParse(p, opts...)
@@ -107,12 +107,20 @@ func NewFromParse(parser *Parser, opts ...Option) *Configuration {
 	return cnf
 }
 
+// Exists check if the default configuration file exists
+func (c *Configuration) Exists() bool {
+	_, err := os.Stat(c.opts.localPath)
+	return err == nil
+}
+
+// AsGlobal set the Configuration as global
 func (c *Configuration) AsGlobal() *Configuration {
 	global.Configuration = c
 	c.opts.global = true
 	return c
 }
 
+// Load parse configuration from file
 func (c *Configuration) Load() *Configuration {
 	if err := c.loadInternal(); err != nil {
 		panic("config load error:" + err.Error())
@@ -164,7 +172,7 @@ func tryAbs(basedir, path string) (string, error) {
 	return path, err
 }
 
-// Merge an input config stream,parameter b is YAML stream
+// Merge an input config stream, parameter b is YAML stream
 //
 // types operation:
 //   - map[string]any: merge
@@ -196,14 +204,14 @@ func (c *Configuration) Parser() *Parser {
 	return c.parser
 }
 
-// ParserOperator return the underlying parser that convert bytes to map
+// ParserOperator return the underlying parser that converts bytes to map
 func (c *Configuration) ParserOperator() *koanf.Koanf {
 	return c.parser.k
 }
 
 // Sub return a new Configuration by a sub node.return current node if path empty,panic if path not found.
 //
-// sub node keep the same root configuration of current node.
+// sub node keeps the same root configuration of the current node.
 func (c *Configuration) Sub(path string) *Configuration {
 	if path == "" {
 		return c

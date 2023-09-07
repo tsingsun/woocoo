@@ -246,8 +246,7 @@ func TestRegistryGrpcx(t *testing.T) {
 		}
 	})
 	t.Run("control remove one", func(t *testing.T) {
-		// delete one of the service,srv2 should be worked
-		//srv.Stop(context.Background())
+		// delete one of the service, srv2 should be worked
 		for _, info := range srv.ServiceInfos {
 			_, err = etcdCli.Delete(context.Background(), info.BuildKey())
 			require.NoError(t, err)

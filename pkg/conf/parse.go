@@ -22,7 +22,7 @@ const (
 // NewParser creates a new empty Parser instance.
 func NewParser() *Parser {
 	k := koanf.NewWithConf(koanf.Conf{Delim: KeyDelimiter, StrictMerge: false})
-	return &Parser{k: k}
+	return NewParserFromOperator(k)
 }
 
 // NewParserFromFile creates a new Parser by reading the given file.
@@ -56,6 +56,11 @@ func NewParserFromStringMap(data map[string]any) *Parser {
 	// Cannot return error because the koanf instance is empty.
 	_ = p.k.Load(confmap.Provider(data, KeyDelimiter), nil)
 	return p
+}
+
+// NewParserFromOperator creates a parser from a koanf.Koanf.
+func NewParserFromOperator(k *koanf.Koanf) *Parser {
+	return &Parser{k: k}
 }
 
 // Parser loads configuration.

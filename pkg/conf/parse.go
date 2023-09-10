@@ -3,6 +3,7 @@ package conf
 import (
 	"fmt"
 	"io"
+	"os"
 	"reflect"
 	_ "unsafe"
 
@@ -61,6 +62,14 @@ func NewParserFromStringMap(data map[string]any) *Parser {
 // NewParserFromOperator creates a parser from a koanf.Koanf.
 func NewParserFromOperator(k *koanf.Koanf) *Parser {
 	return &Parser{k: k}
+}
+
+func loadFileWithEnv(path string) (koanf.Provider, error) {
+	fs, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return rawbytes.Provider(ParseEnv(fs)), nil
 }
 
 // Parser loads configuration.
@@ -134,6 +143,15 @@ func (l *Parser) Set(key string, value any) {
 // IsSet is case-insensitive for a key.
 func (l *Parser) IsSet(key string) bool {
 	return l.k.Exists(key)
+}
+
+// LoadFileWithEnv loads the given file and env, and merges it into the config.
+func (l *Parser) LoadFileWithEnv(path string) error {
+	provider, err := loadFileWithEnv(path)
+	if err != nil {
+		return err
+	}
+	return l.k.Load(provider, yaml.Parser())
 }
 
 // MergeStringMap merges the configuration from the given map with the existing config.

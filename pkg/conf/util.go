@@ -1,11 +1,21 @@
 package conf
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/hashicorp/go-envparse"
+	"log"
 	"net"
 	"os"
+	"path/filepath"
+	"regexp"
+)
+
+var (
+	envRegexp       = regexp.MustCompile(`\${(\w+)}`)
+	defaultEnvFiles = []string{".env", ".env.local"}
 )
 
 // TLS is the TLS configuration for TLS connections
@@ -76,4 +86,48 @@ func GetIP(useIPv6 bool) string {
 		}
 	}
 	panic("Unable to determine local IP address (non loopback).")
+}
+
+// TryLoadEnvFromFile try load env from files
+func TryLoadEnvFromFile(scan, mod string) {
+	files := make([]string, len(defaultEnvFiles))
+	copy(files, defaultEnvFiles)
+	if mod != "" {
+		files = append(files, fmt.Sprintf(".env.%s", mod))
+	}
+	for _, name := range files {
+		fp := filepath.Join(scan, name)
+		if _, err := os.Stat(fp); err != nil {
+			continue
+		}
+		// load env name
+		bs, err := os.ReadFile(fp)
+		if err != nil {
+			continue
+		}
+		emp, err := envparse.Parse(bytes.NewBuffer(bs))
+		if err != nil {
+			log.Printf("load env file %s error: %s", fp, err)
+			continue
+		}
+		// set env
+		for k, v := range emp {
+			err := os.Setenv(k, v)
+			if err != nil {
+				log.Printf("set env %s:%s error: %s", k, v, err)
+			}
+		}
+	}
+}
+
+// ParseEnv parse env value in src.
+func ParseEnv(src []byte) []byte {
+	if !envRegexp.Match(src) {
+		return src
+	}
+	return envRegexp.ReplaceAllFunc(src, func(s []byte) []byte {
+		name := s[2 : len(s)-1]
+		ev := os.Getenv(string(name))
+		return []byte(ev)
+	})
 }

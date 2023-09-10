@@ -2,6 +2,8 @@ package conf
 
 import (
 	"bytes"
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/tsingsun/woocoo/test/testdata"
 	"io"
 	"testing"
 
@@ -438,4 +440,14 @@ func TestParser_MergeStringMap(t *testing.T) {
 			tt.check(l, tt.args.cfg)
 		})
 	}
+}
+
+func TestNewParserFromFile(t *testing.T) {
+	t.Run("app", func(t *testing.T) {
+		l, err := NewParserFromFile(testdata.Path("etc/app.yaml"))
+		assert.NoError(t, err)
+		bs, err := l.ToBytes(yaml.Parser())
+		assert.NoError(t, err)
+		assert.NotNil(t, bs)
+	})
 }

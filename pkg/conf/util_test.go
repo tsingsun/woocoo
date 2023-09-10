@@ -3,6 +3,7 @@ package conf
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/test/testdata"
+	"os"
 	"testing"
 )
 
@@ -63,6 +64,54 @@ func TestTLS(t *testing.T) {
 			}
 			assert.NoError(t, err)
 			assert.NotNil(t, c)
+		})
+	}
+}
+
+func Test_tryLoadEnvFromFiles(t *testing.T) {
+	type args struct {
+		scan string
+		mod  string
+	}
+	tests := []struct {
+		name  string
+		args  args
+		check func()
+		panic bool
+	}{
+		{
+			name: "stat error",
+			args: args{
+				scan: testdata.Path("etc"),
+				mod:  "test",
+			},
+			check: func() {
+				assert.Equal(t, "bartest", os.Getenv("FOO"))
+				assert.Equal(t, "1", os.Getenv("INT"))
+			},
+		},
+		{
+			name: "stat error",
+			args: args{
+				scan: "/error",
+				mod:  "",
+			},
+			panic: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.panic {
+				assert.Panics(t, func() {
+					TryLoadEnvFromFile(tt.args.scan, tt.args.mod)
+				})
+				return
+			}
+			TryLoadEnvFromFile(tt.args.scan, tt.args.mod)
+
+			if tt.check != nil {
+				tt.check()
+			}
 		})
 	}
 }

@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/knadh/koanf/parsers/yaml"
-	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 )
 
@@ -133,7 +131,9 @@ func (c *Configuration) Load() *Configuration {
 func (c *Configuration) loadInternal() (err error) {
 	// if parser is nil, use default local config file
 	if c.parser == nil || len(c.parser.AllKeys()) == 0 {
-		c.parser, err = NewParserFromFile(c.opts.localPath)
+		TryLoadEnvFromFile(filepath.Dir(c.opts.localPath), "")
+		c.parser = NewParser()
+		err = c.parser.LoadFileWithEnv(c.opts.localPath)
 		if err != nil {
 			return err
 		}
@@ -152,7 +152,7 @@ func (c *Configuration) loadInternal() (err error) {
 	copyifs := make([]string, len(c.opts.includeFiles))
 	copy(copyifs, c.opts.includeFiles)
 	for _, attach := range copyifs {
-		if err = c.parser.k.Load(file.Provider(attach), yaml.Parser()); err != nil {
+		if err = c.parser.LoadFileWithEnv(attach); err != nil {
 			return err
 		}
 	}

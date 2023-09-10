@@ -1,5 +1,6 @@
 appName: woocoo
-version: 0.0.1
+namespace: tsingsun
+version: 1.0.0
 development: true
 log:
   # zap.AddCallerSkip
@@ -24,11 +25,8 @@ trace:
 
 cache:
   redis:
-    #    type: cluster
-    #    addrs:
-    #      - 127.0.0.1:6379
     type: standalone
-    addr: 127.0.0.1:6379
+    Addrs: [127.0.0.1:6379]
     db: 1
     local:
       size: 1000

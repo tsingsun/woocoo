@@ -2,9 +2,11 @@ package conf
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
 	"time"
 
@@ -136,7 +138,7 @@ development: true
 			wantErr: assert.NoError,
 		},
 		{
-			name: "new from file",
+			name: "new from wrong file",
 			newFunc: func() (*Configuration, error) {
 				p, err := NewParserFromFile("err")
 				return NewFromParse(p), err
@@ -154,10 +156,10 @@ development: true
 				return
 			}
 			got.Load()
-			assert.Equal(t, got.Namespace(), "tsingsun")
-			assert.Equal(t, got.AppName(), "woocoo")
-			assert.Equal(t, got.Version(), "1.0.0")
-			assert.Equal(t, got.Development, true)
+			assert.Equal(t, "tsingsun", got.Namespace())
+			assert.Equal(t, "woocoo", got.AppName())
+			assert.Equal(t, "1.0.0", got.Version())
+			assert.Equal(t, true, got.Development)
 		})
 	}
 }
@@ -204,7 +206,19 @@ func TestConfiguration_Load(t *testing.T) {
 			},
 			require: func(cnf *Configuration) {
 				cnf.Load()
-				assert.Equal(t, cnf.Get("appName"), "woocoo1")
+				assert.Equal(t, "woocoo1", cnf.Get("appName"))
+			},
+		},
+		{
+			name: "env",
+			fields: fields{
+				cnf: New(WithLocalPath(testdata.Path("etc/env.yaml"))),
+			},
+			require: func(cnf *Configuration) {
+				cnf.Load()
+				ev, err := strconv.Atoi(os.Getenv("INT"))
+				assert.NoError(t, err)
+				assert.EqualValues(t, ev, cnf.Get("env.int"))
 			},
 		},
 		{

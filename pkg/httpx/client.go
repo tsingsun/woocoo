@@ -49,18 +49,10 @@ type (
 		Password string `yaml:"password,omitempty" json:"password,omitempty"`
 	}
 
-	OAuth2Config struct {
-		oauth2.Config  `yaml:",inline" json:",inline"`
-		EndpointParams url.Values
-
-		ts      oauth2.TokenSource
-		storage TokenStorage
-	}
-
 	TransportConfig struct {
 		*ProxyConfig `yaml:",inline" json:",inline"`
 		// TLSConfig to use to connect to the targets.
-		TLS *conf.TLS `yaml:"tls,omitempty"`
+		TLS *conf.TLS `yaml:"tls,omitempty" json:"tls,omitempty"`
 	}
 )
 
@@ -115,6 +107,52 @@ func (c *ClientConfig) Validate() error {
 	return nil
 }
 
+// Exchange converts an authorization code into a token if you use oauth2 config.
+func (c *ClientConfig) Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
+	if c.OAuth2 == nil {
+		return nil, fmt.Errorf("oauth2 config not found")
+	}
+	tk, err := c.OAuth2.Config.Exchange(ctx, code, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if c.OAuth2.storage != nil {
+		if err := c.OAuth2.storage.SetToken(tk); err != nil {
+			return nil, err
+		}
+	}
+	return tk, nil
+}
+
+// Client returns an HTTP client using the provided token.
+func (c *ClientConfig) Client(ctx context.Context, t *oauth2.Token) (*http.Client, error) {
+	if t != nil && c.OAuth2 == nil {
+		return nil, fmt.Errorf("oauth2 config not found")
+	}
+	if t != nil && c.OAuth2 != nil && c.OAuth2.ts == nil {
+		c.OAuth2.ts = c.OAuth2.Config.TokenSource(ctx, t)
+	}
+	return NewClient(c)
+}
+
+// TokenSource returns a default token source base on clientcredentials.Config. it called in NewClient
+func (c *ClientConfig) TokenSource(ctx context.Context) oauth2.TokenSource {
+	config := &clientcredentials.Config{
+		ClientID:       c.OAuth2.ClientID,
+		ClientSecret:   c.OAuth2.ClientSecret,
+		Scopes:         c.OAuth2.Scopes,
+		TokenURL:       c.OAuth2.Endpoint.TokenURL,
+		EndpointParams: c.OAuth2.EndpointParams,
+	}
+	hc := &http.Client{Transport: c.base, Timeout: c.Timeout}
+	ctx = context.WithValue(ctx, oauth2.HTTPClient, hc)
+	base := config.TokenSource(context.WithValue(ctx, oauth2.HTTPClient, hc))
+	return &TokenSource{
+		storage: c.OAuth2.storage,
+		base:    base,
+	}
+}
+
 type ProxyConfig struct {
 	// HTTP proxy server to use to connect to the targets.
 	ProxyURL string `yaml:"proxyUrl,omitempty" json:"proxyUrl,omitempty"`
@@ -146,6 +184,21 @@ func (p ProxyConfig) ProxyFunc() func(req *http.Request) (*url.URL, error) {
 	return func(req *http.Request) (*url.URL, error) {
 		return fn(req.URL)
 	}
+}
+
+// OAuth2Config is a wrapper around oauth2.Config that allows for custom.
+type OAuth2Config struct {
+	oauth2.Config  `yaml:",inline" json:",inline"`
+	EndpointParams url.Values
+
+	ts      oauth2.TokenSource
+	storage TokenStorage
+}
+
+// SetOAuthStorage set TokenStorage to OAuth2Config
+func (oa *OAuth2Config) SetOAuthStorage(ts TokenStorage) error {
+	oa.storage = ts
+	return nil
 }
 
 type TokenSource struct {
@@ -253,52 +306,6 @@ func NewTransport(cfg TransportConfig) (http.RoundTripper, error) {
 		ts.ProxyConnectHeader = cfg.ProxyConfig.ProxyConnectHeader
 	}
 	return ts, nil
-}
-
-// Exchange converts an authorization code into a token if you use oauth2 config.
-func (c *ClientConfig) Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
-	if c.OAuth2 == nil {
-		return nil, fmt.Errorf("oauth2 config not found")
-	}
-	tk, err := c.OAuth2.Config.Exchange(ctx, code, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if c.OAuth2.storage != nil {
-		if err := c.OAuth2.storage.SetToken(tk); err != nil {
-			return nil, err
-		}
-	}
-	return tk, nil
-}
-
-// Client returns an HTTP client using the provided token.
-func (c *ClientConfig) Client(ctx context.Context, t *oauth2.Token) (*http.Client, error) {
-	if t != nil && c.OAuth2 == nil {
-		return nil, fmt.Errorf("oauth2 config not found")
-	}
-	if t != nil && c.OAuth2 != nil && c.OAuth2.ts == nil {
-		c.OAuth2.ts = c.OAuth2.Config.TokenSource(ctx, t)
-	}
-	return NewClient(c)
-}
-
-// TokenSource returns a default token source base on clientcredentials.Config. it called in NewClient
-func (c *ClientConfig) TokenSource(ctx context.Context) oauth2.TokenSource {
-	config := &clientcredentials.Config{
-		ClientID:       c.OAuth2.ClientID,
-		ClientSecret:   c.OAuth2.ClientSecret,
-		Scopes:         c.OAuth2.Scopes,
-		TokenURL:       c.OAuth2.Endpoint.TokenURL,
-		EndpointParams: c.OAuth2.EndpointParams,
-	}
-	hc := &http.Client{Transport: c.base, Timeout: c.Timeout}
-	ctx = context.WithValue(ctx, oauth2.HTTPClient, hc)
-	base := config.TokenSource(context.WithValue(ctx, oauth2.HTTPClient, hc))
-	return &TokenSource{
-		storage: c.OAuth2.storage,
-		base:    base,
-	}
 }
 
 // NewClient creates a new HTTP client.

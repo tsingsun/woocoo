@@ -37,6 +37,8 @@ type Options struct {
 	Group string `yaml:"group" json:"group"`
 	// Endpoint is the URL to send GraphQL requests to in the playground.
 	Endpoint string `yaml:"endpoint" json:"endpoint"`
+	// DocHeader is the header to send GraphQL requests to in the playground.
+	DocHeader map[string]string `yaml:"header" json:"header"`
 	// Skip indicates whether skip the graphql handler.
 	Skip bool `yaml:"skip" json:"skip"`
 	// WithAuthorization indicates whether parse graphql operations to resource-action data for default authorization.
@@ -74,7 +76,7 @@ func (h *Handler) Name() string {
 	return graphqlHandlerName
 }
 
-// ApplyFunc is a middleware for gin. it seeks the global authorization first, New one if not found.
+// ApplyFunc is middleware for gin. it seeks the global authorization first, New one if not found.
 func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	var err error
 	opt := defaultOptions
@@ -158,7 +160,7 @@ func buildGraphqlServer(routerGroup *web.RouterGroup, server *gqlgen.Server, opt
 		opt.Endpoint = opt.Group + opt.QueryPath
 	}
 	// set endpoint to graphql-playground used in playground UI
-	docHandler := playground.Handler("graphql", opt.Endpoint)
+	docHandler := playground.HandlerWithHeaders("graphql", opt.Endpoint, opt.DocHeader)
 
 	var DocHandler = func(c *gin.Context) {
 		docHandler.ServeHTTP(c.Writer, c.Request)

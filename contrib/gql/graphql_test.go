@@ -49,6 +49,9 @@ web:
                 queryPath: "/query"
                 docPath: "/doc"
                 group: "/graphql"
+                header:
+                  Authorization: "Bearer 123456"
+                  X-Tenant-Id: "1"
 `
 
 	cfg := conf.NewFromBytes([]byte(cfgStr))
@@ -72,6 +75,7 @@ web:
 
 		srv.Router().ServeHTTP(w, r)
 		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), `"Authorization":"Bearer 123456","X-Tenant-Id":"1"`)
 	})
 	t.Run("test sub", func(t *testing.T) {
 		g2 := gqlsrvList[0]
@@ -210,4 +214,57 @@ web:
 			assert.Contains(t, w.Body.String(), "action hello not allowed")
 		}
 	})
+}
+
+func TestHandler_ApplyFunc(t *testing.T) {
+	type args struct {
+		cfg *conf.Configuration
+	}
+	tests := []struct {
+		name  string
+		args  args
+		check func(*Handler)
+		panic bool
+	}{
+		{
+			name: "header",
+			args: args{
+				cfg: conf.NewFromBytes([]byte(`
+queryPath: "/query"
+docPath: "/doc"
+group: "/graphql"
+header: 
+  Authorization: "Bearer 123456"
+  X-Tenant-Id: "1"
+`)),
+			},
+			check: func(handler *Handler) {
+				assert.Equal(t, "Bearer 123456", handler.opts[0].DocHeader["Authorization"])
+			},
+		},
+		{
+			name: "Authorization config incorrect",
+			args: args{
+				cfg: conf.NewFromBytes([]byte(`
+withAuthorization: true
+`)),
+			},
+			panic: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := New()
+			if tt.panic {
+				assert.Panics(t, func() {
+					h.ApplyFunc(tt.args.cfg)
+				})
+				return
+			}
+			h.ApplyFunc(tt.args.cfg)
+			if tt.check != nil {
+				tt.check(h)
+			}
+		})
+	}
 }

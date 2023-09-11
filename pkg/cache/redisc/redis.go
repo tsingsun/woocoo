@@ -8,7 +8,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/cache/lfu"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	store "github.com/tsingsun/woocoo/pkg/store/redis"
+	"github.com/tsingsun/woocoo/pkg/store/redisx"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -84,7 +84,7 @@ func (cd *Redisc) Apply(cfg *conf.Configuration) (err error) {
 	}
 	if cd.redis == nil {
 		if cfg.IsSet("addrs") {
-			remote, err := store.NewClient(cfg)
+			remote, err := redisx.NewClient(cfg)
 			if err != nil {
 				return err
 			}

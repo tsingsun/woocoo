@@ -219,6 +219,8 @@ func TestConfiguration_Load(t *testing.T) {
 				ev, err := strconv.Atoi(os.Getenv("INT"))
 				assert.NoError(t, err)
 				assert.EqualValues(t, ev, cnf.Get("env.int"))
+				assert.EqualValues(t, ev, cnf.Get("env.intSpace"))
+				assert.EqualValues(t, ev, cnf.Get("env.intUnder"))
 			},
 		},
 		{

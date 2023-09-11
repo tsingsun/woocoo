@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	envRegexp       = regexp.MustCompile(`\${(\w+)}`)
+	envRegexp       = regexp.MustCompile(`\${[ \w]+}`) // with space
 	defaultEnvFiles = []string{".env", ".env.local"}
 )
 
@@ -127,7 +127,7 @@ func ParseEnv(src []byte) []byte {
 	}
 	return envRegexp.ReplaceAllFunc(src, func(s []byte) []byte {
 		name := s[2 : len(s)-1]
-		ev := os.Getenv(string(name))
+		ev := os.Getenv(string(bytes.Trim(name, " ")))
 		return []byte(ev)
 	})
 }

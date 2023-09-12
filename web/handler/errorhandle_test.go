@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -115,7 +114,7 @@ func TestErrorHandleMiddleware_ApplyFunc(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := ErrorHandle()
+			e := NewErrorHandle()
 			gin.SetMode(gin.ReleaseMode)
 			web := gin.New()
 			got := e.ApplyFunc(tt.args.cfg)
@@ -125,7 +124,6 @@ func TestErrorHandleMiddleware_ApplyFunc(t *testing.T) {
 			res := httptest.NewRecorder()
 			web.ServeHTTP(res, req)
 			tt.check(t, res, e)
-			assert.Nil(t, e.Shutdown(context.TODO()))
 		})
 	}
 }

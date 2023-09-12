@@ -3,9 +3,9 @@ package web
 import (
 	"errors"
 	"fmt"
-
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/web/handler"
 )
 
 // RouterGroup is a wrapper for gin.RouterGroup.
@@ -46,12 +46,6 @@ func (r *Router) Apply(cnf *conf.Configuration) (err error) {
 	}
 
 	cnf.Each("routerGroups", func(group string, sub *conf.Configuration) {
-		var mdl []gin.HandlerFunc
-		sub.Each("middlewares", func(name string, mid *conf.Configuration) {
-			if hf, ok := r.serverOptions.handlerManager.Get(name); ok {
-				mdl = append(mdl, hf.ApplyFunc(mid))
-			}
-		})
 		var gr RouterGroup
 		// The sequence allows flexible processing of handlers
 		gr.basePath = sub.String("basePath")
@@ -61,7 +55,6 @@ func (r *Router) Apply(cnf *conf.Configuration) (err error) {
 				gr.basePath = "/"
 			}
 			gr.Group = &r.Engine.RouterGroup
-			r.Engine.Use(mdl...)
 		} else {
 			if gr.basePath == "" {
 				err = fmt.Errorf("router group: %s must have a basePath", group)
@@ -69,6 +62,21 @@ func (r *Router) Apply(cnf *conf.Configuration) (err error) {
 			gr.Group = r.Engine.Group(gr.basePath)
 			// clear handlers, let group use self-config
 			gr.Group.Handlers = gin.HandlersChain{}
+
+		}
+
+		var mdl []gin.HandlerFunc
+		sub.Each("middlewares", func(name string, cfg *conf.Configuration) {
+			if hf, ok := r.serverOptions.handlerManager.Get(name); ok {
+				mw := hf()
+				r.serverOptions.handlerManager.RegisterMiddleware(
+					handler.GetMiddlewareKey(gr.Group.BasePath(), name), mw)
+				mdl = append(mdl, mw.ApplyFunc(cfg))
+			}
+		})
+		if group == "default" {
+			r.Engine.Use(mdl...)
+		} else {
 			gr.Group.Use(mdl...)
 		}
 		r.Groups = append(r.Groups, &gr)

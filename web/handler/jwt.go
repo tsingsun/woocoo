@@ -24,14 +24,14 @@ type (
 		// The order of precedence is user-defined TokenLookupFuncs, and TokenLookup.
 		// You can also provide both if you want.
 		TokenLookupFuncs []ValuesExtractor
-		// LogoutHandler defines a function which is executed for user logout system.It clear something like cache.
+		// LogoutHandler defines a function which is executed for user logout system.It clears something like cache.
 		LogoutHandler func(*gin.Context)
 		// ErrorHandler defines a function which is executed for an invalid token.
 		// It may be used to define a custom JWT error and abort the request.like use:
 		//  c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 		ErrorHandler func(c *gin.Context, err error) error
-		// TokenStoreKey is the name of the cache driver,default is "redis".
-		// When this option is used, requirements : token cache KEY that uses the JWT ID.
+		// TokenStoreKey is the name of the cache driver, default is "redis".
+		// When this option is used, requirements: token cache KEY that uses the JWT ID.
 		TokenStoreKey string `json:"tokenStoreKey" yaml:"TokenStoreKey"`
 		// WithPrincipalContext defines a function which is Principal creator and store principal in context.
 		//
@@ -48,18 +48,24 @@ type (
 type JWTMiddleware struct {
 	opts   middlewareOptions
 	Config *JWTConfig
-	// TokenStore is the cache for store token key.
-	TokenStore cache.Cache
+	// tokenStore is the cache for store token key.
+	tokenStore cache.Cache
 }
 
-func JWT(opts ...MiddlewareOption) *JWTMiddleware {
+func NewJWT(opts ...MiddlewareOption) *JWTMiddleware {
 	md := &JWTMiddleware{}
 	md.opts.applyOptions(opts...)
 	return md
 }
 
+// JWT is the jwt middleware apply function. see MiddlewareNewFunc
+func JWT() Middleware {
+	mw := NewJWT()
+	return mw
+}
+
 func (mw *JWTMiddleware) Name() string {
-	return "jwt"
+	return jwtName
 }
 
 func (mw *JWTMiddleware) build(cfg *conf.Configuration) {
@@ -97,7 +103,7 @@ func (mw *JWTMiddleware) build(cfg *conf.Configuration) {
 	mw.Config = opts
 
 	if opts.TokenStoreKey != "" {
-		mw.TokenStore = cache.GetCache(opts.TokenStoreKey)
+		mw.tokenStore = cache.GetCache(opts.TokenStoreKey)
 	}
 
 	if opts.LogoutHandler == nil {
@@ -105,8 +111,8 @@ func (mw *JWTMiddleware) build(cfg *conf.Configuration) {
 			gp := security.GenericPrincipalFromContext(c)
 			cl := gp.Identity().Claims()
 			jti, ok := opts.GetTokenIDFunc(&jwt.Token{Claims: cl})
-			if ok && mw.TokenStore != nil {
-				if err := mw.TokenStore.Del(c, jti); err != nil {
+			if ok && mw.tokenStore != nil {
+				if err := mw.tokenStore.Del(c, jti); err != nil {
 					c.Error(err) // nolint: errcheck
 				}
 			}
@@ -119,9 +125,26 @@ func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	return mw.middleware()
 }
 
-// Shutdown no need to do anything
-func (mw *JWTMiddleware) Shutdown(_ context.Context) error {
-	return nil
+// HandleToken parse and check the token string.
+// You can call it when do out of gin context
+func (mw *JWTMiddleware) HandleToken(ctx context.Context, authStr string) (token *jwt.Token, err error) {
+	token, err = mw.Config.ParseTokenFunc(ctx, authStr)
+	if err != nil {
+		return
+	}
+	if mw.tokenStore != nil {
+		jti, ok := mw.Config.GetTokenIDFunc(token)
+		if ok {
+			if exists := mw.tokenStore.Has(ctx, jti); !exists {
+				err = jwt.ErrTokenUnverifiable
+				return
+			}
+		} else {
+			err = jwt.ErrTokenInvalidClaims
+			return
+		}
+	}
+	return
 }
 
 func (mw *JWTMiddleware) middleware() gin.HandlerFunc {
@@ -145,22 +168,10 @@ func (mw *JWTMiddleware) middleware() gin.HandlerFunc {
 				continue
 			}
 			for _, authStr := range auths {
-				token, err := mw.Config.ParseTokenFunc(c, authStr)
+				token, err := mw.HandleToken(c, authStr)
 				if err != nil {
 					lastTokenErr = err
 					continue
-				}
-				if mw.TokenStore != nil {
-					jti, ok := mw.Config.GetTokenIDFunc(token)
-					if ok {
-						if exists := mw.TokenStore.Has(c, jti); !exists {
-							lastTokenErr = jwt.ErrTokenUnverifiable
-							continue
-						}
-					} else {
-						lastTokenErr = jwt.ErrTokenInvalidClaims
-						continue
-					}
 				}
 				// Store user information from token into context.
 				if mw.Config.WithPrincipalContext != nil {

@@ -65,7 +65,7 @@ web:
 		{
 			name: "normal",
 			srv: New(WithConfiguration(cfg.Sub("web")),
-				RegisterMiddlewareByFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
+				RegisterMiddlewareApplyFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
 					return func(c *gin.Context) {
 						c.Next()
 					}
@@ -75,7 +75,7 @@ web:
 		{
 			name: "registerHandlerAbort",
 			srv: New(WithConfiguration(cfg.Sub("web")),
-				RegisterMiddlewareByFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
+				RegisterMiddlewareApplyFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
 					return func(c *gin.Context) {
 						c.AbortWithStatus(500)
 					}

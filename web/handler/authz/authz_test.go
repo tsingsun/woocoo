@@ -104,8 +104,7 @@ func TestAuthorizer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := New()
-			defer got.Shutdown(context.Background())
+			got := Middleware()
 			h := handler.NewSimpleMiddleware("authz", got.ApplyFunc)
 			w := httptest.NewRecorder()
 			_, e := gin.CreateTestContext(w)

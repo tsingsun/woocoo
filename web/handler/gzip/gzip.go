@@ -66,8 +66,8 @@ type Handler struct {
 	writerFactory writer.GzipWriterFactory
 }
 
-// Gzip returns a new gzip middleware.
-func Gzip() *Handler {
+// NewGzip returns a new gzip middleware.
+func NewGzip() *Handler {
 	return &Handler{
 		writerFactory: writer.GzipWriterFactory{
 			Levels: gzkp.Levels,

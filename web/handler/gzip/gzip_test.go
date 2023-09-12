@@ -53,7 +53,7 @@ func newServer(config map[string]any) *gin.Engine {
 	rp := httputil.NewSingleHostReverseProxy(target)
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
-	mid := gzip.Gzip()
+	mid := gzip.NewGzip()
 	router.Use(mid.ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(config))))
 	router.GET("/", func(c *gin.Context) {
 		c.Header("Content-Length", strconv.Itoa(len(testResponse)))
@@ -107,7 +107,7 @@ func TestGzipPNG(t *testing.T) {
 	req.Header.Add("Accept-Encoding", "gzip")
 
 	router := gin.New()
-	router.Use(gzip.Gzip().ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
+	router.Use(gzip.NewGzip().ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
 		"minSize": 1,
 	}))))
 	router.GET("/image.png", func(c *gin.Context) {
@@ -129,7 +129,7 @@ func TestExcludedExtensions(t *testing.T) {
 	req.Header.Add("Accept-Encoding", "gzip")
 
 	router := gin.New()
-	mid := gzip.Gzip()
+	mid := gzip.NewGzip()
 	router.Use(mid.ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
 		"minSize":            1,
 		"excludedExtensions": []string{".html"},

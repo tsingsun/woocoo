@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -26,7 +25,7 @@ type (
 		Message string `json:"message" yaml:"message"`
 	}
 
-	// ErrorParser is the error parser,public error adopt by private error to show to client.
+	// ErrorParser is the error parser, public error adopt by private error to show to the client.
 	ErrorParser func(c *gin.Context, public error) (int, any)
 
 	// ErrorHandleMiddleware is the middleware for error handle to format the errors to client
@@ -36,8 +35,8 @@ type (
 	}
 )
 
-// ErrorHandle is the error handle middleware
-func ErrorHandle(opts ...MiddlewareOption) *ErrorHandleMiddleware {
+// NewErrorHandle is the error handle middleware
+func NewErrorHandle(opts ...MiddlewareOption) *ErrorHandleMiddleware {
 	md := &ErrorHandleMiddleware{
 		config: new(ErrorHandleConfig),
 	}
@@ -45,8 +44,14 @@ func ErrorHandle(opts ...MiddlewareOption) *ErrorHandleMiddleware {
 	return md
 }
 
+// ErrorHandle is the error handle middleware apply function. see MiddlewareNewFunc
+func ErrorHandle() Middleware {
+	wm := NewErrorHandle()
+	return wm
+}
+
 func (em *ErrorHandleMiddleware) Name() string {
-	return "errorHandle"
+	return errorHandlerName
 }
 
 func (em *ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
@@ -101,20 +106,19 @@ var DefaultErrorParser ErrorParser = func(c *gin.Context, public error) (int, an
 	return code, gin.H{"errors": errs}
 }
 
-func (em *ErrorHandleMiddleware) Shutdown(_ context.Context) error {
-	return nil
-}
-
 // NegotiateResponse calls different Render according to acceptably Accept format.
 //
-// HTTP Status Code behavior: 1. response has sent can not change it.  2. if code not default,use it.
-// 3. if code is default,use passed code.
+// HTTP Status Code behavior:
+//
+// 1. response has sent cannot change it.
+// 2. if code is not default, use it.
+// 3. if code is default, use passed code.
 //
 // no support format described:
 //
 //	protobuf: gin.H is not protoreflect.ProtoMessage
 func NegotiateResponse(c *gin.Context, code int, data any, offered []string) {
-	if c.Writer.Written() { // if the status has been written,must not write again
+	if c.Writer.Written() { // if the status has been written, must not write again
 		code = c.Writer.Status()
 	} else if c.Writer.Status() != http.StatusOK {
 		code = c.Writer.Status()
@@ -141,7 +145,7 @@ func FormatResponseError(code int, err error) gin.H {
 	return gin.H{"message": err.Error()}
 }
 
-// SetContextError set the error to Context,and the error will be handled by ErrorHandleMiddleware
+// SetContextError set the error to Context, and the error will be handled by ErrorHandleMiddleware
 func SetContextError(c *gin.Context, code int, err error) {
 	ce := c.Error(err)
 	ce.Type = gin.ErrorType(code)

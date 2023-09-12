@@ -1,8 +1,8 @@
 package authz
 
 import (
-	"context"
 	"fmt"
+	"github.com/tsingsun/woocoo/web/handler"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -21,11 +21,14 @@ type Options struct {
 // Authorizer web api authorizer.
 //
 // Because of the dependency on JwtToken, the middleware configuration order must come after jwt.
-type Authorizer struct {
-}
+type Authorizer struct{}
 
 func New() *Authorizer {
 	return &Authorizer{}
+}
+
+func Middleware() handler.Middleware {
+	return New()
 }
 
 func (a *Authorizer) Name() string {
@@ -64,8 +67,4 @@ func (a *Authorizer) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			c.AbortWithStatus(http.StatusForbidden)
 		}
 	}
-}
-
-func (a *Authorizer) Shutdown(ctx context.Context) error {
-	return nil
 }

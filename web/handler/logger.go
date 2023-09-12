@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
@@ -70,8 +69,8 @@ type LoggerMiddleware struct {
 	logger log.ComponentLogger
 }
 
-// AccessLog a new LoggerMiddleware,it is for handler registry
-func AccessLog() *LoggerMiddleware {
+// NewAccessLog a new LoggerMiddleware,it is for handler registry
+func NewAccessLog() *LoggerMiddleware {
 	operator := logger.Logger(log.WithOriginalLogger()).WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
 	lg := log.Component(AccessLogComponentName)
 	lg.SetLogger(operator)
@@ -81,8 +80,14 @@ func AccessLog() *LoggerMiddleware {
 	return al
 }
 
+// AccessLog is the access logger middleware apply function. see MiddlewareNewFunc
+func AccessLog() Middleware {
+	mw := NewAccessLog()
+	return mw
+}
+
 func (h *LoggerMiddleware) Name() string {
-	return "accessLog"
+	return accessLogName
 }
 
 func (h *LoggerMiddleware) buildTag(format string) (tags []loggerTag) {
@@ -106,7 +111,7 @@ func (h *LoggerMiddleware) buildTag(format string) (tags []loggerTag) {
 	return
 }
 
-// ApplyFunc build a gin.HandlerFunc for AccessLog middleware
+// ApplyFunc build a gin.HandlerFunc for NewAccessLog middleware
 func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	opts := LoggerConfig{
 		Format: defaultLoggerFormat,
@@ -223,11 +228,6 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			clog.Info("", fields...)
 		}
 	}
-}
-
-// Shutdown does nothing for logger
-func (h *LoggerMiddleware) Shutdown(_ context.Context) error {
-	return nil
 }
 
 func GetLogCarrierFromGinContext(c *gin.Context) *log.FieldCarrier {

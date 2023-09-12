@@ -8,7 +8,7 @@ import (
 
 // ExampleErrorHandleMiddleware_customErrorParser is the example for customer ErrorHandle
 func ExampleErrorHandleMiddleware_customErrorParser() {
-	hdl := handler.ErrorHandle(handler.WithMiddlewareConfig(func() any {
+	hdl := handler.NewErrorHandle(handler.WithMiddlewareConfig(func() any {
 		codeMap := map[uint64]any{
 			10000: "miss required param",
 			10001: "invalid param",

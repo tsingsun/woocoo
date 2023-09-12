@@ -15,22 +15,45 @@ var (
 	logger = log.Component(log.WebComponentName)
 )
 
-// Middleware is an instance to build a echo middleware for web application.
+const (
+	recoveryName     = "recovery"
+	jwtName          = "jwt"
+	accessLogName    = "accessLog"
+	errorHandlerName = "errorHandle"
+	GzipName         = "gzip"
+	KeyAuthName      = "keyAuth"
+)
+
+// Middleware is an instance to build middleware for web application.
 type Middleware interface {
 	// Name returns the name of the handler.
 	Name() string
 	// ApplyFunc return a gin's handler function by a configuration
 	ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc
-	// Shutdown the handler,usually call in server quit. some base on file,network may need release the resource
+}
+
+type Shutdown interface {
+	// Shutdown the handler, usually call in server quit. Some based on file,network may need to release the resource
 	Shutdown(ctx context.Context) error
 }
 
+// MiddlewareApplyFunc defines a function to initial new middleware by a configuration
 type MiddlewareApplyFunc func(cfg *conf.Configuration) gin.HandlerFunc
+
+// MiddlewareNewFunc defines a function to initial new middleware
+type MiddlewareNewFunc func() Middleware
 
 // SimpleMiddleware is a convenience to build middleware by name and gin.HandlerFunc
 type SimpleMiddleware struct {
 	name      string
 	applyFunc MiddlewareApplyFunc
+}
+
+// WrapMiddlewareApplyFunc wraps a MiddlewareApplyFunc to MiddlewareNewFunc
+func WrapMiddlewareApplyFunc(name string, applyFunc MiddlewareApplyFunc) MiddlewareNewFunc {
+	return func() Middleware {
+		return NewSimpleMiddleware(name, applyFunc)
+	}
 }
 
 // NewSimpleMiddleware returns a new SimpleMiddleware instance.
@@ -51,10 +74,6 @@ func (s *SimpleMiddleware) Name() string {
 
 func (s *SimpleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	return s.applyFunc(cfg)
-}
-
-func (s *SimpleMiddleware) Shutdown(_ context.Context) error {
-	return nil
 }
 
 // Skipper defines a function to skip middleware. Returning true skips processing
@@ -80,64 +99,91 @@ func PathSkip(list []string, url *url.URL) bool {
 	return false
 }
 
-// Manager is a middleware manager
+func Gzip() Middleware {
+	mw := gzip.NewGzip()
+	return mw
+}
+
+// Manager is a manager about middleware new function and shutdown function,
+// and auto calls those functions when needed; it tries to keep the middleware are immutable.
+//
+// If you want to get middleware information in your application,
+// and you know that your middleware is immutable, or you can control it, you can store it in the cache for reuse.
 type Manager struct {
+	newFuncs    map[string]MiddlewareNewFunc
 	middlewares map[string]Middleware
 }
 
 // NewManager creates a new middleware manager, initialize common useful middlewares.
 func NewManager() *Manager {
 	mgr := &Manager{
+		newFuncs:    make(map[string]MiddlewareNewFunc),
 		middlewares: make(map[string]Middleware),
 	}
 	mgr.registerIntegrationHandler()
 	return mgr
 }
 
-// RegisterHandlerFunc registry a handler middleware
-//
-// you can override exists handler
-func (m *Manager) RegisterHandlerFunc(name string, handler Middleware) {
-	if _, ok := m.middlewares[name]; ok {
-		logger.Warn(fmt.Sprintf("handler override:%s", name))
+// Register a middleware new function.
+func (m *Manager) Register(name string, handler MiddlewareNewFunc) {
+	if _, ok := m.newFuncs[name]; ok {
+		logger.Warn(fmt.Sprintf("middlware new func override:%s", name))
 	}
-	m.middlewares[name] = handler
+	m.newFuncs[name] = handler
 }
 
-// Get returns a handler middleware by name
-func (m *Manager) Get(name string) (Middleware, bool) {
-	h, ok := m.middlewares[name]
-	return h, ok
+// GetMiddlewareKey returns a unique key for middleware
+func GetMiddlewareKey(group, name string) string {
+	if group == "/" {
+		group = "default"
+	}
+	return group + ":" + name
 }
 
-func integration() map[string]Middleware {
-	jwt := JWT()
-	reco := Recovery()
-	acclog := AccessLog()
-	errhandle := ErrorHandle()
-	gz := gzip.Gzip()
-	ka := KeyAuth()
-	var handlerMap = map[string]Middleware{
-		reco.Name():      reco,
-		jwt.Name():       jwt,
-		acclog.Name():    acclog,
-		errhandle.Name(): errhandle,
-		gz.Name():        gz,
-		ka.Name():        ka,
+// RegisterMiddleware register a middleware instance. Should call it after Register. Keep the key unique.
+func (m *Manager) RegisterMiddleware(key string, mid Middleware) {
+	if _, ok := m.middlewares[key]; ok {
+		panic("middleware could not override")
+	}
+	m.middlewares[key] = mid
+}
+
+func (m *Manager) Get(name string) (MiddlewareNewFunc, bool) {
+	v, ok := m.newFuncs[name]
+	return v, ok
+}
+
+// GetMiddleware returns a middleware instance by key. Should not change the middleware's option value and keep
+// middleware run immutable.
+func (m *Manager) GetMiddleware(key string) (Middleware, bool) {
+	v, ok := m.middlewares[key]
+	return v, ok
+}
+
+func integration() map[string]MiddlewareNewFunc {
+	var handlerMap = map[string]MiddlewareNewFunc{
+		recoveryName:     Recovery,
+		jwtName:          JWT,
+		accessLogName:    AccessLog,
+		errorHandlerName: ErrorHandle,
+		GzipName:         Gzip,
+		KeyAuthName:      KeyAuth,
 	}
 	return handlerMap
 }
 
 func (m *Manager) registerIntegrationHandler() {
 	for s, applyFunc := range integration() {
-		m.RegisterHandlerFunc(s, applyFunc)
+		m.Register(s, applyFunc)
 	}
 }
 
-// Shutdown a handler if handler base on file,net such as need to release resource
+// Shutdown a handler if handler base on file,net such as a need to release resource
 func (m *Manager) Shutdown(ctx context.Context) error {
-	for _, handler := range m.middlewares {
-		handler.Shutdown(ctx) //nolint:errcheck
+	for _, mid := range m.middlewares {
+		if sd, ok := mid.(Shutdown); ok {
+			sd.Shutdown(ctx) //nolint:errcheck
+		}
 	}
 	return nil
 }

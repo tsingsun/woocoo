@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -168,11 +167,10 @@ func TestLoggerMiddleware(t *testing.T) {
 			r := httptest.NewRequest("GET", "/", nil)
 			w := httptest.NewRecorder()
 			want := tt.want()
-			accessLog := AccessLog()
-			defer accessLog.Shutdown(context.TODO())
+			accessLog := NewAccessLog()
 			middleware := accessLog.ApplyFunc(tt.args.cfg)
 			srv := gin.New()
-			srv.Use(middleware, Recovery().ApplyFunc(tt.args.cfg))
+			srv.Use(middleware, NewRecovery().ApplyFunc(tt.args.cfg))
 			srv.GET("/", func(c *gin.Context) {
 				tt.args.handler(c)
 			})

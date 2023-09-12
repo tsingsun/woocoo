@@ -2,7 +2,6 @@ package handler
 
 import (
 	"bufio"
-	"context"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -231,7 +230,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 			want := tt.want()
 			gin.SetMode(gin.ReleaseMode)
 			srv := gin.New()
-			mid := Recovery()
+			mid := NewRecovery()
 			srv.Use(mid.ApplyFunc(tt.args.cfg))
 			srv.GET("/", func(c *gin.Context) {
 				tt.args.handler(c)
@@ -241,7 +240,6 @@ func TestRecoveryMiddleware(t *testing.T) {
 			if !tt.wantErr(t, nil, want, withoutLogger) {
 				return
 			}
-			assert.NoError(t, mid.Shutdown(context.Background()))
 		})
 	}
 }
@@ -347,8 +345,8 @@ func TestRecoveryMiddleware_WithLogger(t *testing.T) {
 			want := tt.want()
 			gin.SetMode(gin.ReleaseMode)
 			srv := gin.New()
-			middleware := AccessLog().ApplyFunc(tt.args.cfg)
-			srv.Use(middleware, Recovery().ApplyFunc(tt.args.cfg))
+			middleware := NewAccessLog().ApplyFunc(tt.args.cfg)
+			srv.Use(middleware, NewRecovery().ApplyFunc(tt.args.cfg))
 			srv.GET("/", func(c *gin.Context) {
 				tt.args.handler(c)
 			})

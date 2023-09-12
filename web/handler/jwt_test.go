@@ -1,7 +1,6 @@
 package handler_test
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -161,8 +160,7 @@ ZwIDAQAB
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mw := handler.JWT(tt.args.opts...)
-			defer mw.Shutdown(context.Background())
+			mw := handler.NewJWT(tt.args.opts...)
 			srv := web.New()
 			srv.Router().Engine.Use(mw.ApplyFunc(tt.args.cfg))
 			srv.Router().Engine.NoRoute(func(c *gin.Context) {

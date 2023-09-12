@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"net/http"
@@ -53,19 +52,20 @@ type KeyAuthMiddleware struct {
 	opts middlewareOptions
 }
 
-func KeyAuth(opts ...MiddlewareOption) *KeyAuthMiddleware {
+func NewKeyAuth(opts ...MiddlewareOption) *KeyAuthMiddleware {
 	md := &KeyAuthMiddleware{}
 	md.opts.applyOptions(opts...)
 	return md
 }
 
-func (mw *KeyAuthMiddleware) Name() string {
-	return "keyAuth"
+// KeyAuth is the keyauth middleware apply function. see MiddlewareNewFunc
+func KeyAuth() Middleware {
+	mw := NewKeyAuth()
+	return mw
 }
 
-// Shutdown nothing to do
-func (mw *KeyAuthMiddleware) Shutdown(_ context.Context) error {
-	return nil
+func (mw *KeyAuthMiddleware) Name() string {
+	return KeyAuthName
 }
 
 func (mw *KeyAuthMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {

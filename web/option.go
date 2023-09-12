@@ -5,7 +5,7 @@ import (
 	"github.com/tsingsun/woocoo/web/handler"
 )
 
-// Option the function to apply configuration option
+// Option the function to apply a configuration option
 type Option func(s *ServerOptions)
 
 // WithConfiguration set up the configuration of the web server by a configuration instance
@@ -15,27 +15,28 @@ func WithConfiguration(cfg *conf.Configuration) Option {
 	}
 }
 
-// RegisterMiddleware inject a handler to server,then can be used in Server.Apply method
-func RegisterMiddleware(middleware handler.Middleware) Option {
+func RegisterMiddlewareNewFunc(name string, newFunc handler.MiddlewareNewFunc) Option {
 	return func(s *ServerOptions) {
-		s.handlerManager.RegisterHandlerFunc(middleware.Name(), middleware)
+		s.handlerManager.Register(name, newFunc)
 	}
 }
 
-// RegisterMiddlewareByFunc provide a simple way to inject a middleware by gin.HandlerFunc.
+// RegisterMiddlewareApplyFunc provide a simple way to inject middleware by gin.HandlerFunc.
 //
 // Notice: the middleware usual attach `c.Next()` or `c.Abort` to indicator whether exits the method.
 // example:
 //
-//	RegisterMiddlewareByFunc("test",func(c *gin.Context) {
-//	        ....process
-//	        c.Next() or c.Abort() or c.AbortWithStatus(500)
-//	    }
-//
-// )
-func RegisterMiddlewareByFunc(name string, handlerFunc handler.MiddlewareApplyFunc) Option {
-	ware := handler.NewSimpleMiddleware(name, handlerFunc)
-	return RegisterMiddleware(ware)
+//		RegisterMiddleware("test", func(cfg *conf.Configuration){
+//	     // use cfg to init
+//		    return func(c *gin.Context) {
+//		        // ....process
+//		        c.Next() or c.Abort() or c.AbortWithStatus(500)
+//		    }
+//		})
+func RegisterMiddlewareApplyFunc(name string, handlerFunc handler.MiddlewareApplyFunc) Option {
+	return func(s *ServerOptions) {
+		s.handlerManager.Register(name, handler.WrapMiddlewareApplyFunc(name, handlerFunc))
+	}
 }
 
 // WithGracefulStop indicate use graceful stop

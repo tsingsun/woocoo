@@ -40,19 +40,19 @@ func TestNewSimpleMiddleware(t *testing.T) {
 			got := NewSimpleMiddleware(tt.args.name, tt.args.applyFunc)
 			got.ApplyFunc(tt.cfg)
 			assert.Equal(t, tt.want.Name(), got.Name())
-			assert.NoError(t, got.Shutdown(context.Background()))
 		})
 	}
 }
 
-func TestManager(t *testing.T) {
+func TestManager_Register(t *testing.T) {
 	log.InitGlobalLogger()
 	type fields struct {
+		newFuncs    map[string]MiddlewareNewFunc
 		middlewares map[string]Middleware
 	}
 	type args struct {
 		name    string
-		handler Middleware
+		handler MiddlewareNewFunc
 	}
 	tests := []struct {
 		name   string
@@ -64,7 +64,7 @@ func TestManager(t *testing.T) {
 			name: "override",
 			args: args{
 				name: "test",
-				handler: NewSimpleMiddleware("test", func(cfg *conf.Configuration) gin.HandlerFunc {
+				handler: WrapMiddlewareApplyFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
 					return func(c *gin.Context) {
 						c.Set("test", 1)
 						c.Next()
@@ -72,13 +72,14 @@ func TestManager(t *testing.T) {
 				}),
 			},
 			fields: fields{
-				middlewares: map[string]Middleware{
-					"test": NewSimpleMiddleware("test", func(cfg *conf.Configuration) gin.HandlerFunc {
+				newFuncs: map[string]MiddlewareNewFunc{
+					"test": WrapMiddlewareApplyFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
 						return func(c *gin.Context) {
 							c.Next()
 						}
 					}),
 				},
+				middlewares: make(map[string]Middleware),
 			},
 			want: 1,
 		},
@@ -86,16 +87,16 @@ func TestManager(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := &Manager{
+				newFuncs:    tt.fields.newFuncs,
 				middlewares: tt.fields.middlewares,
 			}
-			m.RegisterHandlerFunc(tt.args.name, tt.args.handler)
+			m.Register(tt.args.name, tt.args.handler)
 			if got, ok := m.Get(tt.args.name); ok {
 				c := &gin.Context{
 					Keys: make(map[string]any),
 				}
-				got.ApplyFunc(conf.New())(c)
+				got().ApplyFunc(conf.New())(c)
 				assert.Equal(t, tt.want, c.GetInt(tt.args.name))
-				assert.NoError(t, got.Shutdown(context.Background()))
 			}
 			assert.NoError(t, m.Shutdown(context.Background()))
 		})

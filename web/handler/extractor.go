@@ -73,7 +73,7 @@ func CreateExtractors(lookups string, authScheme string) ([]ValuesExtractor, err
 // valuePrefix is parameter to remove first part (prefix) of the extracted value. This is useful if header value has static
 // prefix like `Authorization: <auth-scheme> <authorisation-parameters>` where part that we want to remove is `<auth-scheme> `
 // note the space at the end. In case of basic authentication `Authorization: Basic <credentials>` prefix we want to remove
-// is `Basic `. In case of JWT tokens `Authorization: Bearer <token>` prefix is `Bearer `.
+// is `Basic `. In case of NewJWT tokens `Authorization: Bearer <token>` prefix is `Bearer `.
 // If prefix is left empty the whole value is returned.
 func ValuesFromHeader(header string, valuePrefix string) ValuesExtractor {
 	prefixLen := len(valuePrefix)

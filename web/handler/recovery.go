@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -16,17 +15,24 @@ var (
 	ErrRecovery = errors.New("internal server error")
 )
 
-// RecoveryMiddleware is a middleware which recovers from panics anywhere in the chain
+// RecoveryMiddleware is a middleware that recovers from panics anywhere in the chain
 // and handles the control to the centralized HTTPErrorHandler.
 type RecoveryMiddleware struct {
 }
 
-func Recovery() *RecoveryMiddleware {
+func NewRecovery() *RecoveryMiddleware {
 	return &RecoveryMiddleware{}
 }
 
+// Recovery is the recovery middleware apply function. see MiddlewareNewFunc
+func Recovery() Middleware {
+	mw := NewRecovery()
+
+	return mw
+}
+
 func (h *RecoveryMiddleware) Name() string {
-	return "recovery"
+	return recoveryName
 }
 
 func (h *RecoveryMiddleware) ApplyFunc(_ *conf.Configuration) gin.HandlerFunc {
@@ -35,14 +41,10 @@ func (h *RecoveryMiddleware) ApplyFunc(_ *conf.Configuration) gin.HandlerFunc {
 	})
 }
 
-func (h *RecoveryMiddleware) Shutdown(_ context.Context) error {
-	return nil
-}
-
 func HandleRecoverError(c *gin.Context, p any, stackSkip int) {
 	httpRequest, _ := httputil.DumpRequest(c.Request, false)
 	err, ok := p.(error)
-	// gin private error not show to user
+	// gin private error doesn't show to user
 	if ok {
 		AbortWithError(c, http.StatusInternalServerError, err)
 	} else {

@@ -1,7 +1,6 @@
 package handler_test
 
 import (
-	"context"
 	"errors"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
@@ -133,8 +132,7 @@ func TestKeyAuth(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mw := handler.KeyAuth(tt.args.opts...)
-			defer mw.Shutdown(context.TODO())
+			mw := handler.NewKeyAuth(tt.args.opts...)
 			assert.NotNil(t, mw)
 			srv := web.New()
 			if len(tt.args.opts) > 0 {

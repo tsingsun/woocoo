@@ -72,6 +72,9 @@ var (
 		DocPath:       "/",
 		Group:         "", // must the same as the base path of a route group
 	}
+	// optionCache store multiple graphql options, gql-servers can be in different group.
+	// TODO in different web server ??
+	optionCache = make(map[string]Options)
 )
 
 // Handler for graphql
@@ -120,6 +123,7 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if h.opts.Endpoint == "" {
 		h.opts.Endpoint = h.opts.Group + h.opts.QueryPath
 	}
+	optionCache[h.opts.Group] = h.opts
 	return func(c *gin.Context) {
 		ctx := context.WithValue(c.Request.Context(), gin.ContextKey, c)
 		c.Request = c.Request.WithContext(ctx)
@@ -146,17 +150,20 @@ func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss
 // RegisterGraphqlServer is a builder for initializing graphql servers,
 // initialize order is based on the router group order.
 func RegisterGraphqlServer(websrv *web.Server, servers ...*gqlgen.Server) error {
-	for i, gqlserver := range servers {
+	index := 0
+	for _, gqlserver := range servers {
 		if gqlserver == nil {
 			continue
 		}
-		rg := websrv.Router().Groups[i]
-		gname := rg.Group.BasePath()
-		mid, ok := websrv.HandlerManager().GetMiddleware(handler.GetMiddlewareKey(gname, graphqlHandlerName))
-		if !ok {
-			return fmt.Errorf("graphql middleware %s not found", rg.Group.BasePath())
+		for j := index; j < len(websrv.Router().Groups); j++ {
+			gn := websrv.Router().Groups[j].Group.BasePath()
+			mid, ok := websrv.HandlerManager().GetMiddleware(handler.GetMiddlewareKey(gn, graphqlHandlerName))
+			if ok {
+				index = j + 1
+				buildGraphqlServer(websrv, websrv.Router().Groups[j], gqlserver, &mid.(*Handler).opts)
+				break
+			}
 		}
-		buildGraphqlServer(websrv, rg, gqlserver, &mid.(*Handler).opts)
 	}
 	return nil
 }

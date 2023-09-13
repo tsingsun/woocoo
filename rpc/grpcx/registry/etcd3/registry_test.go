@@ -264,7 +264,7 @@ func TestRegistryGrpcx(t *testing.T) {
 				_, err = etcdCli.Put(context.Background(), info.BuildKey(), string(v))
 				require.NoError(t, err)
 			}
-			time.Sleep(time.Second * 1)
+			time.Sleep(time.Second * 2)
 			var expect1, expect2 bool
 			for i := 0; i < 5; i++ {
 				resp, err := client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "to srv two"})

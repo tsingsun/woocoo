@@ -120,6 +120,8 @@ web:
       - default:
           middlewares:
             - graphql:
+      - second:
+          basePath: "/second"
       - graphql:
           basePath: "/graphql"
           middlewares:

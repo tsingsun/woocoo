@@ -96,7 +96,7 @@ func (mw *JWTMiddleware) build(cfg *conf.Configuration) {
 				return auth.ErrJWTClaims
 			}
 			prpl := security.NewGenericPrincipalByClaims(claims)
-			c.Request = c.Request.WithContext(security.WithContext(c.Request.Context(), prpl))
+			DerivativeContextWithValue(c, security.UserContextKey, prpl)
 			return nil
 		}
 	}
@@ -108,7 +108,10 @@ func (mw *JWTMiddleware) build(cfg *conf.Configuration) {
 
 	if opts.LogoutHandler == nil {
 		opts.LogoutHandler = func(c *gin.Context) {
-			gp := security.GenericPrincipalFromContext(c)
+			gp, ok := security.GenericPrincipalFromContext(GetDerivativeContext(c))
+			if !ok {
+				return
+			}
 			cl := gp.Identity().Claims()
 			jti, ok := opts.GetTokenIDFunc(&jwt.Token{Claims: cl})
 			if ok && mw.tokenStore != nil {

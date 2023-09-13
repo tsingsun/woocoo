@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 )
@@ -272,4 +273,28 @@ func TestGetMiddlewareKey(t *testing.T) {
 			assert.Equalf(t, tt.want, GetMiddlewareKey(tt.args.group, tt.args.name), "GetMiddlewareKey(%v, %v)", tt.args.group, tt.args.name)
 		})
 	}
+}
+
+func TestDerivativeContext(t *testing.T) {
+	t.Run("git nil", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(w)
+		assert.IsType(t, &gin.Context{}, ctx)
+	})
+	t.Run("set", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(w)
+		SetDerivativeContext(ctx, context.Background())
+		got := GetDerivativeContext(ctx)
+		assert.Equal(t, context.Background(), got)
+	})
+	t.Run("try", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(w)
+		SetDerivativeContext(ctx, context.Background())
+		ok := DerivativeContextWithValue(ctx, "test", "testval")
+		assert.True(t, ok)
+		got := GetDerivativeContext(ctx)
+		assert.Equal(t, "testval", got.Value("test"))
+	})
 }

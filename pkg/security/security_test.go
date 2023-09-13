@@ -22,7 +22,7 @@ func TestGeneric(t *testing.T) {
 		{
 			name: "GenericIdentityFromContext",
 			args: args{
-				ctx: context.WithValue(context.Background(), userContextKey, &GenericPrincipal{
+				ctx: context.WithValue(context.Background(), UserContextKey, &GenericPrincipal{
 					GenericIdentity: &GenericIdentity{
 						name: "test",
 					},
@@ -35,7 +35,7 @@ func TestGeneric(t *testing.T) {
 		{
 			name: "GenericPrincipalFromContext",
 			args: args{
-				ctx: context.WithValue(context.Background(), userContextKey, &GenericPrincipal{
+				ctx: context.WithValue(context.Background(), UserContextKey, &GenericPrincipal{
 					GenericIdentity: &GenericIdentity{
 						name: "test",
 					},
@@ -48,7 +48,7 @@ func TestGeneric(t *testing.T) {
 		{
 			name: "NewGenericPrincipalByClaims",
 			args: args{
-				ctx: context.WithValue(context.Background(), userContextKey, NewGenericPrincipalByClaims(jwt.MapClaims{
+				ctx: context.WithValue(context.Background(), UserContextKey, NewGenericPrincipalByClaims(jwt.MapClaims{
 					"sub": "test",
 				})),
 			},
@@ -59,15 +59,30 @@ func TestGeneric(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "no user",
+			args: args{
+				ctx: context.Background(),
+			},
+			want: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := GenericIdentityFromContext(tt.args.ctx)
+			if tt.want == nil {
+				_, ok := GenericIdentityFromContext(tt.args.ctx)
+				assert.False(t, ok)
+				_, ok = GenericPrincipalFromContext(tt.args.ctx)
+				assert.False(t, ok)
+				return
+			}
+			got, _ := GenericIdentityFromContext(tt.args.ctx)
 			assert.Equal(t, tt.want, got)
-			got2 := GenericPrincipalFromContext(tt.args.ctx)
+			got2, _ := GenericPrincipalFromContext(tt.args.ctx)
 			assert.Equal(t, tt.want, got2.GenericIdentity)
 			if got2.Identity().Claims() != nil {
 				assert.Equal(t, tt.want.Name(), got2.GenericIdentity.Name())
+				assert.Empty(t, got2.GenericIdentity.NameInt())
 			}
 		})
 	}
@@ -144,7 +159,7 @@ func TestWithContext(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			ctx = WithContext(ctx, &tt.user)
-			got, ok := ctx.Value(userContextKey).(*GenericPrincipal)
+			got, ok := ctx.Value(UserContextKey).(*GenericPrincipal)
 			require.True(t, ok)
 			assert.Equal(t, tt.want, *got)
 		})

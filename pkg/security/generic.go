@@ -2,6 +2,7 @@ package security
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/golang-jwt/jwt/v4"
 )
@@ -22,8 +23,16 @@ func (p *GenericPrincipal) Identity() Identity {
 	return p.GenericIdentity
 }
 
+// Name returns the id of the user.
 func (i *GenericIdentity) Name() string {
 	return i.claims["sub"].(string)
+}
+
+// NameInt returns the id of the user. if not int, return 0
+func (i *GenericIdentity) NameInt() int {
+	s := i.claims["sub"].(string)
+	id, _ := strconv.Atoi(s)
+	return id
 }
 
 func (i *GenericIdentity) Claims() jwt.MapClaims {
@@ -38,13 +47,16 @@ func NewGenericPrincipalByClaims(claims jwt.MapClaims) *GenericPrincipal {
 }
 
 // GenericIdentityFromContext get the user from context
-func GenericIdentityFromContext(ctx context.Context) *GenericIdentity {
-	gp, _ := ctx.Value(userContextKey).(*GenericPrincipal)
-	return gp.GenericIdentity
+func GenericIdentityFromContext(ctx context.Context) (*GenericIdentity, bool) {
+	gp, ok := ctx.Value(UserContextKey).(*GenericPrincipal)
+	if !ok {
+		return nil, false
+	}
+	return gp.GenericIdentity, ok
 }
 
 // GenericPrincipalFromContext get the user from context
-func GenericPrincipalFromContext(ctx context.Context) *GenericPrincipal {
-	gp, _ := ctx.Value(userContextKey).(*GenericPrincipal)
-	return gp
+func GenericPrincipalFromContext(ctx context.Context) (*GenericPrincipal, bool) {
+	gp, ok := ctx.Value(UserContextKey).(*GenericPrincipal)
+	return gp, ok
 }

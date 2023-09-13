@@ -65,7 +65,7 @@ func KeyAuth() Middleware {
 }
 
 func (mw *KeyAuthMiddleware) Name() string {
-	return KeyAuthName
+	return keyAuthName
 }
 
 func (mw *KeyAuthMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {

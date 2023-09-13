@@ -6,9 +6,9 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-var (
-	// userContextKey is the key of context which store the user.
-	userContextKey struct{}
+const (
+	// UserContextKey is the key of context which store the user.
+	UserContextKey = "woocoo_user"
 )
 
 type (
@@ -30,7 +30,7 @@ type (
 
 // WithContext Add user to context.
 func WithContext(ctx context.Context, user Principal) context.Context {
-	return context.WithValue(ctx, userContextKey, user)
+	return context.WithValue(ctx, UserContextKey, user)
 }
 
 // GetSubjectFromToken Get Sub(User) from context with Jwt default token using jwt.MapClaims.

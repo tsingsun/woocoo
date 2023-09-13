@@ -53,7 +53,11 @@ func (a *Authorizer) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		gp := security.GenericIdentityFromContext(c)
+		gp, ok := security.GenericIdentityFromContext(c)
+		if !ok {
+			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %s", "no identity found"))
+			return
+		}
 		allowed, err := opt.Authorization.CheckPermission(c, gp, &security.PermissionItem{
 			AppCode:  opt.AppCode,
 			Action:   c.Request.URL.Path,

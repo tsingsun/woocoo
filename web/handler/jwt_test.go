@@ -160,7 +160,13 @@ ZwIDAQAB
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mw := handler.NewJWT(tt.args.opts...)
+			var mw *handler.JWTMiddleware
+			if len(tt.args.opts) > 0 {
+				mw = handler.NewJWT(tt.args.opts...)
+			} else {
+				mw = handler.JWT().(*handler.JWTMiddleware)
+			}
+			assert.Equal(t, "jwt", mw.Name())
 			srv := web.New()
 			srv.Router().Engine.Use(mw.ApplyFunc(tt.args.cfg))
 			srv.Router().Engine.NoRoute(func(c *gin.Context) {
@@ -189,6 +195,15 @@ ZwIDAQAB
 				srv.Router().ServeHTTP(w, r)
 				assert.Equal(t, http.StatusOK, w.Code)
 			}
+			t.Run("skip", func(t *testing.T) {
+				if len(mw.Config.Exclude) == 0 {
+					mw.Config.Exclude = append(mw.Config.Exclude, "/skip")
+				}
+				r = httptest.NewRequest("GET", "/skip", nil)
+				w = httptest.NewRecorder()
+				srv.Router().ServeHTTP(w, r)
+				assert.Equal(t, http.StatusOK, w.Code)
+			})
 		})
 	}
 }

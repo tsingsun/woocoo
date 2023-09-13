@@ -20,8 +20,8 @@ const (
 	jwtName          = "jwt"
 	accessLogName    = "accessLog"
 	errorHandlerName = "errorHandle"
-	GzipName         = "gzip"
-	KeyAuthName      = "keyAuth"
+	gzipName         = "gzip"
+	keyAuthName      = "keyAuth"
 )
 
 // Middleware is an instance to build middleware for web application.
@@ -166,8 +166,8 @@ func integration() map[string]MiddlewareNewFunc {
 		jwtName:          JWT,
 		accessLogName:    AccessLog,
 		errorHandlerName: ErrorHandle,
-		GzipName:         Gzip,
-		KeyAuthName:      KeyAuth,
+		gzipName:         Gzip,
+		keyAuthName:      KeyAuth,
 	}
 	return handlerMap
 }
@@ -180,10 +180,40 @@ func (m *Manager) registerIntegrationHandler() {
 
 // Shutdown a handler if handler base on file,net such as a need to release resource
 func (m *Manager) Shutdown(ctx context.Context) error {
-	for _, mid := range m.middlewares {
+	for key, mid := range m.middlewares {
 		if sd, ok := mid.(Shutdown); ok {
 			sd.Shutdown(ctx) //nolint:errcheck
 		}
+		delete(m.middlewares, key)
 	}
 	return nil
+}
+
+// gin.Context is not context.Context, set the store value target
+const derivativeContextKey = "woocoo_web_derivative_context"
+
+// SetDerivativeContext set the derivative context to gin.Context
+func SetDerivativeContext(c *gin.Context, ctx context.Context) {
+	c.Set(derivativeContextKey, ctx)
+}
+
+// GetDerivativeContext get the derivative context from gin.Context, return gin.Context if no existing
+func GetDerivativeContext(c *gin.Context) context.Context {
+	ctx, ok := c.Get(derivativeContextKey)
+	if !ok {
+		return c
+	}
+	return ctx.(context.Context)
+}
+
+// DerivativeContextWithValue try to set a ctx to the derivative context slot in gin.Context,
+// if no existing set to request.Context and return false.
+func DerivativeContextWithValue(c *gin.Context, key, val any) bool {
+	ctx, ok := c.Get(derivativeContextKey)
+	if !ok {
+		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), key, val))
+	} else {
+		SetDerivativeContext(c, context.WithValue(ctx.(context.Context), key, val))
+	}
+	return ok
 }

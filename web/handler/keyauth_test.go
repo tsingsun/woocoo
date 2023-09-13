@@ -132,8 +132,14 @@ func TestKeyAuth(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mw := handler.NewKeyAuth(tt.args.opts...)
+			var mw *handler.KeyAuthMiddleware
+			if len(tt.args.opts) > 0 {
+				mw = handler.NewKeyAuth(tt.args.opts...)
+			} else {
+				mw = handler.KeyAuth().(*handler.KeyAuthMiddleware)
+			}
 			assert.NotNil(t, mw)
+			assert.Equal(t, "keyAuth", mw.Name())
 			srv := web.New()
 			if len(tt.args.opts) > 0 {
 				srv.Router().Engine.Use(mw.ApplyFunc(tt.args.cfg))

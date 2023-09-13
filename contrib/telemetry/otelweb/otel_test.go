@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	otelwoocoo "github.com/tsingsun/woocoo/contrib/telemetry"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/web"
 	b3prop "go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -43,7 +44,7 @@ func TestMiddleware_NewConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			otlecfg := otelwoocoo.NewConfig(tt.args.cfg.Sub("otel"))
 			defer otlecfg.Shutdown()
-			h := NewMiddleware()
+			h := New().(*Middleware)
 			assert.Equal(t, "otel", h.Name())
 			router := gin.New()
 			router.Use(h.ApplyFunc(tt.args.cfg))
@@ -52,6 +53,11 @@ func TestMiddleware_NewConfig(t *testing.T) {
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, r)
 			assert.NoError(t, h.Shutdown(context.Background()))
+
+			wcweb := web.New(RegisterMiddleware())
+			wcweb.Router().GET("/ping", tt.handlerFunc)
+			wcweb.Router().ServeHTTP(w, r)
+			assert.Equal(t, http.StatusOK, w.Code)
 		})
 	}
 }

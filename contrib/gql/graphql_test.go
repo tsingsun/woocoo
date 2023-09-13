@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/tsingsun/woocoo/pkg/log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,6 +34,83 @@ var gqlSchemaMock = graphql.ExecutableSchemaMock{
 	},
 }
 
+const (
+	secretToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI2N2E4NzQ4MmU5MWY0ZjJlOTIyMGY1MTM3NjE4NWI3ZSIsInN1YiI6IjEyMzQ1Njc4OTAiLCJuYW1lIjoiSm9obiBEb2UiLCJpYXQiOjE1MTYyMzkwMjJ9.ey-P5Kz9BKn0IsMuJd6egrwdi7uv34G2s85pmfVgTo0`
+)
+
+func TestHandler_ApplyFunc(t *testing.T) {
+	type args struct {
+		cfg *conf.Configuration
+	}
+	tests := []struct {
+		name  string
+		args  args
+		check func(*Handler)
+		panic bool
+	}{
+		{
+			name: "header",
+			args: args{
+				cfg: conf.NewFromBytes([]byte(`
+queryPath: "/query"
+docPath: "/doc"
+group: "/graphql"
+header: 
+  Authorization: "Bearer 123456"
+  X-Tenant-Id: "1"
+`)),
+			},
+			check: func(handler *Handler) {
+				assert.Equal(t, "Bearer 123456", handler.opts.DocHeader["Authorization"])
+			},
+		},
+		{
+			name: "Authorization config incorrect",
+			args: args{
+				cfg: conf.NewFromBytes([]byte(`
+withAuthorization: true
+`)),
+			},
+			panic: true,
+		},
+		{
+			name: "webHandler",
+			args: args{
+				cfg: conf.NewFromBytes([]byte(`
+middlewares:
+  operation:
+  - jwt:
+      signingMethod: "HS256"
+      signingKey: "secret"
+  - nil:
+`)),
+			},
+			check: func(handler *Handler) {
+				mids := handler.opts.Middlewares["operation"].([]any)
+				_, ok := mids[0].(map[string]any)["jwt"]
+				assert.True(t, ok)
+				assert.Len(t, mids, 2)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := New()
+			assert.Equal(t, "graphql", h.Name())
+			if tt.panic {
+				assert.Panics(t, func() {
+					h.ApplyFunc(tt.args.cfg)
+				})
+				return
+			}
+			h.ApplyFunc(tt.args.cfg)
+			if tt.check != nil {
+				tt.check(h)
+			}
+		})
+	}
+}
+
 func TestRegistrySchema(t *testing.T) {
 	var cfgStr = `
 web:
@@ -55,7 +133,8 @@ web:
 `
 
 	cfg := conf.NewFromBytes([]byte(cfgStr))
-	srv := web.New(web.WithConfiguration(cfg.Sub("web")), web.RegisterMiddleware(New()))
+	srv := web.New(web.WithConfiguration(cfg.Sub("web")),
+		web.WithMiddlewareNewFunc(graphqlHandlerName, Middleware))
 	gqlsrvList, err := RegisterSchema(srv, &gqlSchemaMock, &gqlSchemaMock)
 	require.NoError(t, err)
 	if !assert.Len(t, gqlsrvList, 2) {
@@ -86,7 +165,133 @@ web:
 	})
 }
 
+func TestRegistrySchema_NoDoc(t *testing.T) {
+	var cfgStr = `
+web:
+  server:
+  engine:
+    routerGroups:
+      - default:
+          middlewares:
+            - graphql:
+                docPath: ""
+      - graphql:
+          basePath: "/graphql"
+          middlewares:
+            - graphql:
+                group: "/graphql"
+                docPath: "" 
+`
+
+	cfg := conf.NewFromBytes([]byte(cfgStr))
+	srv := web.New(web.WithConfiguration(cfg.Sub("web")),
+		RegistryMiddleware())
+	gqlsrvList, err := RegisterSchema(srv, &gqlSchemaMock, &gqlSchemaMock)
+	require.NoError(t, err)
+	if !assert.Len(t, gqlsrvList, 2) {
+		return
+	}
+
+	t.Run("no-doc", func(t *testing.T) {
+		r := httptest.NewRequest("GET", "/", nil)
+		w := httptest.NewRecorder()
+
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+	t.Run("sub-no-doc", func(t *testing.T) {
+		r := httptest.NewRequest("GET", "/graphql", nil)
+		w := httptest.NewRecorder()
+
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+}
+
+func TestRegistrySchema_WebHandler(t *testing.T) {
+	var cfgStr = `
+web:
+  server:
+  engine:
+    routerGroups:
+      - default:
+          middlewares:
+            - graphql:
+                middlewares:
+                  operation:
+                  - nilmid:
+                  - jwt:
+                      signingMethod: "HS256"
+                      signingKey: "secret"
+                  - recovery: 
+                  response:
+                  - accessLog:
+                  - nilmid:
+`
+
+	cfg := conf.NewFromBytes([]byte(cfgStr))
+	srv := web.New(web.WithConfiguration(cfg.Sub("web")),
+		web.WithMiddlewareNewFunc(graphqlHandlerName, Middleware))
+	mock := graphql.ExecutableSchemaMock{
+		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
+			panic("mock out the Complexity method")
+		},
+		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {
+			return func(ctx context.Context) *graphql.Response {
+				return &graphql.Response{
+					Data: []byte("{}"),
+				}
+			}
+		},
+		SchemaFunc: func() *ast.Schema {
+			return &ast.Schema{
+				Query: &ast.Definition{
+					Kind: ast.Object,
+					Name: "Query",
+					Fields: []*ast.FieldDefinition{
+						{
+							Name:     "hello",
+							Type:     ast.NamedType("Boolean", &ast.Position{}),
+							Position: &ast.Position{},
+						},
+					},
+				},
+				Types: map[string]*ast.Definition{
+					"Boolean": {
+						Kind:     ast.Scalar,
+						Name:     "Boolean",
+						Position: &ast.Position{},
+					},
+				},
+			}
+		},
+	}
+	gqlsrvList, err := RegisterSchema(srv, &mock)
+	require.NoError(t, err)
+	if !assert.Len(t, gqlsrvList, 1) {
+		return
+	}
+	//gqlsrv  := gqlsrvList[0]
+
+	t.Run("unauth", func(t *testing.T) {
+		r := httptest.NewRequest("POST", "/query", bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`)))
+		r.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+	t.Run("ok", func(t *testing.T) {
+		r := httptest.NewRequest("POST", "/query", bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`)))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("Authorization", "Bearer "+secretToken)
+		w := httptest.NewRecorder()
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+}
+
 func TestCheckPermissions(t *testing.T) {
+	log.InitGlobalLogger()
 	var cfgStr = `
 authz:
   autoSave: false
@@ -114,7 +319,8 @@ web:
 	authz.SetAdapter(stringadapter.NewAdapter(`p, 1, "hello", POST`))
 
 	cfg := conf.NewFromBytes([]byte(cfgStr))
-	srv := web.New(web.WithConfiguration(cfg.Sub("web")), web.RegisterMiddleware(New()))
+	srv := web.New(web.WithConfiguration(cfg.Sub("web")),
+		web.WithMiddlewareNewFunc(graphqlHandlerName, Middleware))
 	expectedPanic := "gql panic"
 	expectedPanicErr := errors.New("gql panic error")
 	mock := graphql.ExecutableSchemaMock{
@@ -214,57 +420,4 @@ web:
 			assert.Contains(t, w.Body.String(), "action hello not allowed")
 		}
 	})
-}
-
-func TestHandler_ApplyFunc(t *testing.T) {
-	type args struct {
-		cfg *conf.Configuration
-	}
-	tests := []struct {
-		name  string
-		args  args
-		check func(*Handler)
-		panic bool
-	}{
-		{
-			name: "header",
-			args: args{
-				cfg: conf.NewFromBytes([]byte(`
-queryPath: "/query"
-docPath: "/doc"
-group: "/graphql"
-header: 
-  Authorization: "Bearer 123456"
-  X-Tenant-Id: "1"
-`)),
-			},
-			check: func(handler *Handler) {
-				assert.Equal(t, "Bearer 123456", handler.opts[0].DocHeader["Authorization"])
-			},
-		},
-		{
-			name: "Authorization config incorrect",
-			args: args{
-				cfg: conf.NewFromBytes([]byte(`
-withAuthorization: true
-`)),
-			},
-			panic: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			h := New()
-			if tt.panic {
-				assert.Panics(t, func() {
-					h.ApplyFunc(tt.args.cfg)
-				})
-				return
-			}
-			h.ApplyFunc(tt.args.cfg)
-			if tt.check != nil {
-				tt.check(h)
-			}
-		})
-	}
 }

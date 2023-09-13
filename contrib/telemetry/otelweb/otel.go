@@ -6,6 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 	otelwoocoo "github.com/tsingsun/woocoo/contrib/telemetry"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/web"
+	"github.com/tsingsun/woocoo/web/handler"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
@@ -13,6 +15,7 @@ import (
 )
 
 const (
+	otelName   = "otel"
 	tracerKey  = "otel-go-contrib-tracer"
 	tracerName = "go.opentelemetry.io/contrib/instrumentation/github.com/tsingsun/woocoo/contrib/telemetry/otelweb"
 )
@@ -22,12 +25,18 @@ type Middleware struct {
 	cfg *otelwoocoo.Config
 }
 
-func NewMiddleware() *Middleware {
+// New see handler.MiddlewareNewFunc
+func New() handler.Middleware {
 	return &Middleware{}
 }
 
+// RegisterMiddleware return a web Option for otel middleware
+func RegisterMiddleware() web.Option {
+	return web.WithMiddlewareNewFunc(otelName, New)
+}
+
 func (h *Middleware) Name() string {
-	return "otel"
+	return otelName
 }
 
 func (h *Middleware) ApplyFunc(_ *conf.Configuration) gin.HandlerFunc {

@@ -15,13 +15,14 @@ func WithConfiguration(cfg *conf.Configuration) Option {
 	}
 }
 
-func RegisterMiddlewareNewFunc(name string, newFunc handler.MiddlewareNewFunc) Option {
+// WithMiddlewareNewFunc provide a simple way to inject middleware by MiddlewareNewFunc.
+func WithMiddlewareNewFunc(name string, newFunc handler.MiddlewareNewFunc) Option {
 	return func(s *ServerOptions) {
 		s.handlerManager.Register(name, newFunc)
 	}
 }
 
-// RegisterMiddlewareApplyFunc provide a simple way to inject middleware by gin.HandlerFunc.
+// WithMiddlewareApplyFunc provide a simple way to inject middleware by gin.HandlerFunc.
 //
 // Notice: the middleware usual attach `c.Next()` or `c.Abort` to indicator whether exits the method.
 // example:
@@ -33,7 +34,7 @@ func RegisterMiddlewareNewFunc(name string, newFunc handler.MiddlewareNewFunc) O
 //		        c.Next() or c.Abort() or c.AbortWithStatus(500)
 //		    }
 //		})
-func RegisterMiddlewareApplyFunc(name string, handlerFunc handler.MiddlewareApplyFunc) Option {
+func WithMiddlewareApplyFunc(name string, handlerFunc handler.MiddlewareApplyFunc) Option {
 	return func(s *ServerOptions) {
 		s.handlerManager.Register(name, handler.WrapMiddlewareApplyFunc(name, handlerFunc))
 	}

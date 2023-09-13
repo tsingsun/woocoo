@@ -20,15 +20,9 @@ var (
 type RecoveryMiddleware struct {
 }
 
-func NewRecovery() *RecoveryMiddleware {
-	return &RecoveryMiddleware{}
-}
-
 // Recovery is the recovery middleware apply function. see MiddlewareNewFunc
 func Recovery() Middleware {
-	mw := NewRecovery()
-
-	return mw
+	return &RecoveryMiddleware{}
 }
 
 func (h *RecoveryMiddleware) Name() string {

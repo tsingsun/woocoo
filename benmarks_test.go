@@ -25,7 +25,7 @@ func BenchmarkWooCooWebDefault(b *testing.B) {
 	gin.SetMode(gin.ReleaseMode)
 	router := web.New().Router().Engine
 	router.Use(handler.NewAccessLog().ApplyFunc(conf.New()))
-	router.Use(handler.NewRecovery().ApplyFunc(nil))
+	router.Use(handler.Recovery().ApplyFunc(nil))
 	router.GET("ping/", func(c *gin.Context) {
 		c.String(http.StatusOK, "pong")
 	})

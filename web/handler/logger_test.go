@@ -170,7 +170,7 @@ func TestLoggerMiddleware(t *testing.T) {
 			accessLog := NewAccessLog()
 			middleware := accessLog.ApplyFunc(tt.args.cfg)
 			srv := gin.New()
-			srv.Use(middleware, NewRecovery().ApplyFunc(tt.args.cfg))
+			srv.Use(middleware, Recovery().ApplyFunc(tt.args.cfg))
 			srv.GET("/", func(c *gin.Context) {
 				tt.args.handler(c)
 			})

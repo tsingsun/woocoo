@@ -230,7 +230,8 @@ func TestRecoveryMiddleware(t *testing.T) {
 			want := tt.want()
 			gin.SetMode(gin.ReleaseMode)
 			srv := gin.New()
-			mid := NewRecovery()
+			mid := Recovery()
+			assert.Equal(t, recoveryName, mid.Name())
 			srv.Use(mid.ApplyFunc(tt.args.cfg))
 			srv.GET("/", func(c *gin.Context) {
 				tt.args.handler(c)
@@ -346,7 +347,7 @@ func TestRecoveryMiddleware_WithLogger(t *testing.T) {
 			gin.SetMode(gin.ReleaseMode)
 			srv := gin.New()
 			middleware := NewAccessLog().ApplyFunc(tt.args.cfg)
-			srv.Use(middleware, NewRecovery().ApplyFunc(tt.args.cfg))
+			srv.Use(middleware, Recovery().ApplyFunc(tt.args.cfg))
 			srv.GET("/", func(c *gin.Context) {
 				tt.args.handler(c)
 			})

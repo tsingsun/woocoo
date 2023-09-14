@@ -9,6 +9,7 @@ import (
 	"github.com/tsingsun/woocoo/testco/logtest"
 	"github.com/tsingsun/woocoo/testco/wctest"
 	"go.uber.org/zap"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -31,8 +32,8 @@ func TestLoggerMiddleware(t *testing.T) {
 			args: args{
 				cfg: conf.NewFromStringMap(map[string]any{
 					"format": "id,remoteIp,host,method,uri,userAgent,status,error,latency,bytesIn,bytesOut," +
-						"path,protocol,referer,latencyHuman,header:Accept,query:q1,form:username," +
-						"cookie:c1,context:ctx1",
+						"path,protocol,referer,latencyHuman,header:accept,query:q1,form:username," +
+						"cookie:c1,cookie:noexist,,context:ctx1",
 				}),
 				handler: func(c *gin.Context) {
 					l := log.Component(log.WebComponentName)
@@ -91,6 +92,29 @@ func TestLoggerMiddleware(t *testing.T) {
 				// panic
 				assert.Contains(t, all, "private error")
 				assert.NotContains(t, all, "stacktrace")
+				return true
+			},
+		},
+		{
+			name: "level should increase",
+			args: args{
+				cfg: conf.NewFromStringMap(map[string]any{
+					"format": "error,header:accept,",
+					"level":  "info",
+				}),
+				handler: func(c *gin.Context) {
+					return
+				},
+			},
+			want: func() any {
+				logdata := wctest.InitBuffWriteSyncer(zap.IncreaseLevel(zap.WarnLevel))
+				return logdata
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				ss := i[0].(*logtest.Buffer)
+				all := ss.String()
+				assert.Empty(t, all)
+				//assert.Contains(t, all, "header")
 				return true
 			},
 		},
@@ -164,10 +188,13 @@ func TestLoggerMiddleware(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest("GET", "/", nil)
+			r := httptest.NewRequest("GET", "/?query=1", nil)
+			r.Header.Set("accept", "*")
+			r.AddCookie(&http.Cookie{Name: "c1", Domain: "localhost", Value: "cookievalue"})
 			w := httptest.NewRecorder()
 			want := tt.want()
-			accessLog := NewAccessLog()
+			accessLog := AccessLog()
+			assert.Equal(t, accessLogName, accessLog.Name())
 			middleware := accessLog.ApplyFunc(tt.args.cfg)
 			srv := gin.New()
 			srv.Use(middleware, Recovery().ApplyFunc(tt.args.cfg))

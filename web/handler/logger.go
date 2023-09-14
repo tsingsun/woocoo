@@ -54,7 +54,8 @@ type LoggerConfig struct {
 	//
 	//
 	// Optional. Default value DefaultLoggerConfig.Format.
-	Format string `json:"format" yaml:"format"`
+	Format string        `json:"format" yaml:"format"`
+	Level  zapcore.Level `json:"level" yaml:"level"`
 	tags   []loggerTag
 }
 
@@ -66,18 +67,18 @@ type loggerTag struct {
 
 // LoggerMiddleware is a middleware that logs each request.
 type LoggerMiddleware struct {
+	config LoggerConfig
 	logger log.ComponentLogger
 }
 
 // NewAccessLog a new LoggerMiddleware,it is for handler registry
 func NewAccessLog() *LoggerMiddleware {
-	operator := logger.Logger(log.WithOriginalLogger()).WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
-	lg := log.Component(AccessLogComponentName)
-	lg.SetLogger(operator)
-	al := &LoggerMiddleware{
-		logger: lg,
+	return &LoggerMiddleware{
+		config: LoggerConfig{
+			Format: defaultLoggerFormat,
+			Level:  zapcore.InvalidLevel,
+		},
 	}
-	return al
 }
 
 // AccessLog is the access logger middleware apply function. see MiddlewareNewFunc
@@ -90,7 +91,23 @@ func (h *LoggerMiddleware) Name() string {
 	return accessLogName
 }
 
-func (h *LoggerMiddleware) buildTag(format string) (tags []loggerTag) {
+// zap.AddStacktrace(zapcore.FatalLevel + 1) force to not add stack.
+// zap.WithCaller(false) accessLog no need to.
+func (h *LoggerMiddleware) buildLogger() {
+	opts := []zap.Option{
+		zap.AddStacktrace(zapcore.FatalLevel + 1), zap.WithCaller(false),
+	}
+	if h.config.Level != zapcore.InvalidLevel {
+		opts = append(opts, zap.IncreaseLevel(h.config.Level))
+	}
+	olog := logger.Logger(log.WithOriginalLogger())
+	operator := olog.WithOptions(opts...)
+	h.logger = log.Component(AccessLogComponentName)
+	h.logger.SetLogger(operator)
+}
+
+func (h *LoggerMiddleware) buildTag(format string) {
+	var tags []loggerTag
 	ts := strings.Split(format, ",")
 	for _, tag := range ts {
 		switch {
@@ -108,40 +125,36 @@ func (h *LoggerMiddleware) buildTag(format string) (tags []loggerTag) {
 			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeString})
 		}
 	}
+	h.config.tags = tags
 	return
 }
 
 // ApplyFunc build a gin.HandlerFunc for NewAccessLog middleware
 func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	opts := LoggerConfig{
-		Format: defaultLoggerFormat,
-	}
-	if err := cfg.Unmarshal(&opts); err != nil {
+	if err := cfg.Unmarshal(&h.config); err != nil {
 		panic(err)
 	}
-	opts.tags = h.buildTag(opts.Format)
-	if opts.Skipper == nil && len(opts.Exclude) > 0 {
-		opts.Skipper = func(c *gin.Context) bool {
+	h.buildTag(h.config.Format)
+	h.buildLogger()
+	if h.config.Skipper == nil && len(h.config.Exclude) > 0 {
+		h.config.Skipper = func(c *gin.Context) bool {
 			// if it has error,should log
 			if len(c.Errors) > 0 {
 				return false
 			}
-			return PathSkip(opts.Exclude, c.Request.URL)
+			return PathSkip(h.config.Exclude, c.Request.URL)
 		}
 	} else {
-		opts.Skipper = DefaultSkipper
+		h.config.Skipper = DefaultSkipper
 	}
 	traceIDKey := h.logger.Logger().TraceIDKey
-	if traceIDKey == "" {
-		traceIDKey = log.TraceIDKey
-	}
 
 	return func(c *gin.Context) {
 		start := time.Now()
 		logCarrier := log.NewCarrier()
 		c.Set(AccessLogComponentName, logCarrier)
 		c.Next()
-		if opts.Skipper(c) {
+		if h.config.Skipper(c) {
 			return
 		}
 		req := c.Request
@@ -150,9 +163,9 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		latency := stop.Sub(start)
 		path := c.Request.URL.Path
 
-		fields := make([]zap.Field, len(opts.tags))
+		fields := make([]zap.Field, len(h.config.tags))
 		privateErr := false
-		for i, tag := range opts.tags {
+		for i, tag := range h.config.tags {
 			switch tag.fullKey {
 			case "id":
 				id := req.Header.Get("X-Request-Id")
@@ -204,6 +217,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 					fields[i] = zap.String(tag.fullKey, c.PostForm(tag.key))
 				case loggerTagTypeCookie:
 					cookie, err := c.Cookie(tag.key)
+					// if no found, skip
 					if err == nil {
 						fields[i] = zap.String(tag.fullKey, cookie)
 					}

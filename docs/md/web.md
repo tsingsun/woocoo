@@ -76,7 +76,65 @@ web:
 
 # 中间件
 
-由web的配置节点中,在`middlawares`中配置中间件,我们开始介绍内置的中间件.
+由web的配置节点中,在`middlawares`中配置中间件,我们开始介绍内置的中间件.具体的代码可查看[handler](https://github.com/tsingsun/woocoo/tree/main/web/handler)
+
+中间件的加载是有顺序的,因此定制程序配置文件时,请根据实际情况配置. 一般前置的几个中间件如下:
+
+```yaml
+accessLog: #...
+recovery:  #...
+errorHandle: #...
+```
+
+## AccessLog
+
+访问日志借助了高性能的log组件实现HTTP请求日志. 可定义输出格式.
+
+使用方式,在配置中放入:
+```yaml
+middlewares:
+  - accessLog: # 不设置任何使用默认配置      
+```
+
+可以自定义格式,支持的tag如下:
+
+- id (Request ID or trace ID)
+- remoteIp
+- uri
+- host
+- method
+- path
+- protocol
+- referer
+- userAgent
+- status
+- error
+- latency (纳秒)
+- latencyHuman (可读性)
+- bytesIn (进站大小)
+- bytesOut (出站大小)
+- header:<NAME> 
+- query:<NAME>
+- form:<NAME>
+- context:<NAME>
+
+```yaml
+accessLog:
+  format: "id,header:accept,context:tenantID,query:id"
+```
+
+log组件使用的全局的日志核心,因此错误等级与全局的错误等级是一致的.同时也提供了自定义等级,但该等级只能高于全局设置.请参考[logger](./logger.md)
+```yaml
+level: info #错误等级文本 
+```
+
+## Recovery
+
+Recovery是用于程序从panic中恢复的recover,其结合日志及错误的中间件, 可在日志中输出错误的stack.用法也比较简单.直接在配置中放入.
+
+```yaml
+recovery: ## 目前为空配置.
+```
 
 ## 错误处理
 
@@ -156,3 +214,19 @@ func ExampleErrorHandleMiddleware_customErrorParser() {
 	gin.Default().Use(hdl.ApplyFunc(nil))
 }
 ```
+
+## JSON Web Token(JWT)
+
+基于JWT的应用非常广泛,因此也内置了该中间件.`jwt`支持了较多的功能:
+
+- 各种签名方式.
+- 支持各种token传递方式,Authorization Header及Query等可自定义.
+- 默认验证成功后注入用户信息至上下文,方便获取用户信息,同时提供logout处理器.
+- 支持集中式缓存验证,如token存至redis中进行有效性验证.
+
+```yaml
+jwt:
+  signingMethod: "HS256"
+  signingKey: "secret"
+```
+更多的具有配置内容,可查看代码实现.

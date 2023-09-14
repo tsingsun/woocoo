@@ -8,8 +8,8 @@
 
 {{ range $n:=$.Nodes }}
     {{ $serviceName := pascal $n.Name }}
-    // {{ $serviceName }}Server is the server API for {{ $serviceName }} service.
-    type {{ $serviceName }}Server interface {
+    // {{ $serviceName }}Service is the server API for {{ $serviceName }} service.
+    type {{ $serviceName }}Service interface {
     {{- range $n.Operations }}
         {{- if .IgnoreInterface }}
             {{- continue }}
@@ -23,13 +23,13 @@
 {{ end }}
 {{ range $n:=$.Nodes }}
     {{ $serviceName := pascal $n.Name }}
-    type Unimplemented{{ $serviceName }}Server struct {
+    type Unimplemented{{ $serviceName }}Service struct {
     }
     {{- range $n.Operations }}
         {{- if .IgnoreInterface }}
             {{- continue }}
         {{- end }}
-        func (Unimplemented{{ $serviceName }}Server) {{ .Name }}(c *gin.Context{{ if .HasRequest }}, req *{{ .RequestName }}{{ end }})(
+        func (Unimplemented{{ $serviceName }}Service) {{ .Name }}(c *gin.Context{{ if .HasRequest }}, req *{{ .RequestName }}{{ end }})(
         {{- if .HasResponse}}_ {{ .ResponseOK.Schema.Type.String }}, {{ end }}err error) {
         err = fmt.Errorf("method {{ .Name }} not implemented")
         return

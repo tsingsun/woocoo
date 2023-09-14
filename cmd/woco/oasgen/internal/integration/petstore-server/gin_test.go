@@ -22,7 +22,7 @@ func (s *ginTestSuite) SetupSuite() {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	router.Use(handler.ErrorHandle().ApplyFunc(nil))
-	imp := &Server{}
+	imp := &Service{}
 	server.RegisterValidator()
 	server.RegisterUserHandlers(&router.RouterGroup, imp)
 	server.RegisterStoreHandlers(&router.RouterGroup, imp)

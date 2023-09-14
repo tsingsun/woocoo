@@ -16,14 +16,14 @@
         {{ $serviceName := pascal .Name }}
         {{ $pkgName := pkgName .Config.Package}}
         // Register{{ $serviceName }}Handlers creates http.Handler with routing matching OpenAPI spec.
-        func Register{{ $serviceName }}Handlers(router *gin.Engine, si {{$pkgName}}.{{ $serviceName }}Server) *gin.Engine {
+        func Register{{ $serviceName }}Handlers(router *gin.Engine, si {{$pkgName}}.{{ $serviceName }}Service) *gin.Engine {
         {{- range .Operations }}
             router.{{ .Method }}("{{ .Path | oasUriToGinUri }}", wrap{{pascal .Name }}(si))
         {{- end }}
             return router
         }
         {{ range .Operations }}
-        func wrap{{pascal .Name }}(si {{$pkgName}}.{{ $serviceName }}Server) func(c *gin.Context) {
+        func wrap{{pascal .Name }}(si {{$pkgName}}.{{ $serviceName }}Service) func(c *gin.Context) {
             return func(c *gin.Context) {
             {{- if .HasRequest }}
                 var req {{$pkgName}}.{{ .RequestName }}

@@ -9,8 +9,8 @@ import (
 	"github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration/extra"
 )
 
-// PetServer is the server API for Pet service.
-type PetServer interface {
+// PetService is the server API for Pet service.
+type PetService interface {
 	// (POST /pet)
 	AddPet(*gin.Context, *AddPetRequest) (*Pet, error)
 	// (DELETE /pet/{petId})
@@ -29,8 +29,8 @@ type PetServer interface {
 	UploadFile(*gin.Context, *UploadFileRequest) (*extra.ApiResponse, error)
 }
 
-// StoreServer is the server API for Store service.
-type StoreServer interface {
+// StoreService is the server API for Store service.
+type StoreService interface {
 	// (DELETE /store/order/{orderId})
 	DeleteOrder(*gin.Context, *DeleteOrderRequest) error
 	// (GET /store/inventory)
@@ -41,8 +41,8 @@ type StoreServer interface {
 	PlaceOrder(*gin.Context, *PlaceOrderRequest) (*Order, error)
 }
 
-// UserServer is the server API for User service.
-type UserServer interface {
+// UserService is the server API for User service.
+type UserService interface {
 	// (POST /user)
 	CreateUser(*gin.Context, *CreateUserRequest) (*CreateUserResponse, error)
 	// (POST /user/createWithArray)
@@ -61,111 +61,111 @@ type UserServer interface {
 	UpdateUser(*gin.Context, *UpdateUserRequest) error
 }
 
-type UnimplementedPetServer struct {
+type UnimplementedPetService struct {
 }
 
-func (UnimplementedPetServer) AddPet(c *gin.Context, req *AddPetRequest) (_ *Pet, err error) {
+func (UnimplementedPetService) AddPet(c *gin.Context, req *AddPetRequest) (_ *Pet, err error) {
 	err = fmt.Errorf("method AddPet not implemented")
 	return
 }
 
-func (UnimplementedPetServer) DeletePet(c *gin.Context, req *DeletePetRequest) (err error) {
+func (UnimplementedPetService) DeletePet(c *gin.Context, req *DeletePetRequest) (err error) {
 	err = fmt.Errorf("method DeletePet not implemented")
 	return
 }
 
-func (UnimplementedPetServer) FindPetsByStatus(c *gin.Context, req *FindPetsByStatusRequest) (_ []*Pet, err error) {
+func (UnimplementedPetService) FindPetsByStatus(c *gin.Context, req *FindPetsByStatusRequest) (_ []*Pet, err error) {
 	err = fmt.Errorf("method FindPetsByStatus not implemented")
 	return
 }
 
-func (UnimplementedPetServer) FindPetsByTags(c *gin.Context, req *FindPetsByTagsRequest) (_ Pets, err error) {
+func (UnimplementedPetService) FindPetsByTags(c *gin.Context, req *FindPetsByTagsRequest) (_ Pets, err error) {
 	err = fmt.Errorf("method FindPetsByTags not implemented")
 	return
 }
 
-func (UnimplementedPetServer) GetPetById(c *gin.Context, req *GetPetByIdRequest) (_ *Pet, err error) {
+func (UnimplementedPetService) GetPetById(c *gin.Context, req *GetPetByIdRequest) (_ *Pet, err error) {
 	err = fmt.Errorf("method GetPetById not implemented")
 	return
 }
 
-func (UnimplementedPetServer) UpdatePet(c *gin.Context, req *UpdatePetRequest) (_ *Pet, err error) {
+func (UnimplementedPetService) UpdatePet(c *gin.Context, req *UpdatePetRequest) (_ *Pet, err error) {
 	err = fmt.Errorf("method UpdatePet not implemented")
 	return
 }
 
-func (UnimplementedPetServer) UpdatePetWithForm(c *gin.Context, req *UpdatePetWithFormRequest) (err error) {
+func (UnimplementedPetService) UpdatePetWithForm(c *gin.Context, req *UpdatePetWithFormRequest) (err error) {
 	err = fmt.Errorf("method UpdatePetWithForm not implemented")
 	return
 }
 
-func (UnimplementedPetServer) UploadFile(c *gin.Context, req *UploadFileRequest) (_ *extra.ApiResponse, err error) {
+func (UnimplementedPetService) UploadFile(c *gin.Context, req *UploadFileRequest) (_ *extra.ApiResponse, err error) {
 	err = fmt.Errorf("method UploadFile not implemented")
 	return
 }
 
-type UnimplementedStoreServer struct {
+type UnimplementedStoreService struct {
 }
 
-func (UnimplementedStoreServer) DeleteOrder(c *gin.Context, req *DeleteOrderRequest) (err error) {
+func (UnimplementedStoreService) DeleteOrder(c *gin.Context, req *DeleteOrderRequest) (err error) {
 	err = fmt.Errorf("method DeleteOrder not implemented")
 	return
 }
 
-func (UnimplementedStoreServer) GetInventory(c *gin.Context) (_ map[string]int32, err error) {
+func (UnimplementedStoreService) GetInventory(c *gin.Context) (_ map[string]int32, err error) {
 	err = fmt.Errorf("method GetInventory not implemented")
 	return
 }
 
-func (UnimplementedStoreServer) GetOrderById(c *gin.Context, req *GetOrderByIdRequest) (_ *Order, err error) {
+func (UnimplementedStoreService) GetOrderById(c *gin.Context, req *GetOrderByIdRequest) (_ *Order, err error) {
 	err = fmt.Errorf("method GetOrderById not implemented")
 	return
 }
 
-func (UnimplementedStoreServer) PlaceOrder(c *gin.Context, req *PlaceOrderRequest) (_ *Order, err error) {
+func (UnimplementedStoreService) PlaceOrder(c *gin.Context, req *PlaceOrderRequest) (_ *Order, err error) {
 	err = fmt.Errorf("method PlaceOrder not implemented")
 	return
 }
 
-type UnimplementedUserServer struct {
+type UnimplementedUserService struct {
 }
 
-func (UnimplementedUserServer) CreateUser(c *gin.Context, req *CreateUserRequest) (_ *CreateUserResponse, err error) {
+func (UnimplementedUserService) CreateUser(c *gin.Context, req *CreateUserRequest) (_ *CreateUserResponse, err error) {
 	err = fmt.Errorf("method CreateUser not implemented")
 	return
 }
 
-func (UnimplementedUserServer) CreateUsersWithArrayInput(c *gin.Context, req *CreateUsersWithArrayInputRequest) (err error) {
+func (UnimplementedUserService) CreateUsersWithArrayInput(c *gin.Context, req *CreateUsersWithArrayInputRequest) (err error) {
 	err = fmt.Errorf("method CreateUsersWithArrayInput not implemented")
 	return
 }
 
-func (UnimplementedUserServer) CreateUsersWithListInput(c *gin.Context, req *CreateUsersWithListInputRequest) (err error) {
+func (UnimplementedUserService) CreateUsersWithListInput(c *gin.Context, req *CreateUsersWithListInputRequest) (err error) {
 	err = fmt.Errorf("method CreateUsersWithListInput not implemented")
 	return
 }
 
-func (UnimplementedUserServer) DeleteUser(c *gin.Context, req *DeleteUserRequest) (err error) {
+func (UnimplementedUserService) DeleteUser(c *gin.Context, req *DeleteUserRequest) (err error) {
 	err = fmt.Errorf("method DeleteUser not implemented")
 	return
 }
 
-func (UnimplementedUserServer) GetUserByName(c *gin.Context, req *GetUserByNameRequest) (_ *User, err error) {
+func (UnimplementedUserService) GetUserByName(c *gin.Context, req *GetUserByNameRequest) (_ *User, err error) {
 	err = fmt.Errorf("method GetUserByName not implemented")
 	return
 }
 
-func (UnimplementedUserServer) LoginUser(c *gin.Context, req *LoginUserRequest) (_ string, err error) {
+func (UnimplementedUserService) LoginUser(c *gin.Context, req *LoginUserRequest) (_ string, err error) {
 	err = fmt.Errorf("method LoginUser not implemented")
 	return
 }
 
-func (UnimplementedUserServer) LogoutUser(c *gin.Context) (err error) {
+func (UnimplementedUserService) LogoutUser(c *gin.Context) (err error) {
 	err = fmt.Errorf("method LogoutUser not implemented")
 	return
 }
 
-func (UnimplementedUserServer) UpdateUser(c *gin.Context, req *UpdateUserRequest) (err error) {
+func (UnimplementedUserService) UpdateUser(c *gin.Context, req *UpdateUserRequest) (err error) {
 	err = fmt.Errorf("method UpdateUser not implemented")
 	return
 }

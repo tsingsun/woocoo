@@ -85,6 +85,8 @@ web:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			assert.Len(t, tt.srv.Router().Groups[0].Group.Handlers, 3)
+			assert.Len(t, tt.srv.Router().Groups[1].Group.Handlers, 4)
 			r := httptest.NewRequest("GET", "/user/123", nil)
 			w := httptest.NewRecorder()
 			tt.srv.Router().Engine.GET("/user/:id", func(c *gin.Context) {
@@ -92,6 +94,15 @@ web:
 			})
 			tt.srv.Router().Engine.ServeHTTP(w, r)
 			assert.Equal(t, tt.wantStatus, w.Code)
+
+			tt.srv.Router().Engine.GET("/auth", func(c *gin.Context) {
+				c.String(tt.wantStatus, "User")
+			})
+
+			r = httptest.NewRequest("GET", "/auth", nil)
+			w = httptest.NewRecorder()
+			tt.srv.Router().Engine.ServeHTTP(w, r)
+			assert.Equal(t, tt.wantStatus, w.Code, "default middleware should not be applied to auth group")
 		})
 	}
 }

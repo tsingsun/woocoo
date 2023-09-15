@@ -117,7 +117,8 @@ web:
   server:
   engine:
     routerGroups:
-      - default:
+      - first:
+          basePath: "/first"
           middlewares:
             - graphql:
       - second:
@@ -144,7 +145,7 @@ web:
 	}
 
 	t.Run("test default", func(t *testing.T) {
-		r := httptest.NewRequest("GET", "/", nil)
+		r := httptest.NewRequest("GET", "/first/", nil)
 		w := httptest.NewRecorder()
 
 		srv.Router().ServeHTTP(w, r)

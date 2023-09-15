@@ -86,6 +86,9 @@ recovery:  #...
 errorHandle: #...
 ```
 
+需要特别说明的是设置在`default`路由组节点下的中间件是全局的,将会应用到所有的路由中, 由于是顺序加载,因此`default`务必放在`routerGroups`最前面.
+如果子路由组中配置了同名的中间件,两个是间件将同时生效,而不是覆盖.
+
 ## AccessLog
 
 访问日志借助了高性能的log组件实现HTTP请求日志. 可定义输出格式.
@@ -219,7 +222,7 @@ func ExampleErrorHandleMiddleware_customErrorParser() {
 
 基于JWT的应用非常广泛,因此也内置了该中间件.`jwt`支持了较多的功能:
 
-- 各种签名方式.
+- 各种签名方式,HS,RS,PS等.
 - 支持各种token传递方式,Authorization Header及Query等可自定义.
 - 默认验证成功后注入用户信息至上下文,方便获取用户信息,同时提供logout处理器.
 - 支持集中式缓存验证,如token存至redis中进行有效性验证.
@@ -230,3 +233,16 @@ jwt:
   signingKey: "secret"
 ```
 更多的具有配置内容,可查看代码实现.
+
+## CROS
+
+CROS是跨域资源共享的简称,由于web服务的特殊性,因此我们提供了CROS中间件,可通过配置文件进行配置.
+
+```yaml
+cros:
+  # 简易配置可设置为 allowOrigins: ['*']
+  allowOrigins: ["http://localhost:8080","https://github.com"]  
+  # 简易配置可设置为: ["*"]
+  allowHeaders: "Origin,Content-Type,Accept,Authorization"
+```
+

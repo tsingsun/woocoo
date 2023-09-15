@@ -77,7 +77,9 @@ var (
 	optionCache = make(map[string]Options)
 )
 
-// Handler for graphql
+// Handler for graphql.
+//
+// While Subscription, response flow is defference from query or mutation.
 type Handler struct {
 	// store multiple graphql options, gql-servers can be in different group
 	opts Options
@@ -225,7 +227,8 @@ func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server
 		}
 		handler.HandleRecoverError(gctx, err, 3)
 		gctx.AbortWithStatus(http.StatusInternalServerError)
-		if conf.Global().Development {
+		cnf := conf.Global()
+		if cnf.Development {
 			log.Println(err)
 			debug.PrintStack()
 		}
@@ -264,39 +267,46 @@ func WrapResponseHandler(handlerFunc gin.HandlerFunc) graphql.ResponseMiddleware
 }
 
 func doResponseHandler(ctx context.Context, next graphql.ResponseHandler, handlerFunc gin.HandlerFunc) *graphql.Response {
-	ctx, res := doWebHandler(ctx, handlerFunc)
+	c, _ := FromIncomingContext(ctx)
+	ctx, res := doWebHandler(ctx, c, handlerFunc)
 	if res != nil {
 		return res
 	}
 	return next(ctx)
 }
 
-func doWebHandler(ctx context.Context, handlerFunc gin.HandlerFunc) (nctx context.Context, res *graphql.Response) {
-	gctx, _ := FromIncomingContext(ctx)
-	handler.SetDerivativeContext(gctx, ctx)
-	handlerFunc(gctx)
+func doWebHandler(ctx context.Context, c *gin.Context, handlerFunc gin.HandlerFunc) (context.Context, *graphql.Response) {
+	handler.SetDerivativeContext(c, ctx)
+	handlerFunc(c)
+	ctx = handler.GetDerivativeContext(c)
 	errList := gqlerror.List{}
-	if len(gctx.Errors) > 0 {
-		for _, err := range gctx.Errors {
+
+	var res *graphql.Response
+	if len(c.Errors) > 0 {
+		for _, err := range c.Errors {
 			errList = append(errList, gqlerror.Errorf(err.Error()))
 		}
 		// if it is a subscription, do not return Response Data
-		if gctx.IsWebsocket() {
-			gctx.Errors = nil
+		if c.IsWebsocket() {
+			c.Errors = nil
 		}
 		res = &graphql.Response{
 			Errors: errList,
 		}
 	}
-	nctx = handler.GetDerivativeContext(gctx)
-	return
+	return ctx, res
 }
 
 func doOperationHandler(ctx context.Context, next graphql.OperationHandler, handlerFunc gin.HandlerFunc) graphql.ResponseHandler {
-	ctx, res := doWebHandler(ctx, handlerFunc)
+	c, _ := FromIncomingContext(ctx)
+	ctx, res := doWebHandler(ctx, c, handlerFunc)
 	if res != nil {
-		return func(ctx context.Context) *graphql.Response {
-			return res
+		if c.IsWebsocket() {
+			return graphql.OneShot(res)
+		} else {
+			return func(ctx context.Context) *graphql.Response {
+				return res
+			}
 		}
 	}
 	return next(ctx)
@@ -309,13 +319,9 @@ func CheckPermissions(opt *Options) graphql.OperationMiddleware {
 		op := graphql.GetOperationContext(ctx)
 		gp, ok := security.GenericIdentityFromContext(ctx)
 		if !ok {
-			return func(ctx context.Context) *graphql.Response {
-				return &graphql.Response{
-					Errors: gqlerror.List{
-						gqlerror.Errorf("generic identity not found"),
-					},
-				}
-			}
+			return envResponseError(gctx, gqlerror.List{
+				gqlerror.Errorf("generic identity not found"),
+			})
 		}
 		errList := gqlerror.List{}
 		for _, op := range op.Operation.SelectionSet {
@@ -335,13 +341,21 @@ func CheckPermissions(opt *Options) graphql.OperationMiddleware {
 			}
 		}
 		if len(errList) > 0 {
-			gctx.Error(errList)
-			return func(ctx context.Context) *graphql.Response {
-				return &graphql.Response{
-					Errors: errList,
-				}
-			}
+			return envResponseError(gctx, errList)
 		}
 		return next(ctx)
+	}
+}
+
+func envResponseError(c *gin.Context, errList gqlerror.List) graphql.ResponseHandler {
+	res := &graphql.Response{
+		Errors: errList,
+	}
+	if c.IsWebsocket() {
+		c.Errors = nil
+		return graphql.OneShot(res)
+	}
+	return func(ctx context.Context) *graphql.Response {
+		return res
 	}
 }

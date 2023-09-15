@@ -320,7 +320,7 @@ web:
 `
 	authz.SetAdapter(stringadapter.NewAdapter(`p, 1, "hello", POST`))
 
-	cfg := conf.NewFromBytes([]byte(cfgStr))
+	cfg := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
 	srv := web.New(web.WithConfiguration(cfg.Sub("web")),
 		web.WithMiddlewareNewFunc(graphqlHandlerName, Middleware))
 	expectedPanic := "gql panic"

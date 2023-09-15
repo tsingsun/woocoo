@@ -7,7 +7,7 @@ require (
 	github.com/casbin/casbin/v2 v2.73.1
 	github.com/gin-gonic/gin v1.9.1
 	github.com/stretchr/testify v1.8.4
-	github.com/tsingsun/woocoo v0.3.1-0.20230913082632-1aa8f8078eb3
+	github.com/tsingsun/woocoo v0.3.1-0.20230915024621-579072770480
 	github.com/vektah/gqlparser/v2 v2.5.9
 )
 
@@ -63,7 +63,6 @@ require (
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
-	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect

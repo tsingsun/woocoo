@@ -22,6 +22,7 @@ const (
 	errorHandlerName = "errorHandle"
 	gzipName         = "gzip"
 	keyAuthName      = "keyAuth"
+	corsName         = "cors"
 )
 
 // Middleware is an instance to build middleware for web application.
@@ -168,6 +169,7 @@ func integration() map[string]MiddlewareNewFunc {
 		errorHandlerName: ErrorHandle,
 		gzipName:         Gzip,
 		keyAuthName:      KeyAuth,
+		corsName:         CORS,
 	}
 	return handlerMap
 }

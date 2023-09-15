@@ -46,7 +46,7 @@ type (
 )
 
 var defaultOptions = options{
-	global: true,
+	global: false,
 }
 
 func init() {

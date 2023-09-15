@@ -20,6 +20,7 @@ import (
 
 func Configuration() *conf.Configuration {
 	return conf.New(
+		conf.WithGlobal(true),
 		conf.WithBaseDir(testdata.BaseDir()),
 		conf.WithLocalPath(testdata.Path(testdata.DefaultConfigFile)),
 	).Load()

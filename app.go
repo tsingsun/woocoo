@@ -33,7 +33,7 @@ func New(opts ...Option) *App {
 		opt(&app.opts)
 	}
 	if app.opts.cnf == nil {
-		app.opts.cnf = &conf.AppConfiguration{Configuration: conf.New()}
+		app.opts.cnf = &conf.AppConfiguration{Configuration: conf.New(conf.WithGlobal(true))}
 		if app.opts.cnf.Exists() {
 			app.opts.cnf.Load()
 		}

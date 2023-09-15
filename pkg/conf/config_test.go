@@ -364,7 +364,7 @@ func TestConfiguration_Static(t *testing.T) {
 			"TimeStamp": tm.Unix(),
 			"Duration":  "1s",
 		}
-		cnf := NewFromStringMap(setting)
+		cnf := NewFromStringMap(setting).AsGlobal()
 		assert.Equal(t, cnf.AppName(), "woocoo")
 
 		assert.True(t, IsSet("appName"))
@@ -387,7 +387,7 @@ func TestConfiguration_Static(t *testing.T) {
 	t.Run("path", func(t *testing.T) {
 		_, currentFile, _, _ := runtime.Caller(0)
 		dir := path.Dir(currentFile)
-		cnf := New()
+		cnf := New().AsGlobal()
 		cnf.SetBaseDir(".")
 		assert.Equal(t, cnf.GetBaseDir(), ".")
 		assert.Equal(t, Abs("path/file"), "path/file")
@@ -681,7 +681,7 @@ func TestGlobal(t *testing.T) {
 			name: "global",
 			want: func() *AppConfiguration {
 				return &AppConfiguration{
-					Configuration: New(),
+					Configuration: New(WithGlobal(true)),
 				}
 			},
 		},

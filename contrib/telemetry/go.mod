@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/stretchr/testify v1.8.4
-	github.com/tsingsun/woocoo v0.3.1-0.20230915024621-579072770480
+	github.com/tsingsun/woocoo v0.3.1-0.20230917150817-4ff6414bcd38
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.42.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.42.0
 	go.opentelemetry.io/contrib/propagators/b3 v1.17.0
@@ -33,6 +33,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
+	github.com/gin-contrib/cors v1.4.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

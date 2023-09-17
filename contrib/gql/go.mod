@@ -7,7 +7,7 @@ require (
 	github.com/casbin/casbin/v2 v2.73.1
 	github.com/gin-gonic/gin v1.9.1
 	github.com/stretchr/testify v1.8.4
-	github.com/tsingsun/woocoo v0.3.1-0.20230915024621-579072770480
+	github.com/tsingsun/woocoo v0.3.1-0.20230917150817-4ff6414bcd38
 	github.com/vektah/gqlparser/v2 v2.5.9
 )
 
@@ -22,6 +22,7 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
+	github.com/gin-contrib/cors v1.4.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect

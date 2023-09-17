@@ -159,7 +159,7 @@ func RegisterGraphqlServer(websrv *web.Server, servers ...*gqlgen.Server) error 
 		}
 		for j := index; j < len(websrv.Router().Groups); j++ {
 			gn := websrv.Router().Groups[j].Group.BasePath()
-			mid, ok := websrv.HandlerManager().GetMiddleware(handler.GetMiddlewareKey(gn, graphqlHandlerName))
+			mid, ok := websrv.HandlerManager().GetMiddleware(web.GetMiddlewareKey(gn, graphqlHandlerName))
 			if ok {
 				index = j + 1
 				buildGraphqlServer(websrv, websrv.Router().Groups[j], gqlserver, &mid.(*Handler).opts)
@@ -176,14 +176,14 @@ func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server
 	cnf.Each("operation", func(name string, cfg *conf.Configuration) {
 		if hf, ok := websrv.HandlerManager().Get(name); ok {
 			mid := hf()
-			websrv.HandlerManager().RegisterMiddleware(handler.GetMiddlewareKey(routerGroup.Group.BasePath(), name), mid)
+			websrv.HandlerManager().RegisterMiddleware(web.GetMiddlewareKey(routerGroup.Group.BasePath(), name), mid)
 			server.AroundOperations(WrapOperationHandler(mid.ApplyFunc(cfg)))
 		}
 	})
 	cnf.Each("response", func(name string, cfg *conf.Configuration) {
 		if hf, ok := websrv.HandlerManager().Get(name); ok {
 			mid := hf()
-			websrv.HandlerManager().RegisterMiddleware(handler.GetMiddlewareKey(routerGroup.Group.BasePath(), name), mid)
+			websrv.HandlerManager().RegisterMiddleware(web.GetMiddlewareKey(routerGroup.Group.BasePath(), name), mid)
 			server.AroundResponses(WrapResponseHandler(mid.ApplyFunc(cfg)))
 		}
 	})

@@ -116,10 +116,10 @@ middlewares:
 - latencyHuman (可读性)
 - bytesIn (进站大小)
 - bytesOut (出站大小)
-- header:<NAME> 
-- query:<NAME>
-- form:<NAME>
-- context:<NAME>
+- header:NAME 
+- query:NAME
+- form:NAME
+- context:NAME
 
 ```yaml
 accessLog:

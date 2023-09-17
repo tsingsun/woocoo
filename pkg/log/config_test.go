@@ -53,6 +53,20 @@ rotate:
 			},
 			wantErr: assert.NoError,
 		},
+		{
+			name: "rotate default",
+			args: args{
+				cfg: conf.NewFromBytes([]byte(`
+cores:
+  - level: debug
+rotate:
+`)),
+			},
+			check: func(cfg *Config) {
+				assert.True(t, cfg.useRotate, true, "rotate lazy init, no need to assert values")
+			},
+			wantErr: assert.NoError,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

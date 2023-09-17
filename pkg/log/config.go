@@ -78,8 +78,8 @@ func NewConfig(cfg *conf.Configuration) (*Config, error) {
 		callerSkip: CallerSkip,
 		TraceIDKey: TraceIDKey,
 	}
-	if cfg.IsSet("callerSkip") {
-		v.callerSkip = cfg.Int("callerSkip")
+	if cs := "callerSkip"; cfg.IsSet(cs) {
+		v.callerSkip = cfg.Int(cs)
 	}
 	for i := 0; i < len(v.ZapConfigs); i++ {
 		v.ZapConfigs[i] = defaultZapConfig(cfg)
@@ -89,7 +89,7 @@ func NewConfig(cfg *conf.Configuration) (*Config, error) {
 		return nil, err
 	}
 
-	if v.Rotate != nil {
+	if v.Rotate != nil || cfg.IsSet("rotate") {
 		v.useRotate = true
 	}
 	return v, nil

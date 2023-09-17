@@ -2,11 +2,9 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"github.com/tsingsun/woocoo/web/handler/gzip"
 	"net/url"
 	"strings"
 )
@@ -16,13 +14,14 @@ var (
 )
 
 const (
-	recoveryName     = "recovery"
-	jwtName          = "jwt"
-	accessLogName    = "accessLog"
-	errorHandlerName = "errorHandle"
-	gzipName         = "gzip"
-	keyAuthName      = "keyAuth"
-	corsName         = "cors"
+	RecoverName      = "recovery"
+	JWTName          = "jwt"
+	AccessLogName    = "accessLog"
+	ErrorHandlerName = "errorHandle"
+	GZipName         = "gzip"
+	KeyAuthName      = "keyAuth"
+	CORSName         = "cors"
+	CSRFName         = "csrf"
 )
 
 // Middleware is an instance to build middleware for web application.
@@ -98,97 +97,6 @@ func PathSkip(list []string, url *url.URL) bool {
 		}
 	}
 	return false
-}
-
-func Gzip() Middleware {
-	mw := gzip.NewGzip()
-	return mw
-}
-
-// Manager is a manager about middleware new function and shutdown function,
-// and auto calls those functions when needed; it tries to keep the middleware are immutable.
-//
-// If you want to get middleware information in your application,
-// and you know that your middleware is immutable, or you can control it, you can store it in the cache for reuse.
-type Manager struct {
-	newFuncs    map[string]MiddlewareNewFunc
-	middlewares map[string]Middleware
-}
-
-// NewManager creates a new middleware manager, initialize common useful middlewares.
-func NewManager() *Manager {
-	mgr := &Manager{
-		newFuncs:    make(map[string]MiddlewareNewFunc),
-		middlewares: make(map[string]Middleware),
-	}
-	mgr.registerIntegrationHandler()
-	return mgr
-}
-
-// Register a middleware new function.
-func (m *Manager) Register(name string, handler MiddlewareNewFunc) {
-	if _, ok := m.newFuncs[name]; ok {
-		logger.Warn(fmt.Sprintf("middlware new func override:%s", name))
-	}
-	m.newFuncs[name] = handler
-}
-
-// GetMiddlewareKey returns a unique key for middleware
-func GetMiddlewareKey(group, name string) string {
-	if group == "/" {
-		group = "default"
-	}
-	return group + ":" + name
-}
-
-// RegisterMiddleware register a middleware instance. Should call it after Register. Keep the key unique.
-func (m *Manager) RegisterMiddleware(key string, mid Middleware) {
-	if _, ok := m.middlewares[key]; ok {
-		panic("middleware could not override")
-	}
-	m.middlewares[key] = mid
-}
-
-func (m *Manager) Get(name string) (MiddlewareNewFunc, bool) {
-	v, ok := m.newFuncs[name]
-	return v, ok
-}
-
-// GetMiddleware returns a middleware instance by key. Should not change the middleware's option value and keep
-// middleware run immutable.
-func (m *Manager) GetMiddleware(key string) (Middleware, bool) {
-	v, ok := m.middlewares[key]
-	return v, ok
-}
-
-func integration() map[string]MiddlewareNewFunc {
-	var handlerMap = map[string]MiddlewareNewFunc{
-		recoveryName:     Recovery,
-		jwtName:          JWT,
-		accessLogName:    AccessLog,
-		errorHandlerName: ErrorHandle,
-		gzipName:         Gzip,
-		keyAuthName:      KeyAuth,
-		corsName:         CORS,
-	}
-	return handlerMap
-}
-
-func (m *Manager) registerIntegrationHandler() {
-	for s, applyFunc := range integration() {
-		m.Register(s, applyFunc)
-	}
-}
-
-// Shutdown a handler if handler base on file,net such as a need to release resource
-func (m *Manager) Shutdown(ctx context.Context) error {
-	for key, mid := range m.middlewares {
-		if sd, ok := mid.(Shutdown); ok {
-			sd.Shutdown(ctx) //nolint:errcheck
-		}
-		delete(m.middlewares, key)
-	}
-	return nil
 }
 
 // gin.Context is not context.Context, set the store value target

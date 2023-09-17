@@ -51,7 +51,7 @@ func ErrorHandle() Middleware {
 }
 
 func (em *ErrorHandleMiddleware) Name() string {
-	return errorHandlerName
+	return ErrorHandlerName
 }
 
 func (em *ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {

@@ -194,7 +194,7 @@ func TestLoggerMiddleware(t *testing.T) {
 			w := httptest.NewRecorder()
 			want := tt.want()
 			accessLog := AccessLog()
-			assert.Equal(t, accessLogName, accessLog.Name())
+			assert.Equal(t, AccessLogName, accessLog.Name())
 			middleware := accessLog.ApplyFunc(tt.args.cfg)
 			srv := gin.New()
 			srv.Use(middleware, Recovery().ApplyFunc(tt.args.cfg))

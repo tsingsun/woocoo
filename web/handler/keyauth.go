@@ -49,13 +49,24 @@ var (
 )
 
 type KeyAuthMiddleware struct {
-	opts middlewareOptions
+	config *KeyAuthConfig
 }
 
 func NewKeyAuth(opts ...MiddlewareOption) *KeyAuthMiddleware {
-	md := &KeyAuthMiddleware{}
-	md.opts.applyOptions(opts...)
-	return md
+	mw := &KeyAuthMiddleware{
+		config: &defaultKeyAuthConfig,
+	}
+	mipts := middlewareOptions{}
+	mipts.applyOptions(opts...)
+	if mipts.configFunc != nil {
+		mw.config = mipts.configFunc().(*KeyAuthConfig)
+	}
+	if mw.config.Skipper == nil {
+		mw.config.Skipper = func(c *gin.Context) bool {
+			return PathSkip(mw.config.Exclude, c.Request.URL)
+		}
+	}
+	return mw
 }
 
 // KeyAuth is the keyauth middleware apply function. see MiddlewareNewFunc
@@ -65,31 +76,14 @@ func KeyAuth() Middleware {
 }
 
 func (mw *KeyAuthMiddleware) Name() string {
-	return keyAuthName
+	return KeyAuthName
 }
 
 func (mw *KeyAuthMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	opts := new(KeyAuthConfig)
-	if mw.opts.configFunc != nil {
-		opts = mw.opts.configFunc().(*KeyAuthConfig)
-	} else {
-		*opts = defaultKeyAuthConfig
-	}
-	if err := cfg.Unmarshal(&opts); err != nil {
+	if err := cfg.Unmarshal(&mw.config); err != nil {
 		panic(err)
 	}
-	if opts.Skipper == nil {
-		opts.Skipper = func(c *gin.Context) bool {
-			return PathSkip(opts.Exclude, c.Request.URL)
-		}
-	}
-	if opts.KeyLookup == "" {
-		opts.KeyLookup = defaultKeyAuthConfig.KeyLookup
-	}
-	if opts.AuthScheme == "" {
-		opts.AuthScheme = defaultKeyAuthConfig.AuthScheme
-	}
-	return keyAuthWithOption(opts)
+	return keyAuthWithOption(mw.config)
 }
 
 func keyAuthWithOption(opts *KeyAuthConfig) gin.HandlerFunc {

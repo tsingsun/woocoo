@@ -28,7 +28,6 @@ clog := logger.Ctx(ctx)
 clog.Info("hello world")
 clog.Info("hello world1")
 ``` 
-  
 
 配置结构如下:
 
@@ -50,7 +49,7 @@ log:
         - "test.log"
       errorOutputPaths:
         - stderr
-  # 采用文件流时,轮转配置可方便管理与跟踪日志,可选配置
+  # 采用文件流时,轮转配置可方便管理与跟踪日志,可选配置;
   rotate:
     maxSize: 1
     maxage: 1
@@ -58,6 +57,15 @@ log:
     localtime: true
     compress: false
 ```
+
+`rotate`可只保留key,不配置值,则使用默认值.默认值如下:
+
+- MaxSize: 单文件最大大小, 100MB
+- MaxAge: 文件保留天数, 不限制
+- MaxBackups: 保留文件个数, 不限制
+- LocalTime: false, 使用UTC时间
+- Compress: false, 不压缩
+
 ## mulit-logger
 
 ```yaml

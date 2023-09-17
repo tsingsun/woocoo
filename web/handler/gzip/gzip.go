@@ -9,6 +9,7 @@ import (
 	"github.com/klauspost/compress/gzhttp/writer/gzkp"
 	"github.com/klauspost/compress/gzip"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/web/handler"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -61,14 +62,19 @@ func convertToMap(slice []string) map[string]bool {
 	return m
 }
 
-// Handler is a gzip handler
-type Handler struct {
+// Middleware is a gzip handler
+type Middleware struct {
 	writerFactory writer.GzipWriterFactory
 }
 
+func Gzip() handler.Middleware {
+	mw := NewGzip()
+	return mw
+}
+
 // NewGzip returns a new gzip middleware.
-func NewGzip() *Handler {
-	return &Handler{
+func NewGzip() *Middleware {
+	return &Middleware{
 		writerFactory: writer.GzipWriterFactory{
 			Levels: gzkp.Levels,
 			New:    gzkp.NewWriter,
@@ -77,11 +83,11 @@ func NewGzip() *Handler {
 }
 
 // Name returns the name of the middleware.
-func (h *Handler) Name() string {
+func (h *Middleware) Name() string {
 	return "gzip"
 }
 
-func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
+func (h *Middleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	opt := Config{
 		Level:              gzip.DefaultCompression,
 		MinSize:            gzhttp.DefaultMinSize,
@@ -115,13 +121,13 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 }
 
 // Shutdown gzip noting to do here
-func (h *Handler) Shutdown(_ context.Context) error {
+func (h *Middleware) Shutdown(_ context.Context) error {
 	return nil
 }
 
 // shouldCompress returns true if the given HTTP request indicates that it will
 // accept a gzipped response.
-func (h *Handler) shouldCompress(req *http.Request, opt Config) bool {
+func (h *Middleware) shouldCompress(req *http.Request, opt Config) bool {
 	if req.Method == http.MethodHead || !strings.Contains(req.Header.Get("Accept-Encoding"), "gzip") {
 		return false
 	}

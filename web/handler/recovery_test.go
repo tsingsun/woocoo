@@ -231,7 +231,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 			gin.SetMode(gin.ReleaseMode)
 			srv := gin.New()
 			mid := Recovery()
-			assert.Equal(t, recoveryName, mid.Name())
+			assert.Equal(t, RecoverName, mid.Name())
 			srv.Use(mid.ApplyFunc(tt.args.cfg))
 			srv.GET("/", func(c *gin.Context) {
 				tt.args.handler(c)

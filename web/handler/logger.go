@@ -88,7 +88,7 @@ func AccessLog() Middleware {
 }
 
 func (h *LoggerMiddleware) Name() string {
-	return accessLogName
+	return AccessLogName
 }
 
 // zap.AddStacktrace(zapcore.FatalLevel + 1) force to not add stack.

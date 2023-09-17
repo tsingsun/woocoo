@@ -26,7 +26,7 @@ func Recovery() Middleware {
 }
 
 func (h *RecoveryMiddleware) Name() string {
-	return recoveryName
+	return RecoverName
 }
 
 func (h *RecoveryMiddleware) ApplyFunc(_ *conf.Configuration) gin.HandlerFunc {

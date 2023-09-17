@@ -49,6 +49,7 @@ var defaultOptions = options{
 	global: false,
 }
 
+// use the dir of app position as base dir, not pwd.
 func init() {
 	pwd, err := filepath.Abs(os.Args[0])
 	if err != nil {

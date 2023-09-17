@@ -46,51 +46,30 @@ type (
 // Users can get a token by posting a json request to LoginHandler. The token then needs to be passed in
 // the Authentication header. Example: Authorization:Bearer XXX_TOKEN_XXX
 type JWTMiddleware struct {
-	opts   middlewareOptions
 	Config *JWTConfig
 	// tokenStore is the cache for store token key.
 	tokenStore cache.Cache
 }
 
+// NewJWT constructs a new JWT struct with supplied options.
 func NewJWT(opts ...MiddlewareOption) *JWTMiddleware {
-	md := &JWTMiddleware{}
-	md.opts.applyOptions(opts...)
-	return md
-}
-
-// JWT is the jwt middleware apply function. see MiddlewareNewFunc
-func JWT() Middleware {
-	mw := NewJWT()
-	return mw
-}
-
-func (mw *JWTMiddleware) Name() string {
-	return jwtName
-}
-
-func (mw *JWTMiddleware) build(cfg *conf.Configuration) {
-	var opts *JWTConfig
-	if mw.opts.configFunc != nil {
-		opts = mw.opts.configFunc().(*JWTConfig)
+	mw := &JWTMiddleware{}
+	mipts := middlewareOptions{}
+	mipts.applyOptions(opts...)
+	if mipts.configFunc != nil {
+		mw.Config = mipts.configFunc().(*JWTConfig)
 	} else {
-		opts = &JWTConfig{
+		mw.Config = &JWTConfig{
 			JWTOptions: *auth.NewJWTOptions(),
 		}
 	}
-	if err := cfg.Unmarshal(&opts); err != nil {
-		panic(err)
-	}
-	if err := opts.Init(); err != nil {
-		panic(err)
-	}
-
-	if opts.Skipper == nil {
-		opts.Skipper = func(c *gin.Context) bool {
-			return PathSkip(opts.Exclude, c.Request.URL)
+	if mw.Config.Skipper == nil {
+		mw.Config.Skipper = func(c *gin.Context) bool {
+			return PathSkip(mw.Config.Exclude, c.Request.URL)
 		}
 	}
-	if opts.WithPrincipalContext == nil {
-		opts.WithPrincipalContext = func(c *gin.Context, token *jwt.Token) error {
+	if mw.Config.WithPrincipalContext == nil {
+		mw.Config.WithPrincipalContext = func(c *gin.Context, token *jwt.Token) error {
 			claims, ok := token.Claims.(jwt.MapClaims)
 			if !ok {
 				return auth.ErrJWTClaims
@@ -100,20 +79,14 @@ func (mw *JWTMiddleware) build(cfg *conf.Configuration) {
 			return nil
 		}
 	}
-	mw.Config = opts
-
-	if opts.TokenStoreKey != "" {
-		mw.tokenStore = cache.GetCache(opts.TokenStoreKey)
-	}
-
-	if opts.LogoutHandler == nil {
-		opts.LogoutHandler = func(c *gin.Context) {
+	if mw.Config.LogoutHandler == nil {
+		mw.Config.LogoutHandler = func(c *gin.Context) {
 			gp, ok := security.GenericPrincipalFromContext(GetDerivativeContext(c))
 			if !ok {
 				return
 			}
 			cl := gp.Identity().Claims()
-			jti, ok := opts.GetTokenIDFunc(&jwt.Token{Claims: cl})
+			jti, ok := mw.Config.GetTokenIDFunc(&jwt.Token{Claims: cl})
 			if ok && mw.tokenStore != nil {
 				if err := mw.tokenStore.Del(c, jti); err != nil {
 					c.Error(err) // nolint: errcheck
@@ -121,10 +94,29 @@ func (mw *JWTMiddleware) build(cfg *conf.Configuration) {
 			}
 		}
 	}
+	return mw
+}
+
+// JWT is the jwt middleware apply function. see MiddlewareNewFunc
+func JWT() Middleware {
+	return NewJWT()
+}
+
+func (mw *JWTMiddleware) Name() string {
+	return JWTName
 }
 
 func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	mw.build(cfg)
+	if err := cfg.Unmarshal(mw.Config); err != nil {
+		panic(err)
+	}
+	if err := mw.Config.Init(); err != nil {
+		panic(err)
+	}
+
+	if mw.Config.TokenStoreKey != "" {
+		mw.tokenStore = cache.GetCache(mw.Config.TokenStoreKey)
+	}
 	return mw.middleware()
 }
 
@@ -162,8 +154,11 @@ func (mw *JWTMiddleware) middleware() gin.HandlerFunc {
 		if mw.Config.Skipper(c) {
 			return
 		}
-		var lastExtractorErr error
-		var lastTokenErr error
+		var (
+			lastExtractorErr error
+			lastTokenErr     error
+		)
+	outer:
 		for _, extractor := range extractors {
 			auths, err := extractor(c)
 			if err != nil {
@@ -178,25 +173,24 @@ func (mw *JWTMiddleware) middleware() gin.HandlerFunc {
 				}
 				// Store user information from token into context.
 				if mw.Config.WithPrincipalContext != nil {
-					err = mw.Config.WithPrincipalContext(c, token)
-					if err != nil {
+					if err := mw.Config.WithPrincipalContext(c, token); err != nil {
 						lastTokenErr = err
-						continue
+						break outer
 					}
 				}
 				return
 			}
 		}
-		err := lastTokenErr
-		if err == nil {
-			err = lastExtractorErr
+		// must happen error
+		if lastTokenErr == nil {
+			lastTokenErr = lastExtractorErr
 		}
 		if mw.Config.ErrorHandler != nil {
-			err = mw.Config.ErrorHandler(c, err)
+			lastTokenErr = mw.Config.ErrorHandler(c, lastTokenErr)
 		}
 
-		if err != nil {
-			c.AbortWithError(http.StatusUnauthorized, err) //nolint:errcheck
+		if lastTokenErr != nil {
+			c.AbortWithError(http.StatusUnauthorized, lastTokenErr) //nolint:errcheck
 		}
 	}
 }

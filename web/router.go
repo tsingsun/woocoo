@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/web/handler"
 )
 
 // RouterGroup is a wrapper for gin.RouterGroup.
@@ -67,7 +66,7 @@ func (r *Router) Apply(cnf *conf.Configuration) (err error) {
 			if hf, ok := r.serverOptions.handlerManager.Get(name); ok {
 				mw := hf()
 				r.serverOptions.handlerManager.RegisterMiddleware(
-					handler.GetMiddlewareKey(gr.Group.BasePath(), name), mw)
+					GetMiddlewareKey(gr.Group.BasePath(), name), mw)
 				mdl = append(mdl, mw.ApplyFunc(cfg))
 			}
 		})

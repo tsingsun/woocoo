@@ -13,7 +13,6 @@ import (
 
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
-	"github.com/tsingsun/woocoo/web/handler"
 )
 
 const (
@@ -28,7 +27,7 @@ type ServerOptions struct {
 	Addr           string              `json:"addr" yaml:"addr"`
 	TLS            *conf.TLS           `json:"tls" yaml:"tls"`
 	configuration  *conf.Configuration // not root configuration
-	handlerManager *handler.Manager    // middleware manager
+	handlerManager *HandlerManager     // middleware manager
 	gracefulStop   bool                // run with grace full shutdown
 }
 
@@ -46,7 +45,7 @@ func New(opts ...Option) *Server {
 	s := &Server{
 		opts: ServerOptions{
 			Addr:           defaultAddr,
-			handlerManager: handler.NewManager(),
+			handlerManager: NewHandlerManager(),
 		},
 	}
 	for _, o := range opts {
@@ -73,7 +72,7 @@ func (s *Server) ServerOptions() ServerOptions {
 }
 
 // HandlerManager return server's handler manager,it's convenient to process handler
-func (s *Server) HandlerManager() *handler.Manager {
+func (s *Server) HandlerManager() *HandlerManager {
 	return s.opts.handlerManager
 }
 

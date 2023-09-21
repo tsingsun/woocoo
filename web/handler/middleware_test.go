@@ -97,7 +97,7 @@ func TestPathSkip(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, PathSkip(tt.args.list, tt.args.url), "PathSkip(%v, %v)", tt.args.list, tt.args.url)
+			assert.Equalf(t, tt.want, PathSkip(StringsToMap(tt.args.list), tt.args.url), "PathSkip(%v, %v)", tt.args.list, tt.args.url)
 		})
 	}
 }

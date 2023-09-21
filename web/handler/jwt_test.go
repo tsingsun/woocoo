@@ -198,6 +198,7 @@ ZwIDAQAB
 			t.Run("skip", func(t *testing.T) {
 				if len(mw.Config.Exclude) == 0 {
 					mw.Config.Exclude = append(mw.Config.Exclude, "/skip")
+					mw.Config.Skipper = handler.PathSkipper(mw.Config.Exclude)
 				}
 				r = httptest.NewRequest("GET", "/skip", nil)
 				w = httptest.NewRecorder()

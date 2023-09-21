@@ -62,9 +62,7 @@ func NewKeyAuth(opts ...MiddlewareOption) *KeyAuthMiddleware {
 		mw.config = mipts.configFunc().(*KeyAuthConfig)
 	}
 	if mw.config.Skipper == nil {
-		mw.config.Skipper = func(c *gin.Context) bool {
-			return PathSkip(mw.config.Exclude, c.Request.URL)
-		}
+		mw.config.Skipper = PathSkipper(mw.config.Exclude)
 	}
 	return mw
 }

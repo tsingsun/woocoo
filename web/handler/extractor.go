@@ -4,18 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/tsingsun/woocoo/pkg/httpx"
 	"net/textproto"
 	"strings"
 )
 
-const (
-	// extractorLimit is arbitrary number to limit values extractor can return. this limits possible resource exhaustion
-	// attack vector
-	extractorLimit = 20
-)
-
-var errHeaderExtractorValueMissing = errors.New("missing value in request header")
-var errHeaderExtractorValueInvalid = errors.New("invalid value in request header")
 var errQueryExtractorValueMissing = errors.New("missing value in the query string")
 var errParamExtractorValueMissing = errors.New("missing value in path params")
 var errCookieExtractorValueMissing = errors.New("missing value in cookies")
@@ -69,46 +62,18 @@ func CreateExtractors(lookups string, authScheme string) ([]ValuesExtractor, err
 	return extractors, nil
 }
 
-// ValuesFromHeader returns a functions that extracts values from the request header.
-// valuePrefix is parameter to remove first part (prefix) of the extracted value. This is useful if header value has static
+// ValuesFromHeader returns functions that extract values from the request header.
+// valuePrefix is a parameter to remove the first part (prefix) of the extracted value. This is useful if header value has static
 // prefix like `Authorization: <auth-scheme> <authorisation-parameters>` where part that we want to remove is `<auth-scheme> `
-// note the space at the end. In case of basic authentication `Authorization: Basic <credentials>` prefix we want to remove
-// is `Basic `. In case of NewJWT tokens `Authorization: Bearer <token>` prefix is `Bearer `.
-// If prefix is left empty the whole value is returned.
+// note the space at the end. In the case of basic authentication `Authorization: Basic <credentials>` prefix we want to remove
+// is `Basic `. In the case of NewJWT tokens `Authorization: Bearer <token>` prefix is `Bearer `.
+// If the prefix is left empty, the whole value is returned.
 func ValuesFromHeader(header string, valuePrefix string) ValuesExtractor {
 	prefixLen := len(valuePrefix)
 	// standard library parses http.Request header keys in canonical form but we may provide something else so fix this
 	header = textproto.CanonicalMIMEHeaderKey(header)
 	return func(c *gin.Context) ([]string, error) {
-		values := c.Request.Header.Values(header)
-		if len(values) == 0 {
-			return nil, errHeaderExtractorValueMissing
-		}
-
-		result := make([]string, 0)
-		for i, value := range values {
-			if prefixLen == 0 {
-				result = append(result, value)
-				if i >= extractorLimit-1 {
-					break
-				}
-				continue
-			}
-			if len(value) > prefixLen && strings.EqualFold(value[:prefixLen], valuePrefix) {
-				result = append(result, value[prefixLen:])
-				if i >= extractorLimit-1 {
-					break
-				}
-			}
-		}
-
-		if len(result) == 0 {
-			if prefixLen > 0 {
-				return nil, errHeaderExtractorValueInvalid
-			}
-			return nil, errHeaderExtractorValueMissing
-		}
-		return result, nil
+		return httpx.ValuesFromHeader(c.Request, header, valuePrefix, prefixLen)
 	}
 }
 
@@ -118,8 +83,8 @@ func ValuesFromQuery(param string) ValuesExtractor {
 		result := c.QueryArray(param)
 		if len(result) == 0 {
 			return nil, errQueryExtractorValueMissing
-		} else if len(result) > extractorLimit-1 {
-			result = result[:extractorLimit]
+		} else if len(result) > httpx.ExtractorLimit-1 {
+			result = result[:httpx.ExtractorLimit]
 		}
 		return result, nil
 	}
@@ -132,7 +97,7 @@ func ValuesFromParam(param string) ValuesExtractor {
 		for i, p := range c.Params {
 			if param == p.Key {
 				result = append(result, p.Value)
-				if i >= extractorLimit-1 {
+				if i >= httpx.ExtractorLimit-1 {
 					break
 				}
 			}
@@ -156,7 +121,7 @@ func ValuesFromCookie(name string) ValuesExtractor {
 		for i, cookie := range cookies {
 			if name == cookie.Name {
 				result = append(result, cookie.Value)
-				if i >= extractorLimit-1 {
+				if i >= httpx.ExtractorLimit-1 {
 					break
 				}
 			}
@@ -178,8 +143,8 @@ func ValuesFromForm(name string) ValuesExtractor {
 		if len(values) == 0 {
 			return nil, errFormExtractorValueMissing
 		}
-		if len(values) > extractorLimit-1 {
-			values = values[:extractorLimit]
+		if len(values) > httpx.ExtractorLimit-1 {
+			values = values[:httpx.ExtractorLimit]
 		}
 		result := append([]string{}, values...)
 		return result, nil

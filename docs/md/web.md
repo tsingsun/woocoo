@@ -246,3 +246,72 @@ cros:
   allowHeaders: "Origin,Content-Type,Accept,Authorization"
 ```
 
+## 签名HTTP
+
+针对HTTP Request签名主要为了保证请求的安全,可以防止数据被篡改,防止重放攻击.提供两种签名机制.
+
+在本中间件中,也提供了指向缓存配置,可以轻松的融合.
+
+- 简易签名: 
+  
+  是通过时间戳,随机数,token因素签名.
+  是微信JS签名相似的,也被多家所采用,通过合理的参数设置,是一种性价比较高的机制.简单又安全,同时也无需对Body进行哈希.前各端都可以轻松实现.
+
+  例子:
+
+  ```
+  Authorization: XXX-HMAC-SHA256 timestamp=1414587457;nonce=Wm3WZYTPz0wzccnW;signature=OJZA/jnroXMK/sg3VBiUCdE4angcf9p40SmSMlwyN88="
+  ```
+
+- 规范签名:
+
+  根据 Http Signature规范对涉及到请求要素(header,资源,密钥)进行签名,是标准的安全做法.
+
+### 配置
+
+以上两种都可以通过配置文件进行配置. `sign`对应规范签名,`tokenSign`对应简易签名
+
+以下为关键配置:
+
+- `signedLookups`: 需要签名的元素信息,key为签名元素, value为签名元素的来源,可以是header,query,context等,直接不填来源会默认header.
+- `authLookup`: 签名信息写入位置. 默认是 `header:Authorization`,则会将签名信息写入到Authorization头中.
+- `authScheme`: 当需要写入`header:Authorization` 一般要指定scheme;根据规范,一般如`XXX-HMAC-SHA1`等标准服务商.
+- `authHeaders`: 需要签名写入到Header的元素.固定写入头的为`Signature`不需要配置,其他的都是可选的.
+- `interval`: 在当前时间内的时间戳有效期,默认为5分钟.如果时间戳与当前时间相差超过该值,则认为是无效的签名.
+- `ttl`: 签名缓存有效期,默认为24小时.配置该值时,请结合accessToken的有效期进行配置.至少应该是要大于accessToken的有效期. 
+这样可以保证accessToken失效后,签名也失效.即例缓存被清除了,也可保证签名失效.
+
+```yaml
+## 简易签名
+tokenSign:  
+  signerConfig:
+    authLookup: "header:Authorization"
+    authScheme: "XXX-HMAC-SHA1"     
+    authHeaders: ["timestamp","noncestr"]
+    signedLookups:
+      - accessToken: header:Authorization>Bearer
+      - timestamp:
+      - noncestr:
+      - url: CanonicalUri  
+  storeKey: signature
+ ```
+
+```yaml
+##
+sign:  
+  signerConfig:
+    authLookup: "header:Authorization"
+    authScheme: "TEST-HMAC-SHA1" 
+    authHeaderDelimiter: ";"
+    signedLookups:
+      - x-timestamp: "header"
+      - content-type: "header"
+      - content-length: ""
+      - x-tenant-id: "header" 
+    timestampKey: x-timestamp 
+  storeKey: signature
+```
+
+签名算法中的值除了来源来header,query,context外,我们还约定了常见的值, 如:
+
+- `CanonicalUri`:规范化Uri,到Path信息,但TokenSigner为去除了fragment的完整路径.

@@ -130,6 +130,7 @@ func TestExcludedExtensions(t *testing.T) {
 
 	router := gin.New()
 	mid := gzip.NewGzip()
+	assert.Equal(t, "gzip", mid.Name())
 	router.Use(mid.ApplyFunc(conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
 		"minSize":            1,
 		"excludedExtensions": []string{".html"},

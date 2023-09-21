@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -102,7 +103,7 @@ func TestCreateExtractors(t *testing.T) {
 			}
 			for i, extractor := range gots {
 				got, err := extractor(tt.ctx)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tt.want[i], got[i])
 			}
 		})

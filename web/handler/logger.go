@@ -137,12 +137,13 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	h.buildTag(h.config.Format)
 	h.buildLogger()
 	if h.config.Skipper == nil && len(h.config.Exclude) > 0 {
+		pm := StringsToMap(h.config.Exclude)
 		h.config.Skipper = func(c *gin.Context) bool {
 			// if it has error,should log
 			if len(c.Errors) > 0 {
 				return false
 			}
-			return PathSkip(h.config.Exclude, c.Request.URL)
+			return PathSkip(pm, c.Request.URL)
 		}
 	} else {
 		h.config.Skipper = DefaultSkipper

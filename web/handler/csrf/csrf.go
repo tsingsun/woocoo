@@ -48,9 +48,7 @@ func NewMiddleware() *Middleware {
 		},
 	}
 	if mw.config.Skipper == nil {
-		mw.config.Skipper = func(c *gin.Context) bool {
-			return handler.PathSkip(mw.config.Exclude, c.Request.URL)
-		}
+		mw.config.Skipper = handler.PathSkipper(mw.config.Exclude)
 	}
 	return mw
 }

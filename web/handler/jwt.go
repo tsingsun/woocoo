@@ -64,9 +64,7 @@ func NewJWT(opts ...MiddlewareOption) *JWTMiddleware {
 		}
 	}
 	if mw.Config.Skipper == nil {
-		mw.Config.Skipper = func(c *gin.Context) bool {
-			return PathSkip(mw.Config.Exclude, c.Request.URL)
-		}
+		mw.Config.Skipper = PathSkipper(mw.Config.Exclude)
 	}
 	if mw.Config.WithPrincipalContext == nil {
 		mw.Config.WithPrincipalContext = func(c *gin.Context, token *jwt.Token) error {

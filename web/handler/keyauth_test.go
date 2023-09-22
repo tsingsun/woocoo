@@ -58,14 +58,13 @@ func TestKeyAuth(t *testing.T) {
 			args: args{
 				cfg: conf.NewFromStringMap(map[string]any{}),
 				opts: []handler.MiddlewareOption{
-					handler.WithMiddlewareConfig(func() any {
-						return &handler.KeyAuthConfig{
-							Validator: func(c *gin.Context, keyAuth string) (bool, error) {
-								if keyAuth == "secret" {
-									return true, nil
-								}
-								return false, errors.New("invalid key")
-							},
+					handler.WithMiddlewareConfig(func(config any) {
+						c := config.(*handler.KeyAuthConfig)
+						c.Validator = func(c *gin.Context, keyAuth string) (bool, error) {
+							if keyAuth == "secret" {
+								return true, nil
+							}
+							return false, errors.New("invalid key")
 						}
 					}),
 				},
@@ -83,12 +82,11 @@ func TestKeyAuth(t *testing.T) {
 			args: args{
 				cfg: conf.NewFromStringMap(map[string]any{}),
 				opts: []handler.MiddlewareOption{
-					handler.WithMiddlewareConfig(func() any {
-						return &handler.KeyAuthConfig{
-							KeyLookup: "header:API-KEY",
-							Validator: func(c *gin.Context, keyAuth string) (bool, error) {
-								return false, errors.New("invalid key")
-							},
+					handler.WithMiddlewareConfig(func(config any) {
+						c := config.(*handler.KeyAuthConfig)
+						c.KeyLookup = "header:API-KEY"
+						c.Validator = func(c *gin.Context, keyAuth string) (bool, error) {
+							return false, errors.New("invalid key")
 						}
 					}),
 				},
@@ -106,16 +104,15 @@ func TestKeyAuth(t *testing.T) {
 			args: args{
 				cfg: conf.NewFromStringMap(map[string]any{}),
 				opts: []handler.MiddlewareOption{
-					handler.WithMiddlewareConfig(func() any {
-						return &handler.KeyAuthConfig{
-							KeyLookup: "form:API-KEY",
-							Validator: func(c *gin.Context, keyAuth string) (bool, error) {
-								assert.Equal(t, "secret1", keyAuth)
-								return false, errors.New("invalid key")
-							},
-							ErrorHandler: func(c *gin.Context, err error) error {
-								return nil
-							},
+					handler.WithMiddlewareConfig(func(config any) {
+						c := config.(*handler.KeyAuthConfig)
+						c.KeyLookup = "form:API-KEY"
+						c.Validator = func(c *gin.Context, keyAuth string) (bool, error) {
+							assert.Equal(t, "secret1", keyAuth)
+							return false, errors.New("invalid key")
+						}
+						c.ErrorHandler = func(c *gin.Context, err error) error {
+							return nil
 						}
 					}),
 				},

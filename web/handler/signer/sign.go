@@ -51,9 +51,14 @@ type Middleware struct {
 }
 
 // NewMiddleware constructs a new Middleware struct with supplied options.
-func NewMiddleware() *Middleware {
+// name is the name of the middleware, default is "sign", name can be empty string meaning default.
+func NewMiddleware(name string, opts ...handler.MiddlewareOption) *Middleware {
+	mipts := handler.NewMiddlewareOption(opts...)
+	if name == "" {
+		name = SignerName
+	}
 	mw := &Middleware{
-		name: SignerName,
+		name: name,
 		config: &Config{
 			SignerConfig: httpx.DefaultSignerConfig,
 			Interval:     5 * time.Minute,
@@ -61,18 +66,21 @@ func NewMiddleware() *Middleware {
 			TTL:          24 * time.Hour,
 		},
 	}
+	if mipts.ConfigFunc != nil {
+		mipts.ConfigFunc(mw.config)
+	}
+	// force set dry mode
 	mw.config.SignerConfig.Dry = true
 	return mw
 }
 
 // Signature is the replay attack protect middleware apply function. See MiddlewareNewFunc
 func Signature() handler.Middleware {
-	return NewMiddleware()
+	return NewMiddleware(SignerName)
 }
 
 func TokenSigner() handler.Middleware {
-	mw := NewMiddleware()
-	mw.name = TokenSignerName
+	mw := NewMiddleware(TokenSignerName)
 	return mw
 }
 

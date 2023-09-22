@@ -53,15 +53,14 @@ type JWTMiddleware struct {
 
 // NewJWT constructs a new JWT struct with supplied options.
 func NewJWT(opts ...MiddlewareOption) *JWTMiddleware {
-	mw := &JWTMiddleware{}
-	mipts := middlewareOptions{}
-	mipts.applyOptions(opts...)
-	if mipts.configFunc != nil {
-		mw.Config = mipts.configFunc().(*JWTConfig)
-	} else {
-		mw.Config = &JWTConfig{
+	mw := &JWTMiddleware{
+		Config: &JWTConfig{
 			JWTOptions: *auth.NewJWTOptions(),
-		}
+		},
+	}
+	mipts := NewMiddlewareOption(opts...)
+	if mipts.ConfigFunc != nil {
+		mipts.ConfigFunc(mw.Config)
 	}
 	if mw.Config.Skipper == nil {
 		mw.Config.Skipper = PathSkipper(mw.Config.Exclude)

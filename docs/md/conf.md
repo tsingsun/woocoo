@@ -41,7 +41,7 @@ func main() {
 	if err := app.Run(); err != nil {
 		log.Panic(err)
 	}
-}    
+}
 ```
 
 `go run main.go`后`curl localhost:8080`即可看到`hello world`输出.

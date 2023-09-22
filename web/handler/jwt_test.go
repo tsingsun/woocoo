@@ -12,7 +12,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tsingsun/woocoo/pkg/auth"
 	"github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/cache/redisc"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -61,12 +60,9 @@ func TestJWTMiddleware_ApplyFunc(t *testing.T) {
 				"signingKey": "secret",
 			}),
 				opts: []handler.MiddlewareOption{
-					handler.WithMiddlewareConfig(func() any {
-						nc := &handler.JWTConfig{
-							JWTOptions: *auth.NewJWTOptions(),
-						}
+					handler.WithMiddlewareConfig(func(config any) {
+						nc := config.(*handler.JWTConfig)
 						nc.JWTOptions.SigningKey = "wrong"
-						return nc
 					}),
 				},
 			},
@@ -116,15 +112,12 @@ ZwIDAQAB
 					"tokenStoreKey": "tokenStore",
 				}),
 				opts: []handler.MiddlewareOption{
-					handler.WithMiddlewareConfig(func() any {
-						nc := &handler.JWTConfig{
-							JWTOptions: *auth.NewJWTOptions(),
-							ErrorHandler: func(c *gin.Context, err error) error {
-								c.AbortWithStatusJSON(http.StatusNotAcceptable, 1)
-								return errors.New("error")
-							},
+					handler.WithMiddlewareConfig(func(config any) {
+						nc := config.(*handler.JWTConfig)
+						nc.ErrorHandler = func(c *gin.Context, err error) error {
+							c.AbortWithStatusJSON(http.StatusNotAcceptable, 1)
+							return errors.New("error")
 						}
-						return nc
 					}),
 				},
 			},

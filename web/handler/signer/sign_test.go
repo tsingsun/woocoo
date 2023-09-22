@@ -11,6 +11,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/cache/redisc"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
+	"github.com/tsingsun/woocoo/web/handler"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +19,46 @@ import (
 	"testing"
 	"time"
 )
+
+func TestNewMiddleware(t *testing.T) {
+	type args struct {
+		opts []handler.MiddlewareOption
+	}
+	tests := []struct {
+		name  string
+		args  args
+		check func(*Middleware)
+		panic bool
+	}{
+		{
+			name: "options",
+			args: args{
+				opts: []handler.MiddlewareOption{
+					handler.WithMiddlewareConfig(func(config any) {
+						c := config.(*Config)
+						c.Interval = 10 * time.Minute
+					}),
+				},
+			},
+			check: func(middleware *Middleware) {
+				assert.NotNil(t, middleware.config)
+				assert.Equal(t, 10*time.Minute, middleware.config.Interval)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.panic {
+				assert.Panics(t, func() {
+					NewMiddleware("", tt.args.opts...)
+				})
+				return
+			}
+			middleware := NewMiddleware("", tt.args.opts...)
+			tt.check(middleware)
+		})
+	}
+}
 
 func TestToken_Wechat_OK(t *testing.T) {
 	act := "sM4AOVdWfPE4DxkXGEs8VMCPGGVi4C3VM0P37wVUCFvkVAy_90u5h9nbSlYy3-Sl-HhTdfl2fzFy1AOcHKP7qg"

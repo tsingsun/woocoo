@@ -113,7 +113,7 @@ type SignerConfig struct {
 	// default false
 	DisableURIPathEscaping bool `yaml:"disableURIPathEscaping" json:"disableURIPathEscaping"`
 	// just calculate string to sign, not attach to request
-	Dry bool `yaml:"dry" json:"dry"`
+	Dry bool `yaml:"-" json:"-"`
 	// ScopeHeaders is a list of http headers to be included in signature, parsed from SignedLookups.
 	// ScopeHeaders must confirm sort func.
 	ScopeHeaders []string `yaml:"-" json:"-"`

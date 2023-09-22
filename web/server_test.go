@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"github.com/tsingsun/woocoo/web/handler"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -14,17 +15,38 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	srv := New(WithGracefulStop())
-	assert.Equal(t, srv.ServerOptions().Addr, defaultAddr)
-	assert.NotNil(t, srv.HandlerManager())
-	r := httptest.NewRequest("GET", "/user/123", nil)
-	w := httptest.NewRecorder()
-
-	srv.Router().Engine.GET("/user/:id", func(c *gin.Context) {
-		c.String(200, "User")
+	t.Run("options", func(t *testing.T) {
+		var tests = []struct {
+			name string
+			opts []Option
+		}{
+			{
+				name: "WithGracefulStop",
+				opts: []Option{WithGracefulStop()},
+			},
+			{
+				name: "WithMiddlewareNewFunc",
+				opts: []Option{WithMiddlewareNewFunc("test", func() handler.Middleware {
+					return newMckMiddleware()
+				})},
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				srv := New(tt.opts...)
+				assert.Equal(t, srv.ServerOptions().Addr, defaultAddr)
+				assert.NotNil(t, srv.HandlerManager())
+				r := httptest.NewRequest("GET", "/user/123", nil)
+				w := httptest.NewRecorder()
+				srv.Router().Engine.GET("/user/:id", func(c *gin.Context) {
+					c.String(200, "User")
+				})
+				srv.Router().Engine.ServeHTTP(w, r)
+				assert.Equal(t, 200, w.Code)
+				srv.Stop(context.Background())
+			})
+		}
 	})
-	srv.Router().Engine.ServeHTTP(w, r)
-	assert.Equal(t, 200, w.Code)
 }
 
 func TestServer_Apply(t *testing.T) {

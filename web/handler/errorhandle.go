@@ -31,54 +31,54 @@ type (
 	// ErrorHandleMiddleware is the middleware for error handle to format the errors to client
 	ErrorHandleMiddleware struct {
 		config *ErrorHandleConfig
-		opts   middlewareOptions
+		opts   MiddlewareOptions
 	}
 )
 
 // NewErrorHandle is the error handle middleware
 func NewErrorHandle(opts ...MiddlewareOption) *ErrorHandleMiddleware {
-	md := &ErrorHandleMiddleware{
+	mw := &ErrorHandleMiddleware{
 		config: new(ErrorHandleConfig),
 	}
-	md.opts.applyOptions(opts...)
-	return md
+	mipts := NewMiddlewareOption(opts...)
+	if mipts.ConfigFunc != nil {
+		mw.opts.ConfigFunc(mw.config)
+	}
+	mw.opts.applyOptions(opts...)
+	return mw
 }
 
 // ErrorHandle is the error handle middleware apply function. see MiddlewareNewFunc
 func ErrorHandle() Middleware {
-	wm := NewErrorHandle()
-	return wm
+	mw := NewErrorHandle()
+	return mw
 }
 
-func (em *ErrorHandleMiddleware) Name() string {
+func (mw *ErrorHandleMiddleware) Name() string {
 	return ErrorHandlerName
 }
 
-func (em *ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	if em.opts.configFunc != nil {
-		em.config = em.opts.configFunc().(*ErrorHandleConfig)
-	} else if cfg != nil {
-		if err := cfg.Unmarshal(&em.config); err != nil {
-			panic(err)
-		}
+func (mw *ErrorHandleMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
+	if err := cfg.Unmarshal(&mw.config); err != nil {
+		panic(err)
 	}
-	if em.config.Accepts != "" {
-		em.config.NegotiateFormat = strings.Split(em.config.Accepts, ",")
-	} else if len(em.config.NegotiateFormat) == 0 {
-		em.config.NegotiateFormat = DefaultNegotiateFormat
+	if mw.config.Accepts != "" {
+		mw.config.NegotiateFormat = strings.Split(mw.config.Accepts, ",")
+	} else if len(mw.config.NegotiateFormat) == 0 {
+		mw.config.NegotiateFormat = DefaultNegotiateFormat
 	}
 	var messageError error
-	if em.config.Message != "" {
-		messageError = errors.New(em.config.Message)
+	if mw.config.Message != "" {
+		messageError = errors.New(mw.config.Message)
 	}
-	if em.config.ErrorParser == nil {
-		em.config.ErrorParser = DefaultErrorParser
+	if mw.config.ErrorParser == nil {
+		mw.config.ErrorParser = DefaultErrorParser
 	}
 	return func(c *gin.Context) {
 		c.Next()
 		if len(c.Errors) > 0 {
-			code, e := em.config.ErrorParser(c, messageError)
-			NegotiateResponse(c, code, e, em.config.NegotiateFormat)
+			code, e := mw.config.ErrorParser(c, messageError)
+			NegotiateResponse(c, code, e, mw.config.NegotiateFormat)
 		}
 	}
 }

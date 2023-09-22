@@ -196,7 +196,7 @@ func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server
 	}
 
 	// set endpoint to graphql-playground used in playground UI
-	docHandler := playground.HandlerWithHeaders("graphql", opt.Endpoint, opt.DocHeader)
+	docHandler := playground.HandlerWithHeaders("graphql", opt.Endpoint, opt.DocHeader, opt.DocHeader)
 
 	var DocHandler = func(c *gin.Context) {
 		docHandler.ServeHTTP(c.Writer, c.Request)

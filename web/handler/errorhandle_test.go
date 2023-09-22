@@ -64,6 +64,7 @@ func TestErrorHandleMiddleware_ApplyFunc(t *testing.T) {
 				ge := c.Error(mkerr)
 				ge.Type = 0
 			},
+			args: args{cfg: conf.New()},
 			check: func(t *testing.T, r *httptest.ResponseRecorder, middleware *ErrorHandleMiddleware) {
 				assert.Equal(t, http.StatusInternalServerError, r.Code)
 				assert.NotContains(t, r.Body.String(), "code")
@@ -114,7 +115,8 @@ func TestErrorHandleMiddleware_ApplyFunc(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := NewErrorHandle()
+			e := ErrorHandle().(*ErrorHandleMiddleware)
+			assert.Equal(t, e.Name(), ErrorHandlerName)
 			gin.SetMode(gin.ReleaseMode)
 			web := gin.New()
 			got := e.ApplyFunc(tt.args.cfg)

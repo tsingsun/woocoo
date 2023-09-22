@@ -53,13 +53,13 @@ type KeyAuthMiddleware struct {
 }
 
 func NewKeyAuth(opts ...MiddlewareOption) *KeyAuthMiddleware {
+	c := defaultKeyAuthConfig
 	mw := &KeyAuthMiddleware{
-		config: &defaultKeyAuthConfig,
+		config: &c,
 	}
-	mipts := middlewareOptions{}
-	mipts.applyOptions(opts...)
-	if mipts.configFunc != nil {
-		mw.config = mipts.configFunc().(*KeyAuthConfig)
+	mipts := NewMiddlewareOption(opts...)
+	if mipts.ConfigFunc != nil {
+		mipts.ConfigFunc(mw.config)
 	}
 	if mw.config.Skipper == nil {
 		mw.config.Skipper = PathSkipper(mw.config.Exclude)

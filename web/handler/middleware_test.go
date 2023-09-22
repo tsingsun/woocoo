@@ -125,3 +125,13 @@ func TestDerivativeContext(t *testing.T) {
 		assert.Equal(t, "testval", got.Value("test"))
 	})
 }
+
+func TestWrapMiddlewareApplyFunc(t *testing.T) {
+	wf := WrapMiddlewareApplyFunc("test", func(cfg *conf.Configuration) gin.HandlerFunc {
+		return func(c *gin.Context) {
+			c.Next()
+		}
+	})
+	mw := wf()
+	assert.Equal(t, "test", mw.Name())
+}

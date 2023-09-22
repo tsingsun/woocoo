@@ -3,6 +3,7 @@ package lfu
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/vmihailenco/go-tinylfu"
@@ -80,7 +81,7 @@ func (c *TinyLFU) Get(ctx context.Context, key string, value any, opts ...cache.
 	return c.GetInner(ctx, key, value, opt)
 }
 
-func (c *TinyLFU) GetInner(ctx context.Context, key string, value any, opt *cache.Options) error {
+func (c *TinyLFU) GetInner(_ context.Context, key string, value any, opt *cache.Options) error {
 	if value == nil {
 		return ErrValueReceiverNil
 	}
@@ -125,14 +126,29 @@ func (c *TinyLFU) GetInner(ctx context.Context, key string, value any, opt *cach
 // the ttl will be less the setting,randomly reduced by a value between 0 and the offset.
 func (c *TinyLFU) Set(ctx context.Context, key string, value any, opts ...cache.Option) error {
 	opt := cache.ApplyOptions(opts...)
-	return c.SetInner(ctx, key, value, opt.TTL, opt.Raw)
+	return c.setOptions(ctx, key, value, opt.TTL, opt)
 }
 
-// SetInner sets the value for the given key.ttl is the expiration time, if ttl is zero, the default ttl will be used.
-func (c *TinyLFU) SetInner(ctx context.Context, key string, value any, ttl time.Duration, raw bool) error {
+func (c *TinyLFU) setOptions(_ context.Context, key string, value any, ttl time.Duration, opt *cache.Options) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	ttl = c.fixTTL(ttl)
+
+	switch {
+	case opt.SetXX:
+		if _, ok := c.lfu.Get(key); !ok {
+			return fmt.Errorf("setxx: key not exist:%s", key)
+		}
+	case opt.SetNX:
+		if _, ok := c.lfu.Get(key); ok {
+			return fmt.Errorf("setnx key already exist:%s", key)
+		}
+	}
+	return c.setValue(key, value, ttl, opt.Raw)
+}
+
+func (c *TinyLFU) fixTTL(ttl time.Duration) time.Duration {
 	if ttl <= 0 {
 		ttl = c.ttl
 	}
@@ -141,6 +157,10 @@ func (c *TinyLFU) SetInner(ctx context.Context, key string, value any, ttl time.
 	} else {
 		ttl -= time.Duration(c.rand.Int63n(int64(ttl) / c.deviation))
 	}
+	return ttl
+}
+
+func (c *TinyLFU) setValue(key string, value any, ttl time.Duration, raw bool) error {
 	if raw {
 		c.lfu.Set(&tinylfu.Item{Key: key, Value: value, ExpireAt: time.Now().Add(ttl)})
 		return nil
@@ -153,14 +173,23 @@ func (c *TinyLFU) SetInner(ctx context.Context, key string, value any, ttl time.
 	return nil
 }
 
-func (c *TinyLFU) Has(ctx context.Context, key string) bool {
+// SetInner sets the value for the given key.ttl is the expiration time, if ttl is zero, the default ttl will be used.
+func (c *TinyLFU) SetInner(_ context.Context, key string, value any, ttl time.Duration, raw bool) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	ttl = c.fixTTL(ttl)
+	return c.setValue(key, value, ttl, raw)
+}
+
+func (c *TinyLFU) Has(_ context.Context, key string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	_, ok := c.lfu.Get(key)
 	return ok
 }
 
-func (c *TinyLFU) Del(ctx context.Context, key string) error {
+func (c *TinyLFU) Del(_ context.Context, key string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

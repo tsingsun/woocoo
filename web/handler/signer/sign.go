@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/cache"
+	"github.com/tsingsun/woocoo/pkg/cache/lfu"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/httpx"
 	"github.com/tsingsun/woocoo/web/handler"
@@ -24,6 +25,7 @@ type Config struct {
 	Exclude      []string           `json:"exclude" yaml:"exclude"`
 	SignerConfig httpx.SignerConfig `json:"signerConfig" yaml:"signerConfig"`
 	// Interval is the interval time for request timestamp.
+	// When default cache effect, this value is used by setting cache ttl.
 	Interval time.Duration `json:"interval" yaml:"interval"`
 	// StoreKey is the name of the cache driver which is used to store nonce.
 	// default is "redis".
@@ -32,13 +34,15 @@ type Config struct {
 	//
 	// If you Use TokenSigner should be greater than the token ttl, in token ttl, the signature is cached,
 	// so that the same request will be rejected.
-	// Default is 2 hours.
+	// Default is 24 hours. But when you use default cache, This value is not used.
 	TTL time.Duration `json:"ttl" yaml:"ttl"`
 	// NowFunc create a time.Time object for current time, useful in tests.
 	NowFunc func() time.Time `json:"-" yaml:"-"`
 }
 
-// Middleware implements a Replay Attack Protect middleware.
+// Middleware verifies signed http request, use it for replay attack protection and data tampering prevention.
+//
+// If you don't set the cache, the middleware will use a default cache.
 type Middleware struct {
 	name   string
 	config *Config
@@ -115,6 +119,7 @@ func (mw *Middleware) build(cfg *conf.Configuration) (err error) {
 			}
 		}
 	}
+	// clear extractors if timestamp and nonce in auth headers, they load from auth headers
 	for _, header := range mw.config.SignerConfig.AuthHeaders {
 		switch header {
 		case mw.config.SignerConfig.TimestampKey:
@@ -123,14 +128,21 @@ func (mw *Middleware) build(cfg *conf.Configuration) (err error) {
 			mw.nonceExtractor = nil
 		}
 	}
-	//
 	fs, err := handler.CreateExtractors(mw.config.SignerConfig.AuthLookup, mw.config.SignerConfig.AuthScheme)
 	if err != nil {
 		return err
 	}
+	if len(fs) == 0 {
+		return errors.New("no signature extractor found")
+	}
 	mw.signatureExtractor = fs[0]
 	if mw.config.StoreKey != "" {
 		mw.cache = cache.GetCache(mw.config.StoreKey)
+	} else {
+		mw.cache, err = lfu.NewTinyLFU(conf.NewFromStringMap(map[string]any{
+			"size": 100000,
+			"ttl":  mw.config.Interval + time.Minute,
+		}))
 	}
 	return err
 }
@@ -148,27 +160,27 @@ func (mw *Middleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 
 		sigStrs, err := mw.signatureExtractor(c)
 		if err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			c.AbortWithError(http.StatusUnauthorized, err)
 			return
 		}
 		sigVal := httpx.ValuesFromCanonical(sigStrs[0], mw.config.SignerConfig.AuthHeaderDelimiter, "=")
 		signature, _ := sigVal[httpx.SignatureName]
 		if signature == "" {
-			c.AbortWithError(http.StatusBadRequest, httpx.ErrInvalidSignature)
+			c.AbortWithError(http.StatusUnauthorized, httpx.ErrInvalidSignature)
 			return
 		}
 		nonceStr, signtime, err := mw.extractorVerifyParam(c, sigVal)
 		if err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			c.AbortWithError(http.StatusUnauthorized, err)
 			return
 		}
 
 		err = mw.Signer.Verify(c.Request, nonceStr, signtime)
 		if err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			c.AbortWithError(http.StatusUnauthorized, err)
 			return
 		}
-		if err = mw.SignatureValidate(c, signature); err != nil {
+		if err = mw.signatureValidate(c, signature); err != nil {
 			c.Error(err)
 			return
 		}
@@ -209,17 +221,11 @@ func (mw *Middleware) extractorVerifyParam(c *gin.Context, sigv map[string]strin
 	return
 }
 
-func (mw *Middleware) SignatureValidate(c *gin.Context, signature string) (err error) {
-	if mw.cache != nil {
-		if exists := mw.cache.Has(c, signature); exists {
-			c.AbortWithStatus(http.StatusBadRequest)
-			return errors.New("signature is expired")
-		}
-		err = mw.cache.Set(c, signature, "1", cache.WithTTL(mw.config.TTL))
-		if err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return err
-		}
+func (mw *Middleware) signatureValidate(c *gin.Context, signature string) (err error) {
+	err = mw.cache.Set(c, signature, nil, cache.WithTTL(mw.config.TTL), cache.WithSetNX())
+	if err != nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return err
 	}
 	return
 }

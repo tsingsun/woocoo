@@ -150,3 +150,42 @@ func TestTinyLFU_Get(t *testing.T) {
 		assert.Equal(t, "struct", v3.Name, "value type must not change")
 	})
 }
+
+func TestTinyLFU_Set(t *testing.T) {
+	t.Run("setInner", func(t *testing.T) {
+		local, err := NewTinyLFU(conf.NewFromStringMap(map[string]any{
+			"size":    "100000",
+			"samples": "100000",
+		}))
+		require.NoError(t, err)
+		assert.NoError(t, local.SetInner(context.Background(), "key", "value", time.Second, false))
+		assert.NoError(t, local.SetInner(context.Background(), "key", "value", time.Second, true))
+	})
+	t.Run("setNX", func(t *testing.T) {
+		local, err := NewTinyLFU(conf.NewFromStringMap(map[string]any{
+			"size":    "100000",
+			"samples": "100000",
+		}))
+		require.NoError(t, err)
+		// NX Only set the key if it does not already exist.
+		ctx := context.Background()
+		assert.NoError(t, local.Set(ctx, "key", "value"))
+		assert.Error(t, local.Set(ctx, "key", "value", cache.WithSetNX()))
+		assert.NoError(t, local.Set(ctx, "key1", "value", cache.WithSetNX()))
+		local.Has(ctx, "key")
+		local.Has(ctx, "key1")
+	})
+	t.Run("setXX", func(t *testing.T) {
+		local, err := NewTinyLFU(conf.NewFromStringMap(map[string]any{
+			"size":    "100000",
+			"samples": "100000",
+		}))
+		require.NoError(t, err)
+		// XX Only set the key if it already exists.
+		ctx := context.Background()
+		assert.Error(t, local.Set(ctx, "key", "value", cache.WithSetXX()))
+		assert.False(t, local.Has(ctx, "key"))
+		assert.NoError(t, local.Set(ctx, "key", "value"))
+		assert.NoError(t, local.Set(ctx, "key", "value", cache.WithSetXX()))
+	})
+}

@@ -77,6 +77,29 @@ func hmacSHA256(key []byte, data []byte) []byte {
 	return hash.Sum(nil)
 }
 
+func TestSignerConfig(t *testing.T) {
+	t.Run("BuildSigner", func(t *testing.T) {
+		cfg := DefaultSignerConfig
+		cfg.SignedLookups = map[string]string{
+			"content-length": "",
+		}
+		cfg.AuthLookup = "header:Authorization"
+		cfg.AuthScheme = "TEST-HMAC-SHA1"
+		signer, err := cfg.BuildSigner(WithSigner(NewDefaultSigner))
+		require.NoError(t, err)
+		assert.Equal(t, "TEST-HMAC-SHA1 ", signer.config.AuthScheme, "will add space")
+	})
+	t.Run("BuildSignerErr", func(t *testing.T) {
+		cfg := DefaultSignerConfig
+		cfg.SignedLookups = map[string]string{
+			"content-length": "",
+		}
+		cfg.AuthLookup = ""
+		_, err := cfg.BuildSigner(WithSigner(NewDefaultSigner))
+		require.ErrorContains(t, err, "authLookup must not empty")
+	})
+}
+
 func TestSignRequest_aws(t *testing.T) {
 	cnf := conf.NewFromStringMap(map[string]any{
 		"signedLookups": map[string]string{
@@ -124,6 +147,11 @@ func TestSignRequest_aws(t *testing.T) {
 	expectedSig := "AWS4-HMAC-SHA256 Credential=AKID/20230918/us-east-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-meta-other-header;x-amz-meta-other-header_with_underscore;x-amz-security-token;x-amz-target, Signature=7cbac190fcb780f06f5b68345cebaeb30936bc16d79db454ea7a3111162fe497"
 	q := req.Header
 	assert.Equal(t, expectedSig, q.Get("Authorization"))
+
+	req = req.Clone(context.Background())
+	req.Body = io.NopCloser(strings.NewReader("{}"))
+	err = signer.Verify(req, "", st)
+	assert.NoError(t, err)
 }
 
 func TestSignSimple(t *testing.T) {
@@ -140,7 +168,7 @@ func TestSignSimple(t *testing.T) {
 
 	signer, err := NewSignature(WithConfiguration(cnf))
 	require.NoError(t, err)
-	st, err := time.Parse("20060102T150405Z", "20230918T122143Z")
+	st, err := ParseSignTime("20060102T150405Z", "20230918T122143Z")
 	require.NoError(t, err)
 	t.Run("header not all", func(t *testing.T) {
 		body := strings.NewReader("hello")
@@ -166,7 +194,7 @@ func TestTokenSigner_wechat(t *testing.T) {
 		"signedLookups": map[string]string{
 			"timestamp":    "",
 			"noncestr":     "",
-			"jsapi_ticket": "header:Authorization>Bearer",
+			"jsapi_ticket": "context",
 			"url":          "CanonicalUri",
 		},
 		"timestampKey": "timestamp",
@@ -195,10 +223,11 @@ func TestTokenSigner_wechat(t *testing.T) {
 	payload, err := json.Marshal(dv)
 	require.NoError(t, err)
 	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
+	req = req.WithContext(context.WithValue(context.Background(), "jsapi_ticket", jsapi_ticket))
 	assert.NoError(t, err)
-	req.Header.Add("Authorization", "Bearer "+jsapi_ticket)
 
-	ts := time.Unix(1414587457, 0)
+	ts, err := ParseSignTime("", "1414587457")
+	require.NoError(t, err)
 	err = signer.Sign(req, "Wm3WZYTPz0wzccnW", ts)
 	assert.NoError(t, err)
 	want := "0f9de62fce790f9a083d5c99e95740ceb90c27ed"
@@ -273,11 +302,31 @@ timestampKey: x-timestamp
 	cnf := conf.NewFromBytes([]byte(cnfstr))
 	signer, err := NewSignature(WithConfiguration(cnf))
 	require.NoError(t, err)
-	t.Run("normal", func(t *testing.T) {
+	t.Run("json", func(t *testing.T) {
 		body := strings.NewReader(`["hello","world"]`)
 		req := httptest.NewRequest("POST", "/", body)
 		req.Header.Add("X-Tenant-Id", "123")
 		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("Authorization", "Bearer "+act)
+		err = signer.Sign(req, "", time.Unix(1695298510, 0))
+		assert.NoError(t, err)
+	})
+	t.Run("body nil SHA1", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/", nil)
+		assert.NoError(t, err)
+		req.Header.Add("Authorization", "Bearer "+act)
+		err = signer.Sign(req, "", time.Unix(1695298510, 0))
+		assert.NoError(t, err)
+	})
+	t.Run("body nil SHA256", func(t *testing.T) {
+		c1 := `
+algorithm: SHA256
+`
+		require.NoError(t, cnf.Merge([]byte(c1)))
+		signer, err := NewSignature(WithConfiguration(cnf))
+		require.NoError(t, err)
+		req, err := http.NewRequest("GET", "/", nil)
+		assert.NoError(t, err)
 		req.Header.Add("Authorization", "Bearer "+act)
 		err = signer.Sign(req, "", time.Unix(1695298510, 0))
 		assert.NoError(t, err)

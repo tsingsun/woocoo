@@ -96,12 +96,12 @@ func (mw *Middleware) build(cfg *conf.Configuration) (err error) {
 	for key, loc := range mw.config.SignerConfig.SignedLookups {
 		switch key {
 		case mw.config.SignerConfig.TimestampKey:
-			fs, _ := handler.CreateExtractors(loc+":"+key, "")
+			fs, _ := handler.CreateExtractors(loc, "")
 			if len(fs) > 0 {
 				mw.timestampExtractor = fs[0]
 			}
 		case mw.config.SignerConfig.NonceKey:
-			fs, _ := handler.CreateExtractors(loc+":"+key, "")
+			fs, _ := handler.CreateExtractors(loc, "")
 			if len(fs) > 0 {
 				mw.nonceExtractor = fs[0]
 			}
@@ -190,11 +190,11 @@ func (mw *Middleware) extractorVerifyParam(c *gin.Context, sigv map[string]strin
 	} else {
 		st, _ = sigv[mw.config.SignerConfig.TimestampKey]
 	}
-	sign, err = httpx.ParseSignTime(st, mw.config.SignerConfig.DateFormat)
+	sign, err = httpx.ParseSignTime(mw.config.SignerConfig.DateFormat, st)
 	if err != nil {
 		return
 	}
-	if mw.config.NowFunc().Sub(sign) > mw.config.Interval {
+	if dif := mw.config.NowFunc().Sub(sign); dif < 0 || dif > mw.config.Interval {
 		err = errors.New("timestamp is expired")
 		return
 	}

@@ -11,7 +11,6 @@ import (
 	"github.com/tsingsun/woocoo/pkg/cache/redisc"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
-	"github.com/tsingsun/woocoo/web/handler"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -39,6 +38,7 @@ signerConfig:
   nonceKey: "noncestr"
   unsignedPayload: true
 interval: 5s
+exclude: ["/skip"]
 `
 	mid := TokenSigner().(*Middleware)
 	assert.Equal(t, TokenSignerName, mid.Name())
@@ -81,9 +81,7 @@ interval: 5s
 		assert.Equal(t, 404, w.Code)
 	})
 	t.Run("skip", func(t *testing.T) {
-		mid.config.Exclude = append(mid.config.Exclude, "/skip")
 		req := httptest.NewRequest("POST", "/skip", nil)
-		mid.config.Skipper = handler.PathSkipper(mid.config.Exclude)
 		w := httptest.NewRecorder()
 		engine.ServeHTTP(w, req)
 		assert.Equal(t, 200, w.Code)
@@ -95,7 +93,7 @@ func TestToken_Wechat_Fail(t *testing.T) {
 signerConfig:
   authLookup: "header:Authorization"
   authScheme: "TEST-HMAC-SHA1"
-  authHeaders: ["jsapi_ticket","timestamp","noncestr"]
+  authHeaders: ["jsapi_ticket","timestamp"]
   authHeaderDelimiter: ";"
   signedLookups: 
   - jsapi_ticket: header:Authorization>Bearer
@@ -108,6 +106,7 @@ signerConfig:
 interval: 5s
 `
 	act := "sM4AOVdWfPE4DxkXGEs8VMCPGGVi4C3VM0P37wVUCFvkVAy_90u5h9nbSlYy3-Sl-HhTdfl2fzFy1AOcHKP7qg"
+	nocestr := "Wm3WZYTPz0wzccnW"
 	rightSig := "0f9de62fce790f9a083d5c99e95740ceb90c27ed"
 	rightScheme := "TEST-HMAC-SHA1"
 	mid := TokenSigner().(*Middleware)
@@ -127,10 +126,11 @@ interval: 5s
 		req := httptest.NewRequest("POST", "http://mp.weixin.qq.com?params=value", nil)
 		sig := fmt.Sprintf("%s %s=%s;timestamp=%s;noncestr=%s;Signature=%s",
 			"miss", "jsapi_ticket", act,
-			"1414587457", "Wm3WZYTPz0wzccnW", rightSig,
+			"1414587457", nocestr, rightSig,
 		)
 		req.Header.Add("Authorization", "Bearer "+act)
 		req.Header.Add("Authorization", sig)
+		req.Header.Add("noncestr", nocestr)
 		w := httptest.NewRecorder()
 		engine.ServeHTTP(w, req)
 		assert.Equal(t, 400, w.Code)
@@ -143,6 +143,7 @@ interval: 5s
 		)
 		req.Header.Add("Authorization", "Bearer "+act)
 		req.Header.Add("Authorization", sig)
+		req.Header.Add("noncestr", nocestr)
 		w := httptest.NewRecorder()
 		engine.ServeHTTP(w, req)
 		assert.Equal(t, 400, w.Code)
@@ -155,6 +156,7 @@ interval: 5s
 		)
 		req.Header.Add("Authorization", "Bearer "+act)
 		req.Header.Add("Authorization", sig)
+		req.Header.Add("noncestr", nocestr)
 		w := httptest.NewRecorder()
 		engine.ServeHTTP(w, req)
 		assert.Equal(t, 400, w.Code)
@@ -168,6 +170,7 @@ interval: 5s
 		)
 		req.Header.Add("Authorization", "Bearer "+act)
 		req.Header.Add("Authorization", sig)
+		req.Header.Add("noncestr", nocestr)
 		w := httptest.NewRecorder()
 
 		engine.ServeHTTP(w, req)
@@ -181,6 +184,7 @@ interval: 5s
 		)
 		req.Header.Add("Authorization", "Bearer "+act)
 		req.Header.Add("Authorization", sig)
+		req.Header.Add("noncestr", nocestr)
 		w := httptest.NewRecorder()
 
 		engine.ServeHTTP(w, req)

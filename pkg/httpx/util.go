@@ -5,10 +5,11 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -53,7 +54,6 @@ func ValuesFromHeader(r *http.Request, header string, valuePrefix string, prefix
 		if prefixLen > 0 {
 			return nil, errHeaderExtractorValueInvalid
 		}
-		return nil, errHeaderExtractorValueMissing
 	}
 	return result, nil
 }
@@ -86,26 +86,6 @@ func getURIPath(u *url.URL) string {
 	}
 
 	return uri
-}
-
-// SeekerLen get buff len
-func SeekerLen(s io.Seeker) (int64, error) {
-	curOffset, err := s.Seek(0, io.SeekCurrent)
-	if err != nil {
-		return 0, err
-	}
-
-	endOffset, err := s.Seek(0, io.SeekEnd)
-	if err != nil {
-		return 0, err
-	}
-
-	_, err = s.Seek(curOffset, io.SeekStart)
-	if err != nil {
-		return 0, err
-	}
-
-	return endOffset - curOffset, nil
 }
 
 // generateRandomBytes returns securely generated random bytes.
@@ -158,4 +138,24 @@ func GetSignedRequestSignature(r *http.Request, header, scheme, delt string) (st
 	}
 
 	return "", fmt.Errorf("request not signed")
+}
+
+// FormatSignTime format time to string by layout, if layout is empty, return unix timestamp.
+func FormatSignTime(t time.Time, layout string) string {
+	if layout == "" {
+		return strconv.Itoa(int(t.Unix()))
+	}
+	return t.Format(layout)
+}
+
+// ParseSignTime parse string to time by layout, if layout is empty, parse as unix timestamp.
+func ParseSignTime(layout string, str string) (time.Time, error) {
+	if layout == "" {
+		uf, err := strconv.ParseInt(str, 10, 64)
+		if err != nil {
+			return time.Time{}, err
+		}
+		return time.Unix(uf, 0), nil
+	}
+	return time.Parse(layout, str)
 }

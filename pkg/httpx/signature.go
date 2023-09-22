@@ -13,7 +13,6 @@ import (
 	"io"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -198,9 +197,13 @@ func (s *SignerConfig) extractSignedLookups() {
 		case "":
 			fallthrough
 		case "header":
+			s.SignedLookups[key] = "header:" + key
 			s.ScopeHeaders = append(s.ScopeHeaders, key)
 		case "query":
+			s.SignedLookups[key] = "query:" + key
 			s.ScopeQueries = append(s.ScopeQueries, key)
+		case "context":
+			s.SignedLookups[key] = "context:" + key
 		}
 	}
 	sort.Strings(s.ScopeHeaders)
@@ -336,8 +339,8 @@ type DefaultSigner struct {
 
 // NewDefaultSigner create default signer with configuration
 func NewDefaultSigner(config *SignerConfig) (Signer, error) {
-	if config.AuthScheme == "" {
-		return nil, errors.New("authScheme must not empty")
+	if config.AuthLookup == "" {
+		return nil, errors.New("authLookup must not empty")
 	}
 	s := &DefaultSigner{
 		SignerConfig: config,
@@ -347,7 +350,7 @@ func NewDefaultSigner(config *SignerConfig) (Signer, error) {
 }
 
 func (s *DefaultSigner) BuildCanonicalRequest(r *http.Request, ctx *SigningCtx) (err error) {
-	ctx.SignedVals[s.TimestampKey] = formatSignTime(ctx.SignTime, s.DateFormat)
+	ctx.SignedVals[s.TimestampKey] = FormatSignTime(ctx.SignTime, s.DateFormat)
 	if !s.Dry && s.TimestampKey != "" { // add first, lookup can find
 		r.Header.Set(s.TimestampKey, ctx.SignedVals[s.TimestampKey])
 	}
@@ -462,7 +465,7 @@ type Algorithm struct {
 }
 
 func algorithmFromString(name string) (*Algorithm, error) {
-	switch name {
+	switch strings.ToLower(name) {
 	case AlgorithmSha1.name:
 		return AlgorithmSha1, nil
 	case AlgorithmSha256.name:
@@ -479,13 +482,6 @@ func (a *Algorithm) UnmarshalText(text []byte) error {
 	}
 	*a = *alg
 	return nil
-}
-
-func (s *DefaultSigner) BuildTimestamp(r *http.Request, signTime time.Time) {
-	if s.Dry {
-		return
-	}
-	r.Header.Set(s.TimestampKey, formatSignTime(signTime, s.DateFormat))
 }
 
 // BuildCanonicalHeaders implements Signer interface. if a scope-key in the header is empty, it will be ignored.
@@ -564,7 +560,6 @@ var _ Signer = (*TokenSigner)(nil)
 type TokenSigner struct {
 	*SignerConfig
 	lookUpSorted []string
-	headerEx     [][2]string
 }
 
 func NewTokenSigner(config *SignerConfig) (Signer, error) {
@@ -576,14 +571,6 @@ func NewTokenSigner(config *SignerConfig) (Signer, error) {
 		s.lookUpSorted = append(s.lookUpSorted, key)
 	}
 	sort.Strings(s.lookUpSorted)
-	for _, header := range config.ScopeHeaders {
-		ps := strings.Split(header, ">")
-		scheme := ""
-		if len(ps) > 1 {
-			scheme = ps[1] + " "
-		}
-		s.headerEx = append(s.headerEx, [2]string{ps[0], scheme})
-	}
 	return s, nil
 }
 
@@ -623,7 +610,7 @@ func (s TokenSigner) BuildCanonicalRequest(r *http.Request, ctx *SigningCtx) err
 	for key, loc := range s.SignedLookups {
 		switch key {
 		case s.TimestampKey:
-			ctx.SignedVals[key] = formatSignTime(ctx.SignTime, s.DateFormat)
+			ctx.SignedVals[key] = FormatSignTime(ctx.SignTime, s.DateFormat)
 		case s.NonceKey:
 			if ctx.Nonce == "" {
 				nonce, err := generateRandomBytes(s.NonceLen)
@@ -697,22 +684,4 @@ func (s TokenSigner) AttachRequest(r *http.Request, ctx *SigningCtx) {
 	} else {
 		r.Header.Set(s.SignatureHeaderKey, sb.String())
 	}
-}
-
-func formatSignTime(t time.Time, layout string) string {
-	if layout == "" {
-		return strconv.Itoa(int(t.Unix()))
-	}
-	return t.Format(layout)
-}
-
-func ParseSignTime(str string, layout string) (time.Time, error) {
-	if layout == "" {
-		uf, err := strconv.ParseInt(str, 10, 64)
-		if err != nil {
-			return time.Time{}, err
-		}
-		return time.Unix(uf, 0), nil
-	}
-	return time.Parse(layout, str)
 }

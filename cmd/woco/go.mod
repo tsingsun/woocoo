@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/tsingsun/woocoo v0.3.1-0.20230922164106-4cb7f13c1506
 	github.com/urfave/cli/v2 v2.25.0
-	golang.org/x/text v0.12.0
+	golang.org/x/text v0.13.0
 	golang.org/x/tools v0.9.2
 )
 

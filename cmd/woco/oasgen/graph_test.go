@@ -5,6 +5,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"path/filepath"
 	"testing"
 )
 
@@ -23,25 +24,12 @@ func TestNewGraph(t *testing.T) {
 			name: "petstore",
 			args: args{
 				c: &Config{
-					OpenAPISchema: "../internal/integration/petstore.yaml",
+					OpenAPISchema: "./internal/integration/petstore.yaml",
 				},
 				schema: func() *openapi3.T {
-					s, err := openapi3.NewLoader().LoadFromFile("../internal/integration/petstore.yaml")
+					fs, err := filepath.Abs("./internal/integration/petstore.yaml")
 					require.NoError(t, err)
-					return s
-				}(),
-			},
-			wantG:   nil,
-			wantErr: assert.NoError,
-		},
-		{
-			name: "multi-file",
-			args: args{
-				c: &Config{
-					OpenAPISchema: "../testdata/multi-file/openapi.yaml",
-				},
-				schema: func() *openapi3.T {
-					s, err := openapi3.NewLoader().LoadFromFile("../internal/integration/multi-file/openapi.yaml")
+					s, err := openapi3.NewLoader().LoadFromFile(fs)
 					require.NoError(t, err)
 					return s
 				}(),

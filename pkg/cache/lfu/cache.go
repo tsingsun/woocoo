@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	defaultTTL     = time.Minute
 	maxOffset      = 10 * time.Second
 	defaultSamples = 100000
 )
@@ -24,18 +25,27 @@ var (
 
 var _ cache.Cache = (*TinyLFU)(nil)
 
+// Config is the configuration for TinyLFU cache
+type Config struct {
+	Size      int           `yaml:"size" json:"size"`
+	Samples   int           `yaml:"samples" json:"samples"`
+	TTL       time.Duration `yaml:"ttl" json:"ttl"`
+	Deviation int64         `yaml:"deviation" json:"deviation"`
+	// Subsidiary indicate whether the cache is a subsidiary cache,
+	// if true, the cache will not be registered to cache manager and ttl will be the max ttl.
+	Subsidiary bool `yaml:"subsidiary" json:"subsidiary"`
+}
+
 // TinyLFU is a cache implementation of TinyLFU algorithm. It forces the cache data to have an expiration time.
 //
 // Default ttl is 1 minute.Notice that the ttl will be less the setting,
 // randomly reduced by a value between 0 and the offset.
 type TinyLFU struct {
-	mu            sync.Mutex
-	rand          *rand.Rand
-	lfu           *tinylfu.T
-	ttl           time.Duration
-	offset        time.Duration
-	deviation     int64
-	size, samples int
+	Config
+	mu     sync.Mutex
+	rand   *rand.Rand
+	lfu    *tinylfu.T
+	offset time.Duration
 
 	marshal   cache.MarshalFunc
 	unmarshal cache.UnmarshalFunc
@@ -43,27 +53,25 @@ type TinyLFU struct {
 
 // Apply implements the conf.Configurable interface
 func (c *TinyLFU) Apply(cnf *conf.Configuration) error {
-	c.size = cnf.Int("size")
-	c.samples = cnf.Int("samples")
-	c.ttl = cnf.Duration("ttl")
-	if c.ttl == 0 {
-		c.ttl = time.Minute
+	if err := cnf.Unmarshal(&c.Config); err != nil {
+		return err
 	}
-	c.offset = c.ttl / time.Duration(c.deviation)
+	c.offset = c.TTL / time.Duration(c.Deviation)
 	if c.offset > maxOffset {
 		c.offset = maxOffset
 	}
-	if c.samples == 0 {
-		c.samples = defaultSamples
-	}
-	c.lfu = tinylfu.New(c.size, c.samples)
+	c.lfu = tinylfu.New(c.Size, c.Samples)
 	return nil
 }
 
 func NewTinyLFU(cnf *conf.Configuration) (*TinyLFU, error) {
 	lfu := TinyLFU{
-		rand:      rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec
-		deviation: 10,
+		rand: rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec
+		Config: Config{
+			Samples:   defaultSamples,
+			Deviation: 10,
+			TTL:       defaultTTL,
+		},
 	}
 	if err := lfu.Apply(cnf); err != nil {
 		return nil, err
@@ -149,13 +157,13 @@ func (c *TinyLFU) setOptions(_ context.Context, key string, value any, ttl time.
 }
 
 func (c *TinyLFU) fixTTL(ttl time.Duration) time.Duration {
-	if ttl <= 0 {
-		ttl = c.ttl
+	if ttl <= 0 || (c.Subsidiary && ttl > c.TTL) {
+		ttl = c.TTL
 	}
-	if ttl >= c.ttl && c.offset > 0 {
+	if ttl >= c.TTL && c.offset > 0 {
 		ttl -= time.Duration(c.rand.Int63n(int64(c.offset)))
 	} else {
-		ttl -= time.Duration(c.rand.Int63n(int64(ttl) / c.deviation))
+		ttl -= time.Duration(c.rand.Int63n(int64(ttl) / c.Deviation))
 	}
 	return ttl
 }
@@ -202,5 +210,5 @@ func (c *TinyLFU) IsNotFound(err error) bool {
 }
 
 func (c *TinyLFU) Clean() {
-	c.lfu = tinylfu.New(c.size, c.samples)
+	c.lfu = tinylfu.New(c.Size, c.Samples)
 }

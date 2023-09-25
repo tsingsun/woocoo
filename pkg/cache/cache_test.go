@@ -193,6 +193,13 @@ func TestOptions(t *testing.T) {
 			},
 		},
 		{
+			name:    "ttl minus",
+			options: []Option{WithTTL(time.Second * -1)},
+			do: func(opts *Options) {
+				assert.EqualValues(t, defaultItemTTL, opts.Expiration())
+			},
+		},
+		{
 			name:    "ttl 0",
 			options: []Option{WithTTL(0)},
 			do: func(opts *Options) {
@@ -311,9 +318,17 @@ func TestMarshalFunc(t *testing.T) {
 			},
 		},
 		{
-			name: "nil",
+			name: "input nil",
 			data: nil,
 			check: func(bt []byte, data any) {
+				err := DefaultUnmarshalFunc(bt, nil)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "value nil",
+			data: []byte("123"),
+			check: func(bt []byte, a any) {
 				err := DefaultUnmarshalFunc(bt, nil)
 				assert.NoError(t, err)
 			},
@@ -327,6 +342,27 @@ func TestMarshalFunc(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, data, want)
 				assert.NotSame(t, bt, want)
+			},
+		},
+		{
+			name: "empty to has value",
+			data: []byte{},
+			check: func(bt []byte, data any) {
+				want := "123"
+				err := DefaultUnmarshalFunc([]byte{}, &want)
+				require.NoError(t, err)
+				assert.Equal(t, "123", want, "origin value should not be changed")
+			},
+		},
+		{
+			name: "unknown compression",
+			data: float64(1),
+			check: func(bytes []byte, data any) {
+				want := float64(1)
+				err := DefaultUnmarshalFunc(append(bytes, 1), want)
+				assert.Error(t, err, "s2: invalid input")
+				err = DefaultUnmarshalFunc(append(bytes, 3), want)
+				assert.Error(t, err, "unknown compression method: 3")
 			},
 		},
 	}

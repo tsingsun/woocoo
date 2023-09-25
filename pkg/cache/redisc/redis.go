@@ -81,24 +81,20 @@ func (cd *Redisc) Apply(cfg *conf.Configuration) (err error) {
 		if err != nil {
 			return err
 		}
+		cd.local.Subsidiary = true
 	}
 	if cd.redis == nil {
-		if cfg.IsSet("addrs") {
-			remote, err := redisx.NewClient(cfg)
-			if err != nil {
-				return err
-			}
-			cd.redis = remote
+		remote, err := redisx.NewClient(cfg)
+		if err != nil {
+			return err
 		}
+		cd.redis = remote
 	}
 	if k := cfg.String("driverName"); k != "" {
 		cd.driverName = k
 		if err = cd.Register(); err != nil {
 			return err
 		}
-	}
-	if cd.redis == nil && cd.local == nil {
-		err = errors.New("redis cache must have a redis client or local cache")
 	}
 	if cd.marshal == nil {
 		cd.marshal = cache.DefaultMarshalFunc
@@ -125,7 +121,7 @@ func (cd *Redisc) Group(ctx context.Context, key string, v any, opt *cache.Optio
 	if err != nil {
 		return err
 	}
-	if marshal != nil {
+	if len(marshal) != 0 {
 		if err = cd.unmarshal(marshal, v); err != nil {
 			if cached {
 				cd.local.Del(ctx, key) //nolint:errcheck

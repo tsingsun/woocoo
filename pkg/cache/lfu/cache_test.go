@@ -84,11 +84,17 @@ func TestTinyLFU_Get(t *testing.T) {
 		assert.NoError(t, local.Set(ctx, "key", "value"))
 		require.NoError(t, local.Get(ctx, "key", &s))
 		assert.Equal(t, "value", s)
+		assert.NoError(t, local.Set(ctx, "key", "valueRaw", cache.WithRaw()))
+		require.NoError(t, local.Get(ctx, "key", &s, cache.WithRaw()))
+		assert.Equal(t, "valueRaw", s)
 
 		var v []byte
 		assert.NoError(t, local.Set(ctx, "key", []byte("value")))
 		require.NoError(t, local.Get(ctx, "key", &v))
 		assert.Equal(t, []byte("value"), v)
+		assert.NoError(t, local.Set(ctx, "key", []byte("rawValue"), cache.WithRaw()))
+		require.NoError(t, local.Get(ctx, "key", &v, cache.WithRaw()))
+		assert.Equal(t, []byte("rawValue"), v)
 
 		var m map[string]string
 		assert.NoError(t, local.Set(ctx, "key", map[string]string{"name": "value"}, cache.WithRaw()))

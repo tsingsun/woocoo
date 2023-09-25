@@ -42,9 +42,10 @@ func TestNew(t *testing.T) {
 		opts []Option
 	}
 	tests := []struct {
-		name string
-		args args
-		want func(*Redisc, *testing.T)
+		name    string
+		args    args
+		check   func(*Redisc, *testing.T)
+		wantErr assert.ErrorAssertionFunc
 	}{
 		{
 			name: "local",
@@ -56,8 +57,8 @@ func TestNew(t *testing.T) {
 					},
 				})),
 			},
-			want: func(r *Redisc, t *testing.T) {
-				assert.Nil(t, r.RedisClient())
+			check: func(r *Redisc, t *testing.T) {
+				assert.NotNil(t, r.RedisClient())
 				assert.True(t, r.LocalCacheEnabled())
 			},
 		},
@@ -75,7 +76,7 @@ func TestNew(t *testing.T) {
 					WithRedisClient(redis.NewClient(&redis.Options{})),
 				},
 			},
-			want: func(r *Redisc, t *testing.T) {
+			check: func(r *Redisc, t *testing.T) {
 				assert.NotNil(t, r.RedisClient())
 				assert.True(t, r.LocalCacheEnabled())
 			},
@@ -92,7 +93,7 @@ func TestNew(t *testing.T) {
 					"db":    1,
 				})),
 			},
-			want: func(r *Redisc, t *testing.T) {
+			check: func(r *Redisc, t *testing.T) {
 				assert.NotNil(t, r.RedisClient())
 				assert.True(t, r.LocalCacheEnabled())
 			},
@@ -109,7 +110,7 @@ func TestNew(t *testing.T) {
 					"db":    1,
 				})),
 			},
-			want: func(r *Redisc, t *testing.T) {
+			check: func(r *Redisc, t *testing.T) {
 				assert.NotNil(t, r.RedisClient())
 				assert.True(t, r.LocalCacheEnabled())
 			},
@@ -126,17 +127,37 @@ func TestNew(t *testing.T) {
 					"db":    1,
 				})),
 			},
-			want: func(r *Redisc, t *testing.T) {
+			check: func(r *Redisc, t *testing.T) {
 				assert.NotNil(t, r.RedisClient())
 				assert.True(t, r.LocalCacheEnabled())
+			},
+		},
+		{
+			name: "apply error",
+			args: args{
+				cfg: func() *conf.Configuration {
+					cfg := conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
+						"driverName": "redisx",
+					}))
+					_, err := New(cfg)
+					require.NoError(t, err)
+					return cfg
+				}(),
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.ErrorContains(t, err, `driver already registered for name "redisx"`)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := New(tt.args.cfg, tt.args.opts...)
+			if tt.wantErr != nil {
+				tt.wantErr(t, err)
+				return
+			}
 			require.NoError(t, err)
-			tt.want(got, t)
+			tt.check(got, t)
 		})
 	}
 }
@@ -244,6 +265,12 @@ func TestCache_Op(t *testing.T) {
 				assert.NoError(t, rc.Get(context.Background(), "key", nil))
 				assert.True(t, rc.Has(context.Background(), "key"))
 				assert.True(t, rds.Exists("key"))
+				want := ""
+				assert.NoError(t, rc.Get(context.Background(), "key", &want))
+				assert.Equal(t, "", want)
+				want = "123"
+				assert.NoError(t, rc.Get(context.Background(), "key", &want))
+				assert.Equal(t, "123", want, "nil value not override origin value")
 			},
 		},
 		{
@@ -390,10 +417,12 @@ func TestCache_Op(t *testing.T) {
 				rc, rdb := initStandaloneRedisc(t)
 				want := ""
 				ctx := context.Background()
-				assert.NoError(t, rc.Set(ctx, "key", "123", cache.WithTTL(time.Hour), cache.WithGetter(
-					func(ctx context.Context, key string) (any, error) {
-						return "123", nil
-					})))
+				assert.NotPanics(t, func() {
+					rc.Set(ctx, "key", "123", cache.WithTTL(time.Hour), cache.WithGetter(
+						func(ctx context.Context, key string) (any, error) {
+							panic("setter with getter should not be called")
+						}))
+				})
 				assert.NoError(t, rc.Get(ctx, "key", &want, cache.WithSkip(0)))
 				assert.Equal(t, "123", want)
 				assert.EqualValues(t, rc.stats.Hits, 0)
@@ -432,6 +461,26 @@ func TestCache_Op(t *testing.T) {
 				require.NoError(t, rdb.Set("key", "123"))
 				err = rc.Group(ctx, "key", &want, &cache.Options{})
 				assert.ErrorContains(t, err, "unknown compression method")
+			},
+		},
+		{
+			name: "ttl and local.ttl",
+			do: func() {
+				rc, rdb := initStandaloneRedisc(t)
+				ctx := context.Background()
+				assert.True(t, rc.local.Subsidiary)
+				rc.local.TTL = time.Second * 2
+				want := ""
+				err := rc.Get(ctx, "key", &want, cache.WithTTL(time.Hour), cache.WithGetter(
+					func(ctx context.Context, key string) (any, error) {
+						return "123", nil
+					}),
+				)
+				assert.NoError(t, err)
+				time.Sleep(time.Second * 2)
+				want = ""
+				assert.ErrorIs(t, rc.local.Get(ctx, "key", &want), cache.ErrCacheMiss)
+				assert.True(t, rdb.Exists("key"))
 			},
 		},
 	}

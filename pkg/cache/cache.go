@@ -28,11 +28,11 @@ var (
 
 // Cache is the interface for cache.
 type Cache interface {
-	// Get gets the value from cache and unmarshal it to v.
+	// Get gets the value from cache and unmarshal it to v. Make sure the value is a pointer and zero.
 	Get(ctx context.Context, key string, value any, opts ...Option) error
 	// Set sets the value to cache.
 	Set(ctx context.Context, key string, value any, opts ...Option) error
-	// Has reports whether value for the given key exists.
+	// Has reports whether the value for the given key exists.
 	Has(ctx context.Context, key string) bool
 	// Del deletes the value for the given key.
 	Del(ctx context.Context, key string) error

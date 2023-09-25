@@ -77,11 +77,12 @@ func (cd *Redisc) Apply(cfg *conf.Configuration) (err error) {
 		cd.stats = &cache.Stats{}
 	}
 	if cfg.IsSet("local") {
-		cd.local, err = lfu.NewTinyLFU(cfg.Sub("local"))
+		lcfg := cfg.Sub("local")
+		lcfg.Parser().Set("subsidiary", true)
+		cd.local, err = lfu.NewTinyLFU(lcfg)
 		if err != nil {
 			return err
 		}
-		cd.local.Subsidiary = true
 	}
 	if cd.redis == nil {
 		remote, err := redisx.NewClient(cfg)
@@ -149,37 +150,46 @@ func (cd *Redisc) getRemoteData(ctx context.Context, key string, mode cache.Skip
 	return data, nil
 }
 
-// get gets the value for the given key. if loaded the value has marshaled.
-func (cd *Redisc) get(ctx context.Context, key string, value any, opt *cache.Options) (cached bool, err error) {
-	mode := opt.Skip
-	local := cd.local != nil && !mode.Is(cache.SkipLocal)
+func (cd *Redisc) tryGetLocal(ctx context.Context, key string, value any, opt *cache.Options,
+) (local bool, err error) {
+	local = cd.local != nil && !opt.Skip.Is(cache.SkipLocal)
+	err = cache.ErrCacheMiss
+	// first try to load from local cache
 	if local {
-		err := cd.local.Get(ctx, key, value)
-		if err == nil {
-			return true, nil
+		err = cd.local.GetInner(ctx, key, value, opt.Raw)
+		if err != nil {
+			return
 		}
 	}
+	return
+}
 
-	b, err := cd.getRemoteData(ctx, key, mode)
+// get gets the value for the given key. if loaded the value has marshaled.
+func (cd *Redisc) get(ctx context.Context, key string, value any, opt *cache.Options) (cached bool, err error) {
+	// first try to load from local cache
+	local, err := cd.tryGetLocal(ctx, key, value, opt)
+	if cached = err == nil; cached {
+		return
+	}
+
+	b, err := cd.getRemoteData(ctx, key, opt.Skip)
 	if err != nil {
-		return false, err
+		return
 	}
 	if err = cd.unmarshal(b, value); err != nil {
-		return false, err
+		return
 	}
 	if local {
-		cd.local.SetInner(ctx, key, value, opt.TTL, opt.Raw) //nolint:errcheck
+		cached = cd.local.SetInner(ctx, key, value, opt.TTL, opt) == nil
 	}
-	return true, nil
+	return
 }
 
 func (cd *Redisc) getSetItemGroup(ctx context.Context, key string, value any, opt *cache.Options) (marshal []byte, cached bool, err error) {
 	// first try to load from local cache
-	if !opt.Skip.Is(cache.SkipLocal) && cd.local != nil {
-		err := cd.local.GetInner(ctx, key, value, opt)
-		if err == nil {
-			return nil, true, nil
-		}
+	_, err = cd.tryGetLocal(ctx, key, value, opt)
+	if cached = err == nil; cached {
+		return
 	}
 
 	v, err, _ := cd.group.Do(key, func() (any, error) {
@@ -247,11 +257,10 @@ func (cd *Redisc) set(ctx context.Context, key string, v any, opt *cache.Options
 	local := cd.local != nil && !opt.Skip.Is(cache.SkipLocal)
 	if local && err == nil {
 		if opt.Raw {
-			cd.local.SetInner(ctx, key, v, ttl, true) //nolint:errcheck
+			cached = cd.local.SetInner(ctx, key, v, ttl, opt) == nil
 		} else {
-			cd.local.SetInner(ctx, key, marshaled, ttl, true) //nolint:errcheck
+			cached = cd.local.SetInner(ctx, key, marshaled, ttl, opt) == nil
 		}
-		cached = true
 	}
 	return
 }

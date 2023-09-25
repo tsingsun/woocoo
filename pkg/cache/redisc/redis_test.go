@@ -23,8 +23,9 @@ redis:
     - 127.0.0.1:6379
   db: 1
   local:
+    subsidiary: true
     size: 1000
-    ttl: 60s
+    ttl: 2s
 `
 	cfg := conf.NewFromBytes([]byte(cfgstr)).Load()
 	mr := miniredis.RunT(t)
@@ -136,9 +137,9 @@ func TestNew(t *testing.T) {
 			name: "apply error",
 			args: args{
 				cfg: func() *conf.Configuration {
-					cfg := conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
+					cfg := conf.NewFromStringMap(map[string]any{
 						"driverName": "redisx",
-					}))
+					})
 					_, err := New(cfg)
 					require.NoError(t, err)
 					return cfg
@@ -146,6 +147,19 @@ func TestNew(t *testing.T) {
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return assert.ErrorContains(t, err, `driver already registered for name "redisx"`)
+			},
+		},
+		{
+			name: "local new error",
+			args: args{
+				cfg: conf.NewFromStringMap(map[string]any{
+					"local": map[string]any{
+						"ttl": "string",
+					},
+				}),
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.ErrorContains(t, err, `error decoding 'ttl': time: invalid duration "string"`)
 			},
 		},
 	}
@@ -186,7 +200,7 @@ func TestRedisc(t *testing.T) {
 				key := "expire"
 				assert.NoError(t, rc.Set(context.Background(), key, "value", cache.WithTTL(time.Second)))
 				rdb.FastForward(time.Hour)
-				time.Sleep(time.Second * 2) // make local cache expire
+				time.Sleep(time.Second * 3) // make local cache expire
 				want := ""
 				assert.False(t, rc.Has(context.Background(), key))
 				assert.Error(t, rc.Get(context.Background(), key, &want))
@@ -468,8 +482,6 @@ func TestCache_Op(t *testing.T) {
 			do: func() {
 				rc, rdb := initStandaloneRedisc(t)
 				ctx := context.Background()
-				assert.True(t, rc.local.Subsidiary)
-				rc.local.TTL = time.Second * 2
 				want := ""
 				err := rc.Get(ctx, "key", &want, cache.WithTTL(time.Hour), cache.WithGetter(
 					func(ctx context.Context, key string) (any, error) {
@@ -477,10 +489,23 @@ func TestCache_Op(t *testing.T) {
 					}),
 				)
 				assert.NoError(t, err)
-				time.Sleep(time.Second * 2)
+				time.Sleep(time.Second * 3)
 				want = ""
 				assert.ErrorIs(t, rc.local.Get(ctx, "key", &want), cache.ErrCacheMiss)
 				assert.True(t, rdb.Exists("key"))
+			},
+		},
+		{
+			name: "local withraw",
+			do: func() {
+				rc, rdb := initStandaloneRedisc(t)
+				ctx := context.Background()
+				assert.NoError(t, rc.Set(context.Background(), "key", "123", cache.WithRaw()))
+				want := ""
+				assert.True(t, rc.local.Has(nil, "key"), "local")
+				assert.True(t, rdb.Exists("key"), "remote")
+				assert.NoError(t, rc.Get(ctx, "key", &want, cache.WithRaw(), cache.WithSkip(cache.SkipRemote)))
+				assert.Equal(t, "123", want)
 			},
 		},
 	}

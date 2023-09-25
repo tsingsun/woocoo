@@ -12,6 +12,35 @@ import (
 	"time"
 )
 
+func TestNewTinyLFU(t *testing.T) {
+	t.Run("all", func(t *testing.T) {
+		cnfstr := `
+size: 1000
+samples: 10000000
+ttl: 10m
+deviation: 10
+subsidiary: true
+`
+		cnf := conf.NewFromBytes([]byte(cnfstr))
+		c, err := NewTinyLFU(cnf)
+		require.NoError(t, err)
+		assert.Equal(t, 1000, c.Size)
+		assert.Equal(t, 10000000, c.Samples)
+		assert.Equal(t, 10*time.Minute, c.TTL)
+		assert.Equal(t, int64(10), c.Deviation)
+		assert.Equal(t, true, c.Subsidiary)
+		assert.Equal(t, 10*time.Second, c.offset)
+	})
+	t.Run("ttl format", func(t *testing.T) {
+		cnfstr := `
+ttl: "string"
+`
+		cnf := conf.NewFromBytes([]byte(cnfstr))
+		_, err := NewTinyLFU(cnf)
+		assert.ErrorContains(t, err, `error decoding 'ttl': time: invalid duration "string"`)
+	})
+}
+
 func TestTinyLFU_Get_CorruptionOnExpiry(t *testing.T) {
 	strFor := func(i int) string {
 		return fmt.Sprintf("a string %d", i)
@@ -155,6 +184,22 @@ func TestTinyLFU_Get(t *testing.T) {
 		require.NoError(t, local.Get(context.Background(), "key", &v3))
 		assert.Equal(t, "struct", v3.Name, "value type must not change")
 	})
+	t.Run("subsidiary", func(t *testing.T) {
+		subs, err := NewTinyLFU(conf.NewFromStringMap(map[string]any{
+			"size":       "100000",
+			"samples":    "100000",
+			"ttl":        "2s",
+			"subsidiary": true,
+		}))
+		require.NoError(t, err)
+		want := ""
+		require.NoError(t, subs.Set(context.Background(), "key", "123", cache.WithTTL(time.Hour)))
+		time.Sleep(time.Second * 3)
+		assert.ErrorIs(t, subs.Get(context.Background(), "key", &want), cache.ErrCacheMiss)
+		require.NoError(t, subs.Set(context.Background(), "key", "123", cache.WithTTL(time.Second)))
+		time.Sleep(time.Second*1 + time.Millisecond*200)
+		assert.ErrorIs(t, subs.Get(context.Background(), "key", &want), cache.ErrCacheMiss)
+	})
 }
 
 func TestTinyLFU_Set(t *testing.T) {
@@ -162,10 +207,18 @@ func TestTinyLFU_Set(t *testing.T) {
 		local, err := NewTinyLFU(conf.NewFromStringMap(map[string]any{
 			"size":    "100000",
 			"samples": "100000",
+			"ttl":     "1s",
 		}))
 		require.NoError(t, err)
-		assert.NoError(t, local.SetInner(context.Background(), "key", "value", time.Second, false))
-		assert.NoError(t, local.SetInner(context.Background(), "key", "value", time.Second, true))
+		ctx := context.Background()
+		assert.NoError(t, local.SetInner(ctx, "key", "value", time.Second*2,
+			&cache.Options{Raw: false}))
+		assert.NoError(t, local.SetInner(ctx, "key1", "value", time.Second*3,
+			&cache.Options{Raw: true, Skip: cache.SkipRemote}))
+		time.Sleep(time.Second * 2)
+		want := ""
+		assert.Error(t, local.Get(ctx, "key", &want))
+		assert.NoError(t, local.Get(ctx, "key1", &want, cache.WithRaw()))
 	})
 	t.Run("setNX", func(t *testing.T) {
 		local, err := NewTinyLFU(conf.NewFromStringMap(map[string]any{

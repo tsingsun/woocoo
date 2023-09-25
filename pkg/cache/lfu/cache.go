@@ -56,9 +56,11 @@ func (c *TinyLFU) Apply(cnf *conf.Configuration) error {
 	if err := cnf.Unmarshal(&c.Config); err != nil {
 		return err
 	}
-	c.offset = c.TTL / time.Duration(c.Deviation)
-	if c.offset > maxOffset {
-		c.offset = maxOffset
+	if c.Subsidiary {
+		c.offset = c.TTL / time.Duration(c.Deviation)
+		if c.offset > maxOffset {
+			c.offset = maxOffset
+		}
 	}
 	c.lfu = tinylfu.New(c.Size, c.Samples)
 	return nil
@@ -86,10 +88,10 @@ func NewTinyLFU(cnf *conf.Configuration) (*TinyLFU, error) {
 // Get returns the value for the given key, or ErrCacheMiss. If the value is nil, the value will not be set
 func (c *TinyLFU) Get(ctx context.Context, key string, value any, opts ...cache.Option) (err error) {
 	opt := cache.ApplyOptions(opts...)
-	return c.GetInner(ctx, key, value, opt)
+	return c.GetInner(ctx, key, value, opt.Raw)
 }
 
-func (c *TinyLFU) GetInner(_ context.Context, key string, value any, opt *cache.Options) error {
+func (c *TinyLFU) GetInner(_ context.Context, key string, value any, raw bool) error {
 	if value == nil {
 		return ErrValueReceiverNil
 	}
@@ -103,7 +105,7 @@ func (c *TinyLFU) GetInner(_ context.Context, key string, value any, opt *cache.
 	if val == nil {
 		return nil
 	}
-	if !opt.Raw {
+	if !raw {
 		v, ok := val.([]byte)
 		if !ok {
 			return errors.New("cache: can't unmarshal,value must be []byte")
@@ -141,7 +143,7 @@ func (c *TinyLFU) setOptions(_ context.Context, key string, value any, ttl time.
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	ttl = c.fixTTL(ttl)
+	ttl = c.fixTTL(ttl, opt)
 
 	switch {
 	case opt.SetXX:
@@ -156,14 +158,23 @@ func (c *TinyLFU) setOptions(_ context.Context, key string, value any, ttl time.
 	return c.setValue(key, value, ttl, opt.Raw)
 }
 
-func (c *TinyLFU) fixTTL(ttl time.Duration) time.Duration {
-	if ttl <= 0 || (c.Subsidiary && ttl > c.TTL) {
+// skip remote cache is mean that only set local cache as not a subsidiary cache temporarily,
+// that ttl can greater than default c.TTL
+func (c *TinyLFU) fixTTL(ttl time.Duration, opt *cache.Options) time.Duration {
+	if c.Subsidiary && !opt.Skip.Is(cache.SkipRemote) {
+		if ttl > c.TTL {
+			ttl = c.TTL
+		}
+	}
+	if ttl <= 0 {
 		ttl = c.TTL
 	}
-	if ttl >= c.TTL && c.offset > 0 {
-		ttl -= time.Duration(c.rand.Int63n(int64(c.offset)))
-	} else {
-		ttl -= time.Duration(c.rand.Int63n(int64(ttl) / c.Deviation))
+	if c.offset > 0 {
+		if ttl >= c.TTL {
+			ttl += time.Duration(c.rand.Int63n(int64(c.offset)))
+		} else {
+			ttl += time.Duration(c.rand.Int63n(int64(ttl) / c.Deviation))
+		}
 	}
 	return ttl
 }
@@ -182,12 +193,12 @@ func (c *TinyLFU) setValue(key string, value any, ttl time.Duration, raw bool) e
 }
 
 // SetInner sets the value for the given key.ttl is the expiration time, if ttl is zero, the default ttl will be used.
-func (c *TinyLFU) SetInner(_ context.Context, key string, value any, ttl time.Duration, raw bool) error {
+func (c *TinyLFU) SetInner(_ context.Context, key string, value any, ttl time.Duration, opt *cache.Options) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	ttl = c.fixTTL(ttl)
-	return c.setValue(key, value, ttl, raw)
+	ttl = c.fixTTL(ttl, opt)
+	return c.setValue(key, value, ttl, opt.Raw)
 }
 
 func (c *TinyLFU) Has(_ context.Context, key string) bool {

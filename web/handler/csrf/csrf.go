@@ -47,9 +47,6 @@ func NewMiddleware() *Middleware {
 			RequestHeader: "X-CSRF-Token",
 		},
 	}
-	if mw.config.Skipper == nil {
-		mw.config.Skipper = handler.PathSkipper(mw.config.Exclude)
-	}
 	return mw
 }
 
@@ -72,6 +69,10 @@ func (mw *Middleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if err := cfg.Unmarshal(&mw.config); err != nil {
 		panic(err)
 	}
+	if mw.config.Skipper == nil {
+		mw.config.Skipper = handler.PathSkipper(mw.config.Exclude)
+	}
+
 	var opts []csrf.Option
 	if mw.config.RequestHeader != "" {
 		opts = append(opts, csrf.RequestHeader(mw.config.RequestHeader))

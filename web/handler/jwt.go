@@ -62,9 +62,7 @@ func NewJWT(opts ...MiddlewareOption) *JWTMiddleware {
 	if mipts.ConfigFunc != nil {
 		mipts.ConfigFunc(mw.Config)
 	}
-	if mw.Config.Skipper == nil {
-		mw.Config.Skipper = PathSkipper(mw.Config.Exclude)
-	}
+
 	if mw.Config.WithPrincipalContext == nil {
 		mw.Config.WithPrincipalContext = func(c *gin.Context, token *jwt.Token) error {
 			claims, ok := token.Claims.(jwt.MapClaims)
@@ -113,6 +111,9 @@ func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 
 	if mw.Config.TokenStoreKey != "" {
 		mw.tokenStore = cache.GetCache(mw.Config.TokenStoreKey)
+	}
+	if mw.Config.Skipper == nil {
+		mw.Config.Skipper = PathSkipper(mw.Config.Exclude)
 	}
 	return mw.middleware()
 }

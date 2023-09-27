@@ -61,9 +61,6 @@ func NewKeyAuth(opts ...MiddlewareOption) *KeyAuthMiddleware {
 	if mipts.ConfigFunc != nil {
 		mipts.ConfigFunc(mw.config)
 	}
-	if mw.config.Skipper == nil {
-		mw.config.Skipper = PathSkipper(mw.config.Exclude)
-	}
 	return mw
 }
 
@@ -80,6 +77,10 @@ func (mw *KeyAuthMiddleware) Name() string {
 func (mw *KeyAuthMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if err := cfg.Unmarshal(&mw.config); err != nil {
 		panic(err)
+	}
+
+	if mw.config.Skipper == nil {
+		mw.config.Skipper = PathSkipper(mw.config.Exclude)
 	}
 	return keyAuthWithOption(mw.config)
 }

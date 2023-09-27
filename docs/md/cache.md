@@ -57,7 +57,8 @@ Option方法有:
 
 ### LFU缓存
 
-LFU缓存可独立使用,也做为其他远程缓存的二级缓存使用,配置及说明见Redis缓存介绍
+通过对比[基准测试](https://github.com/vmihailenco/go-cache-benchmark),
+我们选取了缓存命中率最高的[tinylru](https://github.com/vmihailenco/go-tinylfu)
 
 WithGroup: 由于已经是内存化的,Group设置差距不是特别大,如果独立使用,该选项无效.
 
@@ -71,7 +72,7 @@ LFU缓存的TTL当做为二级缓存时是可额外配置,考虑到二级缓存�
 
 ## Redis缓存
 
-缓存采用的内存缓存与Redis的组合缓存. 内存缓存采用的是[tinylru](https://github.com/vmihailenco/go-tinylfu)算法与配合Redis.
+是采用的内存缓存(可选)与Redis的组合缓存.
 
 1. 在两种缓存都启用的情况下,会先从本地LFU缓存中获取,如果没有命中,则从Redis缓存中获取,并且将获取到的数据写入本地LFU缓存中.
 2. 在写入本地缓存时,TTL会增加一点偏移值,以确保时效过后,再获取redis更新后的值,防止产生更大的时移差.

@@ -188,16 +188,40 @@ ZwIDAQAB
 				srv.Router().ServeHTTP(w, r)
 				assert.Equal(t, http.StatusOK, w.Code)
 			}
-			t.Run("skip", func(t *testing.T) {
-				if len(mw.Config.Exclude) == 0 {
-					mw.Config.Exclude = append(mw.Config.Exclude, "/skip")
-					mw.Config.Skipper = handler.PathSkipper(mw.Config.Exclude)
-				}
-				r = httptest.NewRequest("GET", "/skip", nil)
-				w = httptest.NewRecorder()
-				srv.Router().ServeHTTP(w, r)
-				assert.Equal(t, http.StatusOK, w.Code)
-			})
 		})
+	}
+}
+
+func TestSkip(t *testing.T) {
+	type args struct {
+		cfg *conf.Configuration
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "",
+			args: args{
+				cfg: conf.NewFromStringMap(map[string]any{
+					"exclude":    []string{"/skip"},
+					"signingKey": "secret",
+				}),
+			},
+		},
+	}
+	for _, tt := range tests {
+		var mw *handler.JWTMiddleware
+		mw = handler.JWT().(*handler.JWTMiddleware)
+		_, engine := gin.CreateTestContext(httptest.NewRecorder())
+		engine.Use(mw.ApplyFunc(tt.args.cfg))
+		engine.GET("/skip", func(c *gin.Context) {
+
+		})
+		r := httptest.NewRequest("GET", "/skip", nil)
+		w := httptest.NewRecorder()
+		engine.ServeHTTP(w, r)
+		assert.Equal(t, http.StatusOK, w.Code)
 	}
 }

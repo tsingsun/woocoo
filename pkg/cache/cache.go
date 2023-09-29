@@ -12,7 +12,6 @@ import (
 
 const (
 	CacheKindRedis = "redis"
-	CacheKindLocal = "lfu"
 
 	defaultItemTTL = time.Hour
 
@@ -23,7 +22,8 @@ const (
 )
 
 var (
-	ErrCacheMiss = errors.New("cache: key is missing")
+	ErrDriverNameMiss = errors.New("cache: driverName is empty")
+	ErrCacheMiss      = errors.New("cache: key is missing")
 )
 
 // Cache is the interface for cache.
@@ -87,12 +87,12 @@ type (
 
 func DefaultMarshalFunc(value any) ([]byte, error) {
 	switch value := value.(type) {
-	case nil:
-		return nil, nil
 	case []byte:
 		return value, nil
 	case string:
 		return []byte(value), nil
+	case nil:
+		return nil, nil
 	}
 
 	b, err := msgpack.Marshal(value)
@@ -109,8 +109,6 @@ func DefaultUnmarshalFunc(b []byte, value any) error {
 	}
 
 	switch value := value.(type) {
-	case nil:
-		return nil
 	case *[]byte:
 		clone := make([]byte, len(b))
 		copy(clone, b)
@@ -118,6 +116,8 @@ func DefaultUnmarshalFunc(b []byte, value any) error {
 		return nil
 	case *string:
 		*value = string(b)
+		return nil
+	case nil:
 		return nil
 	}
 

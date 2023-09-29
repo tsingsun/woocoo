@@ -129,6 +129,16 @@ func TestManager(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "empty",
+			args: args{
+				name: "",
+				f: func() Cache {
+					return &mockCache{}
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

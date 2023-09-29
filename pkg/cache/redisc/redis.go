@@ -15,14 +15,19 @@ import (
 var _ cache.Cache = (*Redisc)(nil)
 
 type (
+	Config struct {
+		// DriverName set it to register to cache manager.
+		DriverName string `yaml:"driverName" json:"driverName"`
+		UseStats   bool   `yaml:"stats" json:"stats"`
+	}
 	// Redisc is a cache implementation of redis.
 	//
 	// if you want to register to cache manager, set a `driverName` in configuration
 	Redisc struct {
-		driverName string
-		redis      redis.Cmdable
-		local      *lfu.TinyLFU
-		stats      *cache.Stats
+		Config
+		redis redis.Cmdable
+		local *lfu.TinyLFU
+		stats *cache.Stats
 		// marshal and unmarshal func called when cross process cache
 		marshal   cache.MarshalFunc
 		unmarshal cache.UnmarshalFunc
@@ -54,30 +59,37 @@ func WithRedisClient(cli redis.UniversalClient) Option {
 //
 // If you want to register to cache manager, set a `driverName` in configuration.
 func New(cfg *conf.Configuration, opts ...Option) (*Redisc, error) {
-	c := &Redisc{
-		driverName: "redis",
-	}
+	cd := &Redisc{}
 	for _, opt := range opts {
-		opt(c)
+		opt(cd)
 	}
-	if err := c.Apply(cfg); err != nil {
+	if err := cd.Apply(cfg); err != nil {
 		return nil, err
 	}
-	return c, nil
+
+	if cd.marshal == nil {
+		cd.marshal = cache.DefaultMarshalFunc
+		cd.unmarshal = cache.DefaultUnmarshalFunc
+	}
+
+	return cd, nil
 }
 
 // Register cache to cache manager
 func (cd *Redisc) Register() error {
-	return cache.RegisterCache(cd.driverName, cd)
+	return cache.RegisterCache(cd.DriverName, cd)
 }
 
 // Apply conf.configurable
-func (cd *Redisc) Apply(cfg *conf.Configuration) (err error) {
-	if cfg.Bool("stats") {
+func (cd *Redisc) Apply(cnf *conf.Configuration) (err error) {
+	if err := cnf.Unmarshal(&cd.Config); err != nil {
+		return err
+	}
+	if cd.UseStats {
 		cd.stats = &cache.Stats{}
 	}
-	if cfg.IsSet("local") {
-		lcfg := cfg.Sub("local")
+	if cnf.IsSet("local") {
+		lcfg := cnf.Sub("local")
 		lcfg.Parser().Set("subsidiary", true)
 		cd.local, err = lfu.NewTinyLFU(lcfg)
 		if err != nil {
@@ -85,23 +97,16 @@ func (cd *Redisc) Apply(cfg *conf.Configuration) (err error) {
 		}
 	}
 	if cd.redis == nil {
-		remote, err := redisx.NewClient(cfg)
+		remote, err := redisx.NewClient(cnf)
 		if err != nil {
 			return err
 		}
 		cd.redis = remote
 	}
-	if k := cfg.String("driverName"); k != "" {
-		cd.driverName = k
+	if cd.DriverName != "" {
 		if err = cd.Register(); err != nil {
 			return err
 		}
-	}
-	if cd.marshal == nil {
-		cd.marshal = cache.DefaultMarshalFunc
-	}
-	if cd.unmarshal == nil {
-		cd.unmarshal = cache.DefaultUnmarshalFunc
 	}
 	return
 }

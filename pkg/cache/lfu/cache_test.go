@@ -15,6 +15,7 @@ import (
 func TestNewTinyLFU(t *testing.T) {
 	t.Run("all", func(t *testing.T) {
 		cnfstr := `
+driverName: local
 size: 1000
 samples: 10000000
 ttl: 10m
@@ -30,6 +31,10 @@ subsidiary: true
 		assert.Equal(t, int64(10), c.Deviation)
 		assert.Equal(t, true, c.Subsidiary)
 		assert.Equal(t, 10*time.Second, c.offset)
+		assert.Equal(t, "local", c.DriverName)
+		assert.NotNil(t, cache.GetCache("local"))
+		_, err = NewTinyLFU(cnf)
+		assert.Error(t, err, "repeat register")
 	})
 	t.Run("ttl format", func(t *testing.T) {
 		cnfstr := `
@@ -99,6 +104,8 @@ func TestTinyLFU_Get(t *testing.T) {
 		err := local.Get(context.Background(), "key", &v)
 		assert.NoError(t, err)
 		assert.Equal(t, "value", v)
+		err = local.Get(context.Background(), "key", &v)
+		assert.NoError(t, err, "repeat get to check if del for expired")
 
 		assert.NoError(t, local.Set(context.Background(), "key", "value", cache.WithTTL(time.Second)))
 		assert.True(t, local.Has(context.Background(), "key"))
@@ -192,6 +199,10 @@ func TestTinyLFU_Get(t *testing.T) {
 			"subsidiary": true,
 		}))
 		require.NoError(t, err)
+		require.NoError(t, subs.Set(context.Background(), "ttl", "123", cache.WithTTL(time.Second*-1)))
+		time.Sleep(time.Second*2 + time.Millisecond*500)
+		require.ErrorIs(t, subs.Get(context.Background(), "ttl", ""), cache.ErrCacheMiss)
+
 		want := ""
 		require.NoError(t, subs.Set(context.Background(), "key", "123", cache.WithTTL(time.Hour)))
 		time.Sleep(time.Second * 3)

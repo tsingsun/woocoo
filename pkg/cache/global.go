@@ -28,6 +28,9 @@ func SetDefault(driver string) error {
 
 // RegisterCache registers a cache driver.
 func RegisterCache(name string, cache Cache) error {
+	if name == "" {
+		return ErrDriverNameMiss
+	}
 	if _, ok := _manager.drivers[name]; ok {
 		return fmt.Errorf("driver already registered for name %q", name)
 	}

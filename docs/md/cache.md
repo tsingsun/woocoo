@@ -53,6 +53,35 @@ Option方法有:
 
 > 以上Option的支持情况取决于插件的实现.内置的Redis插件都支持.
 
+## 使用
+
+缓存是采用手动初始化方式,并且有全局缓存管理.以方便其他组件使用.
+
+```go
+// 使用redis缓存,通过配置文件初始化
+cnf := conf.Global().Sub("cache.redis")
+// 如果配置了drivername,则会自动注册,否则需要手动注册
+cdb,err := redisc.New(cnf)
+// 手动注册
+cache.RegisterCache("redis",cdb)
+```
+
+使用缓存遵守这样的初始化方式.
+
+### 组件引用缓存
+
+其他组件使用缓存时,可配置引用的缓存 `DriverName` , 通过`cache.GetCache`获取缓存实例来使用, 而不用在组件内独立初始化, 
+
+如你的组件声明了`cache.Cache`类型的字段.
+```go
+type MyComponent{
+    cache: cache.Cache,
+}
+MyComponent{
+    cache: cache.GetCache("redis"),
+}
+```
+
 ## 内存缓存
 
 ### LFU缓存

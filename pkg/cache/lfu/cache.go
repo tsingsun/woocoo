@@ -27,8 +27,11 @@ var _ cache.Cache = (*TinyLFU)(nil)
 
 // Config is the configuration for TinyLFU cache
 type Config struct {
-	Size      int           `yaml:"size" json:"size"`
-	Samples   int           `yaml:"samples" json:"samples"`
+	// DriverName set it to register to cache manager.
+	DriverName string `yaml:"driverName" json:"driverName"`
+	Size       int    `yaml:"size" json:"size"`
+	Samples    int    `yaml:"samples" json:"samples"`
+	// TTL is default to set item ttl, if you use no expired cache, this value is not used.
 	TTL       time.Duration `yaml:"ttl" json:"ttl"`
 	Deviation int64         `yaml:"deviation" json:"deviation"`
 	// Subsidiary indicate whether the cache is a subsidiary cache,
@@ -51,6 +54,11 @@ type TinyLFU struct {
 	unmarshal cache.UnmarshalFunc
 }
 
+// Register cache to cache manager
+func (c *TinyLFU) Register() error {
+	return cache.RegisterCache(c.DriverName, c)
+}
+
 // Apply implements the conf.Configurable interface
 func (c *TinyLFU) Apply(cnf *conf.Configuration) error {
 	if err := cnf.Unmarshal(&c.Config); err != nil {
@@ -62,12 +70,17 @@ func (c *TinyLFU) Apply(cnf *conf.Configuration) error {
 			c.offset = maxOffset
 		}
 	}
+	if c.DriverName != "" {
+		if err := c.Register(); err != nil {
+			return err
+		}
+	}
 	c.lfu = tinylfu.New(c.Size, c.Samples)
 	return nil
 }
 
 func NewTinyLFU(cnf *conf.Configuration) (*TinyLFU, error) {
-	lfu := TinyLFU{
+	c := TinyLFU{
 		rand: rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec
 		Config: Config{
 			Samples:   defaultSamples,
@@ -75,14 +88,15 @@ func NewTinyLFU(cnf *conf.Configuration) (*TinyLFU, error) {
 			TTL:       defaultTTL,
 		},
 	}
-	if err := lfu.Apply(cnf); err != nil {
+	if err := c.Apply(cnf); err != nil {
 		return nil, err
 	}
-	if lfu.marshal == nil {
-		lfu.marshal = cache.DefaultMarshalFunc
-		lfu.unmarshal = cache.DefaultUnmarshalFunc
+
+	if c.marshal == nil {
+		c.marshal = cache.DefaultMarshalFunc
+		c.unmarshal = cache.DefaultUnmarshalFunc
 	}
-	return &lfu, nil
+	return &c, nil
 }
 
 // Get returns the value for the given key, or ErrCacheMiss. If the value is nil, the value will not be set
@@ -180,15 +194,19 @@ func (c *TinyLFU) fixTTL(ttl time.Duration, opt *cache.Options) time.Duration {
 }
 
 func (c *TinyLFU) setValue(key string, value any, ttl time.Duration, raw bool) error {
+	exp := time.Time{}
+	if ttl != 0 {
+		exp = time.Now().Add(ttl)
+	}
 	if raw {
-		c.lfu.Set(&tinylfu.Item{Key: key, Value: value, ExpireAt: time.Now().Add(ttl)})
+		c.lfu.Set(&tinylfu.Item{Key: key, Value: value, ExpireAt: exp})
 		return nil
 	}
 	v, err := c.marshal(value)
 	if err != nil {
 		return err
 	}
-	c.lfu.Set(&tinylfu.Item{Key: key, Value: v, ExpireAt: time.Now().Add(ttl)})
+	c.lfu.Set(&tinylfu.Item{Key: key, Value: v, ExpireAt: exp})
 	return nil
 }
 

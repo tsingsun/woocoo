@@ -70,11 +70,12 @@ func (c *TinyLFU) Apply(cnf *conf.Configuration) error {
 			c.offset = maxOffset
 		}
 	}
-	if c.Config.DriverName != "" {
+	if c.DriverName != "" {
 		if err := c.Register(); err != nil {
 			return err
 		}
 	}
+	c.lfu = tinylfu.New(c.Size, c.Samples)
 	return nil
 }
 
@@ -91,7 +92,6 @@ func NewTinyLFU(cnf *conf.Configuration) (*TinyLFU, error) {
 		return nil, err
 	}
 
-	c.lfu = tinylfu.New(c.Size, c.Samples)
 	if c.marshal == nil {
 		c.marshal = cache.DefaultMarshalFunc
 		c.unmarshal = cache.DefaultUnmarshalFunc

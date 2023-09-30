@@ -207,6 +207,20 @@ func TestRedisc(t *testing.T) {
 			},
 		},
 		{
+			name: "set expire 0",
+			do: func() {
+				rc, rdb := initStandaloneRedisc(t)
+				key := "expire"
+				assert.NoError(t, rc.Set(context.Background(), key, "value", cache.WithTTL(0)))
+				rdb.FastForward(time.Hour)
+				time.Sleep(time.Second * 3) // make local cache expire
+				want := ""
+				assert.True(t, rc.Has(context.Background(), key), "local miss,redis has")
+				assert.NoError(t, rc.Get(context.Background(), key, &want))
+				assert.Equal(t, "value", want)
+			},
+		},
+		{
 			name: "take",
 			do: func() {
 				rc, rdb := initStandaloneRedisc(t)
@@ -373,6 +387,11 @@ func TestCache_Op(t *testing.T) {
 					Data: testdata.FileBytes("gzip/benchmark.json"),
 				}
 				ctx := context.Background()
+				assert.NoError(t, rc.Set(ctx, "skip0", v,
+					cache.WithTTL(time.Hour), cache.WithSkip(0)))
+				assert.True(t, rc.Has(ctx, "skip0"))
+				assert.True(t, rdb.Exists("skip0"))
+
 				assert.NoError(t, rc.Set(ctx, "key", v,
 					cache.WithTTL(time.Hour), cache.WithSkip(cache.SkipCache)))
 				assert.False(t, rc.Has(ctx, "key"))

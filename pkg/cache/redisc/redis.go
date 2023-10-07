@@ -155,8 +155,7 @@ func (cd *Redisc) getRemoteData(ctx context.Context, key string, mode cache.Skip
 	return data, nil
 }
 
-func (cd *Redisc) tryGetLocal(ctx context.Context, key string, value any, opt *cache.Options,
-) (local bool, err error) {
+func (cd *Redisc) tryGetLocal(ctx context.Context, key string, value any, opt *cache.Options) (local bool, err error) {
 	local = cd.local != nil && !opt.Skip.Is(cache.SkipLocal)
 	err = cache.ErrCacheMiss
 	// first try to load from local cache

@@ -17,6 +17,7 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 )
 
 const (
@@ -62,6 +63,7 @@ func newServer(config map[string]any) *gin.Engine {
 	router.Any("/reverse", func(c *gin.Context) {
 		rp.ServeHTTP(c.Writer, c.Request)
 	})
+	router.StaticFile("/benchmark.json", "../../../test/testdata/gzip/benchmark.json")
 	return router
 }
 
@@ -81,25 +83,39 @@ func TestConfig(t *testing.T) {
 }
 
 func TestGzip(t *testing.T) {
-	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/", nil)
-	req.Header.Add("Accept-Encoding", "gzip")
+	t.Run("lt minSize", func(t *testing.T) {
+		req, _ := http.NewRequestWithContext(context.Background(), "GET", "/", nil)
+		req.Header.Add("Accept-Encoding", "gzip")
 
-	w := httptest.NewRecorder()
-	r := newServer(map[string]any{
-		"minSize": 1,
+		w := httptest.NewRecorder()
+		r := newServer(map[string]any{
+			"minSize": 1,
+		})
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, w.Code, 200)
+		assert.Equal(t, w.Header().Get("Content-Encoding"), "gzip")
+		assert.Equal(t, w.Header().Get("Vary"), "Accept-Encoding")
+		assert.NotEqual(t, w.Header().Get("Content-Length"), "0")
+		assert.NotEqual(t, w.Body.Len(), 19)
+		assert.Equal(t, fmt.Sprint(w.Body.Len()), w.Header().Get("Content-Length"))
+
+		wantBody, err := unzipBody(w.Body)
+		assert.NoError(t, err)
+		assert.Equal(t, wantBody, testResponse)
 	})
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, w.Code, 200)
-	assert.Equal(t, w.Header().Get("Content-Encoding"), "gzip")
-	assert.Equal(t, w.Header().Get("Vary"), "Accept-Encoding")
-	assert.NotEqual(t, w.Header().Get("Content-Length"), "0")
-	assert.NotEqual(t, w.Body.Len(), 19)
-	assert.Equal(t, fmt.Sprint(w.Body.Len()), w.Header().Get("Content-Length"))
-
-	wantBody, err := unzipBody(w.Body)
-	assert.NoError(t, err)
-	assert.Equal(t, wantBody, testResponse)
+	t.Run("304", func(t *testing.T) {
+		req, _ := http.NewRequestWithContext(context.Background(), "GET", "/benchmark.json", nil)
+		req.Header.Add("Accept-Encoding", "gzip")
+		req.Header.Add("If-Modified-Since", time.Now().Format(http.TimeFormat))
+		w := httptest.NewRecorder()
+		r := newServer(map[string]any{
+			"minSize": 1,
+		})
+		r.ServeHTTP(w, req)
+		assert.Equal(t, w.Code, 304)
+		assert.NotEmpty(t, w.Header().Get("Last-Modified"))
+	})
 }
 
 func TestGzipPNG(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"github.com/tsingsun/woocoo/web/handler"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -113,7 +114,9 @@ func (h *Middleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		c.Header("Vary", "Accept-Encoding")
 		defer func() {
 			gw.Close()
-			c.Header("Content-Length", fmt.Sprint(c.Writer.Size()))
+			if c.Writer.Size() > 0 { // 304 unmodified, size == -1
+				c.Header("Content-Length", strconv.Itoa(c.Writer.Size()))
+			}
 			gwPool.Put(gw)
 		}()
 		c.Next()

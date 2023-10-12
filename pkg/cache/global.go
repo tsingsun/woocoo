@@ -41,9 +41,13 @@ func RegisterCache(name string, cache Cache) error {
 	return nil
 }
 
-// GetCache return a Cache driver,if it has multi Cache Driver
-func GetCache(driver string) Cache {
-	return _manager.drivers[driver]
+// GetCache return a registered Cache driver.
+func GetCache(driver string) (Cache, error) {
+	c, ok := _manager.drivers[driver]
+	if !ok {
+		return nil, fmt.Errorf("driver %q not registered", driver)
+	}
+	return c, nil
 }
 
 func Get(ctx context.Context, key string, v any, opts ...Option) error {

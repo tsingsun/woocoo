@@ -149,9 +149,13 @@ func TestManager(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
-			assert.NotNil(t, GetCache(tt.args.name))
+			_, err = GetCache(tt.args.name + "miss")
+			assert.Error(t, err)
+			got, _ := GetCache(tt.args.name)
+			assert.NotNil(t, got)
 			assert.Len(t, _manager.drivers, i+1)
-			assert.Equal(t, GetCache("default"), _manager.drivers["default"])
+			df, _ := GetCache("default")
+			assert.Equal(t, df, _manager.drivers["default"])
 		})
 	}
 }

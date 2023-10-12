@@ -101,6 +101,18 @@ func TestAuthorizer(t *testing.T) {
 				assert.Equal(t, http.StatusForbidden, w.Code)
 			},
 		},
+		{
+			name: "miss user",
+			cfg: func() *conf.Configuration {
+				nm := fmt.Sprintf(cnf, "m = g(r.sub, p.sub) && r.obj1 == p.obj && r.act != p.act")
+				c := conf.NewFromBytes([]byte(nm)).Sub("handler")
+				return c
+			}(),
+			req: httptest.NewRequest("GET", "/", nil),
+			check: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusForbidden, w.Code)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

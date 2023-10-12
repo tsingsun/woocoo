@@ -93,7 +93,7 @@ func (mw *Middleware) Name() string {
 }
 
 func (mw *Middleware) build(cfg *conf.Configuration) (err error) {
-	if err := cfg.Unmarshal(&mw.config); err != nil {
+	if err = cfg.Unmarshal(&mw.config); err != nil {
 		panic(err)
 	}
 	if mw.config.Skipper == nil {
@@ -137,7 +137,9 @@ func (mw *Middleware) build(cfg *conf.Configuration) (err error) {
 	}
 	mw.signatureExtractor = fs[0]
 	if mw.config.StoreKey != "" {
-		mw.cache = cache.GetCache(mw.config.StoreKey)
+		if mw.cache, err = cache.GetCache(mw.config.StoreKey); err != nil {
+			return err
+		}
 	} else {
 		mw.cache, err = lfu.NewTinyLFU(conf.NewFromStringMap(map[string]any{
 			"size": 100000,

@@ -11,5 +11,4 @@ oauth-with-cache:
       - scope2
     endpointParams:
       param1: [value1]
-    cache:
-      type: redis
+    storeKey: redis

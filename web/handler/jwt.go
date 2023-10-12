@@ -102,15 +102,18 @@ func (mw *JWTMiddleware) Name() string {
 }
 
 func (mw *JWTMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	if err := cfg.Unmarshal(mw.Config); err != nil {
+	var err error
+	if err = cfg.Unmarshal(mw.Config); err != nil {
 		panic(err)
 	}
-	if err := mw.Config.Init(); err != nil {
+	if err = mw.Config.Init(); err != nil {
 		panic(err)
 	}
 
 	if mw.Config.TokenStoreKey != "" {
-		mw.tokenStore = cache.GetCache(mw.Config.TokenStoreKey)
+		if mw.tokenStore, err = cache.GetCache(mw.Config.TokenStoreKey); err != nil {
+			panic(err)
+		}
 	}
 	if mw.Config.Skipper == nil {
 		mw.Config.Skipper = PathSkipper(mw.Config.Exclude)

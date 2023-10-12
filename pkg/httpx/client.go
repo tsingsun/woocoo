@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/mitchellh/hashstructure/v2"
 	"github.com/tsingsun/woocoo/pkg/cache"
-	"github.com/tsingsun/woocoo/pkg/cache/redisc"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 	"net/http"
@@ -72,8 +71,8 @@ func NewClientConfig(cnf *conf.Configuration, opts ...Option) (cfg *ClientConfig
 	if cfg.BasicAuth != nil {
 		cfg.base = chain(cfg.base, BaseAuth(cfg.BasicAuth.Username, cfg.BasicAuth.Password))
 	}
-	if cfg.OAuth2 != nil && cnf.IsSet("oauth2.cache") {
-		storage, err := newCacheTokenStorage(cnf, cfg)
+	if cfg.OAuth2 != nil && cfg.OAuth2.StoreKey != "" {
+		storage, err := newCacheTokenStorage(cfg)
 		if err != nil {
 			return cfg, err
 		}
@@ -188,7 +187,10 @@ func (p ProxyConfig) ProxyFunc() func(req *http.Request) (*url.URL, error) {
 
 // OAuth2Config is a wrapper around oauth2.Config that allows for custom.
 type OAuth2Config struct {
-	oauth2.Config  `yaml:",inline" json:",inline"`
+	oauth2.Config `yaml:",inline" json:",inline"`
+	// StoreKey is the name of the cache driver which is used to store nonce.
+	// default is "redis".
+	StoreKey       string `json:"storeKey" yaml:"storeKey"`
 	EndpointParams url.Values
 
 	ts      oauth2.TokenSource
@@ -232,8 +234,8 @@ type cacheTokenStorage struct {
 }
 
 // cnf is the client configuration
-func newCacheTokenStorage(cnf *conf.Configuration, cfg *ClientConfig) (*cacheTokenStorage, error) {
-	dc, err := buildCache(cnf)
+func newCacheTokenStorage(cfg *ClientConfig) (*cacheTokenStorage, error) {
+	dc, err := buildCache(cfg.OAuth2.StoreKey)
 	if err != nil {
 		return nil, err
 	}
@@ -253,12 +255,8 @@ func tokenKey(config *OAuth2Config) string {
 	return fmt.Sprintf("%s:token:%d", config.ClientID, hash)
 }
 
-func buildCache(cnf *conf.Configuration) (cache.Cache, error) {
-	switch cnf.String("oauth2.cache.type") {
-	case cache.CacheKindRedis:
-		return redisc.New(cnf.Sub("oauth2.cache"))
-	}
-	return nil, fmt.Errorf("oauth2 cache type %q no support", cnf.String("oauth2.cache.type"))
+func buildCache(key string) (cache.Cache, error) {
+	return cache.GetCache(key)
 }
 
 func (c *cacheTokenStorage) Token() (*oauth2.Token, error) {

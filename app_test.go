@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	_ "github.com/tsingsun/woocoo/rpc/grpcx/registry/etcd3"
-	"github.com/tsingsun/woocoo/testco/wctest"
+	"github.com/tsingsun/woocoo/test/wctest"
 	"github.com/tsingsun/woocoo/web"
 )
 

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/alicebob/miniredis/v2"
+	"github.com/tsingsun/woocoo/pkg/cache/redisc"
 	"golang.org/x/oauth2"
 	"io"
 	"net/http"
@@ -437,7 +438,7 @@ func TestNewClient_Option(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "cache not support",
+			name: "cache not found",
 			args: args{
 				cnf: conf.NewFromStringMap(map[string]any{
 					"oauth2": map[string]any{
@@ -446,9 +447,7 @@ func TestNewClient_Option(t *testing.T) {
 						"endpoint": map[string]any{
 							"tokenUrl": "http://localhost:8080/token",
 						},
-						"cache": map[string]any{
-							"type": "mock",
-						},
+						"storeKey": "miss",
 					},
 				}),
 			},
@@ -531,8 +530,12 @@ func TestOAuth2(t *testing.T) {
 	})
 	t.Run("with cache", func(t *testing.T) {
 		mr := miniredis.RunT(t)
+		_, err := redisc.New(conf.NewFromStringMap(map[string]any{
+			"driverName": "redis",
+			"addrs":      []string{mr.Addr()},
+		}))
+		require.NoError(t, err)
 		cnf := conf.New(conf.WithLocalPath(testdata.Path("httpx/all.yaml"))).Load().Sub("oauth-with-cache")
-		cnf.Parser().Set("oauth2.cache.addrs", []string{mr.Addr()})
 		cnf.Parser().Set("oauth2.endpoint.tokenURL", ts.URL+cnf.String("oauth2.endpoint.tokenURL"))
 		cnf.Parser().Set("oauth2.endpoint.authURL", ts.URL+cnf.String("oauth2.endpoint.authURL"))
 		cfg, err := NewClientConfig(cnf)

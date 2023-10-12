@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
-	"github.com/tsingsun/woocoo/testco/wctest"
+	"github.com/tsingsun/woocoo/test/wctest"
 )
 
 func TestNew(t *testing.T) {

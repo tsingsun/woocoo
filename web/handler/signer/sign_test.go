@@ -98,6 +98,29 @@ exclude: ["/skip"]
 			mid.ApplyFunc(cnf)
 		})
 	})
+	t.Run("extend cache", func(t *testing.T) {
+		t.Run("mock", func(t *testing.T) {
+			_, err := lfu.NewTinyLFU(conf.NewFromStringMap(map[string]any{
+				"size":       100000,
+				"driverName": "signer_cache_mock",
+			}))
+			require.NoError(t, err)
+			mid := TokenSigner().(*Middleware)
+			cnf := conf.NewFromBytes([]byte(cnfstr))
+			cnf.Parser().Set("storeKey", "signer_cache_mock")
+			assert.NotPanics(t, func() {
+				mid.ApplyFunc(cnf)
+			})
+		})
+		t.Run("miss", func(t *testing.T) {
+			mid := TokenSigner().(*Middleware)
+			cnf := conf.NewFromBytes([]byte(cnfstr))
+			cnf.Parser().Set("storeKey", "XX")
+			assert.Panics(t, func() {
+				mid.ApplyFunc(cnf)
+			})
+		})
+	})
 }
 
 func TestToken_Wechat_OK(t *testing.T) {

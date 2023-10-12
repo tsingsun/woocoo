@@ -11,8 +11,8 @@ import (
 
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
+	"github.com/tsingsun/woocoo/test/logtest"
 	"github.com/tsingsun/woocoo/test/testdata"
-	"github.com/tsingsun/woocoo/testco/logtest"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"

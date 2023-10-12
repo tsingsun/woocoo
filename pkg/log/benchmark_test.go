@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tsingsun/woocoo/testco/logtest"
+	"github.com/tsingsun/woocoo/test/logtest"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

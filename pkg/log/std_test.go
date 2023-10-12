@@ -2,7 +2,7 @@ package log
 
 import (
 	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/testco/logtest"
+	"github.com/tsingsun/woocoo/test/logtest"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"log"

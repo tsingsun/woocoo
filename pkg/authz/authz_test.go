@@ -16,7 +16,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/test/testdata"
-	"github.com/tsingsun/woocoo/testco/wctest"
+	"github.com/tsingsun/woocoo/test/wctest"
 )
 
 func casbinFilePrepare(node string) {

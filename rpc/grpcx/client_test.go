@@ -3,15 +3,15 @@ package grpcx
 import (
 	"context"
 	"github.com/stretchr/testify/require"
-	"github.com/tsingsun/woocoo/testco/wctest"
+	"github.com/tsingsun/woocoo/test/wctest"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	_ "github.com/tsingsun/woocoo/rpc/grpcx/registry/etcd3"
+	"github.com/tsingsun/woocoo/test/mock/helloworld"
 	"github.com/tsingsun/woocoo/test/testdata"
-	"github.com/tsingsun/woocoo/testco/mock/helloworld"
 	"google.golang.org/grpc/connectivity"
 )
 

@@ -1,6 +1,6 @@
 module github.com/tsingsun/woocoo/cmd/woco
 
-go 1.20
+go 1.21
 
 require (
 	ariga.io/atlas v0.14.1-0.20230918065911-83ad451a4935

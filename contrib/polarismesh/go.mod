@@ -1,6 +1,6 @@
 module github.com/tsingsun/woocoo/contrib/polarismesh
 
-go 1.19
+go 1.21
 
 require (
 	github.com/knadh/koanf/parsers/yaml v0.1.0

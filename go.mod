@@ -27,7 +27,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.9
 	go.uber.org/goleak v1.2.1
 	go.uber.org/multierr v1.11.0
-	go.uber.org/zap v1.25.0
+	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/net v0.14.0
 	golang.org/x/oauth2 v0.11.0

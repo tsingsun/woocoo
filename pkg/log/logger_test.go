@@ -411,6 +411,7 @@ log:
 	logger.Info("info for object", zap.Object("object", &user{Name: "user"}))
 	logger.Info("info for Binary", zap.Binary("binary", []byte{1, 2, 3, 4, 5}))
 	logger.Info("info for array", zap.Bools("array", []bool{true, false}))
+	logger.Info("info for dict", zap.Dict("dict", zap.String("key", "value"), zap.String("key1", "value")))
 }
 
 func TestLogger_callSkip(t *testing.T) {

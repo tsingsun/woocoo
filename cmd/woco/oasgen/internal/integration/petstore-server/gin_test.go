@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration/petstore/server"
+	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web/handler"
 	"net/http/httptest"
 	"strings"
@@ -21,7 +22,7 @@ type ginTestSuite struct {
 func (s *ginTestSuite) SetupSuite() {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
-	router.Use(handler.ErrorHandle().ApplyFunc(nil))
+	router.Use(handler.ErrorHandle().ApplyFunc(conf.New()))
 	imp := &Service{}
 	server.RegisterValidator()
 	server.RegisterUserHandlers(&router.RouterGroup, imp)

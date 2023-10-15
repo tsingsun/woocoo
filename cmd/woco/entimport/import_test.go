@@ -17,7 +17,6 @@ const (
 )
 
 func init() {
-
 	//createTestMysql()
 	//createTestCK()
 }

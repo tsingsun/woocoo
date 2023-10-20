@@ -7,7 +7,7 @@ require (
 	github.com/casbin/casbin/v2 v2.73.1
 	github.com/gin-gonic/gin v1.9.1
 	github.com/stretchr/testify v1.8.4
-	github.com/tsingsun/woocoo v0.4.2-0.20231013074819-19382f73127a
+	github.com/tsingsun/woocoo v0.4.2
 	github.com/vektah/gqlparser/v2 v2.5.10
 )
 

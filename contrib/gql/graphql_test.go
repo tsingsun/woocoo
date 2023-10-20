@@ -188,7 +188,7 @@ web:
 
 	cfg := conf.NewFromBytes([]byte(cfgStr))
 	srv := web.New(web.WithConfiguration(cfg.Sub("web")),
-		RegistryMiddleware())
+		RegisterMiddleware())
 	gqlsrvList, err := RegisterSchema(srv, &gqlSchemaMock, &gqlSchemaMock)
 	require.NoError(t, err)
 	if !assert.Len(t, gqlsrvList, 2) {

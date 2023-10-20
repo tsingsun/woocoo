@@ -1,13 +1,12 @@
 package woocoo
 
 import (
-	"net/http"
-	"testing"
-
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web"
 	"github.com/tsingsun/woocoo/web/handler"
+	"net/http"
+	"testing"
 )
 
 func BenchmarkGinDefault(b *testing.B) {

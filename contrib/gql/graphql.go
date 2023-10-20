@@ -90,8 +90,8 @@ func New() *Handler {
 	return &Handler{}
 }
 
-// RegistryMiddleware register a middleware to web server
-func RegistryMiddleware() web.Option {
+// RegisterMiddleware register a middleware to web server
+func RegisterMiddleware() web.Option {
 	return web.WithMiddlewareNewFunc(graphqlHandlerName, Middleware)
 }
 
@@ -134,7 +134,7 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 }
 
 // RegisterSchema is builder for initializing graphql schemas, initialize order is based on the router group order.
-// graphql middleware must registry to web server first though web.RegistryMiddleware(gql.New())
+// graphql middleware must registry to web server first though web.RegisterMiddleware(gql.New())
 //
 // it graphql pkg handler.NewDefaultServer to create a graphql server
 func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss []*gqlgen.Server, err error) {

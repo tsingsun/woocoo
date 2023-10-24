@@ -40,6 +40,8 @@ type Config struct {
 	ZapConfigs []zap.Config `json:"cores" yaml:"cores"`
 	// Rotate is for log rotate
 	Rotate *rotate `json:"rotate" yaml:"rotate"`
+	// DisableSampling disables sampling for all the loggers
+	DisableSampling bool `json:"disableSampling" yaml:"disableSampling"`
 	// Disable automatic timestamps in output if use TextEncoder
 	DisableTimestamp bool `json:"disableTimestamp" yaml:"disableTimestamp"`
 	// DisableErrorVerbose stops annotating logs with the full verbose error
@@ -67,29 +69,29 @@ func (r *rotate) Sync() error {
 }
 
 // NewConfig return a Config instance
-func NewConfig(cfg *conf.Configuration) (*Config, error) {
-	coresl := len(cfg.ParserOperator().Slices(zapConfigPath))
+func NewConfig(cnf *conf.Configuration) (*Config, error) {
+	coresl := len(cnf.ParserOperator().Slices(zapConfigPath))
 	if coresl == 0 {
 		return nil, fmt.Errorf("none logger config,plz set up section: cores")
 	}
 	v := &Config{
 		ZapConfigs: make([]zap.Config, coresl),
-		basedir:    cfg.Root().GetBaseDir(),
+		basedir:    cnf.Root().GetBaseDir(),
 		callerSkip: CallerSkip,
 		TraceIDKey: TraceIDKey,
 	}
-	if cs := "callerSkip"; cfg.IsSet(cs) {
-		v.callerSkip = cfg.Int(cs)
+	if cs := "callerSkip"; cnf.IsSet(cs) {
+		v.callerSkip = cnf.Int(cs)
 	}
 	for i := 0; i < len(v.ZapConfigs); i++ {
-		v.ZapConfigs[i] = defaultZapConfig(cfg)
+		v.ZapConfigs[i] = defaultZapConfig(cnf)
 	}
 
-	if err := cfg.Unmarshal(&v); err != nil {
+	if err := cnf.Unmarshal(&v); err != nil {
 		return nil, err
 	}
 
-	if v.Rotate != nil || cfg.IsSet("rotate") {
+	if v.Rotate != nil || cnf.IsSet("rotate") {
 		v.useRotate = true
 	}
 	return v, nil
@@ -107,11 +109,14 @@ func DefaultTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(s)
 }
 
-func defaultZapConfig(cfg *conf.Configuration) zap.Config {
+func defaultZapConfig(cnf *conf.Configuration) zap.Config {
 	dzapCfg := zap.NewProductionConfig()
 	// change default encode time format
 	dzapCfg.EncoderConfig.EncodeTime = DefaultTimeEncoder
-	dzapCfg.Development = cfg.Root().Development
+	dzapCfg.Development = cnf.Root().Development
+	if cnf.Bool("disableSampling") {
+		dzapCfg.Sampling = nil
+	}
 	return dzapCfg
 }
 

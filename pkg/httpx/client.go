@@ -22,6 +22,7 @@ type (
 		Token() (*oauth2.Token, error)
 		SetToken(*oauth2.Token) error
 	}
+
 	// ClientConfig is for an extension http.Client. It can be used to configure a client with configuration.
 	ClientConfig struct {
 		TransportConfig

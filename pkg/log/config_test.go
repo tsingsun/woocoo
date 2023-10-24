@@ -43,7 +43,7 @@ func TestNewConfig(t *testing.T) {
 			args: args{
 				cfg: conf.NewFromBytes([]byte(`
 cores:
-  - level: debug
+  - level: debug 
 rotate:
   localtime: true
 `)),
@@ -64,6 +64,33 @@ rotate:
 			},
 			check: func(cfg *Config) {
 				assert.True(t, cfg.useRotate, true, "rotate lazy init, no need to assert values")
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "rotate with nil sampling",
+			args: args{
+				cfg: conf.NewFromBytes([]byte(`
+cores:
+  - level: debug
+disableSampling: true
+`)),
+			},
+			check: func(cfg *Config) {
+				assert.Nil(t, cfg.ZapConfigs[0].Sampling)
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "rotate with sampling",
+			args: args{
+				cfg: conf.NewFromBytes([]byte(`
+cores:
+  - level: debug
+`)),
+			},
+			check: func(cfg *Config) {
+				assert.Equal(t, 100, cfg.ZapConfigs[0].Sampling.Initial)
 			},
 			wantErr: assert.NoError,
 		},

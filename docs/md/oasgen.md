@@ -11,7 +11,6 @@ title: OpenAPI3导入
 
 WooCoo选择Gin作为Web框架,因此本包生成的服务端代码也是基于Gin的,Gin项目也可以使用.
 
-
 ## 概览
 
 我们采用了OpenAPI 提供的例子`perstore.ymal`来演示本包的使用方法.[查看该文档](https://github.com/tsingsun/woocoo/blob/master/cmd/woco/oasgen/internal/integration/petstore.yaml).
@@ -20,8 +19,33 @@ WooCoo选择Gin作为Web框架,因此本包生成的服务端代码也是基于G
 安装woocoo cli
 ```
 go install github.com/tsingsun/woocoo/cmd/woco
-woco oasgen -c  ./oasgen/internal/integration/config.yaml
 ```
+
+命令行参数说明:
+
+```shell
+NAME:
+   woco oasgen - a tool for generate woocoo web code from OpenAPI 3 specifications
+
+USAGE:
+   woco oasgen [command options] [arguments...]
+
+OPTIONS:
+   --config value, -c value                                   配置文件位置
+   --template value, -t value [ --template value, -t value ]  扩展模板文件,可以指定文件夹或文件
+   --client                                                   生成客户端代码.
+   --help, -h                                                 show help
+```
+
+```shell
+# 生成服务端代码, 一般服务端代码较为复杂,使用额外的配置文件.
+woco oasgen -c ./oasgen/internal/integration/config.yaml
+# 生成客户端代码, 默认当前目录中寻找./opanapi.yaml文件; 以当前文件夹名做为包名
+woco oasgen --client
+# 生成客户端代码,指定配置.
+woco oasgen -c ./oasgen/internal/integration/config.yaml --client
+```
+
 接下来让我们看下配置文件内容:
 
 ```yaml
@@ -50,10 +74,11 @@ models:
 
 - interface.go: 根据Operation生成的接口定义,同时会生成一个未实现的结构体,用于快速的生成一个可运行的服务.
 - model.go: 根据Schema生成的数据模型定义
-- xx_tag.go: 以Tag为单位生成Operation的Reqeust和Response定义 
-- server目录: 服务端相关代码
-    server.go: 生成的服务端代码
-    validator.go: 生成的数据验证代码,针对OpenAPI的pattern正规做了自定义支持
+- tag_xxx.go: 以Tag为单位生成Operation的Reqeust和Response定义 
+- handler.go: 服务端路由及handler代码
+- validator.go: 服务端的数据验证代码,针对OpenAPI的pattern正规做了自定义支持
+- client.go: 客户端基础代码
+- api_xxx.go: 以Tag为单位生成的客户端调用代码
 
 在生成的结构体字段并没有按照文档顺序,而是内部根据名称顺序做排序,这主要是由于OpenAPI的解析库的采用无序Map的原因.
 
@@ -61,8 +86,16 @@ models:
 
 ### 请求
 
-根据Sepc的设定,默认生成的请求代码按Path分成Uri,Header,Cookie,Body等,然后分别对各部分字段验证,在此采用了gin使用的[validator](https://github.com/go-playground/validator).
+根据Sepc的设定,默认生成的请求代码按参数类型定义`in`分成Path,Header,Cookie,Query,Body等 然后分别对各部分字段验证,在此采用了gin使用的[validator](https://github.com/go-playground/validator).
 一般不需要另行再编写针对请求的代码.
+
+> 由于Gin Binding验证器的限制,无法将全部参数定义在一个结构体中,如果具有多种不同类型的参数,采用了分组的方式,每个分组对应一个结构体以分别调用`BindXXX`方法绑定请求参数. 
+
+请求参数类型及定义:
+
+- Path: 以Gin`/path/:`的方式定义,在生成的代码中,会将`{param}`替换为`%v`的形式,以便于使用`fmt.Sprintf`进行格式化.
+
+请求参数验证:
 
 - 输入验证: 通过Request代码,已经内置了openapi3所描述的常用的格式验证.
   - String/Number的最大值,最小值,长度等验证

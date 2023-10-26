@@ -13,7 +13,7 @@
             type {{ pascal .Name }} {{ .Type }}
         {{ else }}
             type {{ pascal .Name }} struct {
-                {{ template "help/properties" .}}
+                {{""}}{{- template "help/properties" .}}
             }
         {{ end}}
     {{- end }}
@@ -22,12 +22,24 @@
 
 {{ end }}
 
-{{ define "help/properties" }}
+{{- define "help/properties" }}
     {{- range .Properties }}
+        {{- if .Spec.Value.Description }}
+            {{ stringToGoCommentWithPrefix .Spec.Value.Description (pascal .Name) }}
+        {{- end }}
         {{- if .IsInline }}
             {{ .Type }} `json:",inline"`
         {{- else }}
             {{ pascal .Name }} {{ .Type }} {{ .StructTagsString }}
         {{- end }}
     {{- end }}
-{{ end}}
+{{- end}}
+
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen.Schema */}}
+{{- define "help/responseType" }}
+    {{- if canIgnorePointer . }}
+        {{- .StructString }}
+    {{- else }}
+        {{- .TypeString }}
+    {{- end }}
+{{- end }}

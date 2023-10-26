@@ -46,6 +46,8 @@ type Schema struct {
 	IsReplace   bool // if schema is replaced by model defined in config
 	IsAlias     bool // if schema is alias of not go native type
 	IsArray     bool
+	// ItemSchema is the schema type of the array or map.
+	ItemSchema *Schema
 }
 
 // GenSchemaType generates the type of the parameter by SPEC.
@@ -79,6 +81,7 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 		}
 		subSch := Schema{}
 		subSch.GenSchemaType(c, schemaNameFromRef(sv.Items.Ref), sv.Items)
+		sch.ItemSchema = &subSch
 		info.Ident = "[]" + subSch.Type.String()
 		//  has RType
 		if subSch.Type.RType != nil {
@@ -169,6 +172,7 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 				subSch := &Schema{}
 				subSch.GenSchemaType(c, "", sv.AdditionalProperties.Schema)
 				info.Ident = "map[string]" + subSch.Type.String()
+				sch.ItemSchema = subSch
 			}
 			info.Nillable = true
 
@@ -209,6 +213,7 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 var updateContentTypes = make(map[string]struct{})
 
 // AppendContentTypeStructTag parse content type and append to struct tags.if depends on Request or Response content type.
+// the name of schema ref will be Pascal format, but in openapi lower Camel format.
 func (sch *Schema) AppendContentTypeStructTag(c *Config, tagName string, contentTypes []string) {
 	for _, contentType := range contentTypes {
 		switch contentType {
@@ -216,7 +221,7 @@ func (sch *Schema) AppendContentTypeStructTag(c *Config, tagName string, content
 			if HasTag(sch.StructTags, "json") {
 				continue
 			}
-			//tagName = strcase.ToLowerCamel(tagName)
+			tagName = lowCamelFirst(tagName)
 			if sch.Required {
 				sch.StructTags = append(sch.StructTags, fmt.Sprintf(`json:"%s"`, tagName))
 			} else {
@@ -289,6 +294,35 @@ func (sch *Schema) AppendContentTypeStructTag(c *Config, tagName string, content
 // IsObjectArray returns true if the schema is an array of objects
 func (sch *Schema) IsObjectArray() bool {
 	return sch.IsArray
+}
+
+// StructString returns the string representation of the schema's struct type.
+func (sch *Schema) StructString() string {
+	s := sch.Type.String()
+	if strings.HasPrefix(s, "*") {
+		return s[1:]
+	}
+	return s
+}
+
+// TypeString returns the string representation of the schema's type.
+// Response type required is false
+func (sch *Schema) TypeString() string {
+	s := sch.Type.String()
+
+	if sch.Required {
+		return sch.StructString()
+	}
+	if sch.Type.Nillable {
+		return s
+	}
+	if !sch.Required && !sch.Type.Nillable {
+		return "*" + s
+	}
+	if sch.Type.Ident != "" && !strings.HasPrefix(s, "*") {
+		return "*" + s
+	}
+	return s
 }
 
 // StructTagsString return tag string when output in template.It will sort by asc.
@@ -374,10 +408,12 @@ func (sch *Schema) CopyTo(tg *Schema) {
 	tg.IsInline = sch.IsInline
 	tg.IsAlias = sch.IsAlias
 	tg.Type = sch.Type
+	tg.IsArray = sch.IsArray
+	tg.ItemSchema = sch.ItemSchema
 }
 
-// CheckRequired checks if the schema is required and updates the schema type if needed
-func (sch *Schema) CheckRequired() {
+// FixRequired checks if the schema is required and updates the schema type if needed
+func (sch *Schema) FixRequired() {
 	if sch.Type.Type == code.TypeOther && !sch.Type.Nillable {
 		if sch.Required {
 			if strings.HasPrefix(sch.Type.Ident, "*") {
@@ -413,12 +449,12 @@ func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required boo
 				sc.Type.Ident = helper.Pascal(s.Name)
 			}
 
-			sc.CheckRequired()
+			sc.FixRequired()
 			return sc
 		}
 	}
 	sc.GenSchemaType(c, name, spec)
-	sc.CheckRequired()
+	sc.FixRequired()
 	for k, v := range spec.Value.Extensions {
 		switch k {
 		case goTag:

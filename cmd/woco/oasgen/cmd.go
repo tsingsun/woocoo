@@ -10,16 +10,19 @@ var OasGenCmd = &cli.Command{
 	Usage: "a tool for generate woocoo web code from OpenAPI 3 specifications",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "config",
-			Value:    "oasgen.yaml",
-			Aliases:  []string{"c"},
-			Usage:    "configuration file",
-			Required: true,
+			Name:    "config",
+			Aliases: []string{"c"},
+			Usage:   "configuration file",
 		},
 		&cli.StringSliceFlag{
 			Name:    "template",
 			Aliases: []string{"t"},
 			Usage:   "external templates to execute",
+		},
+		&cli.BoolFlag{
+			Name:  "client",
+			Value: false,
+			Usage: "client side code generation",
 		},
 	},
 	Action: func(c *cli.Context) (err error) {
@@ -36,7 +39,10 @@ var OasGenCmd = &cli.Command{
 				opts = append(opts, TemplateFiles(tmpl))
 			}
 		}
-		cfg := &Config{}
+		cfg := &Config{
+			OpenAPISchema: "./openapi.yaml",
+			GenClient:     c.Bool("client"),
+		}
 		cnfPath := c.String("config")
 		err = LoadConfig(cfg, cnfPath)
 		if err != nil {

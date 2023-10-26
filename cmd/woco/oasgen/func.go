@@ -5,9 +5,8 @@ import (
 	"github.com/tsingsun/woocoo/cmd/woco/code"
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"github.com/tsingsun/woocoo/web/handler"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -17,7 +16,6 @@ import (
 var (
 	pathParamRE *regexp.Regexp
 	pattenMap   map[string]string
-	title       = cases.Title(language.English, cases.NoLower)
 
 	funcs = template.FuncMap{
 		"extend":             extend,
@@ -33,10 +31,16 @@ var (
 			}
 			return filepath.Base(pkg)
 		},
-		"hasTag": func(ts []string, t string) bool {
-			return HasTag(ts, t)
-		},
+		"hasTag":  HasTag,
 		"sortAsc": sortAsc,
+		"last": func(x int, a interface{}) bool {
+			return x == reflect.ValueOf(a).Len()-1
+		},
+		"toStringFunc":                toStringFunc,
+		"hasDefault":                  hasDefault,
+		"printSchemaDefault":          printSchemaDefault,
+		"canIgnorePointer":            canIgnorePointer,
+		"stringToGoCommentWithPrefix": helper.StringToGoCommentWithPrefix,
 	}
 )
 
@@ -45,6 +49,7 @@ func init() {
 	pattenMap = make(map[string]string)
 }
 
+// AddPattern add a Openapi3.schema.Pattern to the pattern map, and return the key of the pattern.
 func AddPattern(pattern string) (key string) {
 	if v, ok := pattenMap[pattern]; ok {
 		return v
@@ -136,6 +141,7 @@ func GinReturnType(httpContent string) string {
 	}
 }
 
+// HasTag check if the src has an element which start with tag.
 func HasTag(src []string, tag string) bool {
 	for _, v := range src {
 		if strings.HasPrefix(v, tag) {
@@ -143,6 +149,11 @@ func HasTag(src []string, tag string) bool {
 		}
 	}
 	return false
+}
+
+func lowCamelFirst(s string) string {
+	sk := strings.Split(helper.Snake(s), "_")
+	return sk[0] + s[len(sk[0]):]
 }
 
 // IsSupportNegotiate check if the response content type is support negotiate.
@@ -166,4 +177,126 @@ func IsBytes(p code.Type) bool {
 func sortAsc(ts []string) []string {
 	sort.Strings(ts)
 	return ts
+}
+
+func canIgnorePointer(sch *Schema) bool {
+	typ := sch.Type.Type
+	if typ.Numeric() || typ.Float() || typ.Integer() {
+		return true
+	}
+	switch typ {
+	case code.TypeString, code.TypeBytes, code.TypeBool, code.TypeTime:
+		return true
+	}
+	if sch.ItemSchema != nil {
+		return true
+	}
+	if sch.Type.Ident != "" {
+		if strings.HasPrefix(sch.Type.Ident, "[]") ||
+			strings.HasPrefix(sch.Type.Ident, "map[") {
+			return true
+		}
+	}
+	return false
+}
+
+func toStringFunc(sch *Schema, name string, body bool) string {
+	if sch.Type.Stringer() {
+		return fmt.Sprintf("%s.String()", name)
+	}
+	typ := sch.Type
+
+	if !body && typ.Nillable {
+		name = "*" + name
+	}
+	switch t := typ.Type; {
+	case t == code.TypeString:
+		return name
+	case t >= code.TypeInt8 && t <= code.TypeUint64:
+		return fmt.Sprintf("strconv.FormatInt(int64(%s), 10)", name)
+	case t >= code.TypeFloat32 && t <= code.TypeFloat64:
+		return fmt.Sprintf("strconv.FormatFloat(float64(%s), 'f', -1, 64)", name)
+	case t == code.TypeBool:
+		return fmt.Sprintf("strconv.FormatBool(%s)", name)
+	case t == code.TypeBytes:
+		return fmt.Sprintf("string(%s)", name)
+	default:
+		//return fmt.Sprintf(`toStringFunc(%s,"%s",%v)`, name, para.Spec.Style, para.Schema.IsArray)
+	}
+	return fmt.Sprintf(`fmt.Sprintf("%%v",%s)`, name)
+}
+
+func printSchemaDefault(sch Schema) string {
+	dv := sch.Spec.Value.Default
+	if dv == nil {
+		return ""
+	}
+	typ := sch.Type.Type
+	switch typ {
+	case code.TypeString:
+		if sch.Type.Nillable {
+			return fmt.Sprintf(`gds.Ptr("%s")`, dv)
+		}
+		return fmt.Sprintf(`"%s"`, dv)
+	case code.TypeBool:
+		if sch.Type.Nillable {
+			return fmt.Sprintf(`gds.Ptr(%v)`, dv)
+		}
+		return fmt.Sprintf(`%v`, dv)
+	case code.TypeInt, code.TypeInt8, code.TypeInt16, code.TypeInt32, code.TypeInt64,
+		code.TypeUint, code.TypeUint8, code.TypeUint16, code.TypeUint32, code.TypeUint64:
+		switch v := sch.Spec.Value.Default.(type) {
+		case int:
+			if sch.Type.Nillable {
+				return fmt.Sprintf(`gds.Ptr(%s(%d))`, sch.StructString(), v)
+			}
+			return fmt.Sprintf(`%d`, v)
+		case float64:
+			if sch.Type.Nillable {
+				return fmt.Sprintf(`gds.Ptr(%s(%d))`, sch.StructString(), int(v))
+			}
+			return fmt.Sprintf(`%d`, int(v))
+		}
+	case code.TypeFloat32, code.TypeFloat64:
+		if sch.Type.Nillable {
+			return fmt.Sprintf(`gds.Ptr(%s(%f))`, sch.StructString(), dv)
+		}
+		return fmt.Sprintf(`%v`, dv)
+	case code.TypeTime:
+		if sch.Type.Nillable {
+			return fmt.Sprintf(`gds.Ptr(time.Parse(time.RFC3339,%s))`, dv)
+		}
+		return fmt.Sprintf(`time.Parse(time.RFC3339,%s)`, dv)
+	}
+	return fmt.Sprintf(`"%v"`, dv)
+}
+
+func hasDefault(ps []*Parameter) bool {
+	for _, p := range ps {
+		if p.Schema.Spec.Value.Default != nil {
+			return canPrintDefault(p.Schema)
+		}
+	}
+	return false
+}
+
+func canPrintDefault(sch *Schema) bool {
+	if sch.Spec.Value.Default == nil {
+		return false
+	}
+	switch sch.Type.Type {
+	case code.TypeString:
+		return true
+	case code.TypeBool:
+		return true
+	case code.TypeInt, code.TypeInt8, code.TypeInt16, code.TypeInt32, code.TypeInt64,
+		code.TypeUint, code.TypeUint8, code.TypeUint16, code.TypeUint32, code.TypeUint64:
+		return true
+	case code.TypeFloat32, code.TypeFloat64:
+		return true
+	case code.TypeTime:
+		return true
+	}
+
+	return false
 }

@@ -1,0 +1,124 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen.Tag */}}
+{{ define "api" }}
+
+{{ template "header" $ }}
+{{ template "import" $ }}
+
+{{ $nodeName := printf "%sAPI" (pascal .Name)}}
+type {{ $nodeName }} api
+
+{{ range .Operations }}
+func (a *{{$nodeName}}) {{ .Name }}(ctx context.Context{{ if .HasRequest }}, req *{{ .RequestName }}{{ end }})(
+{{- if .HasResponse}}ret {{ template "help/responseType" .ResponseOK.Schema }},{{ end }}resp *http.Response, err error) {
+    var(
+        contentType string
+        body any
+    )
+    path := "{{ .Path }}"
+    {{- $parans := "req"}}
+    {{- if .Request.HasPath }}
+        {{- if .Request.HasMultiBind }}{{ $parans = "req.PathParams" }}{{ end }}
+        {{- range .Request.PathParameters }}
+            {{- $ul := len (printf "{%s}" .Name) }}
+            {{- $ps := toStringFunc .Schema (printf "%s.%s" $parans (pascal .Name)) false}}
+            path = path[:{{.Index}}]+ {{ $ps }} +path[{{.Index}}+{{ $ul }}:]
+        {{- end }}
+    {{- end }}
+    {{- if .Request.HasQuery }}
+        queryParams := url.Values{}
+        {{- if .Request.HasMultiBind }}{{ $parans = "req.QueryParams" }}{{ end }}
+        {{- range .Request.QueryParameters }}
+            {{- if not .Spec.Required }}
+                if {{ printf "%s.%s" $parans (pascal .Name) }} != nil {
+            {{- end }}
+                {{- if and .Spec.Explode .Schema.IsArray }}
+                    for _,v := range {{ printf "%s.%s" $parans (pascal .Name) }} {
+                        queryParams.Add("{{ .Spec.Name }}", {{ toStringFunc .Schema.ItemSchema "v" false }})
+                    }
+                {{- else }}
+                    {{- $ps := toStringFunc .Schema (printf "%s.%s" $parans (pascal .Name)) false }}
+                    queryParams.Add("{{ .Spec.Name }}", {{ $ps }})
+                {{- end }}
+            {{- if not .Spec.Required }}
+                }
+            {{- end }}
+        {{- end }}
+    {{- end }}
+    {{- if .Request.HasBody }}
+        {{- if .Request.HasMultiBind }}{{ $parans = "req.Body" }}{{ end }}
+        contentType = selectHeaderContentType([]string{{"{"}}{{joinQuote .Request.BodyContentTypes ","}}{{"}"}})
+        {{- $contentType := index .Request.BodyContentTypes 0 }}
+        {{- if eq $contentType `"application/x-www-form-urlencoded"` }}
+            forms := url.Values{}
+            {{- range .Request.Body }}
+                {{- $ps :=toStringFunc .Schema (printf "%s.%s" $parans (pascal .Name)) true }}
+                forms.Add("{{ .Spec.Name }}", {{ $ps }})
+            {{- end }}
+            body = strings.NewReader(forms.Encode())
+        {{- else if eq $contentType `"multipart/form-data"` }}
+            forms := url.Values{}
+            {{- range .Request.Body }}
+                {{- $ps := toStringFunc .Schema (printf "%s.%s" $parans (pascal .Name)) true }}
+                forms.Add("{{ .Spec.Name }}", {{ $ps }})
+            {{- end }}
+            body = forms
+        {{- else }}
+            body = {{ $parans }}
+        {{- end }}
+    {{- end }}
+
+    request,err := a.client.prepareRequest({{ .Method | quote }}, a.client.cfg.BasePath+path, contentType, body)
+    if err != nil {
+        return
+    }
+    {{- if .Request.HasQuery }}
+        request.URL.RawQuery = queryParams.Encode()
+    {{- end }}
+    {{- if and .HasResponse .ResponseOK.ContentTypes }}
+        accept := selectHeaderAccept([]string{{"{"}}{{joinQuote .ResponseOK.ContentTypes ","}}{{"}"}})
+        request.Header.Set("Accept", accept)
+    {{- end }}
+    {{- if .Request.HasHeader }}
+        {{- if .Request.HasMultiBind }}{{ $parans = "req.HeaderParams" }}{{ end }}
+        {{- range .Request.HeaderParameters }}
+            {{- if not .Spec.Required}}
+                if {{ printf "%s.%s" $parans (pascal .Name) }} != nil {
+            {{- end }}
+            {{- $ps := toStringFunc .Schema (printf "%s.%s" $parans (pascal .Name)) false }}
+                    request.Header.Set("{{ .Spec.Name }}", {{ $ps }})
+            {{- if not .Spec.Required}}
+                }
+            {{- end }}
+        {{- end }}
+    {{- end }}
+    resp,err = a.client.Do(request)
+    if err != nil {
+        return
+    }
+    respBody,err := io.ReadAll(resp.Body)
+    if err != nil{
+        return
+    }
+    if resp.StatusCode == http.StatusOK {
+    {{- if .HasResponse }}
+        {{- if not (canIgnorePointer .ResponseOK.Schema) }}
+            ret = new({{ .ResponseOK.Schema.StructString }})
+            err = a.client.decode(respBody, ret, resp.Header.Get("Content-Type"))
+        {{- else }}
+            err = a.client.decode(respBody, &ret, resp.Header.Get("Content-Type"))
+        {{- end }}
+        if err == nil{
+            return
+        }
+    {{- else }}
+        return
+    {{- end }}
+    } else if resp.StatusCode >= 300 {
+        err = errors.New(string(respBody))
+    }
+
+    return
+}
+{{ end }}
+
+{{ end }}

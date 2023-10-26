@@ -1,4 +1,4 @@
-package main
+package petstore
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration/petstore/server"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web/handler"
 	"net/http/httptest"
@@ -14,21 +13,28 @@ import (
 	"testing"
 )
 
+func init() {
+	gin.SetMode(gin.ReleaseMode)
+}
+
 type ginTestSuite struct {
 	suite.Suite
 	Router *gin.Engine
 }
 
 func (s *ginTestSuite) SetupSuite() {
-	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	router.Use(handler.ErrorHandle().ApplyFunc(conf.New()))
 	imp := &Service{}
-	server.RegisterValidator()
-	server.RegisterUserHandlers(&router.RouterGroup, imp)
-	server.RegisterStoreHandlers(&router.RouterGroup, imp)
-	server.RegisterPetHandlers(&router.RouterGroup, imp)
+	RegisterValidator()
+	RegisterUserHandlers(&router.RouterGroup, imp)
+	RegisterStoreHandlers(&router.RouterGroup, imp)
+	RegisterPetHandlers(&router.RouterGroup, imp)
 	s.Router = router
+}
+
+func TestGinTestSuite(t *testing.T) {
+	suite.Run(t, new(ginTestSuite))
 }
 
 func (s *ginTestSuite) TestAddPet() {
@@ -165,6 +171,18 @@ func (s *ginTestSuite) TestPostOrder() {
 	})
 }
 
-func TestGinTestSuite(t *testing.T) {
-	suite.Run(t, new(ginTestSuite))
+func (s *ginTestSuite) TestDeletePetRequest() {
+	s.Run("empty api key", func() {
+		r := httptest.NewRequest("DELETE", "/pet/1", nil)
+		w := httptest.NewRecorder()
+		s.Router.ServeHTTP(w, r)
+		assert.Equal(s.T(), 200, w.Code)
+	})
+	s.Run("with api key", func() {
+		r := httptest.NewRequest("DELETE", "/pet/1", nil)
+		r.Header.Add("api_key", "wrong")
+		w := httptest.NewRecorder()
+		s.Router.ServeHTTP(w, r)
+		assert.Equal(s.T(), 401, w.Code)
+	})
 }

@@ -72,12 +72,12 @@ func (t Type) ConstName() string {
 	case int(t) < len(constNames) && constNames[t] != "":
 		return constNames[t]
 	default:
-		return "Type" + strings.Title(typeNames[t])
+		return "Type" + title.String(typeNames[t])
 	}
 }
 
 // TypeInfo holds the information regarding field type.
-// Used by complex types like JSON and  Bytes.
+// Used by complex types like JSON and Bytes.
 type TypeInfo struct {
 	Type     Type
 	Ident    string
@@ -125,14 +125,6 @@ func (t TypeInfo) String() string {
 	}
 }
 
-func (t TypeInfo) StructString() string {
-	s := t.String()
-	if strings.HasPrefix(s, "*") {
-		return s[1:]
-	}
-	return s
-}
-
 // Valid reports if the given type if known type.
 func (t TypeInfo) Valid() bool {
 	return t.Type.Valid()
@@ -160,6 +152,21 @@ func (t TypeInfo) Comparable() bool {
 		return true
 	default:
 		return t.Numeric()
+	}
+}
+
+// AsPointer sets the type to a pointer type if can transfer
+func (t *TypeInfo) AsPointer() {
+	// response object is pointer
+	if !t.Nillable {
+		t.Nillable = true
+		if t.Ident != "" {
+			if !strings.HasPrefix(t.Ident, "*") {
+				t.Ident = "*" + t.Ident
+			}
+		} else {
+			t.Ident = "*" + t.String()
+		}
 	}
 }
 

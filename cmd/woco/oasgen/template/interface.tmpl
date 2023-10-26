@@ -16,10 +16,9 @@
         {{- end }}
     // ({{ .Method }} {{ .Path }})
     {{ .Name }}(*gin.Context{{ if .HasRequest }}, *{{ .RequestName }}{{ end }})(
-    {{- if .HasResponse }}{{ .ResponseOK.Schema.Type.String }}, {{ end }}error)
+        {{- if .HasResponse }}{{ template "help/responseType" .ResponseOK.Schema }},{{ end }}error)
     {{- end }}
     }
-
 {{ end }}
 {{ range $n:=$.Nodes }}
     {{ $serviceName := pascal $n.Name }}
@@ -30,7 +29,7 @@
             {{- continue }}
         {{- end }}
         func (Unimplemented{{ $serviceName }}Service) {{ .Name }}(c *gin.Context{{ if .HasRequest }}, req *{{ .RequestName }}{{ end }})(
-        {{- if .HasResponse}}_ {{ .ResponseOK.Schema.Type.String }}, {{ end }}err error) {
+        {{- if .HasResponse}}_ {{ template "help/responseType" .ResponseOK.Schema }},{{ end }}err error) {
         err = fmt.Errorf("method {{ .Name }} not implemented")
         return
         }

@@ -11,6 +11,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"golang.org/x/tools/go/packages"
 	"net/url"
+	"os"
 	"path/filepath"
 )
 
@@ -54,13 +55,21 @@ func loadSwagger(path string) (oas *openapi3.T, err error) {
 
 // LoadConfig reads the openapi3 config file
 func LoadConfig(cfg *Config, filename string) (err error) {
-	cnf, err := conf.NewParserFromFile(filename)
-	if err != nil {
-		return err
+	var dir string
+	if filename != "" {
+		cnf, err := conf.NewParserFromFile(filename)
+		if err != nil {
+			return err
+		}
+		err = cnf.Unmarshal("", &cfg)
+		dir = filepath.Dir(filename)
+	} else {
+		dir, err = os.Getwd()
+		if err != nil {
+			return err
+		}
 	}
-	err = cnf.Unmarshal("", &cfg)
 	cfg.TypeMap, err = ModelMapToTypeInfo(cfg.Models)
-	dir := filepath.Dir(filename)
 
 	if cfg.Target == "" {
 		// default target-path for codegen is one dir above

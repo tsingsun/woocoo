@@ -2,11 +2,17 @@ package code
 
 import (
 	"go/build"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
+)
+
+var (
+	title = cases.Title(language.English, cases.NoLower)
 )
 
 // PkgAndType take a string in the form github.com/package/blah.Type and split it into package and type

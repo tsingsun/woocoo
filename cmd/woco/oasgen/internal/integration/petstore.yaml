@@ -195,6 +195,13 @@ paths:
           schema:
             type: integer
             format: int64
+        - name: timestamp
+          in: query
+          description: Timestamp of the update
+          schema:
+            type: integer
+            format: int64
+            default: 1234567890
       responses:
         '405':
           description: Invalid input

@@ -1,9 +1,7 @@
 {{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen.Graph */}}
 {{ define "validator"}}
 
-    {{- with extend $ "Package" "server" -}}
-        {{ template "header" . }}
-    {{ end }}
+    {{ template "header" . }}
 
     {{ template "import" $ }}
     import (

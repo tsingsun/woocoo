@@ -12,6 +12,7 @@ type (
 		Name           string
 		Format         func(*Tag) string
 		ExtendPatterns []string
+		Skip           func(*Graph) bool
 	}
 
 	GraphTemplate struct {
@@ -26,25 +27,38 @@ var (
 	Templates = []NodeTemplate{
 		{
 			Name:   "tag",
-			Format: pkgf("%s_tag.go"),
+			Format: pkgf("tag_%s.go"),
+		},
+		{
+			Name:   "api",
+			Format: pkgf("api_%s.go"),
+			Skip:   SkipGenServer,
 		},
 	}
 	GraphTemplates = []GraphTemplate{
 		{
 			Name:   "interface",
 			Format: "interface.go",
+			Skip:   SkipGenClient,
 		},
 		{
 			Name:   "schema",
 			Format: "model.go",
 		},
 		{
-			Name:   "server",
-			Format: "server/server.go",
+			Name:   "handler",
+			Format: "handler.go",
+			Skip:   SkipGenClient,
 		},
 		{
 			Name:   "validator",
-			Format: "server/validator.go",
+			Format: "validator.go",
+			Skip:   SkipGenClient,
+		},
+		{
+			Name:   "client",
+			Format: "client.go",
+			Skip:   SkipGenServer,
 		},
 	}
 	partialPatterns = [...]string{
@@ -78,6 +92,14 @@ func initTemplates() {
 
 func pkgf(s string) func(t *Tag) string {
 	return func(t *Tag) string { return fmt.Sprintf(s, t.Spec.Name) }
+}
+
+func SkipGenClient(graph *Graph) bool {
+	return graph.GenClient
+}
+
+func SkipGenServer(graph *Graph) bool {
+	return !graph.GenClient
 }
 
 // match reports if the given name matches the extended pattern.

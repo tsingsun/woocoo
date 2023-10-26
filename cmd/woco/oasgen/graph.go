@@ -40,6 +40,8 @@ type (
 		// Schemas is the list of all schemas reference in the spec.
 		Schemas []*Schema
 		schemas map[string]*Schema
+		// GenClient is the flag for client side code generation
+		GenClient bool
 	}
 
 	ModelMap struct {
@@ -135,6 +137,9 @@ func generate(gg gen.Extension) error {
 	assets.AddDir(filepath.Join(g.Config.Target))
 	for _, n := range g.Nodes {
 		for _, tmpl := range Templates {
+			if tmpl.Skip != nil && tmpl.Skip(g) {
+				continue
+			}
 			b := bytes.NewBuffer(nil)
 			if err := templates.ExecuteTemplate(b, tmpl.Name, n); err != nil {
 				return fmt.Errorf("execute template %q: %w", tmpl.Name, err)
@@ -184,6 +189,8 @@ func (g *Graph) templates() (*gen.Template, []GraphTemplate) {
 			name := tpl.Name()
 			switch {
 			case templates.Lookup(name) == nil && !extendExisting(name):
+				// If the template does not override or extend one of
+				// the builtin templates, generate it in a new file.
 				format := helper.Snake(name)
 				if filepath.Ext(name) == "" {
 					format += ".go"

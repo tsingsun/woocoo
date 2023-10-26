@@ -15,6 +15,17 @@ const (
 	TagRegular = "regex"
 )
 
+// BindKind is for bind kind of request parameters
+type BindKind int
+
+const (
+	BindKindPath BindKind = 1 << iota
+	BindKindQuery
+	BindKindHeader
+	BindKindBody
+	BindKindCookie
+)
+
 type (
 	// Operation is for operation of openapi3
 	Operation struct {
@@ -31,24 +42,16 @@ type (
 		ResponseNotFound *Response
 		IgnoreInterface  bool
 	}
+
 	// Parameter include parameter and requestBody
 	Parameter struct {
 		Name   string
 		Schema *Schema
 		Spec   *openapi3.Parameter
+		// position index in path uri
+		Index int
 	}
-	Request struct {
-		Parameters       []*Parameter
-		BindUri          bool
-		UriParameters    []*Parameter
-		BindHeader       bool
-		HeaderParameters []*Parameter
-		BindCookie       bool
-		CookieParameters []*Parameter
-		BindBody         bool
-		Body             []*Parameter
-		BodyContentTypes []string
-	}
+
 	// Response is for response of openapi3
 	Response struct {
 		Name string
@@ -60,6 +63,7 @@ type (
 		Spec        *openapi3.Response
 		Description *string
 	}
+
 	// Tag is for tag of openapi3
 	Tag struct {
 		*Config
@@ -113,6 +117,8 @@ func genOperation(c *Config, spec *openapi3.T) (ops []*Operation) {
 	return
 }
 
+// generate parameter from spec. the spec must have schema or content
+// TODO Content Now only support application/json
 func genParameter(c *Config, spec *openapi3.ParameterRef) *Parameter {
 	pv := spec.Value
 	name := spec.Value.Name
@@ -123,6 +129,9 @@ func genParameter(c *Config, spec *openapi3.ParameterRef) *Parameter {
 	switch {
 	case pv.Schema != nil:
 		ep.Schema = genSchemaRef(c, name, pv.Schema, ep.Spec.Required)
+		if !ep.Spec.Required {
+			ep.Schema.Type.AsPointer()
+		}
 	case pv.Content != nil:
 		mt, ok := pv.Content["application/json"]
 		if !ok {
@@ -134,58 +143,6 @@ func genParameter(c *Config, spec *openapi3.ParameterRef) *Parameter {
 	}
 	ep.initStructTag()
 	return ep
-}
-
-// genBodyFromContent according to the http content type.
-func genBodyFromContent(c *Config, name string, content openapi3.Content, required, isRef bool) (params []*Parameter) {
-	var schema *Schema
-	contentTypes := make([]string, 0, len(content))
-	for ct, mediaType := range content {
-		contentTypes = append(contentTypes, ct)
-		if schema == nil {
-			schema = genSchemaRef(c, name, mediaType.Schema, required)
-			if !isRef && mediaType.Schema.Ref == "" { // from independent Spec
-				for _, property := range schema.properties {
-					param := newParameterFromSchema(c, property)
-					params = append(params, param)
-				}
-			} else {
-				// from reference Spec
-				schema.IsInline = mediaType.Schema.Ref != ""
-				param := newParameterFromSchema(c, schema)
-				params = append(params, param)
-			}
-		}
-	}
-	for _, param := range params {
-		//param.initStructTag()
-		param.Schema.AppendContentTypeStructTag(c, param.Name, contentTypes)
-		if param.Name == name { // if name is operation request name
-			param.Schema.StructTags = param.Schema.StructTags[:0]
-		}
-	}
-	return
-}
-
-func (op *Operation) RequestBodyName() string {
-	if sb := op.SimpleBody(); sb != nil {
-		if sb.Schema.Spec.Ref != "" {
-			n := schemaNameFromRef(sb.Schema.Spec.Ref)
-			return title.String(n)
-		}
-		return title.String(sb.Schema.Name)
-	}
-	return "Body"
-}
-
-// IsBindRequest check whether the request is bind request object.
-// if body is struct or not base type, it will be BodyObject
-func (op *Operation) IsBindRequest() bool {
-	bd := op.SimpleBody()
-	if bd == nil {
-		return false
-	}
-	return len(bd.Schema.StructTags) != 0
 }
 
 func (op *Operation) GenSecurity(ssSpec openapi3.SecuritySchemes) {
@@ -210,40 +167,68 @@ func (op *Operation) GenSecurity(ssSpec openapi3.SecuritySchemes) {
 	}
 }
 
+// GenRequest generate request parameters and body.
 func (op *Operation) GenRequest() {
 	for _, p := range op.Spec.Parameters {
 		gp := genParameter(op.Config, p)
 		op.AddParameter(gp)
 		switch gp.Spec.In {
 		case "path":
-			op.Request.BindUri = true
-			op.Request.UriParameters = append(op.Request.UriParameters, gp)
+			op.Request.BindKind = op.Request.BindKind | BindKindPath
+			gp.Index = strings.Index(op.Path, "{"+gp.Name+"}")
+			op.Request.PathParameters = append(op.Request.PathParameters, gp)
 		case "header":
-			op.Request.BindHeader = true
+			switch gp.Name {
+			case "Accept", "Content-Type", "Authorization": // ignore
+				continue
+			}
+			op.Request.BindKind = op.Request.BindKind | BindKindHeader
 			op.Request.HeaderParameters = append(op.Request.HeaderParameters, gp)
 		case "cookie":
-			op.Request.BindCookie = true
+			op.Request.BindKind = op.Request.BindKind | BindKindCookie
 			op.Request.CookieParameters = append(op.Request.CookieParameters, gp)
 		case "query", "form": // query and form include in body
-			op.Request.BindBody = true
-			op.Request.Body = append(op.Request.Body, gp)
+			op.Request.BindKind = op.Request.BindKind | BindKindQuery
+			op.Request.QueryParameters = append(op.Request.QueryParameters, gp)
 		}
 	}
 	if rb := op.Spec.RequestBody; rb != nil {
-		rname := op.RequestName()
-		gps := genBodyFromContent(op.Config, rname, rb.Value.Content, rb.Value.Required, rb.Ref != "")
-		op.AddParameter(gps...)
-		op.Request.BindBody = true
-		op.Request.Body = append(op.Request.Body, gps...)
-	}
-}
+		op.Request.BindKind = op.Request.BindKind | BindKindBody
 
-// SimpleBody if request body is only one, use the parameter to body field
-func (op *Operation) SimpleBody() *Parameter {
-	if len(op.Request.Body) != 1 {
-		return nil
+		rname := op.RequestName()
+		if rb.Ref != "" {
+			rname = schemaNameFromRef(rb.Ref)
+		}
+		var (
+			schema *Schema
+			params []*Parameter
+		)
+		for ct, mediaType := range rb.Value.Content {
+			op.Request.BodyContentTypes = append(op.Request.BodyContentTypes, ct)
+			if schema == nil {
+				schema = genSchemaRef(op.Config, rname, mediaType.Schema, rb.Value.Required)
+				if rb.Ref == "" && mediaType.Schema.Ref == "" { // from independent Spec
+					for _, property := range schema.properties {
+						param := newParameterFromSchema(op.Config, property)
+						params = append(params, param)
+					}
+				} else {
+					// from reference Spec
+					schema.IsInline = mediaType.Schema.Ref != ""
+					param := newParameterFromSchema(op.Config, schema)
+					params = append(params, param)
+				}
+			}
+		}
+		for _, param := range params {
+			param.Schema.AppendContentTypeStructTag(op.Config, param.Name, op.Request.BodyContentTypes)
+			if param.Name == rname { // if name is operation request name
+				param.Schema.StructTags = param.Schema.StructTags[:0]
+			}
+		}
+		op.AddParameter(params...)
+		op.Request.Body = params
 	}
-	return op.Request.Body[0]
 }
 
 func (op *Operation) GenResponses() {
@@ -299,13 +284,9 @@ func (op *Operation) GenResponse(codeStr string, spec *openapi3.ResponseRef) *Re
 
 	r.Schema.AppendContentTypeStructTag(op.Config, r.Schema.Name, r.ContentTypes)
 
-	// response object is pointer
-	if !r.Schema.Type.Nillable {
-		r.Schema.Type.Nillable = true
-		if r.Schema.Type.Ident != "" && !strings.HasPrefix(r.Schema.Type.Ident, "*") {
-			r.Schema.Type.Ident = "*" + r.Schema.Type.Ident
-		}
-	}
+	// make the response object is pointer if it's type is Object
+	r.Schema.Type.AsPointer()
+
 	return r
 }
 
@@ -341,7 +322,7 @@ func (t *Tag) AddOperation(ops ...*Operation) {
 // InterfaceName for Tag
 func (t *Tag) InterfaceName() string {
 	if t.Name == defaultTagName {
-		return "Server"
+		return "Service"
 	}
 	return t.Name
 }
@@ -352,8 +333,9 @@ func newParameterFromSchema(c *Config, schema *Schema) *Parameter {
 		Name:   name,
 		Schema: schema,
 		Spec: &openapi3.Parameter{
-			Name: name,
-			In:   "",
+			Name:        name,
+			In:          "",
+			Description: schema.Spec.Value.Description,
 		},
 	}
 	return p

@@ -3,21 +3,17 @@
 package petstore
 
 type DeleteOrderRequest struct {
-	UriParams DeleteOrderRequestUriParams
-}
-
-type DeleteOrderRequestUriParams struct {
+	// OrderId ID of the order that needs to be deleted
 	OrderId string `binding:"required" uri:"orderId"`
 }
 
 type GetOrderByIdRequest struct {
-	UriParams GetOrderByIdRequestUriParams
-}
-
-type GetOrderByIdRequestUriParams struct {
+	// OrderId ID of pet that needs to be fetched
 	OrderId int64 `binding:"lte=5,gte=1,required" uri:"orderId"`
 }
 
+// PlaceOrderRequest order placed for purchasing the pet
 type PlaceOrderRequest struct {
-	Order Order
+	// PlaceOrderRequest An order for a pets from the pet store
+	Order `json:",inline"`
 }

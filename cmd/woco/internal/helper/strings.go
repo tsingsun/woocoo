@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func stringToGoCommentWithPrefix(in, prefix string) string {
+func StringToGoCommentWithPrefix(in, prefix string) string {
 	if len(in) == 0 || len(strings.TrimSpace(in)) == 0 { // ignore empty comment
 		return ""
 	}

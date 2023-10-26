@@ -1,0 +1,134 @@
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen.Graph */}}
+
+{{ define "handler" }}
+
+{{ template "header" . }}
+
+{{ template "import" $ }}
+import(
+    "github.com/gin-gonic/gin/binding"
+    "github.com/tsingsun/woocoo/web/handler"
+)
+{{ range .Nodes }}
+    {{ $serviceName := pascal .Name }}
+    // Register{{ $serviceName }}Handlers creates http.Handler with routing matching OpenAPI spec.
+    func Register{{ $serviceName }}Handlers(router *gin.RouterGroup, si {{ $serviceName }}Service) {
+    {{- range .Operations }}
+        {{- if .IgnoreInterface }}
+            {{- continue }}
+        {{- end }}
+        router.{{ .Method }}("{{ .Path | oasUriToGinUri }}", wrap{{pascal .Name }}(si))
+    {{- end }}
+    }
+{{ end }}
+{{ range .Nodes }}
+    {{ $serviceName := pascal .Name }}
+    {{ range .Operations }}
+        {{- if .IgnoreInterface }}
+            {{- continue }}
+        {{- end }}
+    func wrap{{pascal .Name }}(si {{ $serviceName }}Service) func(c *gin.Context) {
+        return func(c *gin.Context) {
+        {{- if .HasRequest }}
+            {{- $bindName  := "&req" }}
+            {{- if .Request.HasDefaultValue }}
+                req := {{ .RequestName }}{
+                {{- if .Request.HasMultiBind }}
+                    {{- if hasDefault .Request.PathParameters }}
+                    PathParams: {{ .RequestName }}PathParams{
+                        {{- range  .Request.PathParameters }}
+                            {{- if .Schema.Spec.Value.Default }}
+                                {{ pascal .Name }}: {{ printSchemaDefault .Schema }},
+                            {{- end }}
+                        {{- end }}
+                    },
+                    {{- end }}
+                    {{- if hasDefault .Request.HeaderParameters }}
+                    HeaderParams: {{ .RequestName }}HeaderParams{
+                        {{- range  .Request.HeaderParameters }}
+                            {{- if .Schema.Spec.Value.Default }}
+                                {{ pascal .Name }}: {{ printSchemaDefault .Schema }},
+                            {{- end }}
+                        {{- end }}
+                    },
+                    {{- end }}
+                    {{- if hasDefault .Request.QueryParameters }}
+                    QueryParams: {{ .RequestName }}QueryParams{
+                        {{- range  .Request.QueryParameters }}
+                            {{- if .Schema.Spec.Value.Default }}
+                                {{ pascal .Name }}: {{ printSchemaDefault .Schema }},
+                            {{- end }}
+                        {{- end }}
+                    },
+                    {{- end }}
+                {{- else }}
+                    {{- range .Request.Parameters }}
+                        {{- if .Schema.Spec.Value.Default }}
+                            {{ pascal .Name }}: {{ printSchemaDefault .Schema }},
+                        {{- end }}
+                    {{- end }}
+                {{- end }}
+                }
+            {{- else }}
+                var req {{ .RequestName }}
+            {{- end }}
+            {{- if .Request.HasPath}}
+                {{- if .Request.HasMultiBind }}{{ $bindName = "&req.PathParams" }}{{ end }}
+                if err := c.ShouldBindUri({{$bindName}}); err != nil {
+                    handler.AbortWithError(c,http.StatusBadRequest, err)
+                    return
+                }
+            {{- end }}
+            {{- if .Request.HasHeader }}
+                {{- if .Request.HasMultiBind }}{{ $bindName = "&req.HeaderParams" }}{{ end }}
+                if err := c.ShouldBindHeader({{ $bindName }}); err != nil {
+                    handler.AbortWithError(c,http.StatusBadRequest, err)
+                    return
+                }
+            {{- end }}
+            {{- if .Request.HasQuery }}
+                {{- if .Request.HasMultiBind }}{{ $bindName = "&req.QueryParams" }}{{ end }}
+                if err := c.ShouldBindQuery({{ $bindName }}); err != nil {
+                    handler.AbortWithError(c,http.StatusBadRequest, err)
+                return
+                }
+            {{- end }}
+            {{- if .Request.HasBody }}
+                {{- if .Request.HasMultiBind }}{{ $bindName = "&req.Body" }}{{ end }}
+                if err := c.ShouldBind({{ $bindName }}); err != nil {
+                    handler.AbortWithError(c,http.StatusBadRequest, err)
+                    return
+                }
+            {{- end }}
+        {{- end }}
+        {{- if .HasResponse }}
+            resp, err := si.{{ .Name }}(c,{{ if .HasRequest }}&req, {{ end }})
+            if err != nil {
+                c.Error(err)
+                return
+            }
+            {{- if and .ResponseNotFound .ResponseOK.Schema.Type.Nillable }}
+                if resp == nil {
+                    handler.AbortWithError(c,http.StatusBadRequest, errors.New("{{ .ResponseNotFound.Description }}"))
+                    return
+                }
+            {{- end }}
+            {{- if .ResponseOK.ContentTypes }}
+                {{- if isSupportNegotiate .ResponseOK.ContentTypes }}
+                    handler.NegotiateResponse(c, http.StatusOK, resp, []string{{"{"}}{{joinQuote .ResponseOK.ContentTypes ","}}{{"}"}})
+                {{- else if isBytes .ResponseOK.Schema.Type.Type }}
+                    c.Data(http.StatusOK, {{index .ResponseOK.ContentTypes 0 | quote }}, resp)
+                {{- end }}
+            {{- end}}
+        {{- else }}
+            err := si.{{ .Name }}(c,{{ if .HasRequest }}&req, {{ end }})
+            if err != nil {
+                c.Error(err)
+                return
+            }
+        {{- end }}
+        }
+    }
+    {{ end }}
+{{ end }}
+{{ end }}

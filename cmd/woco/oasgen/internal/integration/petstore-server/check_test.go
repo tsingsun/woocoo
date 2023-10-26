@@ -132,10 +132,10 @@ func TestGenerateAfter(t *testing.T) {
 		t.Run("tag", func(t *testing.T) {
 			drHeader := reflect.TypeOf(DeletePetRequest{}.HeaderParams)
 			assert.EqualValues(t, `api_key`, drHeader.Field(0).Tag.Get("header"))
-			drUri := reflect.TypeOf(DeletePetRequest{}.UriParams)
+			drUri := reflect.TypeOf(DeletePetRequest{}.PathParams)
 			assert.EqualValues(t, `petId`, drUri.Field(0).Tag.Get("uri"))
 			assert.EqualValues(t, `required`, drUri.Field(0).Tag.Get("binding"))
-			urUri := reflect.TypeOf(UpdatePetWithFormRequest{}.UriParams)
+			urUri := reflect.TypeOf(UpdatePetWithFormRequest{}.PathParams)
 			assert.EqualValues(t, `petId`, urUri.Field(0).Tag.Get("uri"))
 			assert.EqualValues(t, `required`, urUri.Field(0).Tag.Get("binding"))
 			urBody := reflect.TypeOf(UpdatePetWithFormRequest{}.Body)
@@ -145,16 +145,28 @@ func TestGenerateAfter(t *testing.T) {
 			assert.EqualValuesf(t, "", upBody.Field(1).Tag.Get("json"), "request body should not have json tag")
 			assert.Equal(t, upBody.Field(1).Type.Kind(), reflect.Struct)
 
-			usBody := reflect.TypeOf(LoginUserRequest{}.Body)
+			usBody := reflect.TypeOf(LoginUserRequest{})
 			assert.EqualValues(t, `true`, usBody.Field(1).Tag.Get("password"))
 
 			arrayBody := reflect.TypeOf(CreateUsersWithArrayInputRequest{})
+			assert.EqualValues(t, `UserArray`, arrayBody.Field(0).Name)
 			assert.EqualValuesf(t, "", arrayBody.Field(0).Tag.Get("binding"), "array body should not have binding tag")
 			assert.EqualValues(t, `[]*petstore.User`, arrayBody.Field(0).Type.String())
+
+			prHeader := reflect.TypeOf(DeletePetRequestHeaderParams{})
+			assert.EqualValues(t, `api_key`, prHeader.Field(0).Tag.Get("header"))
+			assert.EqualValues(t, `*string`, prHeader.Field(0).Type.String(), "parameter not require should be pointer")
+
+			upParams := reflect.TypeOf(UpdatePetWithFormRequestQueryParams{})
+			assert.EqualValues(t, `timestamp`, upParams.Field(0).Tag.Get("form"))
+			assert.EqualValues(t, `*int64`, upParams.Field(0).Type.String(), "parameter not require should be pointer")
 		})
 		t.Run("bodyname", func(t *testing.T) {
 			apr := reflect.TypeOf(AddPetRequest{})
 			assert.EqualValues(t, `NewPet`, apr.Field(0).Name)
+
+			b1 := reflect.TypeOf(UpdateUserRequestBody{})
+			assert.EqualValues(t, `petstore.User`, b1.Field(0).Type.String(), "RequestBody required")
 		})
 	})
 	t.Run("checkResponse", func(t *testing.T) {

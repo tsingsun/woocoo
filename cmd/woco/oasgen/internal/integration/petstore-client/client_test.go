@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/suite"
 	"github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration/petstore-server"
@@ -122,5 +123,13 @@ func (ct *clientTest) TestGetInventory() {
 	inv, resp, err := ct.client.StoreAPI.GetInventory(context.Background())
 	ct.Require().NoError(err)
 	ct.Require().EqualValues(1, inv["available"])
+	ct.Equal(200, resp.StatusCode)
+}
+
+func (ct *clientTest) TestCreateUserProfile() {
+	ret, resp, err := ct.client.UserAPI.CreateUserProfile(context.Background(), &CreateUserProfileRequest{
+		JsonObject: JsonObject(`{"a":"b"}`)})
+	ct.Require().NoError(err)
+	ct.Equal(json.RawMessage(`{"a":"b"}`), ret)
 	ct.Equal(200, resp.StatusCode)
 }

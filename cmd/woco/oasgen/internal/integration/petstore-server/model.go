@@ -2,15 +2,18 @@
 
 package petstore
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
+// Category A category for a pet
 type Category struct {
 	ID   int64  `json:"id,omitempty" xml:"id"`
 	Name string `binding:"omitempty,regex=oas_pattern_0" json:"name,omitempty" xml:"name"`
 }
 
 type NewPet struct {
-
 	// Pet A pet for sale in the pet store
 	*Pet `json:",inline"`
 	// Owner A User who is purchasing from the pet store
@@ -18,6 +21,7 @@ type NewPet struct {
 	Timestamp time.Time `binding:"required" json:"timestamp" time_format:"2006-01-02T15:04:05Z07:00" xml:"timestamp"`
 }
 
+// Order An order for a pets from the pet store
 type Order struct {
 	Complete  bool      `json:"complete,omitempty" xml:"complete"`
 	ID        int64     `json:"id,omitempty" xml:"id"`
@@ -29,8 +33,8 @@ type Order struct {
 	Status string `json:"status,omitempty" xml:"status"`
 }
 
+// Pet A pet for sale in the pet store
 type Pet struct {
-
 	// Category A category for a pet
 	Category  *Category `json:"category,omitempty" xml:"Category"`
 	ID        int64     `json:"id,omitempty" xml:"id"`
@@ -41,12 +45,14 @@ type Pet struct {
 	Tags   []*Tag `json:"tags,omitempty" xml:"tag"`
 }
 
+// Tag A tag for a pet
 type Tag struct {
 	ID     int64    `json:"id,omitempty" xml:"id"`
 	Labels LabelSet `json:"labels,omitempty" xml:"labels"`
 	Name   string   `json:"name,omitempty" xml:"name"`
 }
 
+// User A User who is purchasing from the pet store
 type User struct {
 	Email     string `binding:"omitempty,email" json:"email,omitempty" xml:"email"`
 	FirstName string `json:"firstName,omitempty" xml:"firstName"`
@@ -58,6 +64,9 @@ type User struct {
 	UserStatus int32  `json:"user_status,omitempty" xml:"user_status"`
 	Username   string `json:"username,omitempty" xml:"username"`
 }
+
+// JsonObject A JSON object
+type JsonObject json.RawMessage
 
 type LabelSet map[string]string
 

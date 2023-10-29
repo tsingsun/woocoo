@@ -4,12 +4,18 @@ package petstore
 
 // CreateUserRequest Created user object
 type CreateUserRequest struct {
-	// CreateUserRequest A User who is purchasing from the pet store
+	// CreateUserRequestBody A User who is purchasing from the pet store
 	User `json:",inline"`
 }
 
 type CreateUserResponse struct {
 	UserID string `json:"userID,omitempty"`
+}
+
+// CreateUserProfileRequest Created user object
+type CreateUserProfileRequest struct {
+	// CreateUserProfileRequestBody A JSON object
+	JsonObject `json:",inline"`
 }
 
 // CreateUsersWithArrayInputRequest List of user object
@@ -51,6 +57,6 @@ type UpdateUserRequestPathParams struct {
 }
 
 type UpdateUserRequestBody struct {
-	// UpdateUserRequest A User who is purchasing from the pet store
+	// UpdateUserRequestBody A User who is purchasing from the pet store
 	User `json:",inline"`
 }

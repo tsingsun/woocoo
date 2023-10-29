@@ -4,6 +4,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -38,6 +39,41 @@ func (a *UserAPI) CreateUser(ctx context.Context, req *CreateUserRequest) (ret *
 	if resp.StatusCode == http.StatusOK {
 		ret = new(CreateUserResponse)
 		err = a.client.decode(respBody, ret, resp.Header.Get("Content-Type"))
+		if err == nil {
+			return
+		}
+	} else if resp.StatusCode >= 300 {
+		err = errors.New(string(respBody))
+	}
+
+	return
+}
+
+func (a *UserAPI) CreateUserProfile(ctx context.Context, req *CreateUserProfileRequest) (ret json.RawMessage, resp *http.Response, err error) {
+	var (
+		contentType string
+		body        any
+	)
+	path := "/user/profile"
+	contentType = selectHeaderContentType([]string{"application/json"})
+	body = req
+
+	request, err := a.client.prepareRequest("POST", a.client.cfg.BasePath+path, contentType, body)
+	if err != nil {
+		return
+	}
+	accept := selectHeaderAccept([]string{"application/json"})
+	request.Header.Set("Accept", accept)
+	resp, err = a.client.Do(request)
+	if err != nil {
+		return
+	}
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	if resp.StatusCode == http.StatusOK {
+		err = a.client.decode(respBody, &ret, resp.Header.Get("Content-Type"))
 		if err == nil {
 			return
 		}

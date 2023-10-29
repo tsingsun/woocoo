@@ -34,6 +34,7 @@ func RegisterStoreHandlers(router *gin.RouterGroup, si StoreService) {
 // RegisterUserHandlers creates http.Handler with routing matching OpenAPI spec.
 func RegisterUserHandlers(router *gin.RouterGroup, si UserService) {
 	router.POST("/user", wrapCreateUser(si))
+	router.POST("/user/profile", wrapCreateUserProfile(si))
 	router.POST("/user/createWithArray", wrapCreateUsersWithArrayInput(si))
 	router.POST("/user/createWithList", wrapCreateUsersWithListInput(si))
 	router.DELETE("/user/:username", wrapDeleteUser(si))
@@ -267,6 +268,22 @@ func wrapCreateUser(si UserService) func(c *gin.Context) {
 			return
 		}
 		resp, err := si.CreateUser(c, &req)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+		handler.NegotiateResponse(c, http.StatusOK, resp, []string{"application/json"})
+	}
+}
+
+func wrapCreateUserProfile(si UserService) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		var req CreateUserProfileRequest
+		if err := c.ShouldBind(&req); err != nil {
+			handler.AbortWithError(c, http.StatusBadRequest, err)
+			return
+		}
+		resp, err := si.CreateUserProfile(c, &req)
 		if err != nil {
 			c.Error(err)
 			return

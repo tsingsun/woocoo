@@ -9,11 +9,14 @@
 
 {{- range .Schemas}}
     {{- if not .IsReplace}}
+        {{- if .Spec.Value.Description }}
+            {{ stringToGoCommentWithPrefix .Spec.Value.Description (pascal .Name) }}
+        {{- end }}
         {{- if not .Properties }}
             type {{ pascal .Name }} {{ .Type }}
         {{ else }}
             type {{ pascal .Name }} struct {
-                {{""}}{{- template "help/properties" .}}
+                {{- template "help/properties" .}}
             }
         {{ end}}
     {{- end }}

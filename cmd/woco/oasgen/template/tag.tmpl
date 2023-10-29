@@ -97,7 +97,7 @@
         {{ with .ResponseOK }}
             {{ if and (not .Schema.IsRef) .Schema.Properties }}
                 type {{ pascal .Schema.Name }} struct {
-                    {{ "" }}{{- template "help/properties" .Schema}}
+                    {{- template "help/properties" .Schema}}
                 }
             {{ end }}
         {{ end }}

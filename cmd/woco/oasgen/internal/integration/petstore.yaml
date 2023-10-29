@@ -577,6 +577,29 @@ paths:
           description: User not found
       security:
         - api_key: []
+  '/user/profile':
+    post:
+      tags:
+        - user
+      summary: Create user profile
+      description: This can only be done by the logged in user.
+      operationId: createUserProfile
+      responses:
+        '200':
+          description: Create user profile response
+          content:
+            application/json:
+              schema:
+                type: object
+      security:
+          - api_key: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jsonObject'
+        description: Created user object
+        required: true
 externalDocs:
   description: Find out more about Swagger
   url: 'http://swagger.io'
@@ -784,3 +807,7 @@ components:
           type: string
         message:
           type: string
+    jsonObject:
+      title: a JSON object
+      description: A JSON object
+      type: object

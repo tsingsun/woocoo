@@ -185,7 +185,7 @@ func canIgnorePointer(sch *Schema) bool {
 		return true
 	}
 	switch typ {
-	case code.TypeString, code.TypeBytes, code.TypeBool, code.TypeTime:
+	case code.TypeString, code.TypeBytes, code.TypeBool, code.TypeTime, code.TypeJSON:
 		return true
 	}
 	if sch.ItemSchema != nil {

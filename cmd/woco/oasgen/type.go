@@ -195,7 +195,7 @@ func (op *Operation) GenRequest() {
 	if rb := op.Spec.RequestBody; rb != nil {
 		op.Request.BindKind = op.Request.BindKind | BindKindBody
 
-		rname := op.RequestName()
+		rname := op.RequestName() + "Body"
 		if rb.Ref != "" {
 			rname = schemaNameFromRef(rb.Ref)
 		}
@@ -207,7 +207,7 @@ func (op *Operation) GenRequest() {
 			op.Request.BodyContentTypes = append(op.Request.BodyContentTypes, ct)
 			if schema == nil {
 				schema = genSchemaRef(op.Config, rname, mediaType.Schema, rb.Value.Required)
-				if rb.Ref == "" && mediaType.Schema.Ref == "" { // from independent Spec
+				if rb.Ref == "" && mediaType.Schema.Ref == "" {
 					for _, property := range schema.properties {
 						param := newParameterFromSchema(op.Config, property)
 						params = append(params, param)
@@ -336,6 +336,7 @@ func newParameterFromSchema(c *Config, schema *Schema) *Parameter {
 			Name:        name,
 			In:          "",
 			Description: schema.Spec.Value.Description,
+			Required:    schema.Required,
 		},
 	}
 	return p

@@ -1,6 +1,7 @@
 package petstore
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"time"
@@ -73,4 +74,8 @@ func (Service) DeletePet(ctx *gin.Context, req *DeletePetRequest) (err error) {
 		return nil
 	}
 	return nil
+}
+
+func (s Service) CreateUserProfile(c *gin.Context, req *CreateUserProfileRequest) (json.RawMessage, error) {
+	return json.RawMessage(req.JsonObject), nil
 }

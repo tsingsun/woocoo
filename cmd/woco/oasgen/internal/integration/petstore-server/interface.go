@@ -3,6 +3,7 @@
 package petstore
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -45,6 +46,8 @@ type StoreService interface {
 type UserService interface {
 	// (POST /user)
 	CreateUser(*gin.Context, *CreateUserRequest) (*CreateUserResponse, error)
+	// (POST /user/profile)
+	CreateUserProfile(*gin.Context, *CreateUserProfileRequest) (json.RawMessage, error)
 	// (POST /user/createWithArray)
 	CreateUsersWithArrayInput(*gin.Context, *CreateUsersWithArrayInputRequest) error
 	// (POST /user/createWithList)
@@ -132,6 +135,11 @@ type UnimplementedUserService struct {
 
 func (UnimplementedUserService) CreateUser(c *gin.Context, req *CreateUserRequest) (_ *CreateUserResponse, err error) {
 	err = fmt.Errorf("method CreateUser not implemented")
+	return
+}
+
+func (UnimplementedUserService) CreateUserProfile(c *gin.Context, req *CreateUserProfileRequest) (_ json.RawMessage, err error) {
+	err = fmt.Errorf("method CreateUserProfile not implemented")
 	return
 }
 

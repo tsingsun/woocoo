@@ -14,6 +14,6 @@ type GetOrderByIdRequest struct {
 
 // PlaceOrderRequest order placed for purchasing the pet
 type PlaceOrderRequest struct {
-	// PlaceOrderRequest An order for a pets from the pet store
+	// PlaceOrderRequestBody An order for a pets from the pet store
 	Order `json:",inline"`
 }

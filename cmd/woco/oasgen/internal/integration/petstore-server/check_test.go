@@ -161,12 +161,16 @@ func TestGenerateAfter(t *testing.T) {
 			assert.EqualValues(t, `timestamp`, upParams.Field(0).Tag.Get("form"))
 			assert.EqualValues(t, `*int64`, upParams.Field(0).Type.String(), "parameter not require should be pointer")
 		})
-		t.Run("bodyname", func(t *testing.T) {
+		t.Run("body", func(t *testing.T) {
 			apr := reflect.TypeOf(AddPetRequest{})
 			assert.EqualValues(t, `NewPet`, apr.Field(0).Name)
+			assert.EqualValues(t, `petstore.NewPet`, apr.Field(0).Type.String())
 
 			b1 := reflect.TypeOf(UpdateUserRequestBody{})
 			assert.EqualValues(t, `petstore.User`, b1.Field(0).Type.String(), "RequestBody required")
+
+			b2 := reflect.TypeOf(CreateUserProfileRequest{})
+			assert.EqualValues(t, `petstore.JsonObject`, b2.Field(0).Type.String(), "JsonObject")
 		})
 	})
 	t.Run("checkResponse", func(t *testing.T) {

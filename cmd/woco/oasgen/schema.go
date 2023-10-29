@@ -177,6 +177,10 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 			info.Nillable = true
 
 			break
+		} else if len(sv.Properties) == 0 {
+			info.Type = code.TypeJSON
+			info.Nillable = true
+			break
 		}
 		// inline object,generate in package path
 		if spec.Ref != "" {
@@ -317,6 +321,9 @@ func (sch *Schema) TypeString() string {
 		return s
 	}
 	if !sch.Required && !sch.Type.Nillable {
+		if strings.HasPrefix(s, "*") {
+			return s
+		}
 		return "*" + s
 	}
 	if sch.Type.Ident != "" && !strings.HasPrefix(s, "*") {
@@ -507,16 +514,20 @@ func (sch *Schema) genProperties(c *Config, name string, spec *openapi3.SchemaRe
 
 // SetAlias set IsAlias, it just calls in genComponentSchemas
 func (sch *Schema) setAlias() {
-	//  set IsAlias
-	if sch.Type.Type == code.TypeOther {
+	switch {
+	// typejson mapped by json.RawMessage
+	case sch.Type.Type == code.TypeOther:
 		if sch.IsArray {
 			sch.IsAlias = true
 		}
 		if strings.HasPrefix(sch.Type.Ident, "map[string]") {
 			sch.IsAlias = true
 		}
+	case sch.Type.Type == code.TypeJSON:
+		fallthrough
+	default:
+		sch.IsAlias = true
 	}
-
 }
 
 func genComponentSchemas(c *Config, spec *openapi3.T) {

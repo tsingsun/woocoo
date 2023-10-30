@@ -16,6 +16,7 @@ import (
 
 type PetAPI api
 
+// (POST /pet)
 func (a *PetAPI) AddPet(ctx context.Context, req *AddPetRequest) (ret *Pet, resp *http.Response, err error) {
 	var (
 		contentType string
@@ -52,6 +53,7 @@ func (a *PetAPI) AddPet(ctx context.Context, req *AddPetRequest) (ret *Pet, resp
 	return
 }
 
+// (DELETE /pet/{petId})
 func (a *PetAPI) DeletePet(ctx context.Context, req *DeletePetRequest) (resp *http.Response, err error) {
 	var (
 		contentType string
@@ -84,6 +86,7 @@ func (a *PetAPI) DeletePet(ctx context.Context, req *DeletePetRequest) (resp *ht
 	return
 }
 
+// (GET /pet/findByStatus)
 func (a *PetAPI) FindPetsByStatus(ctx context.Context, req *FindPetsByStatusRequest) (ret []*Pet, resp *http.Response, err error) {
 	var (
 		contentType string
@@ -122,6 +125,7 @@ func (a *PetAPI) FindPetsByStatus(ctx context.Context, req *FindPetsByStatusRequ
 	return
 }
 
+// (GET /pet/findByTags)
 func (a *PetAPI) FindPetsByTags(ctx context.Context, req *FindPetsByTagsRequest) (ret Pets, resp *http.Response, err error) {
 	var (
 		contentType string
@@ -160,6 +164,7 @@ func (a *PetAPI) FindPetsByTags(ctx context.Context, req *FindPetsByTagsRequest)
 	return
 }
 
+// (GET /pet/{petId})
 func (a *PetAPI) GetPetById(ctx context.Context, req *GetPetByIdRequest) (ret *Pet, resp *http.Response, err error) {
 	var (
 		contentType string
@@ -195,6 +200,7 @@ func (a *PetAPI) GetPetById(ctx context.Context, req *GetPetByIdRequest) (ret *P
 	return
 }
 
+// (PUT /pet)
 func (a *PetAPI) UpdatePet(ctx context.Context, req *UpdatePetRequest) (ret *Pet, resp *http.Response, err error) {
 	var (
 		contentType string
@@ -231,6 +237,7 @@ func (a *PetAPI) UpdatePet(ctx context.Context, req *UpdatePetRequest) (ret *Pet
 	return
 }
 
+// (POST /pet/{petId})
 func (a *PetAPI) UpdatePetWithForm(ctx context.Context, req *UpdatePetWithFormRequest) (resp *http.Response, err error) {
 	var (
 		contentType string
@@ -270,6 +277,7 @@ func (a *PetAPI) UpdatePetWithForm(ctx context.Context, req *UpdatePetWithFormRe
 	return
 }
 
+// (POST /pet/{petId}/uploadImage)
 func (a *PetAPI) UploadFile(ctx context.Context, req *UploadFileRequest) (ret *extra.ApiResponse, resp *http.Response, err error) {
 	var (
 		contentType string

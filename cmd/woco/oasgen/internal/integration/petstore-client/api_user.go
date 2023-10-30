@@ -13,6 +13,7 @@ import (
 
 type UserAPI api
 
+// (POST /user)
 func (a *UserAPI) CreateUser(ctx context.Context, req *CreateUserRequest) (ret *CreateUserResponse, resp *http.Response, err error) {
 	var (
 		contentType string
@@ -49,6 +50,7 @@ func (a *UserAPI) CreateUser(ctx context.Context, req *CreateUserRequest) (ret *
 	return
 }
 
+// (POST /user/profile)
 func (a *UserAPI) CreateUserProfile(ctx context.Context, req *CreateUserProfileRequest) (ret json.RawMessage, resp *http.Response, err error) {
 	var (
 		contentType string
@@ -84,6 +86,7 @@ func (a *UserAPI) CreateUserProfile(ctx context.Context, req *CreateUserProfileR
 	return
 }
 
+// (POST /user/createWithArray)
 func (a *UserAPI) CreateUsersWithArrayInput(ctx context.Context, req *CreateUsersWithArrayInputRequest) (resp *http.Response, err error) {
 	var (
 		contentType string
@@ -114,6 +117,7 @@ func (a *UserAPI) CreateUsersWithArrayInput(ctx context.Context, req *CreateUser
 	return
 }
 
+// (POST /user/createWithList)
 func (a *UserAPI) CreateUsersWithListInput(ctx context.Context, req *CreateUsersWithListInputRequest) (resp *http.Response, err error) {
 	var (
 		contentType string
@@ -144,6 +148,7 @@ func (a *UserAPI) CreateUsersWithListInput(ctx context.Context, req *CreateUsers
 	return
 }
 
+// (DELETE /user/{username})
 func (a *UserAPI) DeleteUser(ctx context.Context, req *DeleteUserRequest) (resp *http.Response, err error) {
 	var (
 		contentType string
@@ -173,6 +178,7 @@ func (a *UserAPI) DeleteUser(ctx context.Context, req *DeleteUserRequest) (resp 
 	return
 }
 
+// (GET /user/{username})
 func (a *UserAPI) GetUserByName(ctx context.Context, req *GetUserByNameRequest) (ret *User, resp *http.Response, err error) {
 	var (
 		contentType string
@@ -208,6 +214,7 @@ func (a *UserAPI) GetUserByName(ctx context.Context, req *GetUserByNameRequest) 
 	return
 }
 
+// (GET /user/login)
 func (a *UserAPI) LoginUser(ctx context.Context, req *LoginUserRequest) (ret string, resp *http.Response, err error) {
 	var (
 		contentType string
@@ -245,6 +252,7 @@ func (a *UserAPI) LoginUser(ctx context.Context, req *LoginUserRequest) (ret str
 	return
 }
 
+// (GET /user/logout)
 func (a *UserAPI) LogoutUser(ctx context.Context) (resp *http.Response, err error) {
 	var (
 		contentType string
@@ -273,6 +281,7 @@ func (a *UserAPI) LogoutUser(ctx context.Context) (resp *http.Response, err erro
 	return
 }
 
+// (PUT /user/{username})
 func (a *UserAPI) UpdateUser(ctx context.Context, req *UpdateUserRequest) (resp *http.Response, err error) {
 	var (
 		contentType string

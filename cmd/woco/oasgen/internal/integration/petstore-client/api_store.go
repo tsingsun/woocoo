@@ -12,6 +12,7 @@ import (
 
 type StoreAPI api
 
+// (DELETE /store/order/{orderId})
 func (a *StoreAPI) DeleteOrder(ctx context.Context, req *DeleteOrderRequest) (resp *http.Response, err error) {
 	var (
 		contentType string
@@ -41,6 +42,7 @@ func (a *StoreAPI) DeleteOrder(ctx context.Context, req *DeleteOrderRequest) (re
 	return
 }
 
+// (GET /store/inventory)
 func (a *StoreAPI) GetInventory(ctx context.Context) (ret map[string]int32, resp *http.Response, err error) {
 	var (
 		contentType string
@@ -74,6 +76,7 @@ func (a *StoreAPI) GetInventory(ctx context.Context) (ret map[string]int32, resp
 	return
 }
 
+// (GET /store/order/{orderId})
 func (a *StoreAPI) GetOrderById(ctx context.Context, req *GetOrderByIdRequest) (ret *Order, resp *http.Response, err error) {
 	var (
 		contentType string
@@ -109,6 +112,7 @@ func (a *StoreAPI) GetOrderById(ctx context.Context, req *GetOrderByIdRequest) (
 	return
 }
 
+// (POST /store/order)
 func (a *StoreAPI) PlaceOrder(ctx context.Context, req *PlaceOrderRequest) (ret *Order, resp *http.Response, err error) {
 	var (
 		contentType string

@@ -8,6 +8,7 @@
 type {{ $nodeName }} api
 
 {{ range .Operations }}
+// ({{ .Method }} {{ .Path }})
 func (a *{{$nodeName}}) {{ .Name }}(ctx context.Context{{ if .HasRequest }}, req *{{ .RequestName }}{{ end }})(
 {{- if .HasResponse}}ret {{ template "help/responseType" .ResponseOK.Schema }},{{ end }}resp *http.Response, err error) {
     var(

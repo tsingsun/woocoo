@@ -286,6 +286,8 @@ paths:
                   description: file to upload
                   type: string
                   format: binary
+                md5:
+                  type: string
   /store/inventory:
     get:
       tags:

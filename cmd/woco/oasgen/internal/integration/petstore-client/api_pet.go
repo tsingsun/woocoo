@@ -289,6 +289,7 @@ func (a *PetAPI) UploadFile(ctx context.Context, req *UploadFileRequest) (ret *e
 	forms := url.Values{}
 	forms.Add("additionalMetadata", req.Body.AdditionalMetadata)
 	forms.Add("file", string(req.Body.File))
+	forms.Add("md5", req.Body.Md5)
 	body = forms
 
 	request, err := a.client.prepareRequest("POST", a.client.cfg.BasePath+path, contentType, body)

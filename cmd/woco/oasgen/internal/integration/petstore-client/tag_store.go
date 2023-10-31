@@ -2,17 +2,19 @@
 
 package client
 
+// DeleteOrderRequest is the request object for (DELETE /store/order/{orderId})
 type DeleteOrderRequest struct {
 	// OrderId ID of the order that needs to be deleted
 	OrderId string `binding:"required" uri:"orderId"`
 }
 
+// GetOrderByIdRequest is the request object for (GET /store/order/{orderId})
 type GetOrderByIdRequest struct {
 	// OrderId ID of pet that needs to be fetched
 	OrderId int64 `binding:"lte=5,gte=1,required" uri:"orderId"`
 }
 
-// PlaceOrderRequest order placed for purchasing the pet
+// PlaceOrderRequest is the request object for (POST /store/order)
 type PlaceOrderRequest struct {
 	// PlaceOrderRequestBody An order for a pets from the pet store
 	Order `json:",inline"`

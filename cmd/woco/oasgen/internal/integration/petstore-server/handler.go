@@ -12,7 +12,7 @@ import (
 )
 
 // RegisterPetHandlers creates http.Handler with routing matching OpenAPI spec.
-func RegisterPetHandlers(router *gin.RouterGroup, si PetService) {
+func RegisterPetHandlers(router *gin.RouterGroup, si PetServer) {
 	router.POST("/pet", wrapAddPet(si))
 	router.DELETE("/pet/:petId", wrapDeletePet(si))
 	router.GET("/pet/findByStatus", wrapFindPetsByStatus(si))
@@ -24,7 +24,7 @@ func RegisterPetHandlers(router *gin.RouterGroup, si PetService) {
 }
 
 // RegisterStoreHandlers creates http.Handler with routing matching OpenAPI spec.
-func RegisterStoreHandlers(router *gin.RouterGroup, si StoreService) {
+func RegisterStoreHandlers(router *gin.RouterGroup, si StoreServer) {
 	router.DELETE("/store/order/:orderId", wrapDeleteOrder(si))
 	router.GET("/store/inventory", wrapGetInventory(si))
 	router.GET("/store/order/:orderId", wrapGetOrderById(si))
@@ -32,7 +32,7 @@ func RegisterStoreHandlers(router *gin.RouterGroup, si StoreService) {
 }
 
 // RegisterUserHandlers creates http.Handler with routing matching OpenAPI spec.
-func RegisterUserHandlers(router *gin.RouterGroup, si UserService) {
+func RegisterUserHandlers(router *gin.RouterGroup, si UserServer) {
 	router.POST("/user", wrapCreateUser(si))
 	router.POST("/user/profile", wrapCreateUserProfile(si))
 	router.POST("/user/createWithArray", wrapCreateUsersWithArrayInput(si))
@@ -44,7 +44,7 @@ func RegisterUserHandlers(router *gin.RouterGroup, si UserService) {
 	router.PUT("/user/:username", wrapUpdateUser(si))
 }
 
-func wrapAddPet(si PetService) func(c *gin.Context) {
+func wrapAddPet(si PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req AddPetRequest
 		if err := c.ShouldBind(&req); err != nil {
@@ -60,7 +60,7 @@ func wrapAddPet(si PetService) func(c *gin.Context) {
 	}
 }
 
-func wrapDeletePet(si PetService) func(c *gin.Context) {
+func wrapDeletePet(si PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req DeletePetRequest
 		if err := c.ShouldBindUri(&req.PathParams); err != nil {
@@ -79,7 +79,7 @@ func wrapDeletePet(si PetService) func(c *gin.Context) {
 	}
 }
 
-func wrapFindPetsByStatus(si PetService) func(c *gin.Context) {
+func wrapFindPetsByStatus(si PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req FindPetsByStatusRequest
 		if err := c.ShouldBindQuery(&req); err != nil {
@@ -95,7 +95,7 @@ func wrapFindPetsByStatus(si PetService) func(c *gin.Context) {
 	}
 }
 
-func wrapFindPetsByTags(si PetService) func(c *gin.Context) {
+func wrapFindPetsByTags(si PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req FindPetsByTagsRequest
 		if err := c.ShouldBindQuery(&req); err != nil {
@@ -111,7 +111,7 @@ func wrapFindPetsByTags(si PetService) func(c *gin.Context) {
 	}
 }
 
-func wrapGetPetById(si PetService) func(c *gin.Context) {
+func wrapGetPetById(si PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req GetPetByIdRequest
 		if err := c.ShouldBindUri(&req); err != nil {
@@ -131,7 +131,7 @@ func wrapGetPetById(si PetService) func(c *gin.Context) {
 	}
 }
 
-func wrapUpdatePet(si PetService) func(c *gin.Context) {
+func wrapUpdatePet(si PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req UpdatePetRequest
 		if err := c.ShouldBind(&req); err != nil {
@@ -151,7 +151,7 @@ func wrapUpdatePet(si PetService) func(c *gin.Context) {
 	}
 }
 
-func wrapUpdatePetWithForm(si PetService) func(c *gin.Context) {
+func wrapUpdatePetWithForm(si PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		req := UpdatePetWithFormRequest{
 			QueryParams: UpdatePetWithFormRequestQueryParams{
@@ -178,7 +178,7 @@ func wrapUpdatePetWithForm(si PetService) func(c *gin.Context) {
 	}
 }
 
-func wrapUploadFile(si PetService) func(c *gin.Context) {
+func wrapUploadFile(si PetServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req UploadFileRequest
 		if err := c.ShouldBindUri(&req.PathParams); err != nil {
@@ -198,7 +198,7 @@ func wrapUploadFile(si PetService) func(c *gin.Context) {
 	}
 }
 
-func wrapDeleteOrder(si StoreService) func(c *gin.Context) {
+func wrapDeleteOrder(si StoreServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req DeleteOrderRequest
 		if err := c.ShouldBindUri(&req); err != nil {
@@ -213,7 +213,7 @@ func wrapDeleteOrder(si StoreService) func(c *gin.Context) {
 	}
 }
 
-func wrapGetInventory(si StoreService) func(c *gin.Context) {
+func wrapGetInventory(si StoreServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		resp, err := si.GetInventory(c)
 		if err != nil {
@@ -224,7 +224,7 @@ func wrapGetInventory(si StoreService) func(c *gin.Context) {
 	}
 }
 
-func wrapGetOrderById(si StoreService) func(c *gin.Context) {
+func wrapGetOrderById(si StoreServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req GetOrderByIdRequest
 		if err := c.ShouldBindUri(&req); err != nil {
@@ -244,7 +244,7 @@ func wrapGetOrderById(si StoreService) func(c *gin.Context) {
 	}
 }
 
-func wrapPlaceOrder(si StoreService) func(c *gin.Context) {
+func wrapPlaceOrder(si StoreServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req PlaceOrderRequest
 		if err := c.ShouldBind(&req); err != nil {
@@ -260,7 +260,7 @@ func wrapPlaceOrder(si StoreService) func(c *gin.Context) {
 	}
 }
 
-func wrapCreateUser(si UserService) func(c *gin.Context) {
+func wrapCreateUser(si UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req CreateUserRequest
 		if err := c.ShouldBind(&req); err != nil {
@@ -276,7 +276,7 @@ func wrapCreateUser(si UserService) func(c *gin.Context) {
 	}
 }
 
-func wrapCreateUserProfile(si UserService) func(c *gin.Context) {
+func wrapCreateUserProfile(si UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req CreateUserProfileRequest
 		if err := c.ShouldBind(&req); err != nil {
@@ -292,7 +292,7 @@ func wrapCreateUserProfile(si UserService) func(c *gin.Context) {
 	}
 }
 
-func wrapCreateUsersWithArrayInput(si UserService) func(c *gin.Context) {
+func wrapCreateUsersWithArrayInput(si UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req CreateUsersWithArrayInputRequest
 		if err := c.ShouldBind(&req); err != nil {
@@ -307,7 +307,7 @@ func wrapCreateUsersWithArrayInput(si UserService) func(c *gin.Context) {
 	}
 }
 
-func wrapCreateUsersWithListInput(si UserService) func(c *gin.Context) {
+func wrapCreateUsersWithListInput(si UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req CreateUsersWithListInputRequest
 		if err := c.ShouldBind(&req); err != nil {
@@ -322,7 +322,7 @@ func wrapCreateUsersWithListInput(si UserService) func(c *gin.Context) {
 	}
 }
 
-func wrapDeleteUser(si UserService) func(c *gin.Context) {
+func wrapDeleteUser(si UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req DeleteUserRequest
 		if err := c.ShouldBindUri(&req); err != nil {
@@ -337,7 +337,7 @@ func wrapDeleteUser(si UserService) func(c *gin.Context) {
 	}
 }
 
-func wrapGetUserByName(si UserService) func(c *gin.Context) {
+func wrapGetUserByName(si UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req GetUserByNameRequest
 		if err := c.ShouldBindUri(&req); err != nil {
@@ -357,7 +357,7 @@ func wrapGetUserByName(si UserService) func(c *gin.Context) {
 	}
 }
 
-func wrapLoginUser(si UserService) func(c *gin.Context) {
+func wrapLoginUser(si UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req LoginUserRequest
 		if err := c.ShouldBindQuery(&req); err != nil {
@@ -373,7 +373,7 @@ func wrapLoginUser(si UserService) func(c *gin.Context) {
 	}
 }
 
-func wrapLogoutUser(si UserService) func(c *gin.Context) {
+func wrapLogoutUser(si UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		err := si.LogoutUser(c)
 		if err != nil {
@@ -383,7 +383,7 @@ func wrapLogoutUser(si UserService) func(c *gin.Context) {
 	}
 }
 
-func wrapUpdateUser(si UserService) func(c *gin.Context) {
+func wrapUpdateUser(si UserServer) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var req UpdateUserRequest
 		if err := c.ShouldBindUri(&req.PathParams); err != nil {

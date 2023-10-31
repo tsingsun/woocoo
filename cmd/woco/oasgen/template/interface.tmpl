@@ -8,13 +8,16 @@
 
 {{ range $n:=$.Nodes }}
     {{ $serviceName := pascal $n.Name }}
-    // {{ $serviceName }}Service is the server API for {{ $serviceName }} service.
-    type {{ $serviceName }}Service interface {
+    // {{ $serviceName }}Server is the server API for {{ $serviceName }} service.
+    type {{ $serviceName }}Server interface {
     {{- range $n.Operations }}
         {{- if .IgnoreInterface }}
             {{- continue }}
         {{- end }}
-    // ({{ .Method }} {{ .Path }})
+        {{- if .Spec.Description }}
+        {{ stringToGoCommentWithPrefix .Spec.Description .Name }}
+        {{- end }}
+        // ({{ .Method }} {{ .Path }})
     {{ .Name }}(*gin.Context{{ if .HasRequest }}, *{{ .RequestName }}{{ end }})(
         {{- if .HasResponse }}{{ template "help/responseType" .ResponseOK.Schema }},{{ end }}error)
     {{- end }}
@@ -22,16 +25,16 @@
 {{ end }}
 {{ range $n:=$.Nodes }}
     {{ $serviceName := pascal $n.Name }}
-    type Unimplemented{{ $serviceName }}Service struct {
+    type Unimplemented{{ $serviceName }}Server struct {
     }
     {{- range $n.Operations }}
         {{- if .IgnoreInterface }}
             {{- continue }}
         {{- end }}
-        func (Unimplemented{{ $serviceName }}Service) {{ .Name }}(c *gin.Context{{ if .HasRequest }}, req *{{ .RequestName }}{{ end }})(
+        func (Unimplemented{{ $serviceName }}Server) {{ .Name }}(c *gin.Context{{ if .HasRequest }}, req *{{ .RequestName }}{{ end }})(
         {{- if .HasResponse}}_ {{ template "help/responseType" .ResponseOK.Schema }},{{ end }}err error) {
-        err = fmt.Errorf("method {{ .Name }} not implemented")
-        return
+            err = fmt.Errorf("method {{ .Name }} not implemented")
+            return
         }
     {{ end }}
 {{ end }}

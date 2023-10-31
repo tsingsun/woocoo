@@ -174,7 +174,7 @@ func TestGenerateAfter(t *testing.T) {
 		})
 	})
 	t.Run("checkResponse", func(t *testing.T) {
-		res := reflect.TypeOf(UnimplementedPetService{})
+		res := reflect.TypeOf(UnimplementedPetServer{})
 		// response from reference
 		md, ok := res.MethodByName("FindPetsByTags")
 		require.True(t, ok)

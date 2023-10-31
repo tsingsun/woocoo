@@ -8,9 +8,9 @@ import (
 )
 
 type Service struct {
-	UnimplementedStoreService
-	UnimplementedPetService
-	UnimplementedUserService
+	UnimplementedStoreServer
+	UnimplementedPetServer
+	UnimplementedUserServer
 }
 
 func (s Service) AddPet(c *gin.Context, req *AddPetRequest) (_ *Pet, err error) {

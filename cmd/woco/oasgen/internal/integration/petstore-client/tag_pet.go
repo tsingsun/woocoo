@@ -2,11 +2,12 @@
 
 package client
 
-// AddPetRequest Pet object that needs to be added to the store
+// AddPetRequest is the request object for (POST /pet)
 type AddPetRequest struct {
 	NewPet `json:",inline"`
 }
 
+// DeletePetRequest is the request object for (DELETE /pet/{petId})
 type DeletePetRequest struct {
 	PathParams   DeletePetRequestPathParams
 	HeaderParams DeletePetRequestHeaderParams
@@ -21,27 +22,31 @@ type DeletePetRequestHeaderParams struct {
 	APIKey *string `header:"api_key"`
 }
 
+// FindPetsByStatusRequest is the request object for (GET /pet/findByStatus)
 type FindPetsByStatusRequest struct {
 	// Status Status values that need to be considered for filter
 	Status []string `binding:"required" form:"status"`
 }
 
+// FindPetsByTagsRequest is the request object for (GET /pet/findByTags)
 type FindPetsByTagsRequest struct {
 	// Tags Tags to filter by
 	Tags []string `binding:"required" form:"tags"`
 }
 
+// GetPetByIdRequest is the request object for (GET /pet/{petId})
 type GetPetByIdRequest struct {
 	// PetId ID of pet to return
 	PetId int64 `binding:"required" uri:"petId"`
 }
 
-// UpdatePetRequest Pet object that needs to be added to the store
+// UpdatePetRequest is the request object for (PUT /pet)
 type UpdatePetRequest struct {
 	// Pet A pet for sale in the pet store
 	Pet `json:",inline"`
 }
 
+// UpdatePetWithFormRequest is the request object for (POST /pet/{petId})
 type UpdatePetWithFormRequest struct {
 	PathParams  UpdatePetWithFormRequestPathParams
 	QueryParams UpdatePetWithFormRequestQueryParams
@@ -65,6 +70,7 @@ type UpdatePetWithFormRequestBody struct {
 	Status string `form:"status"`
 }
 
+// UploadFileRequest is the request object for (POST /pet/{petId}/uploadImage)
 type UploadFileRequest struct {
 	PathParams UploadFileRequestPathParams
 	Body       UploadFileRequestBody
@@ -80,4 +86,5 @@ type UploadFileRequestBody struct {
 	AdditionalMetadata string `form:"additionalMetadata"`
 	// File file to upload
 	File []byte `form:"file"`
+	Md5  string `form:"md5"`
 }

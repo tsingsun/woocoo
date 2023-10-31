@@ -2,7 +2,6 @@ package httpx
 
 import (
 	"bytes"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"net/http"
@@ -18,8 +17,10 @@ const (
 	ExtractorLimit = 20
 )
 
-var errHeaderExtractorValueMissing = errors.New("missing value in request header")
-var errHeaderExtractorValueInvalid = errors.New("invalid value in request header")
+var (
+	errHeaderExtractorValueMissing = errors.New("missing value in request header")
+	errHeaderExtractorValueInvalid = errors.New("invalid value in request header")
+)
 
 // ValuesFromHeader returns functions that extract values from the request header.
 // valuePrefix is a parameter to remove the first part (prefix) of the extracted value. This is useful if header value has static
@@ -86,21 +87,6 @@ func getURIPath(u *url.URL) string {
 	}
 
 	return uri
-}
-
-// generateRandomBytes returns securely generated random bytes.
-// It will return an error if the system's secure random number generator
-// fails to function correctly.
-func generateRandomBytes(n int) ([]byte, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	// err == nil only if len(b) == n
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
-
 }
 
 // ValuesFromCanonical attempts to extract the value of a canonical string.

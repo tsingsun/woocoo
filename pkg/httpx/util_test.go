@@ -124,13 +124,3 @@ func TestValuesFromCanonical(t *testing.T) {
 		})
 	}
 }
-
-func Test_generateRandomBytes(t *testing.T) {
-	b, err := generateRandomBytes(10)
-	assert.NoError(t, err)
-	assert.Equal(t, 10, len(b))
-
-	b, err = generateRandomBytes(0)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(b))
-}

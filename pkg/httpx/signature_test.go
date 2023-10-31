@@ -228,12 +228,25 @@ func TestTokenSigner_wechat(t *testing.T) {
 
 	ts, err := ParseSignTime("", "1414587457")
 	require.NoError(t, err)
-	err = signer.Sign(req, "Wm3WZYTPz0wzccnW", ts)
-	assert.NoError(t, err)
-	want := "0f9de62fce790f9a083d5c99e95740ceb90c27ed"
-	got, err := GetSignedRequestSignature(req, "Authorization", signer.config.AuthScheme, signer.config.AuthHeaderDelimiter)
-	require.NoError(t, err)
-	assert.Equal(t, want, got)
+	t.Run("static nonce", func(t *testing.T) {
+		r := req.Clone(req.Context())
+		err = signer.Sign(r, "Wm3WZYTPz0wzccnW", ts)
+		assert.NoError(t, err)
+		want := "0f9de62fce790f9a083d5c99e95740ceb90c27ed"
+		got, err := GetSignedRequestSignature(r, "Authorization", signer.config.AuthScheme, signer.config.AuthHeaderDelimiter)
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+	t.Run("autogen nonce", func(t *testing.T) {
+		r := req.Clone(req.Context())
+		err = signer.Sign(r, "", ts)
+		assert.NoError(t, err)
+		got, err := GetSignedRequestSignature(r, "Authorization", signer.config.AuthScheme, signer.config.AuthHeaderDelimiter)
+		require.NoError(t, err)
+		assert.NotEmpty(t, got)
+		hs := ValuesFromCanonical(r.Header.Get("Authorization"), signer.config.AuthHeaderDelimiter, "=")
+		assert.Len(t, hs[signer.config.NonceKey], 12)
+	})
 }
 
 func TestJWTToken(t *testing.T) {

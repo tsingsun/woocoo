@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/gds"
 	"hash"
 	"io"
 	"net/http"
@@ -104,7 +105,7 @@ type SignerConfig struct {
 	NonceKey   string    `yaml:"nonceKey" json:"nonceKey"`
 	Algorithm  Algorithm `yaml:"algorithm" json:"algorithm"`
 	DateFormat string    `yaml:"dateFormat" json:"dateFormat"`
-	NonceLen   int       `yaml:"nonceLen" json:"nonceLen"`
+	NonceLen   uint8     `yaml:"nonceLen" json:"nonceLen"`
 	// Delimiter is the delimiter used to separate fields in the signature string.
 	// Default value "\n"
 	Delimiter string `yaml:"delimiter" json:"delimiter"`
@@ -409,7 +410,7 @@ func (s *DefaultSigner) StringToSign(ctx *SigningCtx) error {
 	return nil
 }
 
-func (s *DefaultSigner) AttachData(ctx *SigningCtx) error {
+func (s *DefaultSigner) AttachData(_ *SigningCtx) error {
 	return nil
 }
 
@@ -567,7 +568,7 @@ func NewTokenSigner(config *SignerConfig) (Signer, error) {
 		SignerConfig: config,
 	}
 	s.lookUpSorted = make([]string, 0, len(s.SignedLookups))
-	for key, _ := range s.SignedLookups {
+	for key := range s.SignedLookups {
 		s.lookUpSorted = append(s.lookUpSorted, key)
 	}
 	sort.Strings(s.lookUpSorted)
@@ -613,11 +614,7 @@ func (s TokenSigner) BuildCanonicalRequest(r *http.Request, ctx *SigningCtx) err
 			ctx.SignedVals[key] = FormatSignTime(ctx.SignTime, s.DateFormat)
 		case s.NonceKey:
 			if ctx.Nonce == "" {
-				nonce, err := generateRandomBytes(s.NonceLen)
-				if err != nil {
-					return err
-				}
-				ctx.Nonce = string(nonce)
+				ctx.Nonce = gds.RandomString(s.NonceLen)
 			}
 			ctx.SignedVals[key] = ctx.Nonce
 		default:
@@ -646,7 +643,7 @@ func (s TokenSigner) BuildCanonicalRequest(r *http.Request, ctx *SigningCtx) err
 	return nil
 }
 
-func (s TokenSigner) AttachData(ctx *SigningCtx) error {
+func (s TokenSigner) AttachData(_ *SigningCtx) error {
 	return nil
 }
 

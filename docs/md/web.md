@@ -288,10 +288,10 @@ tokenSign:
     authScheme: "XXX-HMAC-SHA1"     
     authHeaders: ["timestamp","noncestr"]
     signedLookups:
-      - accessToken: header:Authorization>Bearer
-      - timestamp:
-      - noncestr:
-      - url: CanonicalUri  
+      accessToken: header:Authorization>Bearer
+      timestamp:
+      noncestr:
+      url: CanonicalUri  
   storeKey: signature
  ```
 

@@ -26,7 +26,7 @@ func SetDefault(driver string) error {
 	return nil
 }
 
-// RegisterCache registers a cache driver.
+// RegisterCache registers a cache driver. It is not safe for concurrent use.
 func RegisterCache(name string, cache Cache) error {
 	if name == "" {
 		return ErrDriverNameMiss
@@ -39,6 +39,11 @@ func RegisterCache(name string, cache Cache) error {
 		return SetDefault(name)
 	}
 	return nil
+}
+
+// UnRegisterCache unregisters a cache driver. It is not safe for concurrent use.
+func UnRegisterCache(name string) {
+	delete(_manager.drivers, name)
 }
 
 // GetCache return a registered Cache driver.

@@ -70,4 +70,6 @@ type JsonObject json.RawMessage
 
 type LabelSet map[string]string
 
+type NewPets []*NewPet
+
 type Pets []*Pet

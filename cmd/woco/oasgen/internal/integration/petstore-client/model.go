@@ -17,7 +17,7 @@ type NewPet struct {
 	// Pet A pet for sale in the pet store
 	*Pet `json:",inline"`
 	// Owner A User who is purchasing from the pet store
-	Owner     User      `binding:"required" json:"user" xml:"User"`
+	Owner     User      `binding:"required" json:"owner" xml:"User"`
 	Timestamp time.Time `binding:"required" json:"timestamp" time_format:"2006-01-02T15:04:05Z07:00" xml:"timestamp"`
 }
 
@@ -39,10 +39,10 @@ type Pet struct {
 	Category  *Category `json:"category,omitempty" xml:"Category"`
 	ID        int64     `json:"id,omitempty" xml:"id"`
 	Name      string    `binding:"required" json:"name" xml:"name"`
-	PhotoUrls []string  `binding:"required" json:"photoUrl" xml:"photoUrl"`
+	PhotoUrls []string  `binding:"required" json:"photoUrls" xml:"photoUrl"`
 	// Status pet status in the store
 	Status string `json:"status,omitempty" xml:"status"`
-	Tags   []*Tag `json:"tag,omitempty" xml:"tag"`
+	Tags   []*Tag `json:"tags,omitempty" xml:"tag"`
 }
 
 // Tag A tag for a pet
@@ -69,5 +69,7 @@ type User struct {
 type JsonObject json.RawMessage
 
 type LabelSet map[string]string
+
+type NewPets []*NewPet
 
 type Pets []*Pet

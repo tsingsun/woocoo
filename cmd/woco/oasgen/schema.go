@@ -177,7 +177,7 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 			info.Nillable = true
 
 			break
-		} else if len(sv.Properties) == 0 {
+		} else if isJsonRawObject(sv) {
 			info.Type = code.TypeJSON
 			info.Nillable = true
 			break
@@ -551,4 +551,26 @@ func genComponentSchemas(c *Config, spec *openapi3.T) {
 		c.AddSchema(k, gs)
 	}
 	return
+}
+
+func isJsonRawObject(schema *openapi3.Schema) bool {
+	if schema.Type != "object" {
+		return false
+	}
+	if len(schema.Properties) != 0 {
+		return false
+	}
+	if len(schema.AllOf) != 0 {
+		return false
+	}
+	if len(schema.AnyOf) != 0 {
+		return false
+	}
+	if len(schema.OneOf) != 0 {
+		return false
+	}
+	if schema.AdditionalProperties.Has != nil && *schema.AdditionalProperties.Has {
+		return false
+	}
+	return true
 }

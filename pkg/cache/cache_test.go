@@ -92,72 +92,86 @@ func TestSkipMode(t *testing.T) {
 }
 
 func TestManager(t *testing.T) {
-	type args struct {
-		name string
-		f    func() Cache
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "default",
-			args: args{
+	t.Run("register", func(t *testing.T) {
+
+		type args struct {
+			name string
+			f    func() Cache
+		}
+		tests := []struct {
+			name    string
+			args    args
+			wantErr bool
+		}{
+			{
 				name: "default",
-				f: func() Cache {
-					return &mockCache{}
+				args: args{
+					name: "default",
+					f: func() Cache {
+						return &mockCache{}
+					},
 				},
 			},
-		},
-		{
-			name: "second",
-			args: args{
-				name: "c1",
-				f: func() Cache {
-					return &mockCache{}
+			{
+				name: "second",
+				args: args{
+					name: "c1",
+					f: func() Cache {
+						return &mockCache{}
+					},
 				},
 			},
-		},
-		{
-			name: "duplicate",
-			args: args{
-				name: "c1",
-				f: func() Cache {
-					return &mockCache{}
+			{
+				name: "duplicate",
+				args: args{
+					name: "c1",
+					f: func() Cache {
+						return &mockCache{}
+					},
 				},
+				wantErr: true,
 			},
-			wantErr: true,
-		},
-		{
-			name: "empty",
-			args: args{
-				name: "",
-				f: func() Cache {
-					return &mockCache{}
+			{
+				name: "empty",
+				args: args{
+					name: "",
+					f: func() Cache {
+						return &mockCache{}
+					},
 				},
+				wantErr: true,
 			},
-			wantErr: true,
-		},
-	}
-	for i, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := tt.args.f()
-			err := RegisterCache(tt.args.name, c)
-			if tt.wantErr {
+		}
+		for i, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				c := tt.args.f()
+				err := RegisterCache(tt.args.name, c)
+				if tt.wantErr {
+					assert.Error(t, err)
+					return
+				}
+				assert.NoError(t, err)
+				_, err = GetCache(tt.args.name + "miss")
 				assert.Error(t, err)
-				return
-			}
-			assert.NoError(t, err)
-			_, err = GetCache(tt.args.name + "miss")
-			assert.Error(t, err)
-			got, _ := GetCache(tt.args.name)
-			assert.NotNil(t, got)
-			assert.Len(t, _manager.drivers, i+1)
-			df, _ := GetCache("default")
-			assert.Equal(t, df, _manager.drivers["default"])
+				got, _ := GetCache(tt.args.name)
+				assert.NotNil(t, got)
+				assert.Len(t, _manager.drivers, i+1)
+				df, _ := GetCache("default")
+				assert.Equal(t, df, _manager.drivers["default"])
+			})
+		}
+	})
+	t.Run("unregister", func(t *testing.T) {
+		t.Run("not-exits", func(t *testing.T) {
+			UnRegisterCache("not-exits")
 		})
-	}
+		t.Run("exits", func(t *testing.T) {
+			assert.NoError(t, RegisterCache("unregister", &mockCache{}))
+			UnRegisterCache("unregister")
+			_, err := GetCache("unregister")
+			assert.Error(t, err)
+		})
+	})
 }
 
 func TestCacheMethod(t *testing.T) {

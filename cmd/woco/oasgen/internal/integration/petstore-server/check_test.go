@@ -127,6 +127,9 @@ func TestGenerateAfter(t *testing.T) {
 		assert.EqualValues(t, `,inline`, newpet.Field(0).Tag.Get("json"))
 		assert.EqualValues(t, `*petstore.Pet`, newpet.Field(0).Type.String())
 		assert.EqualValues(t, `Timestamp`, newpet.Field(2).Name)
+
+		n1 := reflect.TypeOf(NewPets{&NewPet{}})
+		assert.EqualValues(t, "*petstore.NewPet", n1.Elem().String())
 	})
 	t.Run("checkRequest", func(t *testing.T) {
 		t.Run("tag", func(t *testing.T) {

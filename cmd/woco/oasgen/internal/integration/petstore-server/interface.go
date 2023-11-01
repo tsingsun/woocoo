@@ -10,7 +10,7 @@ import (
 	"github.com/tsingsun/woocoo/cmd/woco/oasgen/internal/integration/extra"
 )
 
-// PetService is the server API for Pet service.
+// PetServer is the server API for Pet service.
 type PetServer interface {
 	// (POST /pet)
 	AddPet(*gin.Context, *AddPetRequest) (*Pet, error)
@@ -33,7 +33,7 @@ type PetServer interface {
 	UploadFile(*gin.Context, *UploadFileRequest) (*extra.ApiResponse, error)
 }
 
-// StoreService is the server API for Store service.
+// StoreServer is the server API for Store service.
 type StoreServer interface {
 	// DeleteOrder For valid response try integer IDs with value < 1000. Anything above 1000 or nonintegers will generate API errors
 	// (DELETE /store/order/{orderId})
@@ -48,7 +48,7 @@ type StoreServer interface {
 	PlaceOrder(*gin.Context, *PlaceOrderRequest) (*Order, error)
 }
 
-// UserService is the server API for User service.
+// UserServer is the server API for User service.
 type UserServer interface {
 	// CreateUser This can only be done by the logged in user.
 	// (POST /user)

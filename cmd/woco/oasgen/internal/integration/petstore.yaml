@@ -785,6 +785,10 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/Pet'
+    newPets:
+      type: array
+      items:
+        $ref: '#/components/schemas/NewPet'
     NewPet:
       allOf:
         - $ref: '#/components/schemas/Pet'

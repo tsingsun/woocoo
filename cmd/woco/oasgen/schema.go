@@ -177,7 +177,7 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 			info.Nillable = true
 
 			break
-		} else if isJsonRawObject(sv) {
+		} else if isJsonRawObject(c, name, sv) {
 			info.Type = code.TypeJSON
 			info.Nillable = true
 			break
@@ -524,8 +524,6 @@ func (sch *Schema) setAlias() {
 			sch.IsAlias = true
 		}
 	case sch.Type.Type == code.TypeJSON:
-		fallthrough
-	default:
 		sch.IsAlias = true
 	}
 }
@@ -542,6 +540,7 @@ func genComponentSchemas(c *Config, spec *openapi3.T) {
 		schemaRef := spec.Components.Schemas[name]
 		k := "#/components/schemas/" + name
 		gs := genSchemaRef(c, name, schemaRef, false)
+
 		if tp, ok := tmpTypeMap[k]; ok { // schemas do not has a ref
 			gs.IsReplace = true
 			gs.Type = tp
@@ -553,7 +552,16 @@ func genComponentSchemas(c *Config, spec *openapi3.T) {
 	return
 }
 
-func isJsonRawObject(schema *openapi3.Schema) bool {
+func isTypeMap(c *Config, name string) bool {
+	k := "#/components/schemas/" + name
+	_, ok := c.TypeMap[k]
+	return ok
+}
+
+func isJsonRawObject(c *Config, name string, schema *openapi3.Schema) bool {
+	if isTypeMap(c, name) {
+		return false
+	}
 	if schema.Type != "object" {
 		return false
 	}

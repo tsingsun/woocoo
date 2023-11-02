@@ -20,7 +20,7 @@ func init() {
 
 type clientTest struct {
 	suite.Suite
-	Router     *gin.Engine
+	router     *gin.Engine
 	cfg        *Config
 	client     *APIClient
 	mockServer *httptest.Server
@@ -34,7 +34,7 @@ func (ct *clientTest) SetupSuite() {
 	petstore.RegisterUserHandlers(&router.RouterGroup, imp)
 	petstore.RegisterStoreHandlers(&router.RouterGroup, imp)
 	petstore.RegisterPetHandlers(&router.RouterGroup, imp)
-	ct.Router = router
+	ct.router = router
 	// Mock server which always responds 500.
 	ct.mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		router.ServeHTTP(w, r)
@@ -47,6 +47,11 @@ func (ct *clientTest) SetupSuite() {
 		},
 	}
 	ct.client = NewAPIClient(ct.cfg)
+	ct.client.AddInterceptor(func(ctx context.Context, req *http.Request) error {
+		req.Header.Add("X-Interceptor", "true")
+		req.Header.Add("X-Interceptor-Value", "1")
+		return nil
+	})
 }
 
 func (ct *clientTest) TearDownSuite() {
@@ -131,5 +136,15 @@ func (ct *clientTest) TestCreateUserProfile() {
 		JsonObject: JsonObject(`{"a":"b"}`)})
 	ct.Require().NoError(err)
 	ct.Equal(json.RawMessage(`{"a":"b"}`), ret)
+	ct.Equal(200, resp.StatusCode)
+}
+
+func (ct *clientTest) TestAddInterceptor() {
+	resp, err := ct.client.PetAPI.DeletePet(context.Background(), &DeletePetRequest{
+		PathParams: DeletePetRequestPathParams{
+			PetId: 1,
+		},
+	})
+	ct.Require().NoError(err)
 	ct.Equal(200, resp.StatusCode)
 }

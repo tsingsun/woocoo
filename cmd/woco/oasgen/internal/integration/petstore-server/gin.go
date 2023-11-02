@@ -73,6 +73,12 @@ func (Service) DeletePet(ctx *gin.Context, req *DeletePetRequest) (err error) {
 		ctx.AbortWithStatus(401)
 		return nil
 	}
+	if ctx.Request.Header.Get("X-Interceptor") == "true" {
+		if ctx.Request.Header.Get("X-Interceptor-Value") != "1" {
+			ctx.AbortWithStatus(401)
+			return errors.New("X-Interceptor not found")
+		}
+	}
 	return nil
 }
 

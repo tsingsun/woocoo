@@ -25,7 +25,7 @@ func (a *StoreAPI) DeleteOrder(ctx context.Context, req *DeleteOrderRequest) (re
 	if err != nil {
 		return
 	}
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -56,7 +56,7 @@ func (a *StoreAPI) GetInventory(ctx context.Context) (ret map[string]int32, resp
 	}
 	accept := selectHeaderAccept([]string{"application/json"})
 	request.Header.Set("Accept", accept)
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -91,7 +91,7 @@ func (a *StoreAPI) GetOrderById(ctx context.Context, req *GetOrderByIdRequest) (
 	}
 	accept := selectHeaderAccept([]string{"application/json", "application/xml"})
 	request.Header.Set("Accept", accept)
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -128,7 +128,7 @@ func (a *StoreAPI) PlaceOrder(ctx context.Context, req *PlaceOrderRequest) (ret 
 	}
 	accept := selectHeaderAccept([]string{"application/json", "application/xml"})
 	request.Header.Set("Accept", accept)
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}

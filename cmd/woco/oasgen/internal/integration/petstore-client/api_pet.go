@@ -32,7 +32,7 @@ func (a *PetAPI) AddPet(ctx context.Context, req *AddPetRequest) (ret *Pet, resp
 	}
 	accept := selectHeaderAccept([]string{"application/json", "application/xml"})
 	request.Header.Set("Accept", accept)
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -69,7 +69,7 @@ func (a *PetAPI) DeletePet(ctx context.Context, req *DeletePetRequest) (resp *ht
 	if req.HeaderParams.APIKey != nil {
 		request.Header.Set("api_key", *req.HeaderParams.APIKey)
 	}
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -105,7 +105,7 @@ func (a *PetAPI) FindPetsByStatus(ctx context.Context, req *FindPetsByStatusRequ
 	request.URL.RawQuery = queryParams.Encode()
 	accept := selectHeaderAccept([]string{"application/json", "application/xml"})
 	request.Header.Set("Accept", accept)
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -144,7 +144,7 @@ func (a *PetAPI) FindPetsByTags(ctx context.Context, req *FindPetsByTagsRequest)
 	request.URL.RawQuery = queryParams.Encode()
 	accept := selectHeaderAccept([]string{"application/json", "application/xml"})
 	request.Header.Set("Accept", accept)
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -179,7 +179,7 @@ func (a *PetAPI) GetPetById(ctx context.Context, req *GetPetByIdRequest) (ret *P
 	}
 	accept := selectHeaderAccept([]string{"application/json", "application/xml"})
 	request.Header.Set("Accept", accept)
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -216,7 +216,7 @@ func (a *PetAPI) UpdatePet(ctx context.Context, req *UpdatePetRequest) (ret *Pet
 	}
 	accept := selectHeaderAccept([]string{"application/json", "application/xml"})
 	request.Header.Set("Accept", accept)
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -260,7 +260,7 @@ func (a *PetAPI) UpdatePetWithForm(ctx context.Context, req *UpdatePetWithFormRe
 		return
 	}
 	request.URL.RawQuery = queryParams.Encode()
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -298,7 +298,7 @@ func (a *PetAPI) UploadFile(ctx context.Context, req *UploadFileRequest) (ret *e
 	}
 	accept := selectHeaderAccept([]string{"application/json"})
 	request.Header.Set("Accept", accept)
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}

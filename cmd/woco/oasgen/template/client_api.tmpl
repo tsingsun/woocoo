@@ -92,7 +92,7 @@ func (a *{{$nodeName}}) {{ .Name }}(ctx context.Context{{ if .HasRequest }}, req
             {{- end }}
         {{- end }}
     {{- end }}
-    resp,err = a.client.Do(request)
+    resp,err = a.client.Do(ctx,request)
     if err != nil {
         return
     }

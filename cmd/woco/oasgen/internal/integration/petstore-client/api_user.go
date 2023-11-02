@@ -29,7 +29,7 @@ func (a *UserAPI) CreateUser(ctx context.Context, req *CreateUserRequest) (ret *
 	}
 	accept := selectHeaderAccept([]string{"application/json"})
 	request.Header.Set("Accept", accept)
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -66,7 +66,7 @@ func (a *UserAPI) CreateUserProfile(ctx context.Context, req *CreateUserProfileR
 	}
 	accept := selectHeaderAccept([]string{"application/json"})
 	request.Header.Set("Accept", accept)
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -100,7 +100,7 @@ func (a *UserAPI) CreateUsersWithArrayInput(ctx context.Context, req *CreateUser
 	if err != nil {
 		return
 	}
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -131,7 +131,7 @@ func (a *UserAPI) CreateUsersWithListInput(ctx context.Context, req *CreateUsers
 	if err != nil {
 		return
 	}
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -161,7 +161,7 @@ func (a *UserAPI) DeleteUser(ctx context.Context, req *DeleteUserRequest) (resp 
 	if err != nil {
 		return
 	}
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -193,7 +193,7 @@ func (a *UserAPI) GetUserByName(ctx context.Context, req *GetUserByNameRequest) 
 	}
 	accept := selectHeaderAccept([]string{"application/json", "application/xml"})
 	request.Header.Set("Accept", accept)
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -232,7 +232,7 @@ func (a *UserAPI) LoginUser(ctx context.Context, req *LoginUserRequest) (ret str
 	request.URL.RawQuery = queryParams.Encode()
 	accept := selectHeaderAccept([]string{"application/json", "application/xml"})
 	request.Header.Set("Accept", accept)
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -264,7 +264,7 @@ func (a *UserAPI) LogoutUser(ctx context.Context) (resp *http.Response, err erro
 	if err != nil {
 		return
 	}
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}
@@ -296,7 +296,7 @@ func (a *UserAPI) UpdateUser(ctx context.Context, req *UpdateUserRequest) (resp 
 	if err != nil {
 		return
 	}
-	resp, err = a.client.Do(request)
+	resp, err = a.client.Do(ctx, request)
 	if err != nil {
 		return
 	}

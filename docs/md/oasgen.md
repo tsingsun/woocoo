@@ -107,7 +107,6 @@ models:
   - 支持通过`x-go-tag-validator`扩展验证属性,具体可参考validator的表达式.
 - Auth验证: 这部分的未做过多的代码生成,需要结合中间件配置.
   内置支持的JWT,KeyAuth验证.要将不验证路径配置入`exclude`中
-  
 
 ### 响应
 
@@ -120,6 +119,23 @@ models:
 - 错误: 错误处理采用ErrorHandler,只是封装了错误信息进行返回.
 
 > 支持的序列化格式: json,xml,yaml,toml
+
+## 编写客户端代码
+
+在生成的代码如果不能满足需求, 比如需要传入动态参数,或者需要自定义的请求头,这时候就需要利用拦截器能力.
+
+拦截器的定义为`func(ctx context.Context, req *http.Request) error`,如果返回错误,则会终止请求.
+
+拦截器的执行点在`client.APIClient.Do`方法中,在执行请求前,会依次执行拦截器,
+```go
+// client是指向的包名
+cli := client.NewAPIClient(client.Config)
+cli.AddInterceptor(func(ctx context.Context, req *http.Request) error {
+    req.Header.Add("X-Interceptor", "true")
+    req.Header.Add("X-Interceptor-Value", "1")
+    return nil
+})
+```
 
 ## 编写服务端代码
 

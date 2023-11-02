@@ -189,8 +189,8 @@ func (p ProxyConfig) ProxyFunc() func(req *http.Request) (*url.URL, error) {
 // OAuth2Config is a wrapper around oauth2.Config that allows for custom.
 type OAuth2Config struct {
 	oauth2.Config `yaml:",inline" json:",inline"`
-	// StoreKey is the name of the cache driver which is used to store nonce.
-	// default is "redis".
+	// StoreKey is the name of the cache driver which is used to store token.
+	// Default is empty. If StoreKey is empty, the token will not be cached.
 	StoreKey       string `json:"storeKey" yaml:"storeKey"`
 	EndpointParams url.Values
 

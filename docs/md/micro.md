@@ -87,7 +87,7 @@ grpc:
 在客户端与服务端的通信过程中,grpcx.client会将配置中的`metadata`作为元数据传递给服务端,服务端可以根据元数据来进行路由,限流等操作.规则如下:
 
 - namespace,serviceName默认传递
-- `header_`前缀的参数在会在对应Polaris中的请求头参数: header_{key}:{value}以 key:value 加入outgoing context.
+- `header_`前缀的参数在会在对应Polaris中的请求头参数: header_\{key\}:\{value\}以 key:value 加入outgoing context.
 - `src_`前缀的将参与自定义路由.自定义路由是`registryMeta`中的标签.
 
 > 如果采用自定义路由时,则其他路由规则将失效.该功能是保持与官方的SDK相同.应该是认为如果采用自定义路由,那自定义的规则就应该足够支持.这是最高性能的方式.

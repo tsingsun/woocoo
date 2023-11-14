@@ -4,9 +4,9 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'WooCoo',
-  tagline: 'WooCoo是一套实践性强,为低代码而努力Web及RPC的开发框架',
-  url: 'https://tsingsun.github.io',
-  baseUrl: '/woocoo',
+  tagline: '助力开发者快速构建高性能企业级应用',
+  url: 'https://www.woocoos.tech',
+  baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',
@@ -57,6 +57,11 @@ const config: Config = {
   ],
 
   themeConfig: {
+    announcementBar: {
+      id: 'announcementBar-1',
+      content:
+        `⭐️ 喜欢WooCoo的话就给颗星吧 👉<a target="_blank" rel="noopener noreferrer" href="https://github.com/tsingsun/woocoo">GitHub</a>! ⭐️`,
+    },
     navbar: {
       title: 'WooCoo',
       logo: {
@@ -77,20 +82,28 @@ const config: Config = {
         },
       ],
     },
+    algolia: {
+      appId: 'F39VT0FT56',
+      // YOUR_SEARCH_API_KEY
+      apiKey: 'c898bb9ba001a9daee6a1b8358523985',
+      indexName: 'woocoo',
+      contextualSearch: true,
+
+    },
     footer: {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
+          title: '相关资源',
           items: [
             {
-              label: 'Get Started',
-              to: '/docs/guide',
+              label: 'Knockout后台(开发中)',
+              href: 'https://github.com/woocoos',
             },
           ],
         },
         {
-          title: 'Community',
+          title: '社区',
           items: [
             {
               label: 'Stack Overflow',
@@ -100,14 +113,10 @@ const config: Config = {
               label: 'Discord',
               href: 'https://discordapp.com/invite/woocoo',
             },
-            {
-              label: 'Twitter',
-              href: 'https://twitter.com/woocoo',
-            },
           ],
         }
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Tsingsun Li. Built with Docusaurus.`,
+      copyright: `Copyright © 2023 - ${new Date().getFullYear()} Tsingsun Li. <a href="https://beian.miit.gov.cn" rel="nofollow" target="_blank">闽ICP备2023019801号.</a>`,
     },
     prism: {
       theme: prismThemes.github,

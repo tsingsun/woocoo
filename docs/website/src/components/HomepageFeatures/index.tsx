@@ -10,32 +10,29 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
+    title: '易用性',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        WooCoo 可以让你很容易就启动一个 Web 站点或 GRPC 服务, 并且可以很容易基于配置变更.
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
-    description: (
-      <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
-      </>
-    ),
-  },
-  {
-    title: 'Powered by React',
+    title: '工程实践',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        WooCoo 的目标是融合最佳的工程实践, 使开发者一开始就处于工程化视角, 并可以专注于代码开发.
+      </>
+    ),
+  },
+  {
+    title: '高性能低成本',
+    Svg: require('@site/static/img/intro_performance.svg').default,
+    description: (
+      <>
+        基于优秀的Golang语言, 有着优秀的性能表现及极低的成本需求, 极具性价比.
       </>
     ),
   },

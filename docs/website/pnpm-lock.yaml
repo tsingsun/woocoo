@@ -17,6 +17,9 @@ dependencies:
   clsx:
     specifier: ^1.2.1
     version: 1.2.1
+  dotenv:
+    specifier: ^16.3.1
+    version: 16.3.1
   prism-react-renderer:
     specifier: ^2.1.0
     version: 2.1.0(react@18.2.0)
@@ -4332,6 +4335,11 @@ packages:
     engines: {node: '>=10'}
     dependencies:
       is-obj: 2.0.0
+    dev: false
+
+  /dotenv@16.3.1:
+    resolution: {integrity: sha512-IPzF4w4/Rd94bA9imS68tZBaYyBWSCE47V1RGuMrB94iyTOIEwRmVL2x/4An+6mETpLrKJ5hQkB8W4kFAadeIQ==}
+    engines: {node: '>=12'}
     dev: false
 
   /duplexer@0.1.2:

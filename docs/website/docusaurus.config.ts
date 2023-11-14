@@ -1,12 +1,16 @@
 import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import 'dotenv/config';
+
+const url = process.env.DOC_URL || 'https://www.woocoos.tech',
+  baseUrl = process.env.DOC_BASE_URL || '/';
 
 const config: Config = {
   title: 'WooCoo',
   tagline: '助力开发者快速构建高性能企业级应用',
-  url: 'https://www.woocoos.tech',
-  baseUrl: '/',
+  url: url,
+  baseUrl: baseUrl,
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',

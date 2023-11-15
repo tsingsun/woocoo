@@ -17,7 +17,7 @@ development: true
 
 安装woco后,首先通过无配置快速开始一个woocoo项目.
 
-```
+```go
 package main
 
 import (
@@ -49,7 +49,7 @@ func main() {
 当然现实工程不会有这么简单的项目.实际上woocoo是一个基于约定配置的框架.
 一般我们直接通过以下代码初始化程序就可以,会自动加载配置文件,加载工程过程中所需要的各类型组件.
 
-```
+```go
 app := woocoo.New()
 ```
 

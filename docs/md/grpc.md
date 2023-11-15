@@ -63,7 +63,7 @@ grpc:
 
 在 grpcx.Client 定义了grpc client工具.可以方便通过配置文件创建.但目前的功能还只是快速connection的创建
 
-```
+```go
 // 如果指定了service的配置,可自动获取
 grpcx.NewClient(cfg).Dial("127.0.0.1:8080")
 ```

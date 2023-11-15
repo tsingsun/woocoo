@@ -48,16 +48,23 @@ const config: Config = {
         },
         blog: {
           showReadingTime: true,
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/tsingsun/woocoo/tree/main/docs/website/blog/',
+          feedOptions: {
+            type: "all",
+            copyright: `Copyright © ${new Date().getFullYear()}, The WooCoo Authors.`,
+          },
+          path: "blog",
+          blogSidebarCount: 'ALL',
+          blogSidebarTitle: 'All our posts',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
         },
       },
     ],
+  ],
+
+  plugins: [
+    ['./src/plugins/baidu-tongji/index.ts',{}]
   ],
 
   themeConfig: {
@@ -125,6 +132,22 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
+      magicComments: [
+        {
+          className: 'theme-code-block-highlighted-line',
+          line: 'highlight-next-line',
+          block: {start: 'highlight-start', end: 'highlight-end'},
+        },
+        {
+          className: 'code-block-error-message',
+          line: 'highlight-next-line-error-message',
+        },
+        {
+          className: 'code-block-info-line',
+          line: 'highlight-next-line-info',
+          block: {start: 'highlight-info-start', end: 'highlight-info-end'},
+        },
+      ],
     },
   } satisfies Preset.ThemeConfig,
 };

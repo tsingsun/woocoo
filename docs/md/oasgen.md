@@ -142,7 +142,7 @@ cli.AddInterceptor(func(ctx context.Context, req *http.Request) error {
 1. 通过实现interface.go中定义的接口实现服务端代码.
 2. 将服务实现注册至路由,由于每个系统的错误代码并不相同,因此.生成的代码并不定义错误格式. 可自行实现. 如例子使用WooCoo Web内置的`ErrorHandler`来处理错误.
 
-```
+```go
 type Server struct {
 	petstore.UnimplementedStoreServer
 	petstore.UnimplementedPetServer

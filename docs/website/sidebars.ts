@@ -42,7 +42,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: '沙滩美女',
-      items: ["codegen","cli-init","oasgen","entImport","utils"],
+      items: ["codegen","cli-init","oasgen","utils"],
       collapsed: false,
     }
   ],

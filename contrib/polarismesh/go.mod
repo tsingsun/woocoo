@@ -4,11 +4,11 @@ go 1.21
 
 require (
 	github.com/knadh/koanf/parsers/yaml v0.1.0
-	github.com/polarismesh/polaris-go v1.5.3
-	github.com/polarismesh/specification v1.4.0
+	github.com/polarismesh/polaris-go v1.5.6
+	github.com/polarismesh/specification v1.4.1
 	github.com/stretchr/testify v1.8.4
-	github.com/tsingsun/woocoo v0.4.2-0.20231013074819-19382f73127a
-	google.golang.org/grpc v1.58.3
+	github.com/tsingsun/woocoo v0.4.3
+	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
 )
 
@@ -20,7 +20,7 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/uuid v1.3.0 // indirect
+	github.com/google/uuid v1.4.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-envparse v0.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -45,11 +45,11 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
-	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/net v0.18.0 // indirect
 	golang.org/x/sync v0.4.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
+	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

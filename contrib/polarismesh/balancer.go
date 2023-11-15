@@ -174,8 +174,10 @@ func (pb *pickerBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
 
 // Pick an instance from the ready instances
 func (pnp *polarisNamingPicker) Pick(info balancer.PickInfo) (balancer.PickResult, error) {
-	var resp *model.InstancesResponse
-	var srcService *model.ServiceInfo
+	var (
+		resp       *model.InstancesResponse
+		srcService *model.ServiceInfo
+	)
 	customRoute := len(pnp.options.SrcMetadata) > 0
 	if pnp.options.SrcService != "" {
 		srcService = &model.ServiceInfo{

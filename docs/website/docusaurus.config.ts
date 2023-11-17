@@ -127,7 +127,10 @@ const config: Config = {
           ],
         }
       ],
-      copyright: `Copyright © 2023 - ${new Date().getFullYear()} Tsingsun Li. <a href="https://beian.miit.gov.cn" rel="nofollow" target="_blank">闽ICP备2023019801号.</a>`,
+      copyright: `Copyright © 2023 - ${new Date().getFullYear()} Tsingsun Li. <p />
+<img src=${baseUrl+'img/beian.png'} style="width:16px;vertical-align: middle" alt=""/>
+<a href="https://beian.mps.gov.cn/#/query/webSearch?code=35020302035958" rel="noreferrer" target="_blank">闽公网安备35020302035958</a>
+<a href="https://beian.miit.gov.cn" rel="nofollow" target="_blank" style="margin-left: 20px">闽ICP备2023019801号.</a>`,
     },
     prism: {
       theme: prismThemes.github,

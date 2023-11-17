@@ -29,7 +29,7 @@ func (s Service) FindPetsByStatus(c *gin.Context, req *FindPetsByStatusRequest) 
 		st = req.Status[0]
 	}
 	return []*Pet{
-		{ID: 1, Name: "dog", Status: st},
+		{ID: 1, Name: "dog", Status: PetStatus(st)},
 	}, nil
 }
 

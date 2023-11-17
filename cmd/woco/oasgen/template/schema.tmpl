@@ -23,7 +23,43 @@
 
 {{- end}}
 
+{{- range .Schemas }}
+    {{- template "help/enum" .}}
+{{- end }}
 {{ end }}
+
+{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen.Schema */}}
+{{- define "help/enum" }}
+    {{- range .EnumsProperties }}
+        {{/* Type ident store the name of enum name */}}
+        {{- $enum := printf "%s%s" (pascal $.Name) .Type }}
+        {{- $receiver := receiver .Name }}
+        // {{ $enum }} defines the type for the {{ $.Name }}.{{ .Name }} enum field.
+        type {{ $enum }} string
+
+        // {{ $enum }} values.
+        const (
+        {{- range .EnumValues }}
+            {{ $enum }}{{ pascal . }} {{ $enum }} = "{{ . }}"
+        {{- end }}
+        )
+
+        func ({{ $receiver }} {{ $enum }}) String() string {
+            return string({{ $receiver }})
+        }
+
+        {{ $name := printf "%s%s" $enum "Validator" }}
+        // {{ $name }} is a validator for the {{ $.Name }}.{{ .Name }} field enum values.
+        func {{ $name }}({{ $receiver }} {{ $enum }}) error {
+            switch {{ $receiver }}{{ if .Type.Stringer }}.String(){{ end }} {
+            case {{ range $i,$e := .EnumValues }}{{ if ne $i 0 }}, {{ end }}{{ $enum }}{{ pascal $e }}{{ end }}:
+                return nil
+            default:
+                return fmt.Errorf("{{ $.Name }}.{{ .Name }} does not allow the value '%s'", {{ $receiver }}{{ if .Type.Stringer }}.String(){{ end }})
+            }
+        }
+    {{- end }}
+{{- end }}
 
 {{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen.Schema */}}
 {{- define "help/properties" }}
@@ -34,7 +70,7 @@
         {{- if .IsInline }}
             {{ .Type }} `json:",inline"`
         {{- else }}
-            {{ pascal .Name }} {{ .Type }} {{ .StructTagsString }}
+            {{ pascal .Name }} {{ if .IsEnum }}{{pascal $.Name}}{{ end }}{{ .Type }} {{ .StructTagsString }}
         {{- end }}
     {{- end }}
 {{- end}}

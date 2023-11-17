@@ -50,6 +50,35 @@ func TestGenComponentSchema_genSchemaRef(t *testing.T) {
 				IsAlias: true,
 			},
 		},
+		{
+			name: "enum",
+			args: args{
+				c: &Config{
+					Package: "petstore",
+				},
+				name: "PetStatus",
+				spec: &openapi3.SchemaRef{
+					Ref: "",
+					Value: &openapi3.Schema{
+						Type: "string",
+						Enum: []interface{}{
+							"available",
+							"pending",
+							"sold",
+						},
+					},
+				},
+			},
+			want: &Schema{
+				Name: "PetStatus",
+				Type: &code.TypeInfo{
+					Ident:   "PetStatus",
+					PkgName: "petstore",
+					Type:    code.TypeEnum,
+				},
+				IsAlias: false,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

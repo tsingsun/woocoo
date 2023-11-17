@@ -90,7 +90,7 @@ func TestGenerateAfter(t *testing.T) {
 			status, ok := orderType.FieldByName("Status")
 			require.True(t, ok)
 			assert.EqualValues(t, `status,omitempty`, status.Tag.Get("json"))
-			assert.EqualValues(t, `string`, status.Type.String())
+			assert.EqualValues(t, `petstore.OrderStatus`, status.Type.String())
 
 			allof := reflect.TypeOf(NewPet{})
 			assert.EqualValues(t, `,inline`, allof.Field(0).Tag.Get("json"))

@@ -25,7 +25,7 @@ type DeletePetRequestHeaderParams struct {
 // FindPetsByStatusRequest is the request object for (GET /pet/findByStatus)
 type FindPetsByStatusRequest struct {
 	// Status Status values that need to be considered for filter
-	Status []string `binding:"required" form:"status"`
+	Status []string `binding:"required,dive,oneof=available pending sold" form:"status"`
 }
 
 // FindPetsByTagsRequest is the request object for (GET /pet/findByTags)

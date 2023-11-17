@@ -4,6 +4,7 @@ package petstore
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -30,7 +31,7 @@ type Order struct {
 	Quantity  int32     `json:"quantity,omitempty" xml:"quantity"`
 	ShipDate  time.Time `json:"shipDate,omitempty" time_format:"2006-01-02T15:04:05Z07:00" xml:"shipDate"`
 	// Status Order Status
-	Status string `json:"status,omitempty" xml:"status"`
+	Status OrderStatus `binding:"omitempty,oneof=placed approved delivered" json:"status,omitempty" xml:"status"`
 }
 
 // Pet A pet for sale in the pet store
@@ -41,8 +42,8 @@ type Pet struct {
 	Name      string    `binding:"required" json:"name" xml:"name"`
 	PhotoUrls []string  `binding:"required" json:"photoUrls" xml:"photoUrl"`
 	// Status pet status in the store
-	Status string `json:"status,omitempty" xml:"status"`
-	Tags   []*Tag `json:"tags,omitempty" xml:"tag"`
+	Status PetStatus `binding:"omitempty,oneof=available pending sold" json:"status,omitempty" xml:"status"`
+	Tags   []*Tag    `json:"tags,omitempty" xml:"tag"`
 }
 
 // Tag A tag for a pet
@@ -73,3 +74,51 @@ type LabelSet map[string]string
 type NewPets []*NewPet
 
 type Pets []*Pet
+
+// OrderStatus defines the type for the Order.status enum field.
+type OrderStatus string
+
+// OrderStatus values.
+const (
+	OrderStatusPlaced    OrderStatus = "placed"
+	OrderStatusApproved  OrderStatus = "approved"
+	OrderStatusDelivered OrderStatus = "delivered"
+)
+
+func (s OrderStatus) String() string {
+	return string(s)
+}
+
+// OrderStatusValidator is a validator for the Order.status field enum values.
+func OrderStatusValidator(s OrderStatus) error {
+	switch s {
+	case OrderStatusPlaced, OrderStatusApproved, OrderStatusDelivered:
+		return nil
+	default:
+		return fmt.Errorf("Order.status does not allow the value '%s'", s)
+	}
+}
+
+// PetStatus defines the type for the Pet.status enum field.
+type PetStatus string
+
+// PetStatus values.
+const (
+	PetStatusAvailable PetStatus = "available"
+	PetStatusPending   PetStatus = "pending"
+	PetStatusSold      PetStatus = "sold"
+)
+
+func (s PetStatus) String() string {
+	return string(s)
+}
+
+// PetStatusValidator is a validator for the Pet.status field enum values.
+func PetStatusValidator(s PetStatus) error {
+	switch s {
+	case PetStatusAvailable, PetStatusPending, PetStatusSold:
+		return nil
+	default:
+		return fmt.Errorf("Pet.status does not allow the value '%s'", s)
+	}
+}

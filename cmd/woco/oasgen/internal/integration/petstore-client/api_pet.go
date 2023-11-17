@@ -5,6 +5,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -95,7 +96,7 @@ func (a *PetAPI) FindPetsByStatus(ctx context.Context, req *FindPetsByStatusRequ
 	path := "/pet/findByStatus"
 	queryParams := url.Values{}
 	for _, v := range req.Status {
-		queryParams.Add("status", v)
+		queryParams.Add("status", fmt.Sprintf("%v", v))
 	}
 
 	request, err := a.client.prepareRequest("GET", a.client.cfg.BasePath+path, contentType, body)

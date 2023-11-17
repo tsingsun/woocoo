@@ -11,7 +11,7 @@ type DeleteOrderRequest struct {
 // GetOrderByIdRequest is the request object for (GET /store/order/{orderId})
 type GetOrderByIdRequest struct {
 	// OrderId ID of pet that needs to be fetched
-	OrderId int64 `binding:"lte=5,gte=1,required" uri:"orderId"`
+	OrderId int64 `binding:"required,lte=5,gte=1" uri:"orderId"`
 }
 
 // PlaceOrderRequest is the request object for (POST /store/order)

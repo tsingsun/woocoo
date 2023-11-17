@@ -56,6 +56,8 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 	var info *code.TypeInfo
 	if spec == nil {
 		spec = sch.Spec
+	} else {
+		sch.Spec = spec
 	}
 	if tm := c.TypeMap[spec.Ref]; tm != nil {
 		sch.Type = tm.Clone()
@@ -159,7 +161,12 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 		case "binary":
 			info = &code.TypeInfo{Type: code.TypeBytes, Nillable: true}
 		default:
-			info = &code.TypeInfo{Type: code.TypeString}
+			if len(sv.Enum) != 0 {
+				// if empty name (anonymous) , ident will be empty, and TypeEnum.String() will be string.
+				info = &code.TypeInfo{Type: code.TypeEnum, Ident: helper.Pascal(name)}
+			} else {
+				info = &code.TypeInfo{Type: code.TypeString}
+			}
 		}
 	case "binary":
 		info = &code.TypeInfo{Type: code.TypeBytes, Nillable: true}
@@ -341,6 +348,7 @@ func (sch *Schema) StructTagsString() string {
 }
 
 // CollectTags collects all struct tags from the schema and its children.
+// validations see: https://pkg.go.dev/github.com/go-playground/validator/v10
 func (sch *Schema) CollectTags() {
 	specValue := sch.Spec.Value
 	if specValue.Pattern != "" {
@@ -391,8 +399,15 @@ func (sch *Schema) CollectTags() {
 			sch.validations = append(sch.validations, v.(string))
 		}
 	}
+	if sch.IsEnum() {
+		if sch.IsArray {
+			sch.validations = append(sch.validations, "dive")
+		}
+		sch.validations = append(sch.validations, "oneof="+strings.Join(sch.EnumValues(), " "))
+	}
+	// notice : required check must be last, it handles the omitempty which order is important.
 	if sch.Required {
-		sch.validations = append(sch.validations, "required")
+		sch.validations = append([]string{"required"}, sch.validations...)
 	} else {
 		// if not required, Add omitempty as needed, and omitempty must be the first
 		if len(sch.validations) > 0 {
@@ -432,6 +447,41 @@ func (sch *Schema) FixRequired() {
 			}
 		}
 	}
+}
+
+// IsEnum returns true if the field is an enum Schema.
+func (sch *Schema) IsEnum() bool {
+	if sch.ItemSchema != nil {
+		return sch.ItemSchema.IsEnum()
+	}
+	return sch.Type != nil && sch.Type.Type == code.TypeEnum
+}
+
+// EnumsProperties returns the enum properties of the schema, if any.
+func (sch *Schema) EnumsProperties() []*Schema {
+	var enums []*Schema
+	for _, property := range sch.properties {
+		if property.IsEnum() {
+			enums = append(enums, property)
+		}
+	}
+	return enums
+}
+
+// EnumValues returns the enum values of the schema, if any. It only supports string enum.
+func (sch *Schema) EnumValues() []string {
+	var vs []string
+	if sch.ItemSchema != nil {
+		return sch.ItemSchema.EnumValues()
+	}
+	for _, e := range sch.Spec.Value.Enum {
+		ev, ok := e.(string)
+		if !ok {
+			panic(fmt.Sprintf("enum only support string values:%s", sch.Name))
+		}
+		vs = append(vs, ev)
+	}
+	return vs
 }
 
 func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required bool) *Schema {
@@ -499,11 +549,11 @@ func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required boo
 			sc.Type.Ident = helper.Pascal(schemaNameFromRef(sc.Spec.Ref))
 		}
 	}
-	sc.genProperties(c, name, spec)
+	sc.genProperties(c, spec)
 	return sc
 }
 
-func (sch *Schema) genProperties(c *Config, name string, spec *openapi3.SchemaRef) {
+func (sch *Schema) genProperties(c *Config, spec *openapi3.SchemaRef) {
 	for _, pname := range sortPropertyKeys(spec.Value.Properties) {
 		schemaRef := sch.Spec.Value.Properties[pname]
 		gs := genSchemaRef(c, pname, schemaRef, helper.InStrSlice(spec.Value.Required, pname))

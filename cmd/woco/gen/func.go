@@ -29,6 +29,7 @@ var (
 		"quote":     quote,
 		"joinQuote": joinQuote,
 		"snake":     gen.Funcs["snake"],
+		"receiver":  gen.Funcs["receiver"],
 	}
 	rules    = ruleset()
 	acronyms = make(map[string]struct{})

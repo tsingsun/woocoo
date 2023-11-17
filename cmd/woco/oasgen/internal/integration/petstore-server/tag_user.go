@@ -44,7 +44,7 @@ type GetUserByNameRequest struct {
 // LoginUserRequest is the request object for (GET /user/login)
 type LoginUserRequest struct {
 	// Username The user name for login
-	Username string `binding:"regex=oas_pattern_0,required" form:"username"`
+	Username string `binding:"required,regex=oas_pattern_0" form:"username"`
 	// Password The password for login in clear text
 	Password string `binding:"required" form:"password" password:"true"`
 }

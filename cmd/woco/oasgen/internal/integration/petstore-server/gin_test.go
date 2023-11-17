@@ -125,12 +125,19 @@ func (s *ginTestSuite) TestUpdateUser() {
 }
 
 func (s *ginTestSuite) TestFindPetsByStatusRequest() {
-	s.Run("empty status", func() {
+	s.Run("status", func() {
 		r := httptest.NewRequest("GET", "/pet/findByStatus?status=available", nil)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
 		s.Contains(w.Body.String(), "available")
 		s.Equal(200, w.Code)
+	})
+	s.Run("empty status", func() {
+		r := httptest.NewRequest("GET", "/pet/findByStatus?status=noexist", nil)
+		w := httptest.NewRecorder()
+		s.Router.ServeHTTP(w, r)
+		//s.Contains(w.Body.String(), "available")
+		s.Equal(400, w.Code)
 	})
 }
 

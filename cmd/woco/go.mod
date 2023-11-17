@@ -3,7 +3,7 @@ module github.com/tsingsun/woocoo/cmd/woco
 go 1.21
 
 require (
-	entgo.io/ent v0.12.4
+	entgo.io/ent v0.12.5
 	github.com/getkin/kin-openapi v0.118.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-openapi/inflect v0.19.0

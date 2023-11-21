@@ -22,8 +22,8 @@ type (
 		ticker         *time.Ticker
 		slots          []*list.List
 		timers         sync.Map
-		currentPos     uint16
-		slotNum        uint16
+		currentPos     int
+		slotNum        int
 		addTaskChan    chan timeWheelSlot
 		removeTaskChan chan any
 		moveTaskChan   chan baseSlot
@@ -46,8 +46,8 @@ type (
 
 	timeWheelSlot struct {
 		baseSlot
-		circle  uint16 // while 0 ,trigger the task
-		diffPos uint16 // the diff position of the ori position if moving task
+		circle  int // while 0 ,trigger the task
+		diffPos int // the diff position of the ori position if moving task
 		task    *timeWheelTask
 		removed bool
 	}
@@ -58,7 +58,7 @@ type (
 	}
 
 	timeWheelPos struct {
-		pos  uint16
+		pos  int
 		item *timeWheelSlot
 	}
 )
@@ -66,7 +66,7 @@ type (
 // NewTimeWheel create a new time wheel with the given interval and slot number.
 //
 // once the time wheel is created, it will start to run tasks in a goroutine.
-func NewTimeWheel(interval time.Duration, slotNum uint16) (*TimeWheel, error) {
+func NewTimeWheel(interval time.Duration, slotNum int) (*TimeWheel, error) {
 	if interval <= 0 || slotNum <= 0 {
 		return nil, errors.New("invalid parameter 'interval' or 'slotNum' must be large than zero")
 	}
@@ -74,7 +74,7 @@ func NewTimeWheel(interval time.Duration, slotNum uint16) (*TimeWheel, error) {
 	return newTimeWheelWithTicker(interval, slotNum, time.NewTicker(interval))
 }
 
-func newTimeWheelWithTicker(interval time.Duration, slotNum uint16, ticker *time.Ticker) (*TimeWheel, error) {
+func newTimeWheelWithTicker(interval time.Duration, slotNum int, ticker *time.Ticker) (*TimeWheel, error) {
 	tw := &TimeWheel{
 		interval:       interval,
 		ticker:         ticker,
@@ -93,7 +93,7 @@ func newTimeWheelWithTicker(interval time.Duration, slotNum uint16, ticker *time
 }
 
 func (tw *TimeWheel) initSlots() {
-	for i := uint16(0); i < tw.slotNum; i++ {
+	for i := 0; i < tw.slotNum; i++ {
 		tw.slots[i] = list.New()
 	}
 }
@@ -222,7 +222,7 @@ func (tw *TimeWheel) moveTask(task baseSlot) {
 	}
 }
 
-func (tw *TimeWheel) updatePosition(task *timeWheelSlot, pos uint16) {
+func (tw *TimeWheel) updatePosition(task *timeWheelSlot, pos int) {
 	val, ok := tw.timers.Load(task.taskID)
 	if ok {
 		posItem := val.(*timeWheelPos)
@@ -236,10 +236,10 @@ func (tw *TimeWheel) updatePosition(task *timeWheelSlot, pos uint16) {
 	})
 }
 
-func (tw *TimeWheel) getPositionAndCircle(d time.Duration) (pos, circle uint16) {
-	steps := int64(d / tw.interval)
-	pos = uint16(int64(tw.currentPos)+steps) % tw.slotNum
-	circle = uint16(steps / int64(tw.slotNum))
+func (tw *TimeWheel) getPositionAndCircle(d time.Duration) (pos, circle int) {
+	steps := int(d / tw.interval)
+	pos = (tw.currentPos + steps) % tw.slotNum
+	circle = (steps - 1) / tw.slotNum
 
 	return
 }

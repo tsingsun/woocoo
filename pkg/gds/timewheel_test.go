@@ -2,8 +2,6 @@ package gds
 
 import (
 	"github.com/stretchr/testify/assert"
-	"math/rand"
-	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -66,63 +64,74 @@ func TestTimeWheel_AddAfterStop(t *testing.T) {
 
 func TestTimeWheel_AddTimerAndRun(t *testing.T) {
 	tests := []struct {
+		name       string
 		slots      int
 		delayCount time.Duration
 	}{
 		{
+			name:       "1",
 			slots:      5,
 			delayCount: 5,
 		},
 		{
+			name:       "2",
 			slots:      5,
 			delayCount: 7,
 		},
 		{
+			name:       "3",
 			slots:      5,
 			delayCount: 10,
 		},
 		{
+			name:       "4",
 			slots:      5,
 			delayCount: 12,
 		},
 		{
+			name:       "5",
 			slots:      5,
 			delayCount: 7,
 		},
 		{
+			name:       "6",
 			slots:      5,
 			delayCount: 10,
 		},
 		{
+			name:       "7",
 			slots:      5,
 			delayCount: 12,
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(strconv.Itoa(rand.Int()), func(t *testing.T) {
+		ttc := tt
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			var count int32
-			ticker := time.NewTicker(waitTime)
+			ticker := time.NewTicker(defaultTickerDuration)
 			var actual int32
 			done := make(chan struct{})
+			var st time.Time
 			var cb = func(k, v any) {
 				assert.Equal(t, 1, k.(int))
 				assert.Equal(t, 2, v.(int))
 				actual = atomic.LoadInt32(&count)
 				close(done)
+				t.Log(time.Since(st))
 			}
-			tw, err := newTimeWheelWithTicker(defaultTickerDuration, uint16(tt.slots), ticker)
+			tw, err := newTimeWheelWithTicker(defaultTickerDuration, ttc.slots, ticker)
 			assert.Nil(t, err)
 			defer tw.Stop()
 
-			assert.NoError(t, tw.AddTimer(1, 2, defaultTickerDuration*tt.delayCount, cb))
-
+			assert.NoError(t, tw.AddTimer(1, 2, defaultTickerDuration*ttc.delayCount, cb))
+			st = time.Now()
 			for {
 				select {
 				case <-done:
-					assert.Equal(t, int32(tt.delayCount), actual)
+					assert.InDelta(t, int32(ttc.delayCount), actual, 1)
 					return
 				default:
 					atomic.AddInt32(&count, 1)

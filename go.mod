@@ -3,7 +3,7 @@ module github.com/tsingsun/woocoo
 go 1.21
 
 require (
-	github.com/alicebob/miniredis/v2 v2.30.5
+	github.com/alicebob/miniredis/v2 v2.31.0
 	github.com/casbin/casbin/v2 v2.77.2
 	github.com/casbin/redis-watcher/v2 v2.5.0
 	github.com/gin-gonic/gin v1.9.1

@@ -9,10 +9,10 @@ import (
 
 func TestGenComponentSchema_genSchemaRef(t *testing.T) {
 	type args struct {
-		c        *Config
-		name     string
-		spec     *openapi3.SchemaRef
-		required bool
+		c    *Config
+		name string
+		spec *openapi3.SchemaRef
+		opts SchemaOption
 	}
 	tests := []struct {
 		name string
@@ -82,7 +82,7 @@ func TestGenComponentSchema_genSchemaRef(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := genSchemaRef(tt.args.c, tt.args.name, tt.args.spec, tt.args.required)
+			got := genSchemaRef(tt.args.c, tt.args.name, tt.args.spec, tt.args.opts)
 			got.setAlias()
 			assert.Equal(t, tt.want.Name, got.Name)
 			assert.Equal(t, tt.want.IsAlias, got.IsAlias)
@@ -93,10 +93,10 @@ func TestGenComponentSchema_genSchemaRef(t *testing.T) {
 
 func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 	type args struct {
-		c        *Config
-		name     string
-		spec     *openapi3.SchemaRef
-		required bool
+		c    *Config
+		name string
+		spec *openapi3.SchemaRef
+		opts SchemaOption
 	}
 	tests := []struct {
 		name string
@@ -192,7 +192,7 @@ func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := genSchemaRef(tt.args.c, tt.args.name, tt.args.spec, tt.args.required)
+			got := genSchemaRef(tt.args.c, tt.args.name, tt.args.spec, tt.args.opts)
 			assert.Equal(t, tt.want.Properties["labels"].Name, got.Properties["labels"].Name)
 			assert.Equal(t, tt.want.Properties["labels"].IsRef, got.Properties["labels"].IsRef)
 			assert.Equal(t, tt.want.Properties["labels"].Type.Ident, got.Properties["labels"].Type.Ident)

@@ -23,7 +23,7 @@ func (r *etcdBuilder) Build(target resolver.Target, cc resolver.ClientConn, _ re
 	if err != nil {
 		return nil, err
 	}
-	options, err := registry.TargetToOptions(target)
+	options, err := registry.TargetToOptions(target) // nolint: staticcheck
 	if err != nil {
 		return nil, err
 	}

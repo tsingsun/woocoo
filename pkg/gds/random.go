@@ -64,5 +64,4 @@ func RandomBytes(n int) ([]byte, error) {
 	}
 
 	return b, nil
-
 }

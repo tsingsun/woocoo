@@ -8,78 +8,11 @@
 {{ template "import" $ }}
 
 {{- range .Schemas}}
-    {{- if not .IsReplace}}
-        {{- if .Spec.Value.Description }}
-            {{ stringToGoCommentWithPrefix .Spec.Value.Description (pascal .Name) }}
-        {{- end }}
-        {{- if not .Properties }}
-            type {{ pascal .Name }} {{ .Type }}
-        {{ else }}
-            type {{ pascal .Name }} struct {
-                {{- template "help/properties" .}}
-            }
-        {{ end}}
+    {{- if not .IsEnum }}
+        {{- template "help/schema" .}}
     {{- end }}
-
-{{- end}}
-
-{{- range .Schemas }}
     {{- template "help/enum" .}}
-{{- end }}
-{{ end }}
 
-{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen.Schema */}}
-{{- define "help/enum" }}
-    {{- range .EnumsProperties }}
-        {{/* Type ident store the name of enum name */}}
-        {{- $enum := printf "%s%s" (pascal $.Name) .Type }}
-        {{- $receiver := receiver .Name }}
-        // {{ $enum }} defines the type for the {{ $.Name }}.{{ .Name }} enum field.
-        type {{ $enum }} string
-
-        // {{ $enum }} values.
-        const (
-        {{- range .EnumValues }}
-            {{ $enum }}{{ pascal . }} {{ $enum }} = "{{ . }}"
-        {{- end }}
-        )
-
-        func ({{ $receiver }} {{ $enum }}) String() string {
-            return string({{ $receiver }})
-        }
-
-        {{ $name := printf "%s%s" $enum "Validator" }}
-        // {{ $name }} is a validator for the {{ $.Name }}.{{ .Name }} field enum values.
-        func {{ $name }}({{ $receiver }} {{ $enum }}) error {
-            switch {{ $receiver }}{{ if .Type.Stringer }}.String(){{ end }} {
-            case {{ range $i,$e := .EnumValues }}{{ if ne $i 0 }}, {{ end }}{{ $enum }}{{ pascal $e }}{{ end }}:
-                return nil
-            default:
-                return fmt.Errorf("{{ $.Name }}.{{ .Name }} does not allow the value '%s'", {{ $receiver }}{{ if .Type.Stringer }}.String(){{ end }})
-            }
-        }
-    {{- end }}
-{{- end }}
-
-{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen.Schema */}}
-{{- define "help/properties" }}
-    {{- range .Properties }}
-        {{- if .Spec.Value.Description }}
-            {{ stringToGoCommentWithPrefix .Spec.Value.Description (pascal .Name) }}
-        {{- end }}
-        {{- if .IsInline }}
-            {{ .Type }} `json:",inline"`
-        {{- else }}
-            {{ pascal .Name }} {{ if .IsEnum }}{{pascal $.Name}}{{ end }}{{ .Type }} {{ .StructTagsString }}
-        {{- end }}
-    {{- end }}
 {{- end}}
 
-{{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen.Schema */}}
-{{- define "help/responseType" }}
-    {{- if canIgnorePointer . }}
-        {{- .StructString }}
-    {{- else }}
-        {{- .TypeString }}
-    {{- end }}
-{{- end }}
+{{ end }}

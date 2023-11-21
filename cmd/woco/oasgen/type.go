@@ -97,7 +97,9 @@ func genOperation(c *Config, spec *openapi3.T) (ops []*Operation) {
 				Spec:         specop,
 				SpecPathItem: pathItem,
 				Group:        tag,
-				Request:      &Request{},
+				Request: &Request{
+					Name: helper.Pascal(specop.OperationID) + "Request",
+				},
 			}
 			ops = append(ops, op)
 			op.GenSecurity(spec.Components.SecuritySchemes)
@@ -128,7 +130,7 @@ func genParameter(c *Config, spec *openapi3.ParameterRef) *Parameter {
 	}
 	switch {
 	case pv.Schema != nil:
-		ep.Schema = genSchemaRef(c, name, pv.Schema, ep.Spec.Required)
+		ep.Schema = genSchemaRef(c, name, pv.Schema, SchemaOption{Required: ep.Spec.Required})
 		if !ep.Spec.Required {
 			ep.Schema.Type.AsPointer()
 		}
@@ -137,7 +139,7 @@ func genParameter(c *Config, spec *openapi3.ParameterRef) *Parameter {
 		if !ok {
 			return ep
 		}
-		ep.Schema = genSchemaRef(c, name, mt.Schema, false)
+		ep.Schema = genSchemaRef(c, name, mt.Schema, SchemaOption{})
 	default:
 		panic(fmt.Errorf("parameter %s must have Spec or content", pv.Name))
 	}
@@ -206,7 +208,7 @@ func (op *Operation) GenRequest() {
 		for ct, mediaType := range rb.Value.Content {
 			op.Request.BodyContentTypes = append(op.Request.BodyContentTypes, ct)
 			if schema == nil {
-				schema = genSchemaRef(op.Config, rname, mediaType.Schema, rb.Value.Required)
+				schema = genSchemaRef(op.Config, rname, mediaType.Schema, SchemaOption{Required: rb.Value.Required})
 				if rb.Ref == "" && mediaType.Schema.Ref == "" {
 					for _, property := range schema.properties {
 						param := newParameterFromSchema(op.Config, property)
@@ -278,7 +280,7 @@ func (op *Operation) GenResponse(codeStr string, spec *openapi3.ResponseRef) *Re
 			if mediaType.Schema.Ref == "" {
 				schemaName = r.Name
 			}
-			r.Schema = genSchemaRef(op.Config, schemaName, mediaType.Schema, false)
+			r.Schema = genSchemaRef(op.Config, schemaName, mediaType.Schema, SchemaOption{})
 		}
 	}
 

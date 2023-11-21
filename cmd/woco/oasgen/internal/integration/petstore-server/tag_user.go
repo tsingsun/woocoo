@@ -2,6 +2,10 @@
 
 package petstore
 
+import (
+	"fmt"
+)
+
 // CreateUserRequest is the request object for (POST /user)
 type CreateUserRequest struct {
 	// CreateUserRequestBody A User who is purchasing from the pet store
@@ -47,6 +51,41 @@ type LoginUserRequest struct {
 	Username string `binding:"required,regex=oas_pattern_0" form:"username"`
 	// Password The password for login in clear text
 	Password string `binding:"required" form:"password" password:"true"`
+}
+
+// TokenRequest is the request object for (POST /token)
+type TokenRequest struct {
+	ClientID     string    `binding:"required" form:"client_id"`
+	ClientSecret string    `binding:"required" form:"client_secret"`
+	GrantType    GrantType `binding:"required,oneof=client_credentials" form:"grant_type"`
+}
+
+// GrantType defines the type for the grant_type.grant_type enum field.
+type GrantType string
+
+// GrantType values.
+const (
+	GrantTypeClientCredentials GrantType = "client_credentials"
+)
+
+func (gt GrantType) String() string {
+	return string(gt)
+}
+
+// GrantTypeValidator is a validator for the GrantType field enum values.
+func GrantTypeValidator(gt GrantType) error {
+	switch gt {
+	case GrantTypeClientCredentials:
+		return nil
+	default:
+		return fmt.Errorf("GrantType does not allow the value '%s'", gt)
+	}
+}
+
+// TokenResponse successful operation
+type TokenResponse struct {
+	AccessToken string `json:"access_token,omitempty"`
+	ExpiresIn   int    `json:"expires_in,omitempty"`
 }
 
 // UpdateUserRequest is the request object for (PUT /user/{username})

@@ -14,6 +14,30 @@ type Category struct {
 	Name string `binding:"omitempty,regex=oas_pattern_0" json:"name,omitempty" xml:"name"`
 }
 
+// EnumObject defines the type for the EnumObject.EnumObject enum field.
+type EnumObject string
+
+// EnumObject values.
+const (
+	EnumObjectField1 EnumObject = "field1"
+	EnumObjectField2 EnumObject = "field2"
+	EnumObjectField3 EnumObject = "field3"
+)
+
+func (eo EnumObject) String() string {
+	return string(eo)
+}
+
+// EnumObjectValidator is a validator for the EnumObject field enum values.
+func EnumObjectValidator(eo EnumObject) error {
+	switch eo {
+	case EnumObjectField1, EnumObjectField2, EnumObjectField3:
+		return nil
+	default:
+		return fmt.Errorf("EnumObject does not allow the value '%s'", eo)
+	}
+}
+
 type NewPet struct {
 	// Pet A pet for sale in the pet store
 	*Pet `json:",inline"`
@@ -34,6 +58,30 @@ type Order struct {
 	Status OrderStatus `binding:"omitempty,oneof=placed approved delivered" json:"status,omitempty" xml:"status"`
 }
 
+// OrderStatus defines the type for the Order.status enum field.
+type OrderStatus string
+
+// OrderStatus values.
+const (
+	OrderStatusPlaced    OrderStatus = "placed"
+	OrderStatusApproved  OrderStatus = "approved"
+	OrderStatusDelivered OrderStatus = "delivered"
+)
+
+func (s OrderStatus) String() string {
+	return string(s)
+}
+
+// OrderStatusValidator is a validator for the OrderStatus field enum values.
+func OrderStatusValidator(s OrderStatus) error {
+	switch s {
+	case OrderStatusPlaced, OrderStatusApproved, OrderStatusDelivered:
+		return nil
+	default:
+		return fmt.Errorf("OrderStatus does not allow the value '%s'", s)
+	}
+}
+
 // Pet A pet for sale in the pet store
 type Pet struct {
 	// Category A category for a pet
@@ -44,6 +92,30 @@ type Pet struct {
 	// Status pet status in the store
 	Status PetStatus `binding:"omitempty,oneof=available pending sold" json:"status,omitempty" xml:"status"`
 	Tags   []*Tag    `json:"tags,omitempty" xml:"tag"`
+}
+
+// PetStatus defines the type for the Pet.status enum field.
+type PetStatus string
+
+// PetStatus values.
+const (
+	PetStatusAvailable PetStatus = "available"
+	PetStatusPending   PetStatus = "pending"
+	PetStatusSold      PetStatus = "sold"
+)
+
+func (s PetStatus) String() string {
+	return string(s)
+}
+
+// PetStatusValidator is a validator for the PetStatus field enum values.
+func PetStatusValidator(s PetStatus) error {
+	switch s {
+	case PetStatusAvailable, PetStatusPending, PetStatusSold:
+		return nil
+	default:
+		return fmt.Errorf("PetStatus does not allow the value '%s'", s)
+	}
 }
 
 // Tag A tag for a pet
@@ -74,51 +146,3 @@ type LabelSet map[string]string
 type NewPets []*NewPet
 
 type Pets []*Pet
-
-// OrderStatus defines the type for the Order.status enum field.
-type OrderStatus string
-
-// OrderStatus values.
-const (
-	OrderStatusPlaced    OrderStatus = "placed"
-	OrderStatusApproved  OrderStatus = "approved"
-	OrderStatusDelivered OrderStatus = "delivered"
-)
-
-func (s OrderStatus) String() string {
-	return string(s)
-}
-
-// OrderStatusValidator is a validator for the Order.status field enum values.
-func OrderStatusValidator(s OrderStatus) error {
-	switch s {
-	case OrderStatusPlaced, OrderStatusApproved, OrderStatusDelivered:
-		return nil
-	default:
-		return fmt.Errorf("Order.status does not allow the value '%s'", s)
-	}
-}
-
-// PetStatus defines the type for the Pet.status enum field.
-type PetStatus string
-
-// PetStatus values.
-const (
-	PetStatusAvailable PetStatus = "available"
-	PetStatusPending   PetStatus = "pending"
-	PetStatusSold      PetStatus = "sold"
-)
-
-func (s PetStatus) String() string {
-	return string(s)
-}
-
-// PetStatusValidator is a validator for the Pet.status field enum values.
-func PetStatusValidator(s PetStatus) error {
-	switch s {
-	case PetStatusAvailable, PetStatusPending, PetStatusSold:
-		return nil
-	default:
-		return fmt.Errorf("Pet.status does not allow the value '%s'", s)
-	}
-}

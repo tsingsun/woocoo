@@ -117,7 +117,7 @@ func TestTimeWheel_AddTimerAndRun(t *testing.T) {
 			assert.Nil(t, err)
 			defer tw.Stop()
 
-			tw.AddTimer(1, 2, defaultTickerDuration*tt.delayCount, cb)
+			assert.NoError(t, tw.AddTimer(1, 2, defaultTickerDuration*tt.delayCount, cb))
 
 			for {
 				select {

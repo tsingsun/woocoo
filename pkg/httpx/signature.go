@@ -30,7 +30,7 @@ var (
 const (
 	HeaderXHost = "host"
 	// emptyStringSHA256 is a SHA256 of an empty string
-	emptyStringSHA256 = `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`
+	emptyStringSHA256 = `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` //nolint:gosec
 	emptyStringSHA1   = `d41d8cd98f00b204e9800998ecf8427e`
 	signatureElem     = "Signature="
 	signedHeadersElem = "SignedHeaders="
@@ -548,7 +548,7 @@ func (s *DefaultSigner) BuildCanonicalUri(r *http.Request, ctx *SigningCtx) erro
 }
 
 func (s *DefaultSigner) BuildCanonicalQueryString(r *http.Request, ctx *SigningCtx) error {
-	r.URL.RawQuery = strings.Replace(r.URL.Query().Encode(), "+", "%20", -1)
+	r.URL.RawQuery = strings.ReplaceAll(r.URL.Query().Encode(), "+", "%20")
 	ctx.CanonicalQueryString = r.URL.RawQuery
 	return nil
 }

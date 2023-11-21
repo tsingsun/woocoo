@@ -251,7 +251,7 @@ func ParallelVoid(fns ...func()) {
 		// We need to write a placeholder to let MapReduce to continue on reducer done,
 		// otherwise, all goroutines are waiting. The placeholder will be discarded by MapReduce.
 		NotifyDone(writer)
-	}).Dry()
+	}).Dry() // nolint: errcheck
 }
 
 // MapReduce runs mapper and reducer, is the entry method of mapreduce

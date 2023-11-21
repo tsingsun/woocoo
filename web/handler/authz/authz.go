@@ -55,7 +55,7 @@ func (a *Authorizer) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		gp, ok := security.GenericIdentityFromContext(c)
 		if !ok {
-			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %s", "no identity found"))
+			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %s", "no identity found")) //nolint:errcheck
 			return
 		}
 		allowed, err := opt.Authorization.CheckPermission(c, gp, &security.PermissionItem{
@@ -64,7 +64,7 @@ func (a *Authorizer) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			Operator: c.Request.Method,
 		})
 		if err != nil {
-			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %w", err))
+			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %w", err)) //nolint:errcheck
 			return
 		}
 		if !allowed {

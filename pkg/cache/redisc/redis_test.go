@@ -521,7 +521,7 @@ func TestCache_Op(t *testing.T) {
 				ctx := context.Background()
 				assert.NoError(t, rc.Set(context.Background(), "key", "123", cache.WithRaw()))
 				want := ""
-				assert.True(t, rc.local.Has(nil, "key"), "local")
+				assert.True(t, rc.local.Has(context.TODO(), "key"), "local")
 				assert.True(t, rdb.Exists("key"), "remote")
 				assert.NoError(t, rc.Get(ctx, "key", &want, cache.WithRaw(), cache.WithSkip(cache.SkipRemote)))
 				assert.Equal(t, "123", want)

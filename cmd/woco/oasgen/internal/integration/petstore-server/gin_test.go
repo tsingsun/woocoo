@@ -193,3 +193,23 @@ func (s *ginTestSuite) TestDeletePetRequest() {
 		assert.Equal(s.T(), 401, w.Code)
 	})
 }
+
+func (s *ginTestSuite) TestTokenRequest() {
+	s.Run("enum value", func() {
+		// body form
+		bf := bytes.NewBufferString(`client_id=1&client_secret=2&grant_type=client_credentials`)
+		r := httptest.NewRequest("POST", "/token", bf)
+		r.Header.Set("Content-Type", binding.MIMEPOSTForm)
+		w := httptest.NewRecorder()
+		s.Router.ServeHTTP(w, r)
+		assert.Equal(s.T(), 200, w.Code)
+	})
+	s.Run("wrong enum value", func() {
+		bf := bytes.NewBufferString(`client_id=1&client_secret=2&grant_type=wrong`)
+		r := httptest.NewRequest("POST", "/token", bf)
+		r.Header.Set("Content-Type", binding.MIMEPOSTForm)
+		w := httptest.NewRecorder()
+		s.Router.ServeHTTP(w, r)
+		assert.Equal(s.T(), 400, w.Code)
+	})
+}

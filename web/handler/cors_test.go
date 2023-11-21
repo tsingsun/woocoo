@@ -16,7 +16,6 @@ func TestCORS(t *testing.T) {
 		cnf := conf.NewFromStringMap(map[string]any{})
 		router.Use(CORS().ApplyFunc(cnf))
 		router.GET("/", func(context *gin.Context) {
-			return
 		})
 		r := httptest.NewRequest("GET", "/", nil)
 		r.Header.Set("Access-Control-Allow-Origin", "https://github.com")
@@ -31,7 +30,6 @@ func TestCORS(t *testing.T) {
 		})
 		router.Use(CORS().ApplyFunc(cnf))
 		router.GET("/", func(context *gin.Context) {
-			return
 		})
 		r := httptest.NewRequest("GET", "/", nil)
 		r.Header.Set("Origin", "https://github.com")
@@ -46,7 +44,6 @@ func TestCORS(t *testing.T) {
 		})
 		router.Use(CORS().ApplyFunc(cnf))
 		router.GET("/", func(context *gin.Context) {
-			return
 		})
 		r := httptest.NewRequest("GET", "/", nil)
 		r.Header.Set("Origin", "https://github.com")
@@ -61,10 +58,8 @@ func TestCORS(t *testing.T) {
 		})
 		router.Use(CORS().ApplyFunc(cnf))
 		router.GET("/", func(context *gin.Context) {
-			return
 		})
 		router.POST("/", func(context *gin.Context) {
-			return
 		})
 		r := httptest.NewRequest("GET", "/", nil)
 		r.Header.Set("Origin", "https://github.com")

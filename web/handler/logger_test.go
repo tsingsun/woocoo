@@ -103,7 +103,6 @@ func TestLoggerMiddleware(t *testing.T) {
 					"level":  "info",
 				}),
 				handler: func(c *gin.Context) {
-					return
 				},
 			},
 			want: func() any {
@@ -114,7 +113,6 @@ func TestLoggerMiddleware(t *testing.T) {
 				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				assert.Empty(t, all)
-				//assert.Contains(t, all, "header")
 				return true
 			},
 		},

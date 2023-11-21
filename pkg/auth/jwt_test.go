@@ -105,6 +105,5 @@ func TestJwtOptions(t *testing.T) {
 
 		_, err = ParseSigningKeyFromString("file:////", "RS256", false)
 		assert.Error(t, err)
-
 	})
 }

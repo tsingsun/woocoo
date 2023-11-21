@@ -6,7 +6,8 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 )
 
-// NewSqlDB return a sql.DB from conf
+// NewSqlDB return a sql.DB from conf.
+// nolint:stylecheck
 func NewSqlDB(cfg *conf.Configuration) *sql.DB {
 	db, err := sql.Open(cfg.String("driverName"), cfg.String("dsn"))
 	if err != nil {

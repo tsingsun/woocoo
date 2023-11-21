@@ -255,7 +255,7 @@ ts:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var ti struct {
-				Ts []TimeInterval
+				Tis []TimeInterval
 			}
 			cfg := conf.NewFromBytes([]byte(tt.cfgStr))
 			err := cfg.Unmarshal(&ti)
@@ -263,11 +263,11 @@ ts:
 				assert.ErrorContains(t, err, tt.err)
 				return
 			}
-			assert.Equal(t, tt.want, ti.Ts)
+			assert.Equal(t, tt.want, ti.Tis)
 			for _, ts := range tt.contains {
 				_t, _ := time.Parse(time.RFC822Z, ts)
 				isContained := false
-				for _, interval := range ti.Ts {
+				for _, interval := range ti.Tis {
 					if interval.ContainsTime(_t) {
 						isContained = true
 					}
@@ -279,7 +279,7 @@ ts:
 			for _, ts := range tt.excludes {
 				_t, _ := time.Parse(time.RFC822Z, ts)
 				isContained := false
-				for _, interval := range ti.Ts {
+				for _, interval := range ti.Tis {
 					if interval.ContainsTime(_t) {
 						isContained = true
 					}

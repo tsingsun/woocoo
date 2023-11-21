@@ -44,6 +44,7 @@ func (t *TLS) Apply(cnf *Configuration) {
 	t.Key = cnf.Abs(t.Key)
 }
 
+// nolint:stylecheck
 func (t *TLS) BuildTlsConfig() (*tls.Config, error) {
 	tc := &tls.Config{
 		InsecureSkipVerify: t.InsecureSkipVerify,

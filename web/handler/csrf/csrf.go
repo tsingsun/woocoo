@@ -31,7 +31,7 @@ type CookieConfig struct {
 	Domain   string        `json:"domain" yaml:"domain"`
 	MaxAge   int           `json:"maxAge" yaml:"maxAge"`
 	Secure   bool          `json:"secure" yaml:"secure"`
-	HttpOnly bool          `json:"httpOnly" yaml:"httpOnly"`
+	HttpOnly bool          `json:"httpOnly" yaml:"httpOnly"` //nolint:stylecheck
 	SameSite http.SameSite `json:"sameSite" yaml:"sameSite"`
 }
 

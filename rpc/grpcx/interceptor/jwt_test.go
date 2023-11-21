@@ -12,10 +12,8 @@ import (
 	"github.com/tsingsun/woocoo/test/testproto"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapgrpc"
-	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 	"testing"
@@ -29,6 +27,19 @@ var (
 		"tokenLookup": "authorization",
 	}))
 )
+
+type mockCredential struct{}
+
+// server side can get by metadata.FromIncomingContext .
+func (c mockCredential) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	return map[string]string{
+		"authorization": "Bearer " + hs256Token,
+	}, nil
+}
+
+func (c mockCredential) RequireTransportSecurity() bool {
+	return false
+}
 
 func TestJWTUnaryServerInterceptor(t *testing.T) {
 	logger, err := zap.NewProduction()
@@ -46,17 +57,13 @@ func TestJWTUnaryServerInterceptor(t *testing.T) {
 
 	ccreds, err := credentials.NewClientTLSFromFile(testdata.Path("x509/server.crt"), "localhost")
 	assert.NoError(t, err)
-	fetchToken := &oauth2.Token{
-		AccessToken: hs256Token,
-	}
 	// Set up the credentials for the connection.
-	perRPC := oauth.NewOauthAccess(fetchToken)
 	copts := []grpc.DialOption{
 		// In addition to the following grpc.DialOption, callers may also use
 		// the grpc.CallOption grpc.PerRPCCredentials with the RPC invocation
 		// itself.
 		// See: https://godoc.org/google.golang.org/grpc#PerRPCCredentials
-		grpc.WithPerRPCCredentials(perRPC),
+		grpc.WithPerRPCCredentials(mockCredential{}),
 		// oauth.NewOauthAccess requires the configuration of transport
 		// credentials.
 		grpc.WithTransportCredentials(ccreds),
@@ -70,7 +77,7 @@ func TestJWTUnaryServerInterceptor(t *testing.T) {
 	resp, err := client.Ping(context.Background(), &testproto.PingRequest{
 		Value: t.Name(),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, resp.Counter, 42)
 }
 

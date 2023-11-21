@@ -332,7 +332,6 @@ func TestNewClient_Option(t *testing.T) {
 	type args struct {
 		cnf  *conf.Configuration
 		opts []Option
-		cfg  *ClientConfig
 	}
 	tests := []struct {
 		name    string

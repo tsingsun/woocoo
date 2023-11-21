@@ -93,7 +93,6 @@ func TestSkipMode(t *testing.T) {
 
 func TestManager(t *testing.T) {
 	t.Run("register", func(t *testing.T) {
-
 		type args struct {
 			name string
 			f    func() Cache

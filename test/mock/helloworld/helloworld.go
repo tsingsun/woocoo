@@ -15,7 +15,7 @@ type Server struct {
 func (s *Server) SayHello(ctx context.Context, in *HelloRequest) (*HelloReply, error) {
 	s.count++
 	if s.Tag != "" {
-		s.Tag = s.Tag + " "
+		s.Tag += " "
 	}
 	return &HelloReply{Message: s.Tag + "Hello " + in.GetName()}, nil
 }

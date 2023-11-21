@@ -103,7 +103,7 @@ func (mw *Middleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	opts = append(opts, csrf.ErrorHandler(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			c := r.Context().Value(gin.ContextKey).(*gin.Context)
-			c.AbortWithError(http.StatusForbidden, r.Context().Value("gorilla.csrf.Error").(error))
+			c.AbortWithError(http.StatusForbidden, r.Context().Value("gorilla.csrf.Error").(error)) // nolint: errcheck
 		})),
 	)
 	protect := csrf.Protect([]byte(mw.config.AuthKey), opts...)

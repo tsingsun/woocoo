@@ -185,7 +185,7 @@ func TestRegisterResolver(t *testing.T) {
 			require.NoError(t, err)
 			rb.(*etcdBuilder).etcdConfig = etcdConfg
 
-			c, err = grpc.Dial(fmt.Sprintf("etcd://%s/", sn), append(opts, grpc.WithResolvers(rb))...)
+			c, _ = grpc.Dial(fmt.Sprintf("etcd://%s/", sn), append(opts, grpc.WithResolvers(rb))...)
 			client := helloworld.NewGreeterClient(c)
 			for i := 0; i < 5; i++ {
 				resp, err := client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "round robin"})
@@ -221,7 +221,7 @@ func TestRegistryGrpcx(t *testing.T) {
 		helloworld.RegisterGreeterServer(s.Engine(), &helloworld.Server{Tag: tag})
 		return s
 	}
-	var tag1, tag2 string = "t1", "t2"
+	var tag1, tag2 = "t1", "t2"
 	err = wctest.RunWait(t, time.Second, func() error {
 		srv = buildSvr(tag1)
 		return srv.Run()

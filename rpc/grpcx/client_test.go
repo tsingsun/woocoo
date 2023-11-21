@@ -174,7 +174,6 @@ grpc:
 	resp, err := gc.SayHello(context.Background(), &helloworld.HelloRequest{Name: "woocoo"})
 	assert.NoError(t, err)
 	assert.Equal(t, resp.Message, "Hello woocoo")
-
 }
 
 func TestClient_DialRegistry(t *testing.T) {

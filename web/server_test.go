@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"github.com/tsingsun/woocoo/web/handler"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -26,9 +25,7 @@ func TestNew(t *testing.T) {
 			},
 			{
 				name: "WithMiddlewareNewFunc",
-				opts: []Option{WithMiddlewareNewFunc("test", func() handler.Middleware {
-					return newMckMiddleware()
-				})},
+				opts: []Option{WithMiddlewareNewFunc("test", newMckMiddleware)},
 			},
 		}
 		for _, tt := range tests {

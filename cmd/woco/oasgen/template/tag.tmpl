@@ -70,6 +70,14 @@
                 }
             {{ end }}
         {{- end }}
+
+        {{- range .Request.IndependentSchemas}}
+            {{- if not .IsEnum }}
+                {{- template "help/schema" .}}
+            {{- end }}
+            {{- template "help/enum" .}}
+
+        {{- end }}
     {{ end }}
     {{ if .HasResponse}}
         {{ with .ResponseOK }}
@@ -98,12 +106,12 @@
     {{- /* body parameter spec is in Schema, so get raw from .Schema  */}}
     {{- if .Schema.IsInline }}
         {{- if .Spec.Description }}
-            {{ stringToGoCommentWithPrefix .Spec.Description (pascal .Name) }}
+            {{ stringToGoCommentWithPrefix .Spec.Description (pascal .Schema.Name) }}
         {{- end }}
         {{ .Schema.TypeString }} `json:",inline"`
     {{- else }}
         {{- if .Spec.Description }}
-            {{ stringToGoCommentWithPrefix .Spec.Description (pascal .Name) }}
+            {{ stringToGoCommentWithPrefix .Spec.Description (pascal .Schema.Name) }}
         {{- end }}
         {{- /* unlike parameter, body field keep base type not pointer  */}}
         {{ pascal .Name }} {{ .Schema.Type }} {{ .Schema.StructTagsString }}

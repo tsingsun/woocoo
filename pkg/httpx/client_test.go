@@ -64,7 +64,7 @@ func newTestServer(handler func(w http.ResponseWriter, r *http.Request), usetls 
 type customerTokenSource struct {
 }
 
-func (c customerTokenSource) Token() (*oauth2.Token, error) {
+func (c *customerTokenSource) Token() (*oauth2.Token, error) {
 	return &oauth2.Token{
 		AccessToken: "test",
 	}, nil
@@ -75,14 +75,14 @@ type customerTokenStorage struct {
 	needErr bool
 }
 
-func (c customerTokenStorage) Token() (*oauth2.Token, error) {
+func (c *customerTokenStorage) Token() (*oauth2.Token, error) {
 	if c.needErr {
 		return nil, fmt.Errorf("test error")
 	}
 	return c.t, nil
 }
 
-func (c customerTokenStorage) SetToken(t *oauth2.Token) error {
+func (c *customerTokenStorage) SetToken(t *oauth2.Token) error {
 	c.t = t
 	return nil
 }
@@ -416,7 +416,7 @@ func TestNewClient_Option(t *testing.T) {
 					},
 				}),
 				opts: []Option{
-					WithTokenSource(&customerTokenSource{}), WithTokenStorage(customerTokenStorage{}),
+					WithTokenSource(&customerTokenSource{}), WithTokenStorage(&customerTokenStorage{}),
 				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
@@ -521,10 +521,10 @@ func TestOAuth2(t *testing.T) {
 		res, err := client.Get(ts.URL + "/get")
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, res.StatusCode)
-		res, err = client.Get(ts.URL + "/get")
+		_, err = client.Get(ts.URL + "/get")
 		require.NoError(t, err)
 		time.Sleep(1 * time.Second)
-		res, err = client.Get(ts.URL + "/get")
+		_, err = client.Get(ts.URL + "/get")
 		require.NoError(t, err)
 		assert.Equal(t, 2, tokencount)
 	})
@@ -547,10 +547,10 @@ func TestOAuth2(t *testing.T) {
 			res, err := client.Get(ts.URL + "/get")
 			require.NoError(t, err)
 			require.Equal(t, http.StatusOK, res.StatusCode)
-			res, err = client.Get(ts.URL + "/get")
+			_, err = client.Get(ts.URL + "/get")
 			require.NoError(t, err)
 			time.Sleep(1 * time.Second)
-			res, err = client.Get(ts.URL + "/get")
+			_, err = client.Get(ts.URL + "/get")
 			require.NoError(t, err)
 			assert.Equal(t, 2, tokencount)
 

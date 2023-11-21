@@ -406,7 +406,6 @@ storeKey: signature
 			}
 			assert.Equal(t, SignerName, mid.Name())
 			_, engine := gin.CreateTestContext(httptest.NewRecorder())
-			//engine.RedirectTrailingSlash = false
 			engine.Use(mid.ApplyFunc(tt.cnf))
 
 			engine.POST("/", func(c *gin.Context) {

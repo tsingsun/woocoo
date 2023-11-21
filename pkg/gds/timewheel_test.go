@@ -100,6 +100,8 @@ func TestTimeWheel_AddTimerAndRun(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		delayCount := tt.delayCount
+		slots := tt.slots
 		t.Run(strconv.Itoa(rand.Int()), func(t *testing.T) {
 			t.Parallel()
 
@@ -113,16 +115,15 @@ func TestTimeWheel_AddTimerAndRun(t *testing.T) {
 				actual = atomic.LoadInt32(&count)
 				close(done)
 			}
-			tw, err := newTimeWheelWithTicker(defaultTickerDuration, uint16(tt.slots), ticker)
+			tw, err := newTimeWheelWithTicker(defaultTickerDuration, uint16(slots), ticker)
 			assert.Nil(t, err)
 			defer tw.Stop()
 
-			tw.AddTimer(1, 2, defaultTickerDuration*tt.delayCount, cb)
-
+			tw.AddTimer(1, 2, defaultTickerDuration*delayCount, cb)
 			for {
 				select {
 				case <-done:
-					assert.Equal(t, int32(tt.delayCount), actual)
+					assert.EqualValues(t, delayCount, actual)
 					return
 				default:
 					atomic.AddInt32(&count, 1)

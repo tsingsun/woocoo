@@ -41,6 +41,7 @@ func RegisterUserHandlers(router *gin.RouterGroup, si UserServer) {
 	router.GET("/user/:username", wrapGetUserByName(si))
 	router.GET("/user/login", wrapLoginUser(si))
 	router.GET("/user/logout", wrapLogoutUser(si))
+	router.POST("/token", wrapToken(si))
 	router.PUT("/user/:username", wrapUpdateUser(si))
 }
 
@@ -380,6 +381,22 @@ func wrapLogoutUser(si UserServer) func(c *gin.Context) {
 			c.Error(err)
 			return
 		}
+	}
+}
+
+func wrapToken(si UserServer) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		var req TokenRequest
+		if err := c.ShouldBind(&req); err != nil {
+			handler.AbortWithError(c, http.StatusBadRequest, err)
+			return
+		}
+		resp, err := si.Token(c, &req)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+		handler.NegotiateResponse(c, http.StatusOK, resp, []string{"application/json"})
 	}
 }
 

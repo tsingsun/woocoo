@@ -212,8 +212,7 @@ func TestSkip(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		var mw *handler.JWTMiddleware
-		mw = handler.JWT().(*handler.JWTMiddleware)
+		var mw = handler.JWT().(*handler.JWTMiddleware)
 		_, engine := gin.CreateTestContext(httptest.NewRecorder())
 		engine.Use(mw.ApplyFunc(tt.args.cfg))
 		engine.GET("/skip", func(c *gin.Context) {

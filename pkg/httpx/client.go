@@ -276,7 +276,7 @@ func (c *cacheTokenStorage) SetToken(t *oauth2.Token) error {
 	if !t.Valid() {
 		return fmt.Errorf("invalid token")
 	}
-	return c.cache.Set(context.Background(), c.tokenCacheKey, t, cache.WithTTL(t.Expiry.Sub(time.Now())))
+	return c.cache.Set(context.Background(), c.tokenCacheKey, t, cache.WithTTL(time.Until(t.Expiry)))
 }
 
 // NewTransport creates a new HTTP transport base on TransportConfig and http.DefaultTransport.

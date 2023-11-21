@@ -85,3 +85,13 @@ func (Service) DeletePet(ctx *gin.Context, req *DeletePetRequest) (err error) {
 func (s Service) CreateUserProfile(c *gin.Context, req *CreateUserProfileRequest) (json.RawMessage, error) {
 	return json.RawMessage(req.JsonObject), nil
 }
+
+func (s Service) Token(c *gin.Context, req *TokenRequest) (*TokenResponse, error) {
+	if req.GrantType != GrantTypeClientCredentials {
+		return nil, errors.New("grant type not supported")
+	}
+	return &TokenResponse{
+		AccessToken: "Test",
+		ExpiresIn:   1000,
+	}, nil
+}

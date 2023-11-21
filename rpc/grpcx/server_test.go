@@ -149,7 +149,7 @@ func TestServer_Run(t *testing.T) {
 }
 
 // TODO grpclog will case test fail by race condition.so let it skip
-func serverUselogger(t *testing.T) {
+func serverUselogger(t *testing.T) { //nolint:unused
 	b := []byte(`
 grpc:
   server:

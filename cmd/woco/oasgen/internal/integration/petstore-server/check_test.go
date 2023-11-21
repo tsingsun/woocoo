@@ -175,6 +175,11 @@ func TestGenerateAfter(t *testing.T) {
 			b2 := reflect.TypeOf(CreateUserProfileRequest{})
 			assert.EqualValues(t, `petstore.JsonObject`, b2.Field(0).Type.String(), "JsonObject")
 		})
+		t.Run("enum", func(t *testing.T) {
+			assert.NotNil(t, OrderStatus(""))
+			assert.NotNil(t, PetStatus(""))
+			assert.NotNil(t, GrantType(""))
+		})
 	})
 	t.Run("checkResponse", func(t *testing.T) {
 		res := reflect.TypeOf(UnimplementedPetServer{})

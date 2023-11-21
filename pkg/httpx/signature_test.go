@@ -212,18 +212,18 @@ func TestTokenSigner_wechat(t *testing.T) {
 		},
 	})
 
-	signer, err := NewSignature(WithConfiguration(cnf), WithSigner(NewTokenSigner))
+	signer, _ := NewSignature(WithConfiguration(cnf), WithSigner(NewTokenSigner))
 
 	url := "http://mp.weixin.qq.com?params=value#abc"
 	dv := map[string]any{
 		"AppID": "Wm3WZYTPz0wzccnW",
 	}
 
-	jsapi_ticket := "sM4AOVdWfPE4DxkXGEs8VMCPGGVi4C3VM0P37wVUCFvkVAy_90u5h9nbSlYy3-Sl-HhTdfl2fzFy1AOcHKP7qg"
+	jsapiTicket := "sM4AOVdWfPE4DxkXGEs8VMCPGGVi4C3VM0P37wVUCFvkVAy_90u5h9nbSlYy3-Sl-HhTdfl2fzFy1AOcHKP7qg"
 	payload, err := json.Marshal(dv)
 	require.NoError(t, err)
 	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
-	req = req.WithContext(context.WithValue(context.Background(), "jsapi_ticket", jsapi_ticket))
+	req = req.WithContext(context.WithValue(context.Background(), "jsapi_ticket", jsapiTicket)) //nolint:staticcheck
 	assert.NoError(t, err)
 
 	ts, err := ParseSignTime("", "1414587457")
@@ -275,7 +275,7 @@ func TestJWTToken(t *testing.T) {
 	req, err := http.NewRequest("POST", url, body)
 	require.NoError(t, err)
 	req.Header.Add("Authorization", "Bearer "+act)
-	req = req.WithContext(context.WithValue(req.Context(), "client_token", "client_token_value"))
+	req = req.WithContext(context.WithValue(req.Context(), "client_token", "client_token_value")) //nolint:staticcheck
 	ts := time.Unix(1414587457, 0)
 	err = signer.Sign(req, "Wm3WZYTPz0wzccnW", ts)
 	require.NoError(t, err)

@@ -30,7 +30,7 @@ type (
 
 // WithContext Add user to context.
 func WithContext(ctx context.Context, user Principal) context.Context {
-	return context.WithValue(ctx, UserContextKey, user)
+	return context.WithValue(ctx, UserContextKey, user) // nolint: staticcheck
 }
 
 // GetSubjectFromToken Get Sub(User) from context with Jwt default token using jwt.MapClaims.

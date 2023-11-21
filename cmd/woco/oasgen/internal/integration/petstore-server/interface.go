@@ -69,6 +69,8 @@ type UserServer interface {
 	LoginUser(*gin.Context, *LoginUserRequest) (string, error)
 	// (GET /user/logout)
 	LogoutUser(*gin.Context) error
+	// (POST /token)
+	Token(*gin.Context, *TokenRequest) (*TokenResponse, error)
 	// UpdateUser This can only be done by the logged in user.
 	// (PUT /user/{username})
 	UpdateUser(*gin.Context, *UpdateUserRequest) error
@@ -180,6 +182,11 @@ func (UnimplementedUserServer) LoginUser(c *gin.Context, req *LoginUserRequest) 
 
 func (UnimplementedUserServer) LogoutUser(c *gin.Context) (err error) {
 	err = fmt.Errorf("method LogoutUser not implemented")
+	return
+}
+
+func (UnimplementedUserServer) Token(c *gin.Context, req *TokenRequest) (_ *TokenResponse, err error) {
+	err = fmt.Errorf("method Token not implemented")
 	return
 }
 

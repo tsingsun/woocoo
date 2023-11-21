@@ -94,7 +94,7 @@ func (mw *Middleware) Name() string {
 
 func (mw *Middleware) build(cnf *conf.Configuration) (err error) {
 	if err = cnf.Unmarshal(&mw.config); err != nil {
-		panic(err)
+		return err
 	}
 	if mw.config.Skipper == nil {
 		mw.config.Skipper = handler.PathSkipper(mw.config.Exclude)
@@ -104,6 +104,9 @@ func (mw *Middleware) build(cnf *conf.Configuration) (err error) {
 		mw.Signer, err = mw.config.SignerConfig.BuildSigner(httpx.WithSigner(httpx.NewTokenSigner))
 	default:
 		mw.Signer, err = mw.config.SignerConfig.BuildSigner(httpx.WithSigner(httpx.NewDefaultSigner))
+	}
+	if err != nil {
+		return err
 	}
 	for key, loc := range mw.config.SignerConfig.SignedLookups {
 		switch key {
@@ -162,28 +165,28 @@ func (mw *Middleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 
 		sigStrs, err := mw.signatureExtractor(c)
 		if err != nil {
-			c.AbortWithError(http.StatusUnauthorized, err)
+			c.AbortWithError(http.StatusUnauthorized, err) //nolint:errcheck
 			return
 		}
 		sigVal := httpx.ValuesFromCanonical(sigStrs[0], mw.config.SignerConfig.AuthHeaderDelimiter, "=")
-		signature, _ := sigVal[httpx.SignatureName]
+		signature := sigVal[httpx.SignatureName]
 		if signature == "" {
-			c.AbortWithError(http.StatusUnauthorized, httpx.ErrInvalidSignature)
+			c.AbortWithError(http.StatusUnauthorized, httpx.ErrInvalidSignature) //nolint:errcheck
 			return
 		}
 		nonceStr, signtime, err := mw.extractorVerifyParam(c, sigVal)
 		if err != nil {
-			c.AbortWithError(http.StatusUnauthorized, err)
+			c.AbortWithError(http.StatusUnauthorized, err) //nolint:errcheck
 			return
 		}
 
 		err = mw.Signer.Verify(c.Request, nonceStr, signtime)
 		if err != nil {
-			c.AbortWithError(http.StatusUnauthorized, err)
+			c.AbortWithError(http.StatusUnauthorized, err) //nolint:errcheck
 			return
 		}
 		if err = mw.signatureValidate(c, signature); err != nil {
-			c.Error(err)
+			c.Error(err) // nolint: errcheck
 			return
 		}
 	}
@@ -201,7 +204,7 @@ func (mw *Middleware) extractorVerifyParam(c *gin.Context, sigv map[string]strin
 		}
 		nonce = vs[0]
 	} else {
-		nonce, _ = sigv[mw.config.SignerConfig.NonceKey]
+		nonce = sigv[mw.config.SignerConfig.NonceKey]
 	}
 	if mw.timestampExtractor != nil {
 		vs, err = mw.timestampExtractor(c)
@@ -210,7 +213,7 @@ func (mw *Middleware) extractorVerifyParam(c *gin.Context, sigv map[string]strin
 		}
 		st = vs[0]
 	} else {
-		st, _ = sigv[mw.config.SignerConfig.TimestampKey]
+		st = sigv[mw.config.SignerConfig.TimestampKey]
 	}
 	sign, err = httpx.ParseSignTime(mw.config.SignerConfig.DateFormat, st)
 	if err != nil {

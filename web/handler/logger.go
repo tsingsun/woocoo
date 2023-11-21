@@ -126,7 +126,6 @@ func (h *LoggerMiddleware) buildTag(format string) {
 		}
 	}
 	h.config.tags = tags
-	return
 }
 
 // ApplyFunc build a gin.HandlerFunc for NewAccessLog middleware

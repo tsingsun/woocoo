@@ -28,16 +28,24 @@ var (
 	}
 )
 
+// SchemaOption helps gen schema
+type SchemaOption struct {
+	// Required indicates if the schema is required.
+	Required bool
+	// IsComponent indicates if the schema is a component schema.
+	IsComponent bool
+}
+
 // Schema is for schema of openapi3
 // a struct , the struct 's field all is Schema
 // Properties are sort by name, because openapi3 use map to store properties,map is not ordered.
 type Schema struct {
+	SchemaOption
 	Spec        *openapi3.SchemaRef // The original OpenAPIv3 Schema.
 	Name        string              // The name of the schema.
 	Type        *code.TypeInfo      // The type of the schema.
 	IsRef       bool
-	HasRegular  bool // if schema has a pattern setting
-	Required    bool
+	HasRegular  bool     // if schema has a pattern setting
 	validations []string // the expression string for validator
 	StructTags  []string
 	properties  []*Schema
@@ -432,6 +440,7 @@ func (sch *Schema) CopyTo(tg *Schema) {
 	tg.Type = sch.Type
 	tg.IsArray = sch.IsArray
 	tg.ItemSchema = sch.ItemSchema
+	tg.IsComponent = sch.IsComponent
 }
 
 // FixRequired checks if the schema is required and updates the schema type if needed
@@ -460,6 +469,9 @@ func (sch *Schema) IsEnum() bool {
 // EnumsProperties returns the enum properties of the schema, if any.
 func (sch *Schema) EnumsProperties() []*Schema {
 	var enums []*Schema
+	if sch.IsEnum() {
+		enums = append(enums, sch)
+	}
 	for _, property := range sch.properties {
 		if property.IsEnum() {
 			enums = append(enums, property)
@@ -484,16 +496,16 @@ func (sch *Schema) EnumValues() []string {
 	return vs
 }
 
-func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required bool) *Schema {
+func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, opts SchemaOption) *Schema {
 	if spec.Ref != "" && name == "" { // if it's a ref, we need to get the name from the ref
 		name = schemaNameFromRef(spec.Ref)
 	}
 	sc := &Schema{
-		Name:       name,
-		Spec:       spec,
-		Properties: make(map[string]*Schema),
-		Required:   required,
-		IsRef:      spec.Ref != "",
+		SchemaOption: opts,
+		Name:         name,
+		Spec:         spec,
+		Properties:   make(map[string]*Schema),
+		IsRef:        spec.Ref != "",
 	}
 
 	if sc.IsRef {
@@ -525,7 +537,7 @@ func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required boo
 		sc.IsRef = false
 		for i, one := range spec.Value.AllOf {
 			if one.Ref != "" {
-				gs := genSchemaRef(c, "", one, false)
+				gs := genSchemaRef(c, "", one, SchemaOption{})
 				// inline struct
 				gs.IsInline = true
 				sc.Properties[strconv.Itoa(i)] = gs
@@ -533,7 +545,7 @@ func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required boo
 			} else {
 				for _, oname := range sortPropertyKeys(one.Value.Properties) {
 					schemaRef := one.Value.Properties[oname]
-					gs := genSchemaRef(c, oname, schemaRef, helper.InStrSlice(one.Value.Required, oname))
+					gs := genSchemaRef(c, oname, schemaRef, SchemaOption{Required: helper.InStrSlice(one.Value.Required, oname)})
 					sc.Properties[oname] = gs
 					sc.properties = append(sc.properties, gs)
 				}
@@ -556,7 +568,19 @@ func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, required boo
 func (sch *Schema) genProperties(c *Config, spec *openapi3.SchemaRef) {
 	for _, pname := range sortPropertyKeys(spec.Value.Properties) {
 		schemaRef := sch.Spec.Value.Properties[pname]
-		gs := genSchemaRef(c, pname, schemaRef, helper.InStrSlice(spec.Value.Required, pname))
+		gs := genSchemaRef(c, pname, schemaRef,
+			SchemaOption{
+				Required: helper.InStrSlice(spec.Value.Required, pname),
+			},
+		)
+		// if component schema is enum, we need to set the ident of the type to avoid conflict
+		if gs.IsEnum() && sch.IsComponent {
+			if gs.ItemSchema != nil {
+				gs.ItemSchema.Type.Ident = helper.Pascal(sch.Name) + helper.Pascal(pname)
+			} else {
+				gs.Type.Ident = helper.Pascal(sch.Name) + helper.Pascal(pname)
+			}
+		}
 		sch.Properties[pname] = gs
 		sch.properties = append(sch.properties, gs)
 	}
@@ -589,8 +613,7 @@ func genComponentSchemas(c *Config, spec *openapi3.T) {
 	for _, name := range sortPropertyKeys(spec.Components.Schemas) {
 		schemaRef := spec.Components.Schemas[name]
 		k := "#/components/schemas/" + name
-		gs := genSchemaRef(c, name, schemaRef, false)
-
+		gs := genSchemaRef(c, name, schemaRef, SchemaOption{IsComponent: true})
 		if tp, ok := tmpTypeMap[k]; ok { // schemas do not has a ref
 			gs.IsReplace = true
 			gs.Type = tp

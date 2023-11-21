@@ -6,9 +6,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type UserAPI api
@@ -274,6 +276,47 @@ func (a *UserAPI) LogoutUser(ctx context.Context) (resp *http.Response, err erro
 	}
 	if resp.StatusCode == http.StatusOK {
 		return
+	} else if resp.StatusCode >= 300 {
+		err = errors.New(string(respBody))
+	}
+
+	return
+}
+
+// (POST /token)
+func (a *UserAPI) Token(ctx context.Context, req *TokenRequest) (ret *TokenResponse, resp *http.Response, err error) {
+	var (
+		contentType string
+		body        any
+	)
+	path := "/token"
+	contentType = selectHeaderContentType([]string{"application/x-www-form-urlencoded"})
+	forms := url.Values{}
+	forms.Add("client_id", req.ClientID)
+	forms.Add("client_secret", req.ClientSecret)
+	forms.Add("grant_type", fmt.Sprintf("%v", req.GrantType))
+	body = strings.NewReader(forms.Encode())
+
+	request, err := a.client.prepareRequest("POST", a.client.cfg.BasePath+path, contentType, body)
+	if err != nil {
+		return
+	}
+	accept := selectHeaderAccept([]string{"application/json"})
+	request.Header.Set("Accept", accept)
+	resp, err = a.client.Do(ctx, request)
+	if err != nil {
+		return
+	}
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	if resp.StatusCode == http.StatusOK {
+		ret = new(TokenResponse)
+		err = a.client.decode(respBody, ret, resp.Header.Get("Content-Type"))
+		if err == nil {
+			return
+		}
 	} else if resp.StatusCode >= 300 {
 		err = errors.New(string(respBody))
 	}

@@ -30,7 +30,7 @@ require (
 	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.15.0 // indirect
 	golang.org/x/net v0.18.0
-	golang.org/x/oauth2 v0.11.0
+	golang.org/x/oauth2 v0.14.0
 	golang.org/x/sync v0.3.0
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/text v0.14.0

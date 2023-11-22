@@ -41,7 +41,7 @@ require (
 
 require (
 	github.com/gin-contrib/cors v1.4.0
-	github.com/gorilla/csrf v1.7.2-0.20221209161023-93379db1992f
+	github.com/gorilla/csrf v1.7.2
 	github.com/hashicorp/go-envparse v0.1.0
 )
 
@@ -63,7 +63,7 @@ require (
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/gorilla/securecookie v1.1.1 // indirect
+	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
 	github.com/knadh/koanf/maps v0.1.1 // indirect

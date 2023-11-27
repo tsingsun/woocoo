@@ -123,11 +123,7 @@ func contains(haystack []string, needle string) bool {
 	return false
 }
 
-func (c *APIClient) prepareRequest(
-	method string, path string,
-	contentType string,
-	body any,
-) (req *http.Request, err error) {
+func (c *APIClient) prepareRequest(method, path, contentType string, body any) (req *http.Request, err error) {
 	var (
 		payload io.Reader
 	)
@@ -153,7 +149,7 @@ func (c *APIClient) prepareRequest(
 	return
 }
 
-// Do sends an HTTP request and returns an HTTP response.
+// Do send an HTTP request and returns an HTTP response.
 func (c *APIClient) Do(ctx context.Context, req *http.Request) (res *http.Response, err error) {
 	for _, interceptor := range c.interceptors {
 		err = interceptor(ctx, req)

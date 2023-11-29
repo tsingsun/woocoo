@@ -2,45 +2,52 @@ package authz
 
 import (
 	"context"
-	"fmt"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
-	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/pkg/authz"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/web/handler"
 )
 
-var cnf = `
-authz:
-  autoSave: false
-  model: |
-    [request_definition]
-    r = sub, obj, act
-    [policy_definition]
-    p = sub, obj, act
-    [role_definition]
-    g = _, _
-    [policy_effect]
-    e = some(where (p.eft == allow))
-    [matchers]
-    %s
+type mockAuthorizer struct {
+	// user-role map
+	users map[string]string
+}
 
-handler:
-  appCode: "test"
-  ConfigPath: "authz"
-`
+func (m mockAuthorizer) Conv(kind security.ArnRequestKind, arnParts ...string) security.Resource {
+	switch kind {
+	case security.ArnRequestKindWeb:
+		return security.Resource(strings.Join(append(arnParts[:1], arnParts[2:]...), security.ArnSplit))
+	default:
+
+	}
+	return security.Resource(strings.Join(arnParts, security.ArnSplit))
+}
+
+func (m mockAuthorizer) Eval(ctx context.Context, identity security.Identity, item security.Resource) (bool, error) {
+	if identity.Name() == "2" {
+		return false, nil
+	}
+	return item.MatchResource("test:/"), nil
+}
+
+func (m mockAuthorizer) QueryAllowedResourceConditions(ctx context.Context, identity security.Identity, item security.Resource) ([]string, error) {
+	panic("not used in this test")
+}
 
 func TestAuthorizer(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
-	tcnf := fmt.Sprintf(cnf, "m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act")
-	authz.SetAdapter(stringadapter.NewAdapter(`p, 1, /, GET`))
+	security.SetDefaultAuthorizer(&mockAuthorizer{})
+
+	var cnf = `
+handler:
+  appCode: "test"
+`
 	tests := []struct {
 		name  string
 		cfg   *conf.Configuration
@@ -48,28 +55,8 @@ func TestAuthorizer(t *testing.T) {
 		check func(t *testing.T, w *httptest.ResponseRecorder)
 	}{
 		{
-			name: "use global",
-			cfg: func() *conf.Configuration {
-				var err error
-				authz.DefaultAuthorization, err = authz.NewAuthorization(
-					conf.NewFromBytes([]byte(tcnf)).Load().Sub("authz"),
-				)
-				require.NoError(t, err)
-				return conf.NewFromStringMap(map[string]any{
-					"appCode":    "test",
-					"configPath": "",
-				})
-			}(),
-			req: httptest.NewRequest("GET", "/", nil).
-				WithContext(security.WithContext(context.Background(),
-					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
-			check: func(t *testing.T, w *httptest.ResponseRecorder) {
-				assert.Equal(t, http.StatusOK, w.Code)
-			},
-		},
-		{
 			name: "pass",
-			cfg:  conf.NewFromBytes([]byte(tcnf)).Sub("handler"),
+			cfg:  conf.NewFromBytes([]byte(cnf)).Sub("handler"),
 			req: httptest.NewRequest("GET", "/", nil).
 				WithContext(security.WithContext(context.Background(),
 					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
@@ -79,7 +66,7 @@ func TestAuthorizer(t *testing.T) {
 		},
 		{
 			name: "no pass",
-			cfg:  conf.NewFromBytes([]byte(tcnf)).Sub("handler"),
+			cfg:  conf.NewFromBytes([]byte(cnf)).Sub("handler"),
 			req: httptest.NewRequest("GET", "/unauth", nil).
 				WithContext(security.WithContext(context.Background(),
 					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
@@ -90,13 +77,12 @@ func TestAuthorizer(t *testing.T) {
 		{
 			name: "match error",
 			cfg: func() *conf.Configuration {
-				nm := fmt.Sprintf(cnf, "m = g(r.sub, p.sub) && r.obj1 == p.obj && r.act != p.act")
-				c := conf.NewFromBytes([]byte(nm)).Sub("handler")
+				c := conf.NewFromBytes([]byte(cnf)).Sub("handler")
 				return c
 			}(),
 			req: httptest.NewRequest("GET", "/", nil).
 				WithContext(security.WithContext(context.Background(),
-					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
+					security.NewGenericPrincipalByClaims(map[string]any{"sub": "2"}))),
 			check: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert.Equal(t, http.StatusForbidden, w.Code)
 			},
@@ -104,8 +90,7 @@ func TestAuthorizer(t *testing.T) {
 		{
 			name: "miss user",
 			cfg: func() *conf.Configuration {
-				nm := fmt.Sprintf(cnf, "m = g(r.sub, p.sub) && r.obj1 == p.obj && r.act != p.act")
-				c := conf.NewFromBytes([]byte(nm)).Sub("handler")
+				c := conf.NewFromBytes([]byte(cnf)).Sub("handler")
 				return c
 			}(),
 			req: httptest.NewRequest("GET", "/", nil),

@@ -6,16 +6,13 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/tsingsun/woocoo/pkg/authz"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/security"
 )
 
 // Options is the options for the authz middleware.
 type Options struct {
-	AppCode       string `yaml:"appCode" json:"appCode"`
-	ConfigPath    string `yaml:"configPath" json:"configPath"`
-	Authorization *authz.Authorization
+	AppCode string `yaml:"appCode" json:"appCode"`
 }
 
 // Authorizer web api authorizer.
@@ -36,33 +33,21 @@ func (a *Authorizer) Name() string {
 }
 
 func (a *Authorizer) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
-	opt := Options{
-		ConfigPath: a.Name(),
-	}
+	opt := Options{}
 	if err := cfg.Unmarshal(&opt); err != nil {
 		panic(err)
 	}
-	if opt.ConfigPath != "" {
-		var err error
-		opt.Authorization, err = authz.NewAuthorization(cfg.Root().Sub(opt.ConfigPath))
-		if err != nil {
-			panic(fmt.Errorf("[web]authz: %w", err))
-		}
-	} else {
-		opt.Authorization = authz.DefaultAuthorization
+	if security.DefaultAuthorizer == nil {
+		panic("security.DefaultAuthorizer is nil")
 	}
-
 	return func(c *gin.Context) {
 		gp, ok := security.GenericIdentityFromContext(c)
 		if !ok {
 			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %s", "no identity found")) //nolint:errcheck
 			return
 		}
-		allowed, err := opt.Authorization.CheckPermission(c, gp, &security.PermissionItem{
-			AppCode:  opt.AppCode,
-			Action:   c.Request.URL.Path,
-			Operator: c.Request.Method,
-		})
+		res := security.DefaultAuthorizer.Conv(security.ArnRequestKindWeb, opt.AppCode, c.Request.Method, c.Request.URL.Path)
+		allowed, err := security.DefaultAuthorizer.Eval(c, gp, res)
 		if err != nil {
 			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %w", err)) //nolint:errcheck
 			return

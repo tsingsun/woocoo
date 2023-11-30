@@ -20,7 +20,7 @@ type mockAuthorizer struct {
 	users map[string]string
 }
 
-func (m mockAuthorizer) Conv(kind security.ArnRequestKind, arnParts ...string) security.Resource {
+func (m mockAuthorizer) Conv(_ context.Context, kind security.ArnRequestKind, arnParts ...string) security.Resource {
 	switch kind {
 	case security.ArnRequestKindWeb:
 		return security.Resource(strings.Join(append(arnParts[:1], arnParts[2:]...), security.ArnSplit))

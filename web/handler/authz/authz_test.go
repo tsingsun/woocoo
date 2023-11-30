@@ -3,6 +3,7 @@ package authz
 import (
 	"context"
 	"errors"
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -60,7 +61,7 @@ handler:
 			cfg:  conf.NewFromBytes([]byte(cnf)).Sub("handler"),
 			req: httptest.NewRequest("GET", "/", nil).
 				WithContext(security.WithContext(context.Background(),
-					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
+					security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "1"}))),
 			check: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert.Equal(t, http.StatusOK, w.Code)
 			},
@@ -70,7 +71,7 @@ handler:
 			cfg:  conf.NewFromBytes([]byte(cnf)).Sub("handler"),
 			req: httptest.NewRequest("GET", "/unauth", nil).
 				WithContext(security.WithContext(context.Background(),
-					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
+					security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "1"}))),
 			check: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert.Equal(t, http.StatusForbidden, w.Code)
 			},
@@ -83,7 +84,7 @@ handler:
 			}(),
 			req: httptest.NewRequest("GET", "/", nil).
 				WithContext(security.WithContext(context.Background(),
-					security.NewGenericPrincipalByClaims(map[string]any{"sub": "2"}))),
+					security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "2"}))),
 			check: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert.Equal(t, http.StatusForbidden, w.Code)
 			},

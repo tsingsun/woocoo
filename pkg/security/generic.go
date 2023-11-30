@@ -4,7 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type (
@@ -15,7 +15,7 @@ type (
 	// GenericIdentity Represents a generic user.
 	GenericIdentity struct {
 		name   string
-		claims jwt.MapClaims
+		claims jwt.Claims
 	}
 )
 
@@ -23,19 +23,20 @@ func (p *GenericPrincipal) Identity() Identity {
 	return p.GenericIdentity
 }
 
-// Name returns the id of the user.
+// Name returns the id of the user if any.
 func (i *GenericIdentity) Name() string {
-	return i.claims["sub"].(string)
+	v, _ := i.claims.GetSubject()
+	return v
 }
 
 // NameInt returns the id of the user. if not int, return 0
 func (i *GenericIdentity) NameInt() int {
-	s := i.claims["sub"].(string)
+	s := i.Name()
 	id, _ := strconv.Atoi(s)
 	return id
 }
 
-func (i *GenericIdentity) Claims() jwt.MapClaims {
+func (i *GenericIdentity) Claims() jwt.Claims {
 	return i.claims
 }
 

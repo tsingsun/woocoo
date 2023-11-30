@@ -3,7 +3,7 @@ package security
 import (
 	"context"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 const (
@@ -16,8 +16,12 @@ type (
 	//
 	// An identity object represents the user on whose behalf the code is running
 	Identity interface {
+		// Name returns the identity of the user from Claims.
+		// for example, the primary key of the user record in database.
+		// The identity field in business system may int or string, translate it to string.
 		Name() string
-		Claims() jwt.MapClaims
+		// Claims uses jwt Claims for easy to get user info and declare use jwt to pass identity info.
+		Claims() jwt.Claims
 	}
 	// Principal Defines the basic functionality of a principal object.
 	//
@@ -31,20 +35,4 @@ type (
 // WithContext Add user to context.
 func WithContext(ctx context.Context, user Principal) context.Context {
 	return context.WithValue(ctx, UserContextKey, user) // nolint: staticcheck
-}
-
-// GetSubjectFromToken Get Sub(User) from context with Jwt default token using jwt.MapClaims.
-// if not found, return nil and false.
-// key is the key of context which store the jwt token.
-func GetSubjectFromToken(ctx context.Context, key string) (any, bool) {
-	token, ok := ctx.Value(key).(*jwt.Token)
-	if !ok {
-		return nil, false
-	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return nil, false
-	}
-	v, ok := claims["sub"]
-	return v, ok
 }

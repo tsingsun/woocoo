@@ -3,7 +3,7 @@ package interceptor
 import (
 	"context"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/tsingsun/woocoo/pkg/auth"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"google.golang.org/grpc"

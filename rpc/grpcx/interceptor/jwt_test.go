@@ -3,7 +3,7 @@ package interceptor
 import (
 	"context"
 	"crypto/tls"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/auth"
@@ -94,8 +94,7 @@ func TestJWT_SteamServerInterceptor(t *testing.T) {
 	t.Run("invalid token", func(t *testing.T) {
 		stream := &mockStream{md: metadata.New(map[string]string{"authorization": "Bearer invalid_token"})}
 		err := jwtInterceptor.SteamServerInterceptor(Hs256TokenCnf)(nil, stream, nil, nil)
-		_, ok := err.(*jwt.ValidationError)
-		assert.True(t, ok)
+		assert.ErrorIs(t, err, jwt.ErrTokenMalformed)
 	})
 
 	t.Run("valid token", func(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -104,23 +104,12 @@ func TestGetJtiFromToken(t *testing.T) {
 			name: "int jti",
 			args: args{
 				ctx: context.WithValue(context.Background(), "user", &jwt.Token{Claims: jwt.MapClaims{
-					"sub": 1,
+					"sub": "1",
 				}}),
 				key: "user",
 			},
-			want:   1,
+			want:   "1",
 			wantOK: true,
-		},
-		{
-			name: "NoExist",
-			args: args{
-				ctx: context.WithValue(context.Background(), "no", &jwt.Token{Claims: jwt.MapClaims{
-					"NoExist": 1,
-				}}),
-				key: "user",
-			},
-			want:   nil,
-			wantOK: false,
 		},
 		{
 			name: "No map claims",
@@ -130,15 +119,17 @@ func TestGetJtiFromToken(t *testing.T) {
 				}}),
 				key: "user",
 			},
-			want:   nil,
-			wantOK: false,
+			want:   "1",
+			wantOK: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := GetSubjectFromToken(tt.args.ctx, tt.args.key)
-			assert.Equal(t, tt.want, got)
-			assert.Equal(t, tt.wantOK, ok)
+			token, ok := tt.args.ctx.Value(tt.args.key).(*jwt.Token)
+			require.True(t, ok)
+			v, err := token.Claims.GetSubject()
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, v)
 		})
 	}
 }

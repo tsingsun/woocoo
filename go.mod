@@ -6,7 +6,6 @@ require (
 	github.com/alicebob/miniredis/v2 v2.30.5
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-playground/validator/v10 v10.14.0 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/klauspost/compress v1.16.6
 	github.com/knadh/koanf/parsers/yaml v0.1.0
 	github.com/knadh/koanf/providers/confmap v0.1.0
@@ -38,6 +37,7 @@ require (
 
 require (
 	github.com/gin-contrib/cors v1.4.0
+	github.com/golang-jwt/jwt/v5 v5.1.0
 	github.com/gorilla/csrf v1.7.2
 	github.com/hashicorp/go-envparse v0.1.0
 )

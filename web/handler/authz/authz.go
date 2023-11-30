@@ -46,7 +46,11 @@ func (a *Authorizer) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %s", "no identity found")) //nolint:errcheck
 			return
 		}
-		res := security.DefaultAuthorizer.Conv(c, security.ArnRequestKindWeb, opt.AppCode, c.Request.Method, c.Request.URL.Path)
+		res, err := security.DefaultAuthorizer.Conv(c, security.ArnRequestKindWeb, opt.AppCode, c.Request.Method, c.Request.URL.Path)
+		if err != nil {
+			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %w", err)) //nolint:errcheck
+			return
+		}
 		allowed, err := security.DefaultAuthorizer.Eval(c, gp, res)
 		if err != nil {
 			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %w", err)) //nolint:errcheck

@@ -22,7 +22,7 @@ type Authorizer interface {
 	// when you implement this method, you must know the meaning of the arnParts and convert to correct resource.
 	// In Web authz, the arn parts format is [appCode, Request.Method, Request.URL.Path];
 	// In Graphql, the arn parts format is [appCode, Request.Method, Operator.Name];
-	Conv(ctx context.Context, kind ArnRequestKind, arnParts ...string) Resource
+	Conv(ctx context.Context, kind ArnRequestKind, arnParts ...string) (Resource, error)
 	// Eval returns true if the request is allowed, otherwise returns false.
 	Eval(ctx context.Context, identity Identity, item Resource) (bool, error)
 	// QueryAllowedResourceConditions parse the conditions part of resources eval passed by resource prefix,
@@ -36,8 +36,8 @@ type Authorizer interface {
 
 type noopAuthorizer struct{}
 
-func (d noopAuthorizer) Conv(_ context.Context, _ ArnRequestKind, _ ...string) Resource {
-	return ""
+func (d noopAuthorizer) Conv(_ context.Context, _ ArnRequestKind, _ ...string) (Resource, error) {
+	return "", nil
 }
 
 func (d noopAuthorizer) Eval(ctx context.Context, identity Identity, item Resource) (bool, error) {

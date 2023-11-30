@@ -20,14 +20,14 @@ type mockAuthorizer struct {
 	users map[string]string
 }
 
-func (m mockAuthorizer) Conv(_ context.Context, kind security.ArnRequestKind, arnParts ...string) security.Resource {
+func (m mockAuthorizer) Conv(_ context.Context, kind security.ArnRequestKind, arnParts ...string) (security.Resource, error) {
 	switch kind {
 	case security.ArnRequestKindWeb:
-		return security.Resource(strings.Join(append(arnParts[:1], arnParts[2:]...), security.ArnSplit))
+		return security.Resource(strings.Join(append(arnParts[:1], arnParts[2:]...), security.ArnSplit)), nil
 	default:
 
 	}
-	return security.Resource(strings.Join(arnParts, security.ArnSplit))
+	return security.Resource(strings.Join(arnParts, security.ArnSplit)), nil
 }
 
 func (m mockAuthorizer) Eval(ctx context.Context, identity security.Identity, item security.Resource) (bool, error) {

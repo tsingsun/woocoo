@@ -9,8 +9,8 @@ import (
 
 type mockAuthorizer struct{}
 
-func (m mockAuthorizer) Conv(_ context.Context, _ ArnRequestKind, arnParts ...string) Resource {
-	return Resource(strings.Join(arnParts, ArnSplit))
+func (m mockAuthorizer) Conv(_ context.Context, _ ArnRequestKind, arnParts ...string) (Resource, error) {
+	return Resource(strings.Join(arnParts, ArnSplit)), nil
 }
 
 func (m mockAuthorizer) Eval(ctx context.Context, identity Identity, item Resource) (bool, error) {
@@ -29,7 +29,9 @@ func TestSetDefaultAuthorizer(t *testing.T) {
 
 func TestNoopAuthorizer(t *testing.T) {
 	au := noopAuthorizer{}
-	assert.Equal(t, Resource(""), au.Conv(context.Background(), ArnRequestKindWeb, "test"))
+	r, err := au.Conv(context.Background(), ArnRequestKindWeb, "test")
+	assert.NoError(t, err)
+	assert.Equal(t, Resource(""), r)
 	ev, err := au.Eval(context.Background(), nil, Resource(""))
 	assert.NoError(t, err)
 	assert.True(t, ev)

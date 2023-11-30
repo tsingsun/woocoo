@@ -41,7 +41,7 @@ func (i *GenericIdentity) Claims() jwt.Claims {
 }
 
 // NewGenericPrincipalByClaims return GenericPrincipal
-func NewGenericPrincipalByClaims(claims jwt.MapClaims) *GenericPrincipal {
+func NewGenericPrincipalByClaims(claims jwt.Claims) *GenericPrincipal {
 	return &GenericPrincipal{
 		GenericIdentity: &GenericIdentity{claims: claims},
 	}

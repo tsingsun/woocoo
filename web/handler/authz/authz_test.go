@@ -24,11 +24,11 @@ type mockAuthorizer struct {
 func (m mockAuthorizer) Conv(_ context.Context, kind security.ArnRequestKind, arnParts ...string) (security.Resource, error) {
 	switch kind {
 	case security.ArnRequestKindWeb:
-		return security.Resource(strings.Join(append(arnParts[:1], arnParts[2:]...), security.ArnSplit)), nil
+		return security.Resource(strings.Join(append(arnParts[:1], arnParts[2:]...), ":")), nil
 	default:
 
 	}
-	return security.Resource(strings.Join(arnParts, security.ArnSplit)), nil
+	return security.Resource(strings.Join(arnParts, ":")), nil
 }
 
 func (m mockAuthorizer) Eval(ctx context.Context, identity security.Identity, item security.Resource) (bool, error) {

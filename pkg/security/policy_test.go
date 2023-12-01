@@ -10,7 +10,7 @@ import (
 type mockAuthorizer struct{}
 
 func (m mockAuthorizer) Conv(_ context.Context, _ ArnRequestKind, arnParts ...string) (Resource, error) {
-	return Resource(strings.Join(arnParts, ArnSplit)), nil
+	return Resource(strings.Join(arnParts, ":")), nil
 }
 
 func (m mockAuthorizer) Eval(ctx context.Context, identity Identity, item Resource) (bool, error) {

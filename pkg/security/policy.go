@@ -4,11 +4,6 @@ import (
 	"context"
 )
 
-const (
-	ArnSplit      = ":"
-	ArnBlockSplit = "/"
-)
-
 var (
 	DefaultAuthorizer Authorizer = &noopAuthorizer{}
 )

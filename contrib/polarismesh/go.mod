@@ -7,7 +7,7 @@ require (
 	github.com/polarismesh/polaris-go v1.5.6
 	github.com/polarismesh/specification v1.4.1
 	github.com/stretchr/testify v1.8.4
-	github.com/tsingsun/woocoo v0.4.3
+	github.com/tsingsun/woocoo v0.4.4-0.20231205083419-45884537a703
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
 )
@@ -18,7 +18,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.7.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.1.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.4.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect

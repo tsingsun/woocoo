@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/stretchr/testify v1.8.4
-	github.com/tsingsun/woocoo v0.4.3
+	github.com/tsingsun/woocoo v0.4.4-0.20231205083419-45884537a703
 	go.etcd.io/etcd/api/v3 v3.5.9
 	go.etcd.io/etcd/client/v3 v3.5.9
 	google.golang.org/grpc v1.59.0
@@ -17,7 +17,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.1.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/hashicorp/go-envparse v0.1.0 // indirect
 	github.com/knadh/koanf/maps v0.1.1 // indirect

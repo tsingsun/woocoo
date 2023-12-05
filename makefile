@@ -1,4 +1,4 @@
-IGNORE_MOD_DIR := ./cmd/woco ./contrib/etcd
+IGNORE_MOD_DIR := ./cmd/woco
 
 ALL_GO_MOD_DIRS := $(shell find . -type f -name 'go.mod' -exec dirname {} \; | sort)
 GO_MOD_DIRS := $(filter-out $(IGNORE_MOD_DIR), $(ALL_GO_MOD_DIRS))

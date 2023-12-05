@@ -10,7 +10,6 @@ import (
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
 	"github.com/tsingsun/woocoo/test/mock/helloworld"
-	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/test/testproto"
 	"github.com/tsingsun/woocoo/test/wctest"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -24,7 +23,10 @@ import (
 	"time"
 )
 
-var testcnf = conf.New(conf.WithLocalPath(testdata.TestConfigFile()), conf.WithBaseDir(testdata.BaseDir())).Load()
+var (
+	testcnf  = conf.New(conf.WithBaseDir("testdata")).Load()
+	EtcdAddr = "127.0.0.1:2379"
+)
 
 func TestRegistry_Apply(t *testing.T) {
 	b := []byte(`
@@ -47,7 +49,7 @@ grpc:
       dial-keep-alive-time: 1h
 `)
 	cfg := conf.NewFromBytes(b)
-	cfg.SetBaseDir(testdata.BaseDir())
+	cfg.SetBaseDir("testdata")
 	r := New()
 	r.Apply(cfg.Sub("grpc.registry"))
 	if len(r.opts.EtcdConfig.Endpoints) == 0 {
@@ -65,7 +67,7 @@ func TestRegistryMultiService(t *testing.T) {
 	srv := grpcx.New(grpcx.WithConfiguration(cfg))
 
 	etcdConfg := clientv3.Config{
-		Endpoints:   []string{testdata.EtcdAddr},
+		Endpoints:   []string{EtcdAddr},
 		DialTimeout: 10 * time.Second,
 	}
 	etcdCli, err := clientv3.New(etcdConfg)
@@ -123,7 +125,7 @@ func TestRegistryMultiService(t *testing.T) {
 func TestRegisterResolver(t *testing.T) {
 	sn := "/group/test"
 	etcdConfg := clientv3.Config{
-		Endpoints:   []string{testdata.EtcdAddr},
+		Endpoints:   []string{EtcdAddr},
 		DialTimeout: 10 * time.Second,
 	}
 	reg, err := BuildFromConfig(&Options{
@@ -206,7 +208,7 @@ func TestRegistryGrpcx(t *testing.T) {
 	//gn:="group"
 	sn := "/woocoo/registrytest"
 	etcdConfg := clientv3.Config{
-		Endpoints:   []string{testdata.EtcdAddr},
+		Endpoints:   []string{EtcdAddr},
 		DialTimeout: 10 * time.Second,
 	}
 	etcdCli, err := clientv3.New(etcdConfg)

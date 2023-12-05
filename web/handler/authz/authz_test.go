@@ -2,45 +2,61 @@ package authz
 
 import (
 	"context"
-	"fmt"
-	"github.com/stretchr/testify/require"
+	"errors"
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
-	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/pkg/authz"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/web/handler"
 )
 
-var cnf = `
-authz:
-  autoSave: false
-  model: |
-    [request_definition]
-    r = sub, obj, act
-    [policy_definition]
-    p = sub, obj, act
-    [role_definition]
-    g = _, _
-    [policy_effect]
-    e = some(where (p.eft == allow))
-    [matchers]
-    %s
+type mockAuthorizer struct {
+	// user-role map
+	users map[string]string
+}
 
-handler:
-  appCode: "test"
-  ConfigPath: "authz"
-`
+func (m mockAuthorizer) Prepare(ctx context.Context, kind security.ArnKind, arnParts ...string) (*security.EvalArgs, error) {
+	user, ok := security.FromContext(ctx)
+	if !ok {
+		return nil, errors.New("security.IsAllow: user not found in context")
+	}
+	args := security.EvalArgs{
+		User: user,
+	}
+	switch kind {
+	case security.ArnKindWeb:
+		args.Action = security.Action(strings.Join(append(arnParts[:1], arnParts[2:]...), ":"))
+	default:
+		args.Action = security.Action(strings.Join(arnParts, ":"))
+	}
+	return &args, nil
+}
+
+func (m mockAuthorizer) Eval(ctx context.Context, args *security.EvalArgs) (bool, error) {
+	if args.User.Identity().Name() == "2" {
+		return false, errors.New("mock error")
+	}
+	return args.Action.MatchResource("test:/"), nil
+}
+
+func (m mockAuthorizer) QueryAllowedResourceConditions(context.Context, *security.EvalArgs) ([]string, error) {
+	panic("not used in this test")
+}
 
 func TestAuthorizer(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
-	tcnf := fmt.Sprintf(cnf, "m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act")
-	authz.SetAdapter(stringadapter.NewAdapter(`p, 1, /, GET`))
+	security.SetDefaultAuthorizer(&mockAuthorizer{})
+
+	var cnf = `
+handler:
+  appCode: "test"
+`
 	tests := []struct {
 		name  string
 		cfg   *conf.Configuration
@@ -48,41 +64,21 @@ func TestAuthorizer(t *testing.T) {
 		check func(t *testing.T, w *httptest.ResponseRecorder)
 	}{
 		{
-			name: "use global",
-			cfg: func() *conf.Configuration {
-				var err error
-				authz.DefaultAuthorization, err = authz.NewAuthorization(
-					conf.NewFromBytes([]byte(tcnf)).Load().Sub("authz"),
-				)
-				require.NoError(t, err)
-				return conf.NewFromStringMap(map[string]any{
-					"appCode":    "test",
-					"configPath": "",
-				})
-			}(),
-			req: httptest.NewRequest("GET", "/", nil).
-				WithContext(security.WithContext(context.Background(),
-					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
-			check: func(t *testing.T, w *httptest.ResponseRecorder) {
-				assert.Equal(t, http.StatusOK, w.Code)
-			},
-		},
-		{
 			name: "pass",
-			cfg:  conf.NewFromBytes([]byte(tcnf)).Sub("handler"),
+			cfg:  conf.NewFromBytes([]byte(cnf)).Sub("handler"),
 			req: httptest.NewRequest("GET", "/", nil).
 				WithContext(security.WithContext(context.Background(),
-					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
+					security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "1"}))),
 			check: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert.Equal(t, http.StatusOK, w.Code)
 			},
 		},
 		{
 			name: "no pass",
-			cfg:  conf.NewFromBytes([]byte(tcnf)).Sub("handler"),
+			cfg:  conf.NewFromBytes([]byte(cnf)).Sub("handler"),
 			req: httptest.NewRequest("GET", "/unauth", nil).
 				WithContext(security.WithContext(context.Background(),
-					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
+					security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "1"}))),
 			check: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert.Equal(t, http.StatusForbidden, w.Code)
 			},
@@ -90,13 +86,12 @@ func TestAuthorizer(t *testing.T) {
 		{
 			name: "match error",
 			cfg: func() *conf.Configuration {
-				nm := fmt.Sprintf(cnf, "m = g(r.sub, p.sub) && r.obj1 == p.obj && r.act != p.act")
-				c := conf.NewFromBytes([]byte(nm)).Sub("handler")
+				c := conf.NewFromBytes([]byte(cnf)).Sub("handler")
 				return c
 			}(),
 			req: httptest.NewRequest("GET", "/", nil).
 				WithContext(security.WithContext(context.Background(),
-					security.NewGenericPrincipalByClaims(map[string]any{"sub": "1"}))),
+					security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "2"}))),
 			check: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert.Equal(t, http.StatusForbidden, w.Code)
 			},
@@ -104,8 +99,7 @@ func TestAuthorizer(t *testing.T) {
 		{
 			name: "miss user",
 			cfg: func() *conf.Configuration {
-				nm := fmt.Sprintf(cnf, "m = g(r.sub, p.sub) && r.obj1 == p.obj && r.act != p.act")
-				c := conf.NewFromBytes([]byte(nm)).Sub("handler")
+				c := conf.NewFromBytes([]byte(cnf)).Sub("handler")
 				return c
 			}(),
 			req: httptest.NewRequest("GET", "/", nil),
@@ -117,7 +111,7 @@ func TestAuthorizer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := Middleware()
-			h := handler.NewSimpleMiddleware("authz", got.ApplyFunc)
+			h := handler.NewSimpleMiddleware(got.Name(), got.ApplyFunc)
 			w := httptest.NewRecorder()
 			_, e := gin.CreateTestContext(w)
 			e.ContextWithFallback = true
@@ -133,4 +127,23 @@ func TestAuthorizer(t *testing.T) {
 			tt.check(t, w)
 		})
 	}
+}
+
+func TestAuthorizer_ApplyPanic(t *testing.T) {
+	t.Run("no default authorizer", func(t *testing.T) {
+		got := New()
+		security.SetDefaultAuthorizer(nil)
+		assert.Panics(t, func() {
+			got.ApplyFunc(conf.New())
+		})
+	})
+	t.Run("config error", func(t *testing.T) {
+		got := New()
+		assert.Panics(t, func() {
+			got.ApplyFunc(conf.NewFromBytes([]byte(`
+appCode: 
+  note: errorNode
+`)))
+		})
+	})
 }

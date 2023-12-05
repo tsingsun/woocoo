@@ -2,17 +2,19 @@ package grpcx
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
+	"github.com/tsingsun/woocoo/test/mock/helloworld"
+	mock "github.com/tsingsun/woocoo/test/mock/registry"
+	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/test/wctest"
+	"google.golang.org/grpc/connectivity"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/pkg/conf"
-	_ "github.com/tsingsun/woocoo/rpc/grpcx/registry/etcd3"
-	"github.com/tsingsun/woocoo/test/mock/helloworld"
-	"github.com/tsingsun/woocoo/test/testdata"
-	"google.golang.org/grpc/connectivity"
+	_ "github.com/tsingsun/woocoo/test/mock/registry"
 )
 
 func TestClient_New(t *testing.T) {
@@ -177,6 +179,14 @@ grpc:
 }
 
 func TestClient_DialRegistry(t *testing.T) {
+	mock.RegisterDriver(map[string]*registry.ServiceInfo{
+		"helloworld.Greeter": {
+			Name:    "helloworld.Greeter",
+			Version: "1.0",
+			Host:    "localhost",
+			Port:    20005,
+		},
+	})
 	b := []byte(`
 service:
   server:
@@ -187,13 +197,8 @@ service:
       - keepalive:
           time: 3600s
   registry:
-    scheme: etcd
-    ttl: 600s
-    etcd:
-      endpoints:
-        - 127.0.0.1:2379
-      dial-timeout: 3s
-      dial-keep-alive-time: 1h
+    scheme: mock
+    ttl: 600s 
   client:
     target:
       namespace: woocoo

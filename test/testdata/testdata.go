@@ -12,7 +12,6 @@ import (
 var (
 	basedir           string
 	DefaultConfigFile = "etc/app.yaml"
-	EtcdAddr          = "127.0.0.1:2379"
 )
 
 func init() {

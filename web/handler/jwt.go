@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/tsingsun/woocoo/pkg/auth"
 	"github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -70,13 +70,13 @@ func NewJWT(opts ...MiddlewareOption) *JWTMiddleware {
 				return auth.ErrJWTClaims
 			}
 			prpl := security.NewGenericPrincipalByClaims(claims)
-			DerivativeContextWithValue(c, security.UserContextKey, prpl)
+			DerivativeContextWithValue(c, security.PrincipalContextKey, prpl)
 			return nil
 		}
 	}
 	if mw.Config.LogoutHandler == nil {
 		mw.Config.LogoutHandler = func(c *gin.Context) {
-			gp, ok := security.GenericPrincipalFromContext(GetDerivativeContext(c))
+			gp, ok := security.FromContext(GetDerivativeContext(c))
 			if !ok {
 				return
 			}

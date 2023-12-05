@@ -11,7 +11,6 @@ import (
 	gqlgen "github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gin-gonic/gin"
-	"github.com/tsingsun/woocoo/pkg/authz"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/web"
@@ -22,7 +21,6 @@ import (
 
 const (
 	graphqlHandlerName = "graphql"
-	authzConfigPath    = "authz"
 )
 
 // Options handler option
@@ -61,8 +59,7 @@ type Options struct {
 	//    operation:
 	//      - tenant: ...
 	//
-	Middlewares   map[string]any `yaml:"middlewares" json:"middlewares"`
-	authorization *authz.Authorization
+	Middlewares map[string]any `yaml:"middlewares" json:"middlewares"`
 }
 
 var (
@@ -112,16 +109,10 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if err = cfg.Unmarshal(&h.opts); err != nil {
 		panic(err)
 	}
-	h.opts.authorization = authz.DefaultAuthorization
-	if h.opts.WithAuthorization && h.opts.authorization == nil {
-		if !cfg.Root().IsSet(authzConfigPath) {
-			panic("gql authorization missing authz configuration")
-		}
-		h.opts.authorization, err = authz.NewAuthorization(cfg.Root().Sub(authzConfigPath))
-		if err != nil {
-			panic(err)
-		}
+	if h.opts.WithAuthorization && security.DefaultAuthorizer == nil {
+		panic("security.DefaultAuthorizer is nil")
 	}
+
 	if h.opts.Endpoint == "" {
 		h.opts.Endpoint = h.opts.Group + h.opts.QueryPath
 	}
@@ -317,22 +308,10 @@ func CheckPermissions(opt *Options) graphql.OperationMiddleware {
 	return func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
 		gctx, _ := FromIncomingContext(ctx)
 		op := graphql.GetOperationContext(ctx)
-		gp, ok := security.GenericIdentityFromContext(ctx)
-		if !ok {
-			return envResponseError(gctx, gqlerror.List{
-				gqlerror.Errorf("generic identity not found"),
-			})
-		}
 		errList := gqlerror.List{}
 		for _, op := range op.Operation.SelectionSet {
 			opf := op.(*ast.Field)
-			// remove the url path last slash
-			pi := &security.PermissionItem{
-				AppCode:  opt.AppCode,
-				Action:   opf.Name,
-				Operator: gctx.Request.Method,
-			}
-			allowed, err := opt.authorization.CheckPermission(gctx, gp, pi)
+			allowed, err := security.IsAllowed(gctx, security.ArnKindGql, opt.AppCode, gctx.Request.Method, opf.Name)
 			if err != nil {
 				errList = append(errList, gqlerror.Errorf("action %s authorization err:%s ", opf.Name, err.Error()))
 			}

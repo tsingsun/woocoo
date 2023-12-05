@@ -61,13 +61,7 @@ type Action string
 // MatchResource checks if the resource matches the resource pattern.
 // supports  '*' and '?' wildcards in the pattern string.
 func (a Action) MatchResource(resource string) bool {
-	if a == "" {
-		return string(a) == resource
-	}
-	if a == "*" {
-		return true
-	}
-	return deepMatchRune([]rune(resource), []rune(a), false)
+	return arnMatch(string(a), resource)
 }
 
 // ArnKind define the application resource name(arn) request kind.
@@ -89,13 +83,17 @@ type Resource string
 // MatchResource checks if the resource matches the resource pattern.
 // supports  '*' and '?' wildcards in the pattern string.
 func (r Resource) MatchResource(resource string) bool {
-	if r == "" {
-		return string(r) == resource
+	return arnMatch(string(r), resource)
+}
+
+func arnMatch(pattern, resource string) bool {
+	if pattern == "" {
+		return pattern == resource
 	}
-	if r == "*" {
+	if pattern == "*" {
 		return true
 	}
-	return deepMatchRune([]rune(resource), []rune(r), false)
+	return deepMatchRune([]rune(resource), []rune(pattern), false)
 }
 
 func deepMatchRune(str, pattern []rune, simple bool) bool {
@@ -119,6 +117,7 @@ func deepMatchRune(str, pattern []rune, simple bool) bool {
 	return len(str) == 0 && len(pattern) == 0
 }
 
+// noopAuthorizer is an empty implement of Authorizer, default authorizer.
 type noopAuthorizer struct{}
 
 func (d noopAuthorizer) Prepare(context.Context, ArnKind, ...string) (*EvalArgs, error) {

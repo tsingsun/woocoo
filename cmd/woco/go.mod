@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.4.0
 	github.com/stretchr/testify v1.8.4
 	github.com/tsingsun/woocoo v0.4.4-0.20231205083419-45884537a703
-	github.com/urfave/cli/v2 v2.25.0
+	github.com/urfave/cli/v2 v2.26.0
 	golang.org/x/text v0.14.0
 	golang.org/x/tools v0.9.2
 )

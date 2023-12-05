@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
-	"github.com/tsingsun/woocoo/test/testdata"
 	"strings"
 	"testing"
 	"time"
@@ -45,7 +44,7 @@ grpc:
           addresses:
             - 127.0.0.1:8091
 `)
-	cfg := conf.NewFromBytes(b, conf.WithBaseDir(testdata.BaseDir()))
+	cfg := conf.NewFromBytes(b, conf.WithBaseDir("testdata"))
 
 	type fields struct {
 		opts            Options
@@ -63,7 +62,7 @@ grpc:
 		{name: "file", fields: fields{registerContext: &RegisterContext{}}, args: args{
 			cfg: func() *conf.Configuration {
 				c := cfg.Sub("grpc.registry")
-				c.Parser().Set("polaris.configFile", "etc/polaris/polaris.yaml")
+				c.Parser().Set("polaris.configFile", "polaris.yaml")
 				return c
 			}()},
 		},
@@ -99,7 +98,7 @@ func TestRegistry_Register(t *testing.T) {
 			fields: fields{opts: Options{TTL: time.Second * 600}, registerContext: func() *RegisterContext {
 				var err error
 				ctx := &RegisterContext{}
-				ctx.providerAPI, err = api.NewProviderAPIByFile(testdata.Path("etc/polaris/polaris.yaml"))
+				ctx.providerAPI, err = api.NewProviderAPIByFile("testdata/polaris.yaml")
 				assert.NoError(t, err)
 				return ctx
 			}()},
@@ -120,7 +119,7 @@ func TestRegistry_Register(t *testing.T) {
 			fields: fields{opts: Options{TTL: time.Second * 600}, registerContext: func() *RegisterContext {
 				var err error
 				ctx := &RegisterContext{}
-				ctx.providerAPI, err = api.NewProviderAPIByFile(testdata.Path("etc/polaris/polaris.yaml"))
+				ctx.providerAPI, err = api.NewProviderAPIByFile("testdata/polaris.yaml")
 				assert.NoError(t, err)
 				return ctx
 			}()},
@@ -156,7 +155,7 @@ func TestRegistry_Register(t *testing.T) {
 func TestRegistry_GetServiceInfos(t *testing.T) {
 	var err error
 	ctx := &RegisterContext{}
-	ctx.providerAPI, err = api.NewProviderAPIByFile(testdata.Path("etc/polaris/polaris.yaml"))
+	ctx.providerAPI, err = api.NewProviderAPIByFile("testdata/polaris.yaml")
 	assert.NoError(t, err)
 	cnf := conf.NewFromBytes([]byte(`
 registry:

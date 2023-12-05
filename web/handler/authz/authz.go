@@ -24,6 +24,7 @@ func New() *Authorizer {
 	return &Authorizer{}
 }
 
+// Middleware implement the handler.MiddlewareNewFunc
 func Middleware() handler.Middleware {
 	return New()
 }
@@ -41,17 +42,7 @@ func (a *Authorizer) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		panic("security.DefaultAuthorizer is nil")
 	}
 	return func(c *gin.Context) {
-		gp, ok := security.GenericIdentityFromContext(c)
-		if !ok {
-			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %s", "no identity found")) //nolint:errcheck
-			return
-		}
-		res, err := security.DefaultAuthorizer.Conv(c, security.ArnRequestKindWeb, opt.AppCode, c.Request.Method, c.Request.URL.Path)
-		if err != nil {
-			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %w", err)) //nolint:errcheck
-			return
-		}
-		allowed, err := security.DefaultAuthorizer.Eval(c, gp, res)
+		allowed, err := security.IsAllowed(c, security.ArnKindWeb, opt.AppCode, c.Request.Method, c.Request.URL.Path)
 		if err != nil {
 			c.AbortWithError(http.StatusForbidden, fmt.Errorf("authorization failed: %w", err)) //nolint:errcheck
 			return

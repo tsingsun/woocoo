@@ -2,18 +2,27 @@ package woocoo
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
+	"github.com/tsingsun/woocoo/rpc/grpcx"
+	"github.com/tsingsun/woocoo/rpc/grpcx/registry"
+	"github.com/tsingsun/woocoo/test/wctest"
+	"github.com/tsingsun/woocoo/web"
 	"log"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/rpc/grpcx"
-	_ "github.com/tsingsun/woocoo/rpc/grpcx/registry/etcd3"
-	"github.com/tsingsun/woocoo/test/wctest"
-	"github.com/tsingsun/woocoo/web"
+	mock "github.com/tsingsun/woocoo/test/mock/registry"
 )
 
 func TestApp(t *testing.T) {
+	mock.RegisterDriver(map[string]*registry.ServiceInfo{
+		"helloworld.Greeter": {
+			Name:    "helloworld.Greeter",
+			Version: "1.0",
+			Host:    "localhost",
+			Port:    20000,
+		},
+	})
 	cnf := wctest.Configuration()
 	app := New(WithAppConfiguration(cnf))
 	websrv := web.New(web.WithConfiguration(app.AppConfiguration().Sub("web")))

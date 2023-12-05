@@ -2,40 +2,75 @@ package security
 
 import (
 	"context"
+	"errors"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
 )
 
-type mockAuthorizer struct{}
-
-func (m mockAuthorizer) Conv(_ context.Context, _ ArnRequestKind, arnParts ...string) (Resource, error) {
-	return Resource(strings.Join(arnParts, ":")), nil
+type mockAuthorizer struct {
+	userNeed bool
 }
 
-func (m mockAuthorizer) Eval(ctx context.Context, identity Identity, item Resource) (bool, error) {
+func (m mockAuthorizer) Prepare(ctx context.Context, _ ArnKind, arnParts ...string) (*EvalArgs, error) {
+	user, ok := FromContext(ctx)
+	if !ok && m.userNeed {
+		return nil, errors.New("security.IsAllow: user not found in context")
+	}
+	act := strings.Join(arnParts, ":")
+	return &EvalArgs{
+		User:   user,
+		Action: Action(act),
+	}, nil
+}
+
+func (m mockAuthorizer) Eval(ctx context.Context, args *EvalArgs) (bool, error) {
+	if args.Action == Action("pass") {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (m mockAuthorizer) QueryAllowedResourceConditions(ctx context.Context, args *EvalArgs) ([]string, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (m mockAuthorizer) QueryAllowedResourceConditions(ctx context.Context, identity Identity, item Resource) ([]string, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func TestSetDefaultAuthorizer(t *testing.T) {
+func TestIsAllowed(t *testing.T) {
 	SetDefaultAuthorizer(&mockAuthorizer{})
+	t.Run("allow", func(t *testing.T) {
+		al, err := IsAllowed(WithContext(context.Background(), NewGenericPrincipalByClaims(jwt.MapClaims{
+			"sub": "1",
+		})), ArnKindWeb, "pass")
+		assert.NoError(t, err)
+		assert.True(t, al)
+	})
+	t.Run("deny", func(t *testing.T) {
+		al, err := IsAllowed(WithContext(context.Background(), NewGenericPrincipalByClaims(jwt.MapClaims{
+			"sub": "1",
+		})), ArnKindWeb, "deny")
+		assert.NoError(t, err)
+		assert.False(t, al)
+	})
+	t.Run("miss user", func(t *testing.T) {
+		SetDefaultAuthorizer(&mockAuthorizer{
+			userNeed: true,
+		})
+		_, err := IsAllowed(context.Background(), ArnKindWeb, "test")
+		assert.ErrorContains(t, err, "security.IsAllow: user not found in context")
+	})
 }
 
 func TestNoopAuthorizer(t *testing.T) {
 	au := noopAuthorizer{}
-	r, err := au.Conv(context.Background(), ArnRequestKindWeb, "test")
+	r, err := au.Prepare(context.Background(), ArnKindWeb, "test")
 	assert.NoError(t, err)
-	assert.Equal(t, Resource(""), r)
-	ev, err := au.Eval(context.Background(), nil, Resource(""))
+	assert.Nil(t, r)
+	ev, err := au.Eval(context.Background(), &EvalArgs{Action: Action(""), Resource: Resource("")})
 	assert.NoError(t, err)
 	assert.True(t, ev)
-	_, err = au.QueryAllowedResourceConditions(context.Background(), nil, Resource(""))
+	_, err = au.QueryAllowedResourceConditions(context.Background(), nil)
 	assert.NoError(t, err)
 }
 

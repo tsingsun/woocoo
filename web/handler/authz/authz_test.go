@@ -21,24 +21,31 @@ type mockAuthorizer struct {
 	users map[string]string
 }
 
-func (m mockAuthorizer) Conv(_ context.Context, kind security.ArnRequestKind, arnParts ...string) (security.Resource, error) {
-	switch kind {
-	case security.ArnRequestKindWeb:
-		return security.Resource(strings.Join(append(arnParts[:1], arnParts[2:]...), ":")), nil
-	default:
-
+func (m mockAuthorizer) Prepare(ctx context.Context, kind security.ArnKind, arnParts ...string) (*security.EvalArgs, error) {
+	user, ok := security.FromContext(ctx)
+	if !ok {
+		return nil, errors.New("security.IsAllow: user not found in context")
 	}
-	return security.Resource(strings.Join(arnParts, ":")), nil
+	args := security.EvalArgs{
+		User: user,
+	}
+	switch kind {
+	case security.ArnKindWeb:
+		args.Action = security.Action(strings.Join(append(arnParts[:1], arnParts[2:]...), ":"))
+	default:
+		args.Action = security.Action(strings.Join(arnParts, ":"))
+	}
+	return &args, nil
 }
 
-func (m mockAuthorizer) Eval(ctx context.Context, identity security.Identity, item security.Resource) (bool, error) {
-	if identity.Name() == "2" {
+func (m mockAuthorizer) Eval(ctx context.Context, args *security.EvalArgs) (bool, error) {
+	if args.User.Identity().Name() == "2" {
 		return false, errors.New("mock error")
 	}
-	return item.MatchResource("test:/"), nil
+	return args.Action.MatchResource("test:/"), nil
 }
 
-func (m mockAuthorizer) QueryAllowedResourceConditions(ctx context.Context, identity security.Identity, item security.Resource) ([]string, error) {
+func (m mockAuthorizer) QueryAllowedResourceConditions(context.Context, *security.EvalArgs) ([]string, error) {
 	panic("not used in this test")
 }
 

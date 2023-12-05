@@ -22,38 +22,45 @@ func TestGeneric(t *testing.T) {
 		{
 			name: "GenericIdentityFromContext",
 			args: args{
-				ctx: context.WithValue(context.Background(), UserContextKey, &GenericPrincipal{
+				ctx: context.WithValue(context.Background(), PrincipalContextKey, &GenericPrincipal{
 					GenericIdentity: &GenericIdentity{
-						name: "test",
+						claims: jwt.MapClaims{
+							"sub": "test",
+						},
 					},
 				}),
 			},
 			want: &GenericIdentity{
-				name: "test",
+				claims: jwt.MapClaims{
+					"sub": "test",
+				},
 			},
 		},
 		{
 			name: "GenericPrincipalFromContext",
 			args: args{
-				ctx: context.WithValue(context.Background(), UserContextKey, &GenericPrincipal{
+				ctx: context.WithValue(context.Background(), PrincipalContextKey, &GenericPrincipal{
 					GenericIdentity: &GenericIdentity{
-						name: "test",
+						claims: jwt.MapClaims{
+							"sub": "test",
+						},
 					},
 				}),
 			},
 			want: &GenericIdentity{
-				name: "test",
+				claims: jwt.MapClaims{
+					"sub": "test",
+				},
 			},
 		},
 		{
 			name: "NewGenericPrincipalByClaims",
 			args: args{
-				ctx: context.WithValue(context.Background(), UserContextKey, NewGenericPrincipalByClaims(jwt.MapClaims{
+				ctx: context.WithValue(context.Background(), PrincipalContextKey, NewGenericPrincipalByClaims(jwt.MapClaims{
 					"sub": "test",
 				})),
 			},
 			want: &GenericIdentity{
-				name: "",
 				claims: jwt.MapClaims{
 					"sub": "test",
 				},
@@ -70,19 +77,18 @@ func TestGeneric(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.want == nil {
-				_, ok := GenericIdentityFromContext(tt.args.ctx)
+				_, ok := FromContext(tt.args.ctx)
 				assert.False(t, ok)
-				_, ok = GenericPrincipalFromContext(tt.args.ctx)
+				_, ok = FromContext(tt.args.ctx)
 				assert.False(t, ok)
 				return
 			}
-			got, _ := GenericIdentityFromContext(tt.args.ctx)
-			assert.Equal(t, tt.want, got)
-			got2, _ := GenericPrincipalFromContext(tt.args.ctx)
-			assert.Equal(t, tt.want, got2.GenericIdentity)
+			got, _ := FromContext(tt.args.ctx)
+			assert.Equal(t, tt.want, got.Identity())
+			got2, _ := FromContext(tt.args.ctx)
+			assert.Equal(t, tt.want, got2.(*GenericPrincipal).GenericIdentity)
 			if got2.Identity().Claims() != nil {
-				assert.Equal(t, tt.want.Name(), got2.GenericIdentity.Name())
-				assert.Empty(t, got2.GenericIdentity.NameInt())
+				assert.Equal(t, tt.want.Name(), got2.Identity().Name())
 			}
 		})
 	}
@@ -142,15 +148,19 @@ func TestWithContext(t *testing.T) {
 	}{
 		{
 			name: "set and get user",
-			user: GenericPrincipal{GenericIdentity: &GenericIdentity{name: "John"}},
-			want: GenericPrincipal{GenericIdentity: &GenericIdentity{name: "John"}},
+			user: GenericPrincipal{GenericIdentity: &GenericIdentity{claims: jwt.MapClaims{
+				"sub": "test",
+			}}},
+			want: GenericPrincipal{GenericIdentity: &GenericIdentity{claims: jwt.MapClaims{
+				"sub": "test",
+			}}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			ctx = WithContext(ctx, &tt.user)
-			got, ok := ctx.Value(UserContextKey).(*GenericPrincipal)
+			got, ok := ctx.Value(PrincipalContextKey).(*GenericPrincipal)
 			require.True(t, ok)
 			assert.Equal(t, tt.want, *got)
 		})

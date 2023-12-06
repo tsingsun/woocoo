@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/tsingsun/woocoo/pkg/log"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -324,6 +325,9 @@ func (m mockAuthorizer) Eval(ctx context.Context, args *security.EvalArgs) (bool
 	if args.User.Identity().Name() == "2" {
 		return false, nil
 	}
+	if args.User.Identity().Name() == "3" {
+		return false, errors.New("mock error")
+	}
 	if len(m.allowed) > 0 {
 		action := m.allowed[string(args.Action)]
 
@@ -340,7 +344,7 @@ func TestCheckPermissions(t *testing.T) {
 	log.InitGlobalLogger()
 	security.SetDefaultAuthorizer(&mockAuthorizer{
 		allowed: map[string]security.Action{
-			"test:hello": security.Action(`test:hello`),
+			"test:hello": `test:hello`,
 		},
 	})
 	var cfgStr = `
@@ -367,10 +371,10 @@ web:
 		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {
 			return func(ctx context.Context) *graphql.Response {
 				gctx, _ := FromIncomingContext(ctx)
-				if _, ok := gctx.Get("panic"); ok {
+				if ps := gctx.Request.Header.Get("panic"); ps != "" {
 					panic(expectedPanic)
 				}
-				if _, ok := gctx.Get("panicerr"); ok {
+				if ps := gctx.Request.Header.Get("panicerr"); ps != "" {
 					panic(expectedPanicErr)
 				}
 				return &graphql.Response{
@@ -404,60 +408,68 @@ web:
 
 	gqlsrv, err := RegisterSchema(srv, &mock)
 	require.NoError(t, err)
+	var reuqest = func(target, uid string) *http.Request {
+		r := httptest.NewRequest("POST", target, bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`)))
+		if uid != "" {
+			r = r.WithContext(security.WithContext(context.Background(), security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": uid})))
+		}
+		r.Header.Set("Content-Type", "application/json")
+		return r
+	}
 	t.Run("allow", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		r := httptest.NewRequest("POST", "/graphql/query", bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`))).
-			WithContext(security.WithContext(c, security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "1"})))
-		r.Header.Set("Content-Type", "application/json")
-
-		c.Request = r
-		c.Set(security.PrincipalContextKey, security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "1"}))
-		gqlsrv[0].ServeHTTP(w, r)
-		if !assert.Equal(t, http.StatusOK, w.Code) {
-			t.Log(w.Body.String())
-		}
+		r := reuqest("/query", "1")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 	t.Run("panic string", func(t *testing.T) {
 		conf.Global().Development = true
 		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		r := httptest.NewRequest("POST", "/graphql/query", bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`))).
-			WithContext(security.WithContext(c, security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "1"})))
-		r.Header.Set("Content-Type", "application/json")
-		c.Request = r
-		c.Set(security.PrincipalContextKey, security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "1"}))
-		c.Set("panic", true)
-		gqlsrv[0].ServeHTTP(w, r)
+		r := reuqest("/query", "1")
+		r.Header.Set("panic", "1")
+		srv.Router().ServeHTTP(w, r)
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), expectedPanic)
 	})
 	t.Run("panic err", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		r := httptest.NewRequest("POST", "/graphql/query", bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`))).
-			WithContext(security.WithContext(c, security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "1"})))
-		r.Header.Set("Content-Type", "application/json")
-
-		c.Request = r
-		c.Set(security.PrincipalContextKey, security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "1"}))
-		c.Set("panicerr", true)
-		gqlsrv[0].ServeHTTP(w, r)
+		r := reuqest("/query", "1")
+		r.Header.Set("panicerr", "1")
+		srv.Router().ServeHTTP(w, r)
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), expectedPanicErr.Error())
 	})
 	t.Run("reject", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		r := httptest.NewRequest("POST", "/graphql/query", bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`))).
-			WithContext(security.WithContext(c, security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "2"})))
-		r.Header.Set("Content-Type", "application/json")
-
-		c.Request = r
-		c.Set(security.PrincipalContextKey, security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": "2"}))
+		r := reuqest("/query", "2")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusForbidden, w.Code)
+		assert.Contains(t, w.Body.String(), "action hello is not allowed")
+	})
+	t.Run("miss ctx", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := reuqest("/query", "2")
 		gqlsrv[0].ServeHTTP(w, r)
-		if assert.Equal(t, http.StatusOK, w.Code) {
-			assert.Contains(t, w.Body.String(), "action hello not allowed")
-		}
+		assert.Contains(t, w.Body.String(), ErrMissGinContext.Error())
+	})
+	t.Run("allow err", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := reuqest("/query", "3")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusForbidden, w.Code)
+		assert.Contains(t, w.Body.String(), "mock error")
+	})
+}
+
+func Test_envResponseError(t *testing.T) {
+	t.Run("websocket", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/query", nil)
+		c.Request.Header.Set("Connection", "upgrade")
+		c.Request.Header.Set("Upgrade", "websocket")
+		h := envResponseError(c, gqlerror.List{gqlerror.Errorf("test")})
+		res := h(c)
+		assert.Len(t, res.Errors, 1)
 	})
 }

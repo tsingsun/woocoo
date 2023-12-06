@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,6 +22,10 @@ import (
 
 const (
 	graphqlHandlerName = "graphql"
+)
+
+var (
+	ErrMissGinContext = errors.New("could not retrieve gin.Context")
 )
 
 // Options handler option
@@ -212,17 +217,16 @@ func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server
 	}
 
 	server.SetRecoverFunc(func(ctx context.Context, err any) error {
-		gctx, e := FromIncomingContext(ctx)
-		if e != nil {
-			return e
-		}
-		handler.HandleRecoverError(gctx, err, 3)
-		gctx.AbortWithStatus(http.StatusInternalServerError)
-		cnf := conf.Global()
-		if cnf.Development {
+		if conf.Global().Development {
 			log.Println(err)
 			debug.PrintStack()
 		}
+		gctx, e := FromIncomingContext(ctx)
+		if e != nil {
+			return fmt.Errorf("gql.SetRecoverFunc: %v : %v", err, e)
+		}
+		handler.HandleRecoverError(gctx, err, 3)
+		gctx.AbortWithStatus(http.StatusInternalServerError)
 		if ue, ok := err.(error); ok {
 			return ue
 		} else {
@@ -237,7 +241,7 @@ func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server
 func FromIncomingContext(ctx context.Context) (*gin.Context, error) {
 	ginContext, ok := ctx.Value(gin.ContextKey).(*gin.Context)
 	if !ok {
-		return nil, fmt.Errorf("could not retrieve gin.Context")
+		return nil, ErrMissGinContext
 	}
 
 	return ginContext, nil
@@ -306,20 +310,23 @@ func doOperationHandler(ctx context.Context, next graphql.OperationHandler, hand
 // CheckPermissions check the graphql operation permissions base on the package authz
 func CheckPermissions(opt *Options) graphql.OperationMiddleware {
 	return func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
-		gctx, _ := FromIncomingContext(ctx)
+		gctx, err := FromIncomingContext(ctx)
+		if err != nil {
+			return envResponseError(gctx, gqlerror.List{gqlerror.Errorf("%s", err)})
+		}
 		op := graphql.GetOperationContext(ctx)
 		errList := gqlerror.List{}
 		for _, op := range op.Operation.SelectionSet {
 			opf := op.(*ast.Field)
 			allowed, err := security.IsAllowed(gctx, security.ArnKindGql, opt.AppCode, gctx.Request.Method, opf.Name)
 			if err != nil {
-				errList = append(errList, gqlerror.Errorf("action %s authorization err:%s ", opf.Name, err.Error()))
-			}
-			if !allowed {
-				errList = append(errList, gqlerror.Errorf("action %s not allowed", opf.Name))
+				errList = append(errList, gqlerror.Errorf("action %s is not allowed due to err:%s ", opf.Name, err))
+			} else if !allowed {
+				errList = append(errList, gqlerror.Errorf("action %s is not allowed", opf.Name))
 			}
 		}
 		if len(errList) > 0 {
+			gctx.AbortWithStatus(http.StatusForbidden)
 			return envResponseError(gctx, errList)
 		}
 		return next(ctx)
@@ -330,7 +337,7 @@ func envResponseError(c *gin.Context, errList gqlerror.List) graphql.ResponseHan
 	res := &graphql.Response{
 		Errors: errList,
 	}
-	if c.IsWebsocket() {
+	if c != nil && c.IsWebsocket() {
 		c.Errors = nil
 		return graphql.OneShot(res)
 	}

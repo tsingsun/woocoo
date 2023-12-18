@@ -8,7 +8,7 @@ require (
 	github.com/polarismesh/specification v1.4.1
 	github.com/stretchr/testify v1.8.4
 	github.com/tsingsun/woocoo v0.4.4-0.20231205083419-45884537a703
-	google.golang.org/grpc v1.59.0
+	google.golang.org/grpc v1.60.1
 	google.golang.org/protobuf v1.31.0
 )
 

@@ -1,6 +1,6 @@
 grpc:
   server:
-    addr: 0.0.0.0:20011
+    addr: 127.0.0.1:20011
     namespace: woocoo
     version: "1.0"
     registryMeta:

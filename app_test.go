@@ -19,7 +19,7 @@ func TestApp(t *testing.T) {
 		"helloworld.Greeter": {
 			Name:    "helloworld.Greeter",
 			Version: "1.0",
-			Host:    "localhost",
+			Host:    "127.0.0.1",
 			Port:    20000,
 		},
 	})

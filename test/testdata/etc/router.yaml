@@ -1,6 +1,6 @@
 web:
   server:
-    addr: 0.0.0.0:30000
+    addr: 127.0.0.1:30000
   engine:
     redirectTrailingSlash: false
     remoteIPHeaders:

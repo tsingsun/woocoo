@@ -23,7 +23,7 @@ grpc:
     scheme: mock
     ttl: 600s
   prometheus:
-    addr: 0.0.0.0:2222
+    addr: 127.0.0.1:2222
   client:
     target:
       namespace: woocoo

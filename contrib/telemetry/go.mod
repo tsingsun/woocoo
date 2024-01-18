@@ -8,18 +8,18 @@ require (
 	github.com/tsingsun/woocoo v0.4.4-0.20231205083419-45884537a703
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.46.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.46.0
-	go.opentelemetry.io/contrib/propagators/b3 v1.21.0
-	go.opentelemetry.io/otel v1.20.0
+	go.opentelemetry.io/contrib/propagators/b3 v1.22.0
+	go.opentelemetry.io/otel v1.22.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.43.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.20.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.43.0
 	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v0.43.0
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.20.0
 	go.opentelemetry.io/otel/exporters/zipkin v1.20.0
-	go.opentelemetry.io/otel/metric v1.20.0
+	go.opentelemetry.io/otel/metric v1.22.0
 	go.opentelemetry.io/otel/sdk v1.20.0
 	go.opentelemetry.io/otel/sdk/metric v1.20.0
-	go.opentelemetry.io/otel/trace v1.20.0
+	go.opentelemetry.io/otel/trace v1.22.0
 	go.uber.org/zap v1.26.0
 	google.golang.org/grpc v1.59.0
 )
@@ -35,7 +35,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gin-contrib/cors v1.4.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
-	github.com/go-logr/logr v1.3.0 // indirect
+	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect

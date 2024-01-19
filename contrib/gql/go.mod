@@ -8,7 +8,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.1.0
 	github.com/stretchr/testify v1.8.4
 	github.com/tsingsun/woocoo v0.4.4-0.20231205083419-45884537a703
-	github.com/vektah/gqlparser/v2 v2.5.10
+	github.com/vektah/gqlparser/v2 v2.5.11
 )
 
 require (

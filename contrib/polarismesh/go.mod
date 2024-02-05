@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/knadh/koanf/parsers/yaml v0.1.0
 	github.com/polarismesh/polaris-go v1.5.6
-	github.com/polarismesh/specification v1.4.1
+	github.com/polarismesh/specification v1.4.2
 	github.com/stretchr/testify v1.8.4
 	github.com/tsingsun/woocoo v0.4.4-0.20231205083419-45884537a703
 	google.golang.org/grpc v1.59.0

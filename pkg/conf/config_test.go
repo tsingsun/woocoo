@@ -368,19 +368,19 @@ func TestConfiguration_Static(t *testing.T) {
 
 		assert.True(t, IsSet("appName"))
 		assert.False(t, IsSet("appname"))
-		assert.Equal(t, String("appName"), "woocoo")
-		assert.Equal(t, IntSlice("IntSlice"), []int{1, 2, 3})
-		assert.Equal(t, Bool("Bool"), true)
-		assert.Equal(t, Float64("Float64"), 1.0)
-		assert.Equal(t, Int("Int"), 1)
-		assert.Equal(t, Duration("Duration"), time.Second)
-		assert.Equal(t, StringSlice("StringSlice"), []string{"a", "b", "c"})
-		assert.Equal(t, StringMap("StringMap"), setting["StringMap"])
-		assert.Equal(t, Time("Time", "2006-01-02 15:04:05 -0700 MST"), tm)
-		assert.Equal(t, Time("TimeStamp", "").Unix(), tm.Unix())
-		assert.Equal(t, AllSettings(), setting)
+		assert.Equal(t, "woocoo", String("appName"))
+		assert.Equal(t, []int{1, 2, 3}, IntSlice("IntSlice"))
+		assert.Equal(t, true, Bool("Bool"))
+		assert.Equal(t, 1.0, Float64("Float64"))
+		assert.Equal(t, 1, Int("Int"))
+		assert.Equal(t, time.Second, Duration("Duration"))
+		assert.Equal(t, []string{"a", "b", "c"}, StringSlice("StringSlice"))
+		assert.Equal(t, setting["StringMap"], StringMap("StringMap"))
+		assert.Equal(t, tm, Time("Time", "2006-01-02 15:04:05 -0700 MST"))
+		assert.Equal(t, tm.Unix(), Time("TimeStamp", "").Unix())
+		assert.Equal(t, setting, AllSettings())
 
-		assert.Equal(t, Get("appName"), "woocoo")
+		assert.Equal(t, "woocoo", Get("appName"))
 		assert.Nil(t, Get("appname"))
 	})
 	t.Run("path", func(t *testing.T) {
@@ -388,12 +388,20 @@ func TestConfiguration_Static(t *testing.T) {
 		dir := path.Dir(currentFile)
 		cnf := New().AsGlobal()
 		cnf.SetBaseDir(".")
-		assert.Equal(t, cnf.GetBaseDir(), ".")
-		assert.Equal(t, Abs("path/file"), filepath.Join("path", "file"))
-		assert.Equal(t, Abs("/path/file"), filepath.Join(".", "path", "file"))
+		assert.Equal(t, ".", cnf.GetBaseDir())
+		assert.Equal(t, filepath.Join("path", "file"), Abs("path/file"))
+		if runtime.GOOS == "windows" {
+			assert.Equal(t, filepath.Join("path", "file"), Abs("/path/file"), "windows / as current dir")
+		} else {
+			assert.Equal(t, "/path/file", Abs("/path/file"))
+		}
 		cnf.SetBaseDir(dir)
-		assert.Equal(t, Abs("path/file"), filepath.Join(dir, "path", "file"))
-		assert.Equal(t, Abs("/path/file"), filepath.Join(dir, "path", "file"))
+		assert.Equal(t, filepath.Join(dir, "path", "file"), Abs("path/file"))
+		if runtime.GOOS == "windows" {
+			assert.Equal(t, filepath.Join(dir, "path", "file"), Abs("/path/file"), "windows / as current dir")
+		} else {
+			assert.Equal(t, "/path/file", Abs("/path/file"))
+		}
 	})
 }
 

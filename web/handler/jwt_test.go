@@ -97,7 +97,7 @@ ZwIDAQAB
 		{
 			name: "rs256-file", args: args{cfg: conf.NewFromStringMap(map[string]any{
 				"signingMethod": "RS256",
-				"signingKey":    "file:///" + testdata.Path(filepath.Join("etc", "jwt_public_key.pem")),
+				"signingKey":    "file://localhost/" + testdata.Path(filepath.Join("etc", "jwt_public_key.pem")),
 			})},
 			token: func() string {
 				return tokens.String("rs256Token")

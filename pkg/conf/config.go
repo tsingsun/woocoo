@@ -60,6 +60,7 @@ func init() {
 		defaultOptions.basedir = bs
 	}
 	defaultOptions.localPath = filepath.Join(defaultOptions.basedir, defaultConfigFile)
+	New(WithGlobal(true))
 }
 
 // New create an application configuration instance.
@@ -131,9 +132,11 @@ func (c *Configuration) Load() *Configuration {
 // load configuration,if the RemoteProvider is set,will ignore local configuration
 func (c *Configuration) loadInternal() (err error) {
 	// if parser is nil, use default local config file
-	if c.parser == nil || len(c.parser.AllKeys()) == 0 {
-		TryLoadEnvFromFile(filepath.Dir(c.opts.localPath), "")
+	if c.parser == nil {
 		c.parser = NewParser()
+	}
+	if len(c.parser.AllKeys()) == 0 {
+		TryLoadEnvFromFile(filepath.Dir(c.opts.localPath), "")
 		err = c.parser.LoadFileWithEnv(c.opts.localPath)
 		if err != nil {
 			return err
@@ -417,8 +420,8 @@ func Join(ps ...string) string {
 
 // Global return default(global) Configuration instance
 func Global() *AppConfiguration {
-	if global.Configuration == nil || global.parser == nil {
-		global.Configuration = New().Load()
+	if len(global.Configuration.AllSettings()) == 0 {
+		global.Configuration.Load()
 	}
 	return &global
 }

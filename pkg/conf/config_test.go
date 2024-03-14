@@ -57,7 +57,7 @@ func TestNew(t *testing.T) {
 			args: args{opt: []Option{WithBaseDir("."), WithLocalPath(testdata.Path(testdata.DefaultConfigFile))}},
 			check: func(cnf *Configuration) {
 				_, currentFile, _, _ := runtime.Caller(0)
-				assert.Equal(t, cnf.GetBaseDir(), path.Dir(currentFile))
+				assert.Equal(t, cnf.GetBaseDir(), filepath.Dir(currentFile))
 				assert.Equal(t, cnf.opts.localPath, testdata.Path(testdata.DefaultConfigFile))
 			},
 		},
@@ -84,9 +84,8 @@ func TestNew(t *testing.T) {
 		{
 			name: "global",
 			args: args{opt: []Option{WithGlobal(true),
-				WithLocalPath(testdata.Path(testdata.DefaultConfigFile))}},
+				WithBaseDir(testdata.BaseDir())}},
 			check: func(cnf *Configuration) {
-				cnf.parser = &Parser{}
 				assert.Equal(t, Global().Configuration, cnf)
 				assert.Equal(t, cnf.opts.global, true)
 				assert.Equal(t, cnf.opts.localPath, testdata.Path(testdata.DefaultConfigFile))
@@ -390,11 +389,11 @@ func TestConfiguration_Static(t *testing.T) {
 		cnf := New().AsGlobal()
 		cnf.SetBaseDir(".")
 		assert.Equal(t, cnf.GetBaseDir(), ".")
-		assert.Equal(t, Abs("path/file"), "path/file")
-		assert.Equal(t, Abs("/path/file"), "/path/file")
+		assert.Equal(t, Abs("path/file"), filepath.Join("path", "file"))
+		assert.Equal(t, Abs("/path/file"), filepath.Join(".", "path", "file"))
 		cnf.SetBaseDir(dir)
-		assert.Equal(t, Abs("path/file"), path.Join(dir, "path/file"))
-		assert.Equal(t, Abs("/path/file"), "/path/file")
+		assert.Equal(t, Abs("path/file"), filepath.Join(dir, "path", "file"))
+		assert.Equal(t, Abs("/path/file"), filepath.Join(dir, "path", "file"))
 	})
 }
 
@@ -681,7 +680,7 @@ func TestGlobal(t *testing.T) {
 			name: "global",
 			want: func() *AppConfiguration {
 				return &AppConfiguration{
-					Configuration: New(WithGlobal(true)),
+					Configuration: New(WithGlobal(true), WithBaseDir(testdata.BaseDir())),
 				}
 			},
 		},

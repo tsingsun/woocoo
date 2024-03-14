@@ -1,0 +1,32 @@
+version: "3.9"
+services:
+  etcd:
+    image: bitnami/etcd:3.5.12
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_ADVERTISE_CLIENT_URLS: "http://127.0.0.1:2379"
+  polaris:
+    image: polarismesh/polaris-standalone:v1.17.2
+    ports:
+      - "15010:15010"
+      - "8101:8101"
+      - "8100:8100"
+      - "8080:8080"
+      - "8090:8090"
+      - "8091:8091"
+      - "8093:8093"
+      - "8761:8761"
+      - "8848:8848"
+      - "9848:9848"
+      - "9090:9090"
+      - "9091:9091"
+  otel:
+    image: otel/opentelemetry-collector-contrib:0.79.0
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888"
+      - "8889:8889"

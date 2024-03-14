@@ -1,6 +1,6 @@
 grpc:
   server:
-    addr: 127.0.0.1:22112
+    addr: 127.0.0.1:22110
     namespace: routingTest
     version: "1.0"
     engine:

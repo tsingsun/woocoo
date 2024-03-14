@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -173,10 +174,15 @@ func parseKey(keyStr string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		path := conf.Abs(uri.Path)
+		path := uri.Path
+		// if os is windows
+		if runtime.GOOS == "windows" {
+			path = strings.TrimPrefix(path, "/")
+		}
+		path = conf.Abs(path)
 		// if format is relative, resolve it relative to the basedir
-		if strings.HasPrefix(uri.Path, "/.") {
-			path = conf.Abs(uri.Path[1:])
+		if strings.HasPrefix(path, "/.") {
+			path = conf.Abs(path[1:])
 		}
 		return os.ReadFile(path)
 	}
@@ -186,7 +192,7 @@ func parseKey(keyStr string) ([]byte, error) {
 // ParseSigningKeyFromString parses a key([]byte or rsa Key) from a string.
 //
 // keystr format:
-// - file uri: "file:///path/to/key",such as rsa file
+// - file uri: "file:///path/to/key",such as rsa file，windows see https://learn.microsoft.com/en-us/archive/blogs/ie/file-uris-in-windows
 // - string: "raw key",such as hs256 key or rsa rwa key string
 // private key: if need to use private key,such as rsa private key
 func ParseSigningKeyFromString(keystr, method string, privateKey bool) (any, error) {

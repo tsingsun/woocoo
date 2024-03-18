@@ -17,12 +17,10 @@ jobs:
             goos: darwin
     steps:
       - uses: actions/checkout@v4
-      - uses: wangyoucao577/go-release-action@v1.46
+      - uses: wangyoucao577/go-release-action@v1.49
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
-          goversion: "https://dl.google.com/go/go1.18.5.linux-amd64.tar.gz"
           project_path: "cmd/woco"
           binary_name: "woco"
-          extra_files: cmd/woco/README.md

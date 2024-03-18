@@ -178,7 +178,7 @@ func (g *Graph) templates() (*gen.Template, []GraphTemplate) {
 			continue
 		}
 		mpkg := p.Load(v)
-		if mpkg.Module != nil {
+		if mpkg.Module != nil && mpkg.Module.Version != "" {
 			g.Mods = append(g.Mods, mpkg.Module.Path+" "+mpkg.Module.Version)
 		}
 	}

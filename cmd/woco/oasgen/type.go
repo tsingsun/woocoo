@@ -75,13 +75,13 @@ type (
 
 func genOperation(c *Config, spec *openapi3.T) (ops []*Operation) {
 	// sort Spec.Paths by path
-	keys := make([]string, 0, len(spec.Paths))
-	for k := range spec.Paths {
+	keys := make([]string, 0, spec.Paths.Len())
+	for k := range spec.Paths.Map() {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		pathItem := spec.Paths[key]
+		pathItem := spec.Paths.Value(key)
 		opmap := pathItem.Operations()
 		for _, method := range sortSpecOperationKeys(opmap) {
 			specop := opmap[method]
@@ -240,7 +240,7 @@ func (op *Operation) GenResponses() {
 			if name == "default" {
 				status = "0"
 			}
-			res := op.GenResponse(status, rs[name])
+			res := op.GenResponse(status, rs.Value(name))
 			op.Responses = append(op.Responses, res)
 			switch res.Status {
 			case http.StatusOK:
@@ -388,9 +388,9 @@ func sortPropertyKeys(spec openapi3.Schemas) []string {
 	return keys
 }
 
-func sortSpecResponseKeys(rs openapi3.Responses) []string {
-	keys := make([]string, 0, len(rs))
-	for k := range rs {
+func sortSpecResponseKeys(rs *openapi3.Responses) []string {
+	keys := make([]string, 0, rs.Len())
+	for k := range rs.Map() {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)

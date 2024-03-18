@@ -109,7 +109,7 @@ func NewGraph(c *Config, schema *openapi3.T) (g *Graph, err error) {
 	defer gen.CatchGraphError(&err)
 	g = &Graph{
 		Config: c,
-		Nodes:  make([]*Tag, 0, len(schema.Paths)),
+		Nodes:  make([]*Tag, 0, schema.Paths.Len()),
 		nodes:  make(map[string]*Tag),
 		Spec:   schema,
 	}
@@ -239,7 +239,7 @@ func (g *Graph) addModels(schema *openapi3.T) {
 
 func (g *Graph) addNode(schema *openapi3.T) {
 	g.addTag(schema)
-	if len(schema.Paths) == 0 {
+	if schema.Paths.Len() == 0 {
 		return
 	}
 	ops := genOperation(g.Config, schema)

@@ -8,7 +8,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-openapi/inflect v0.19.0
 	github.com/go-playground/validator/v10 v10.14.0
-	github.com/go-sql-driver/mysql v1.7.0
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/google/uuid v1.4.0
 	github.com/stretchr/testify v1.9.0
 	github.com/tsingsun/woocoo v0.4.4-0.20240314052445-fc626f2c3666
@@ -19,6 +19,7 @@ require (
 
 require (
 	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43 // indirect
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect

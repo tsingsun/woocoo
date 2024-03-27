@@ -6,7 +6,7 @@ require (
 	entgo.io/ent v0.13.1
 	github.com/getkin/kin-openapi v0.123.0
 	github.com/gin-gonic/gin v1.9.1
-	github.com/go-openapi/inflect v0.19.0
+	github.com/go-openapi/inflect v0.21.0
 	github.com/go-playground/validator/v10 v10.14.0
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/google/uuid v1.4.0

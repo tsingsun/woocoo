@@ -281,14 +281,16 @@ web:
 	//gqlsrv  := gqlsrvList[0]
 
 	t.Run("unauth", func(t *testing.T) {
-		r := httptest.NewRequest("POST", "/query", bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`)))
+		r := httptest.NewRequest("POST", "/query", bytes.NewReader([]byte(`{"query":"query hello { hello }"}`)))
 		r.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		srv.Router().ServeHTTP(w, r)
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		if !assert.Equal(t, http.StatusUnauthorized, w.Code) {
+			t.Log(w.Body.String())
+		}
 	})
 	t.Run("ok", func(t *testing.T) {
-		r := httptest.NewRequest("POST", "/query", bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`)))
+		r := httptest.NewRequest("POST", "/query", bytes.NewReader([]byte(`{"query":"query hello { hello }"}`)))
 		r.Header.Set("Content-Type", "application/json")
 		r.Header.Set("Authorization", "Bearer "+secretToken)
 		w := httptest.NewRecorder()
@@ -409,7 +411,7 @@ web:
 	gqlsrv, err := RegisterSchema(srv, &mock)
 	require.NoError(t, err)
 	var reuqest = func(target, uid string) *http.Request {
-		r := httptest.NewRequest("POST", target, bytes.NewReader([]byte(`{"query":"query hello { hello() }"}`)))
+		r := httptest.NewRequest("POST", target, bytes.NewReader([]byte(`{"query":"query hello { hello }"}`)))
 		if uid != "" {
 			r = r.WithContext(security.WithContext(context.Background(), security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": uid})))
 		}

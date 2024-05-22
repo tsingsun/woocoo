@@ -14,7 +14,7 @@ require (
 	github.com/tsingsun/woocoo v0.4.4-0.20240521081855-d699f57712f0
 	github.com/urfave/cli/v2 v2.27.1
 	golang.org/x/text v0.15.0
-	golang.org/x/tools v0.18.0
+	golang.org/x/tools v0.21.0
 )
 
 require (
@@ -79,9 +79,10 @@ require (
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.23.0 // indirect
-	golang.org/x/mod v0.15.0 // indirect
+	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect

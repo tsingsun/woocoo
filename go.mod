@@ -24,7 +24,7 @@ require (
 	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/net v0.25.0
-	golang.org/x/oauth2 v0.11.0
+	golang.org/x/oauth2 v0.21.0
 	golang.org/x/sync v0.3.0
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/text v0.15.0
@@ -72,7 +72,6 @@ require (
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/yuin/gopher-lua v1.1.0 // indirect
 	golang.org/x/arch v0.8.0 // indirect
-	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

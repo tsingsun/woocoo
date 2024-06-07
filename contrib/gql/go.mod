@@ -3,7 +3,7 @@ module github.com/tsingsun/woocoo/contrib/gql
 go 1.21
 
 require (
-	github.com/99designs/gqlgen v0.17.47
+	github.com/99designs/gqlgen v0.17.48
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/stretchr/testify v1.9.0

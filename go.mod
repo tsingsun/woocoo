@@ -6,7 +6,7 @@ require (
 	github.com/alicebob/miniredis/v2 v2.30.5
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-playground/validator/v10 v10.20.0 // indirect
-	github.com/klauspost/compress v1.16.6
+	github.com/klauspost/compress v1.17.9
 	github.com/knadh/koanf/parsers/yaml v0.1.0
 	github.com/knadh/koanf/providers/confmap v0.1.0
 	github.com/knadh/koanf/providers/file v0.1.0

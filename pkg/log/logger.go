@@ -70,11 +70,11 @@ func InitGlobalLogger() *Logger {
 	return global
 }
 
-// NewBuiltIn create a logger by configuration path "log", it will be set as global logger but run only once.
-func NewBuiltIn() *Logger {
+// NewFromConf create a logger by configuration path "log", it will be set as global logger but run only once.
+func NewFromConf(cfg *conf.Configuration) *Logger {
 	builtin.Do(func() {
 		l := New(nil)
-		l.Apply(conf.Global().Sub("log"))
+		l.Apply(cfg)
 		l.AsGlobal()
 	})
 	return global

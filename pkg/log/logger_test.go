@@ -103,11 +103,11 @@ func TestNewBuiltIn(t *testing.T) {
 			tt.want()
 			if tt.wantErr {
 				assert.Panics(t, func() {
-					NewBuiltIn()
+					NewFromConf(conf.Global().Sub("log"))
 				})
 				return
 			}
-			got := NewBuiltIn()
+			got := NewFromConf(conf.Global().Sub("log"))
 			assert.Same(t, global, got)
 			assert.NotNil(t, global)
 		})

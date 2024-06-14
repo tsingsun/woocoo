@@ -44,6 +44,8 @@ log:
       encoding: json #json console text 三种格式
       encoderConfig:
         timeEncoder: iso8601 # 默认值
+      # outputPaths 日志输出路径,支持stdout,stderr,文件路径
+      # default: stderr. 使用的zap的默认值.
       outputPaths:
         - stdout
         - "test.log"

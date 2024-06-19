@@ -163,14 +163,21 @@ func (c *Configuration) loadInternal() (err error) {
 	return err
 }
 
+// tryAbs return the absolute path by the base dir if path is a relative path.
 func tryAbs(basedir, path string) (string, error) {
 	if !filepath.IsAbs(path) {
-		_, err := os.Stat(path)
+		// first try to load from the base dir
+		rpath := filepath.Join(basedir, path)
+		_, err := os.Stat(rpath)
 		if err == nil {
-			path, err = filepath.Abs(path)
+			return rpath, err
+		}
+		// if not found, try to load from the current working directory
+		apath, err := filepath.Abs(path)
+		if err != nil {
 			return path, err
 		}
-		path = filepath.Join(basedir, path)
+		path = apath
 	}
 	_, err := os.Stat(path)
 	return path, err

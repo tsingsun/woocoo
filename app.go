@@ -96,6 +96,8 @@ func (a *App) Run() error {
 	if err := eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		return err
 	}
+	// sync global logger at last
+	_ = log.Sync()
 	return nil
 }
 

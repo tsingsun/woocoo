@@ -96,8 +96,6 @@ func (a *App) Run() error {
 	if err := eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		return err
 	}
-	// sync global logger at last
-	_ = log.Sync()
 	return nil
 }
 
@@ -105,6 +103,13 @@ func (a *App) Run() error {
 func (a *App) Stop() error {
 	a.cancel()
 	return nil
+}
+
+// Sync calls some resources suck as logger flushing any buffered log
+// entries. Applications should take care to call Sync before exiting.
+func (a *App) Sync() error {
+	// sync global logger at last
+	return log.Sync()
 }
 
 type miniServer struct {

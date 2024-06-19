@@ -184,3 +184,9 @@ func TestGroupRun(t *testing.T) {
 		})
 	}
 }
+
+func TestSync(t *testing.T) {
+	app := New()
+	err := app.Sync()
+	assert.NoError(t, err)
+}

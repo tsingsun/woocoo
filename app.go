@@ -108,8 +108,9 @@ func (a *App) Stop() error {
 // Sync calls some resources suck as logger flushing any buffered log
 // entries. Applications should take care to call Sync before exiting.
 func (a *App) Sync() error {
-	// sync global logger at last
-	return log.Sync()
+	// sync global logger at last, ignore error because of "sync /dev/stderr: invalid argument"
+	_ = log.Sync()
+	return nil
 }
 
 type miniServer struct {

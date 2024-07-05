@@ -34,7 +34,7 @@ require (
 )
 
 require (
-	github.com/gin-contrib/cors v1.4.0
+	github.com/gin-contrib/cors v1.6.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/gorilla/csrf v1.7.2
 	github.com/hashicorp/go-envparse v0.1.0

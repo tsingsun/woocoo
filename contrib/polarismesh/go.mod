@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/knadh/koanf/parsers/yaml v0.1.0
-	github.com/polarismesh/polaris-go v1.5.6
+	github.com/polarismesh/polaris-go v1.5.7
 	github.com/polarismesh/specification v1.4.1
 	github.com/stretchr/testify v1.9.0
 	github.com/tsingsun/woocoo v0.4.4-0.20240813074317-94b44e6fba47

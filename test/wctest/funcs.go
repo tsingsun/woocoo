@@ -18,6 +18,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// Configuration returns a testdata configuration for test.
 func Configuration() *conf.Configuration {
 	return conf.New(
 		conf.WithGlobal(true),
@@ -58,6 +59,7 @@ func RunWait(t *testing.T, timeout time.Duration, fns ...func() error) error {
 	defer cancel()
 	eg, ctx := errgroup.WithContext(ctx)
 	wg := sync.WaitGroup{}
+	done := make(chan int)
 	for _, fn := range fns {
 		fn := fn
 		eg.Go(func() error {
@@ -65,6 +67,9 @@ func RunWait(t *testing.T, timeout time.Duration, fns ...func() error) error {
 			err := ctx.Err()
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
+					return nil
+				}
+				if errors.Is(err, context.Canceled) {
 					return nil
 				}
 				return err
@@ -78,9 +83,28 @@ func RunWait(t *testing.T, timeout time.Duration, fns ...func() error) error {
 				t.Error(err)
 				cancel()
 			}
+			done <- 1
 		}()
 	}
 	wg.Wait()
+	go func() {
+		tf := len(fns)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case d, ok := <-done:
+				if !ok {
+					return
+				}
+				tf -= d
+				if tf == 0 {
+					ctx.Deadline()
+					cancel()
+				}
+			}
+		}
+	}()
 	if err := eg.Wait(); err != nil {
 		return err
 	}

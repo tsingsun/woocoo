@@ -14,6 +14,12 @@ import (
 	"github.com/tsingsun/woocoo/pkg/log"
 )
 
+// Server is the interface that can run in App.
+type Server interface {
+	Start(ctx context.Context) error
+	Stop(ctx context.Context) error
+}
+
 // App is the application with a universal mechanism to manage goroutine lifecycles.
 type App struct {
 	opts options
@@ -74,6 +80,9 @@ func (a *App) Run() error {
 			wg.Done()
 			return srv.Start(a.ctx)
 		})
+		if a.opts.interval > 0 {
+			time.Sleep(a.opts.interval)
+		}
 	}
 	wg.Wait()
 	if len(a.opts.quitCh) == 0 {

@@ -24,7 +24,7 @@ func TestApp(t *testing.T) {
 		},
 	})
 	cnf := wctest.Configuration()
-	app := New(WithAppConfiguration(cnf))
+	app := New(WithAppConfiguration(cnf), WithInterval(time.Millisecond*100))
 	websrv := web.New(web.WithConfiguration(app.AppConfiguration().Sub("web")))
 	grpcsrv := grpcx.New(grpcx.WithConfiguration(app.AppConfiguration().Sub("grpc")))
 	time.AfterFunc(time.Second*2, func() {

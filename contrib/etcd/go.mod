@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/stretchr/testify v1.9.0
-	github.com/tsingsun/woocoo v0.4.4-0.20240813074317-94b44e6fba47
+	github.com/tsingsun/woocoo v0.4.4-0.20240917105819-06ddf1091d87
 	go.etcd.io/etcd/api/v3 v3.5.12
 	go.etcd.io/etcd/client/v3 v3.5.12
 	google.golang.org/grpc v1.65.0

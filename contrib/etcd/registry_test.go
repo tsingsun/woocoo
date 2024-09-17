@@ -76,7 +76,7 @@ func TestRegistryMultiService(t *testing.T) {
 	defer cxl()
 	_, err = etcdCli.Delete(ctx, sn, clientv3.WithPrefix())
 	require.NoError(t, err)
-	err = wctest.RunWait(t, time.Second*2, func() error {
+	err = wctest.RunWait(t.Log, time.Second*2, func() error {
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		testproto.RegisterTestServiceServer(srv.Engine(), &testproto.TestPingService{})
 		return srv.Run()
@@ -158,7 +158,7 @@ func TestRegisterResolver(t *testing.T) {
 		assert.NoError(t, srv.Serve(l))
 	}
 	t.Run("1-grpc-cluster", func(t *testing.T) {
-		wctest.RunWait(t, time.Second*2, func() error {
+		wctest.RunWait(t.Log, time.Second*2, func() error {
 			runfunc(sn, "grpc1", "127.0.0.1", 9999, true)
 			return nil
 		}, func() error {
@@ -224,7 +224,7 @@ func TestRegistryGrpcx(t *testing.T) {
 		return s
 	}
 	var tag1, tag2 = "t1", "t2"
-	err = wctest.RunWait(t, time.Second, func() error {
+	err = wctest.RunWait(t.Log, time.Second, func() error {
 		srv = buildSvr(tag1)
 		return srv.Run()
 	}, func() error {

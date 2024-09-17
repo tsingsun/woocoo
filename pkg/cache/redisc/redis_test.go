@@ -545,7 +545,7 @@ func TestCache_Once(t *testing.T) {
 			do: func() {
 				rc, rdb := initStandaloneRedisc(t)
 				assert.NoError(t, rc.Set(context.Background(), "key", "123", cache.WithTTL(time.Hour), cache.WithSkip(cache.SkipLocal)))
-				err := wctest.RunWait(t, time.Second*2, func() error {
+				err := wctest.RunWait(t.Log, time.Second*2, func() error {
 					want := ""
 					assert.NoError(t, rc.Get(context.Background(), "key", &want, cache.WithGroup(), cache.WithSkip(cache.SkipLocal)))
 					assert.Equal(t, "123", want)
@@ -567,7 +567,7 @@ func TestCache_Once(t *testing.T) {
 			do: func() {
 				rc, rdb := initStandaloneRedisc(t)
 				assert.NoError(t, rc.Set(context.Background(), "key", "123", cache.WithTTL(time.Hour), cache.WithSkip(cache.SkipLocal)))
-				err := wctest.RunWait(t, time.Second, func() error {
+				err := wctest.RunWait(t.Log, time.Second, func() error {
 					want := ""
 					assert.NoError(t, rc.Get(context.Background(), "key", &want, cache.WithGroup(), cache.WithSkip(cache.SkipLocal)))
 					assert.Equal(t, "123", want)

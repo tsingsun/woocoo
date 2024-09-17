@@ -155,7 +155,7 @@ web:
 		t.Run(tt.name, func(t *testing.T) {
 			srv := tt.fields.srv
 			wantErr := tt.wantErr
-			err := wctest.RunWait(t, time.Millisecond*200, func() error {
+			err := wctest.RunWait(t.Log, time.Millisecond*200, func() error {
 				return srv.Run()
 			}, func() error {
 				if !wantErr {

@@ -214,7 +214,7 @@ service:
 	cfg := conf.NewFromBytes(b, conf.WithBaseDir(testdata.BaseDir()))
 	srv := New(WithConfiguration(cfg.Sub("service")))
 	helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
-	require.NoError(t, wctest.RunWait(t, time.Second, func() error {
+	require.NoError(t, wctest.RunWait(t.Log, time.Second, func() error {
 		return srv.Run()
 	}))
 	defer srv.Stop(context.Background())

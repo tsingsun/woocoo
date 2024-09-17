@@ -108,7 +108,7 @@ const config: Config = {
           title: '相关资源',
           items: [
             {
-              label: 'Knockout后台(开发中)',
+              label: 'Knockout(开发中)',
               href: 'https://github.com/woocoos',
             },
           ],
@@ -122,7 +122,7 @@ const config: Config = {
             },
             {
               label: 'Discord',
-              href: 'https://discordapp.com/invite/woocoo',
+              href: 'https://discord.gg/358d5uth',
             },
           ],
         }

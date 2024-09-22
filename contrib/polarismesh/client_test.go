@@ -199,7 +199,7 @@ func TestClient_Dial(t *testing.T) {
 	b, err := os.ReadFile("./testdata/dialtest.yaml")
 	require.NoError(t, err)
 	cfg := conf.NewFromBytes(b)
-	err = wctest.RunWait(t, time.Second*2, func() error {
+	err = wctest.RunWait(t.Log, time.Second*2, func() error {
 		srv := grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		return srv.Run()
@@ -246,7 +246,7 @@ func TestClient_DialMultiServerAndDown(t *testing.T) {
 	require.NoError(t, err)
 	cfg := conf.NewFromBytes(b)
 	var srv, srv2 *grpcx.Server
-	err = wctest.RunWait(t, time.Second*2, func() error {
+	err = wctest.RunWait(t.Log, time.Second*2, func() error {
 		opts := []grpc.ServerOption{
 			grpc.ChainUnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 				return &helloworld.HelloReply{
@@ -322,7 +322,7 @@ func TestClientRouting(t *testing.T) {
 		srvdf, srv2amoy, srv3us *grpcx.Server
 		expectedMsg             = "match success"
 	)
-	err = wctest.RunWait(t, time.Second*2, func() error {
+	err = wctest.RunWait(t.Log, time.Second*2, func() error {
 		// guarantee default
 		srvdf = grpcx.New(grpcx.WithConfiguration(cnf.Sub("grpc")))
 		helloworld.RegisterGreeterServer(srvdf.Engine(), &helloworld.Server{})
@@ -429,7 +429,7 @@ func TestClientCircleBreaker(t *testing.T) {
 	require.NoError(t, err)
 	cnf := conf.NewFromBytes(b)
 	var srv, srv2 *grpcx.Server
-	err = wctest.RunWait(t, time.Second*2, func() error {
+	err = wctest.RunWait(t.Log, time.Second*2, func() error {
 		count := 0
 		srv = grpcx.New(grpcx.WithConfiguration(cnf.Sub("grpc")), grpcx.WithGrpcOption(
 			grpc.ChainUnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {

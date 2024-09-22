@@ -56,7 +56,7 @@ func TestRateLimitUnaryServerInterceptor(t *testing.T) {
 	require.NoError(t, err)
 	cfg := conf.NewFromBytes(b)
 	var srv *grpcx.Server
-	err = wctest.RunWait(t, time.Second*2, func() error {
+	err = wctest.RunWait(t.Log, time.Second*2, func() error {
 		srv = grpcx.New(grpcx.WithConfiguration(cfg.Sub("grpc")))
 		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
 		return srv.Run()

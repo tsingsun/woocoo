@@ -7,7 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/stretchr/testify v1.9.0
-	github.com/tsingsun/woocoo v0.4.4-0.20240813074317-94b44e6fba47
+	github.com/tsingsun/woocoo v0.5.0
 	github.com/vektah/gqlparser/v2 v2.5.12
 )
 

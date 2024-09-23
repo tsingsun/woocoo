@@ -64,6 +64,10 @@ func New(zl *zap.Logger) *Logger {
 	}
 }
 
+func NewNop() *Logger {
+	return New(zap.NewNop())
+}
+
 func InitGlobalLogger() *Logger {
 	global = New(zap.Must(zap.NewProduction(zap.AddCallerSkip(CallerSkip))))
 	global.AsGlobal()

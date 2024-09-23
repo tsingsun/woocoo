@@ -75,6 +75,7 @@ func Component(name string, fields ...zap.Field) ComponentLogger {
 		builtInFields: append(fields, zap.String(ComponentKey, name)),
 		useGlobal:     true,
 	}
+	c.l = NewNop()
 	components[name] = c
 	return c
 }

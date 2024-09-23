@@ -11,6 +11,7 @@ import (
 	"github.com/tsingsun/woocoo/test/mock/helloworld"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/test/bufconn"
 	"testing"
 	"time"
 )
@@ -146,6 +147,25 @@ func TestServer_Run(t *testing.T) {
 			tt.wantErr(t, s.Run(), "Run()")
 		})
 	}
+}
+
+func TestRunWithOption(t *testing.T) {
+	t.Run("listener", func(t *testing.T) {
+		b := []byte(`
+grpc:
+  server:
+    addr: 127.0.0.1:20000
+    namespace: /woocoo/service
+  engine:
+`)
+		// testdata.Path("x509/test.pem"), testdata.Path("x509/test.key")
+		cfg := conf.NewFromBytes(b)
+		s := New(WithConfiguration(cfg.Sub("grpc")), WithListener(bufconn.Listen(1024)))
+		time.AfterFunc(time.Second*2, func() {
+			s.Stop(context.Background())
+		})
+		assert.NoError(t, s.Run())
+	})
 }
 
 // TODO grpclog will case test fail by race condition.so let it skip

@@ -20,7 +20,14 @@ import (
 
 var logger = log.Component(log.GrpcComponentName)
 
+const (
+	defaultPort    = 9080
+	defaultNetwork = "tcp"
+)
+
 type serverOptions struct {
+	// Network is the network protocol. default is tcp
+	Network string `json:"network" yaml:"network"`
 	Addr    string `json:"addr" yaml:"addr"`
 	UseIPv6 bool   `json:"ipv6" yaml:"ipv6"`
 	// Namespace will pass to registry component.default is Application NameSpace
@@ -29,6 +36,11 @@ type serverOptions struct {
 	Version string `json:"version" yaml:"version"`
 	// RegistryMeta is the metadata for the registry service
 	RegistryMeta map[string]string `json:"registryMeta" yaml:"registryMeta"`
+
+	// listener is the net.Listener
+	listener net.Listener
+	host     string
+	port     int
 
 	grpcOptions []grpc.ServerOption
 	// configuration is the grpc service Configuration
@@ -54,7 +66,9 @@ type Server struct {
 func New(opts ...Option) *Server {
 	s := &Server{
 		opts: serverOptions{
-			Addr:         ":9080",
+			Network:      defaultNetwork,
+			Addr:         fmt.Sprintf(":%d", defaultPort),
+			port:         defaultPort,
 			RegistryMeta: map[string]string{},
 		},
 		exit: make(chan chan error),
@@ -77,6 +91,27 @@ func New(opts ...Option) *Server {
 	return s
 }
 
+func (s *Server) applyNetwork() (err error) {
+	if s.opts.listener == nil {
+		if s.opts.Network == "" {
+			s.opts.Network = defaultNetwork
+		}
+		s.opts.listener, err = net.Listen(s.opts.Network, s.opts.Addr)
+		if err != nil {
+			return err
+		}
+	}
+	s.opts.Addr = s.opts.listener.Addr().String()
+	if tcpaddr, ok := s.opts.listener.Addr().(*net.TCPAddr); ok {
+		s.opts.port = tcpaddr.Port
+		s.opts.host = conf.GetIP(s.opts.UseIPv6)
+		if tcpaddr.IP.IsLoopback() {
+			s.opts.host = tcpaddr.IP.String()
+		}
+	}
+	return nil
+}
+
 // Apply the configuration to the server.
 func (s *Server) Apply(cfg *conf.Configuration) error {
 	err := cfg.Parser().Unmarshal("server", &s.opts)
@@ -85,9 +120,10 @@ func (s *Server) Apply(cfg *conf.Configuration) error {
 	}
 	if k := "registry"; cfg.IsSet(k) {
 		rgcfg := cfg.Sub(k)
-		drv, ok := registry.GetRegistry(rgcfg.String("scheme"))
+		scheme := rgcfg.String("scheme")
+		drv, ok := registry.GetRegistry(scheme)
 		if !ok {
-			return fmt.Errorf("registry driver not found:%s", rgcfg.String("scheme"))
+			return fmt.Errorf("registry driver not found:%s", scheme)
 		}
 		if s.registry, err = drv.CreateRegistry(rgcfg); err != nil {
 			return err
@@ -102,30 +138,20 @@ func (s *Server) Apply(cfg *conf.Configuration) error {
 }
 
 // ListenAndServe call net listen to start grpc server and registry service
-func (s *Server) ListenAndServe() error {
-	lis, err := net.Listen("tcp", s.opts.Addr)
-	if err != nil {
-		return err
-	}
-	tcpaddr := lis.Addr().(*net.TCPAddr)
-	port := tcpaddr.Port
-	host := conf.GetIP(s.opts.UseIPv6)
-	if tcpaddr.IP.IsLoopback() {
-		host = tcpaddr.IP.String()
-	}
-	s.opts.Addr = lis.Addr().String()
+func (s *Server) ListenAndServe() (err error) {
+	err = s.applyNetwork()
 	logger.Info(fmt.Sprintf("start grpc server on %s", s.opts.Addr))
 	// registry run
 	if s.registry != nil {
 		for name := range s.engine.GetServiceInfo() {
 			nd := &registry.ServiceInfo{
 				Name:      name,
-				Host:      host,
-				Port:      port,
+				Host:      s.opts.host,
+				Port:      s.opts.port,
 				Namespace: s.opts.Namespace,
 				Version:   s.opts.Version,
 				Metadata:  s.opts.RegistryMeta,
-				Protocol:  lis.Addr().Network(),
+				Protocol:  s.opts.Network,
 			}
 			s.ServiceInfos = append(s.ServiceInfos, nd)
 		}
@@ -170,7 +196,7 @@ func (s *Server) ListenAndServe() error {
 	}
 	// grpc Serve run, it will return a non-nil error unless Stop or WithGracefulStop is called.
 	// so director check err
-	err = s.engine.Serve(lis)
+	err = s.engine.Serve(s.opts.listener)
 	if errors.Is(err, grpc.ErrServerStopped) {
 		err = nil
 	}

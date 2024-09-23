@@ -5,6 +5,7 @@ import (
 	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"net"
 	"sync"
 )
 
@@ -42,5 +43,12 @@ func WithGrpcOption(opts ...grpc.ServerOption) Option {
 func WithGracefulStop() Option {
 	return func(s *serverOptions) {
 		s.gracefulStop = true
+	}
+}
+
+// WithListener indicate use listener. if set listener, it will ignore the address setting.
+func WithListener(lis net.Listener) Option {
+	return func(s *serverOptions) {
+		s.listener = lis
 	}
 }

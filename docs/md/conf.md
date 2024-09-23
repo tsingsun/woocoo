@@ -121,7 +121,7 @@ conf.Unmarshal(&cfg)
 ```
 > 通过`inline`标签时,不支持指针类型,需要注意.
 
-## 环境变量
+## 变量
 
 woocoo支持环境变量配置,在配置文件中使用`${ENV_NAME}`即可引用环境变量.
 
@@ -133,4 +133,16 @@ woocoo支持环境变量配置,在配置文件中使用`${ENV_NAME}`即可引用
 web:
   server:
     addr: :${PORT}
+```
+
+有时我们会在配置文件中引用其他配置项,这时可以使用YAML自身的引用功能.
+
+```yaml
+jwt: &jwt
+  secret: secret
+  expire: 3600
+
+some:
+  jwt:
+    <<: *jwt
 ```

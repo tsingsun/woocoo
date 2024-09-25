@@ -110,6 +110,7 @@ func (h *LoggerMiddleware) buildTag(format string) {
 	var tags []loggerTag
 	ts := strings.Split(format, ",")
 	for _, tag := range ts {
+		tag = strings.TrimSpace(tag)
 		switch {
 		case strings.HasPrefix(tag, "header:"):
 			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeHeader, key: tag[7:]})

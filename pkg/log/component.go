@@ -75,7 +75,7 @@ func Component(name string, fields ...zap.Field) ComponentLogger {
 		builtInFields: append(fields, zap.String(ComponentKey, name)),
 		useGlobal:     true,
 	}
-	c.l = NewNop()
+	c.Init()
 	components[name] = c
 	return c
 }
@@ -89,7 +89,6 @@ func (c *component) Init() *component {
 
 // Logger return component's logger
 func (c *component) Logger(opts ...GetComponentLoggerOption) *Logger {
-	c.Init()
 	options := GetComponentLoggerOptions{}
 	for _, opt := range opts {
 		opt(&options)

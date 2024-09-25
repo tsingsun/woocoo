@@ -16,18 +16,20 @@ import (
 	"time"
 )
 
-var defaultLoggerOptions = &LoggerOptions{
-	TimestampFormat: time.RFC3339,
-}
+var (
+	defaultLoggerFormat = "grpc.start_time,grpc.service,grpc.method,grpc.request.deadline,status,error,latency," +
+		"peer.address,request,response"
+	defaultLoggerOptions = LoggerOptions{
+		Format: defaultLoggerFormat,
+	}
+)
 
 type (
 	LoggerOptions struct {
-		TimestampFormat string `json:"timestampFormat" yaml:"timestampFormat"`
-		Format          string `json:"format" yaml:"format"`
-		logger          log.ComponentLogger
+		Format string `json:"format" yaml:"format"`
+		logger log.ComponentLogger
 
-		logRequest  bool
-		logResponse bool
+		tags []string
 	}
 	AccessLogger struct {
 	}
@@ -38,20 +40,16 @@ func (o *LoggerOptions) Apply(cnf *conf.Configuration) {
 	if err := cnf.Unmarshal(o); err != nil {
 		panic(err)
 	}
-	logger := log.Component(AccessLogComponentName)
-	operator := logger.Logger(log.WithOriginalLogger()).WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
-	cl := log.Component(log.GrpcComponentName).Logger()
-	operator.SetContextLogger(cl.ContextLogger())
-	logger.SetLogger(operator)
-	o.logger = logger
-	ts := strings.Split(o.Format, ",")
-	for _, tag := range ts {
-		switch tag {
-		case "request":
-			o.logRequest = true
-		case "response":
-			o.logResponse = true
-		}
+	lc := log.Component(AccessLogComponentName)
+	operator := lc.Logger(log.WithOriginalLogger()).WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
+	// reuse grpc logger
+	lcl := log.Component(log.GrpcComponentName).Logger()
+	operator.SetContextLogger(lcl.ContextLogger())
+	lc.SetLogger(operator)
+	o.logger = lc
+	o.tags = strings.Split(o.Format, ",")
+	for i := range o.tags {
+		o.tags[i] = strings.TrimSpace(o.tags[i])
 	}
 }
 
@@ -65,25 +63,64 @@ func (al AccessLogger) UnaryServerInterceptor(cnf *conf.Configuration) grpc.Unar
 	o.Apply(cnf)
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		start := time.Now()
-		newCtx := al.newLoggerForCall(ctx, info.FullMethod, start, o.TimestampFormat)
+		newCtx := al.newLoggerForCall(ctx)
 		resp, err := handler(newCtx, req)
 		latency := time.Since(start)
-		al.finalCollectFields(newCtx, o, latency, err, req, resp)
+		fields := make([]zap.Field, len(o.tags))
+		code := status.Code(err)
+		level := DefaultCodeToLevel(code)
+		msg := ""
+		for i, tag := range o.tags {
+			switch tag {
+			case "grpc.start_time":
+				fields[i] = zap.Time("grpc.start_time", start)
+			case "grpc.request.deadline":
+				if d, ok := ctx.Deadline(); ok {
+					fields[i] = zap.Time("grpc.request.deadline", d)
+				} else {
+					fields[i] = zap.Skip()
+				}
+			case "peer.address":
+				if cl, ok := peer.FromContext(ctx); ok {
+					fields[i] = zap.Any("peer.address", cl.Addr.String())
+				} else {
+					fields[i] = zap.Skip()
+				}
+			case "grpc.service":
+				service := path.Dir(info.FullMethod)[1:]
+				fields[i] = zap.String("grpc.service", service)
+			case "grpc.method":
+				method := path.Base(info.FullMethod)
+				fields[i] = zap.String("grpc.method", method)
+			case "status":
+				fields[i] = zap.Int("status", int(code))
+			case "error":
+				if err != nil {
+					fields[i] = zap.Error(err)
+					msg = err.Error()
+				} else {
+					fields[i] = zap.Skip()
+				}
+			case "latency":
+				fields[i] = zap.Duration("latency", latency)
+			case "request":
+				fields[i] = zap.Any("request", req)
+			case "response":
+				fields[i] = zap.Any("response", resp)
+			default:
+				fields[i] = zap.Skip()
+			}
+		}
+		carr, _ := log.FromIncomingContext(newCtx)
+		fields = append(fields, carr.Fields...)
+		o.logger.Ctx(newCtx).Log(level, msg, fields)
 		return resp, err
 	}
 }
 
 // init context with base fields for log method called.
-func (al AccessLogger) newLoggerForCall(ctx context.Context, fullMethodString string, start time.Time, timestampFormat string) context.Context {
-	var f = make([]zapcore.Field, 0, 5)
-	f = append(f, zap.String("grpc.start_time", start.Format(timestampFormat)))
-	if d, ok := ctx.Deadline(); ok {
-		f = append(f, zap.String("grpc.request.deadline", d.Format(timestampFormat)))
-	}
-	if cl, ok := peer.FromContext(ctx); ok {
-		f = append(f, zap.Any("peer.address", cl.Addr.String()))
-	}
-	callLog := &log.FieldCarrier{Fields: append(f, al.serverCallFields(fullMethodString)...)}
+func (al AccessLogger) newLoggerForCall(ctx context.Context) context.Context {
+	callLog := &log.FieldCarrier{}
 	return log.NewIncomingContext(ctx, callLog)
 }
 
@@ -96,39 +133,62 @@ func (al AccessLogger) serverCallFields(fullMethodString string) []zapcore.Field
 	}
 }
 
-func (al AccessLogger) finalCollectFields(ctx context.Context, opts *LoggerOptions, latency time.Duration,
-	err error, req, resp any) {
-	code := status.Code(err)
-	fds := make([]zap.Field, 0, 10)
-	fds = append(fds, zap.Int("status", int(code)), zap.Duration("latency", latency))
-	if opts.logRequest {
-		fds = append(fds, zap.Any("request", req))
-	}
-	if opts.logResponse {
-		fds = append(fds, zap.Any("response", resp))
-	}
-	if err != nil {
-		fds = append(fds, zap.Error(err))
-	}
-	level := DefaultCodeToLevel(code)
-	// must be ok
-	carr, _ := log.FromIncomingContext(ctx)
-	fds = append(fds, carr.Fields...)
-	opts.logger.Ctx(ctx).Log(level, "", fds)
-}
-
 // StreamServerInterceptor returns a new streaming server interceptors that adds a zap.Logger to the context.
 func (al AccessLogger) StreamServerInterceptor(cnf *conf.Configuration) grpc.StreamServerInterceptor {
 	o := defaultLoggerOptions
 	o.Apply(cnf)
 	return func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		start := time.Now()
-		newCtx := al.newLoggerForCall(stream.Context(), info.FullMethod, start, o.TimestampFormat)
+		ctx := stream.Context()
+		newCtx := al.newLoggerForCall(ctx)
 		wrapped := WrapServerStream(stream)
 		wrapped.WrappedContext = newCtx
 		err := handler(srv, wrapped)
 		latency := time.Since(start)
-		al.finalCollectFields(newCtx, o, latency, err, nil, nil)
+		fields := make([]zap.Field, len(o.tags))
+		code := status.Code(err)
+		level := DefaultCodeToLevel(code)
+		msg := ""
+		for i, tag := range o.tags {
+			switch tag {
+			case "grpc.start_time":
+				fields[i] = zap.Time("grpc.start_time", start)
+			case "grpc.request.deadline":
+				if d, ok := ctx.Deadline(); ok {
+					fields[i] = zap.Time("grpc.request.deadline", d)
+				} else {
+					fields[i] = zap.Skip()
+				}
+			case "peer.address":
+				if cl, ok := peer.FromContext(ctx); ok {
+					fields[i] = zap.Any("peer.address", cl.Addr.String())
+				} else {
+					fields[i] = zap.Skip()
+				}
+			case "grpc.service":
+				service := path.Dir(info.FullMethod)[1:]
+				fields[i] = zap.String("grpc.service", service)
+			case "grpc.method":
+				method := path.Base(info.FullMethod)
+				fields[i] = zap.String("grpc.method", method)
+			case "status":
+				fields[i] = zap.Int("status", int(code))
+			case "error":
+				if err != nil {
+					fields[i] = zap.Error(err)
+					msg = err.Error()
+				} else {
+					fields[i] = zap.Skip()
+				}
+			case "latency":
+				fields[i] = zap.Duration("latency", latency)
+			default:
+				fields[i] = zap.Skip()
+			}
+		}
+		carr, _ := log.FromIncomingContext(newCtx)
+		fields = append(fields, carr.Fields...)
+		o.logger.Ctx(newCtx).Log(level, msg, fields)
 		return err
 	}
 }

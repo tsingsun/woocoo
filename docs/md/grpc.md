@@ -21,7 +21,6 @@ grpc: # 可选的顶级节点名
           key: "" # 文件地址,可相当程序启动目录的相对地址
       - unaryInterceptors:          
           - accessLog:
-              timestampFormat: "2006-01-02 15:04:05"
           - recovery:
           - auth:
               signingAlgorithm: HS256
@@ -41,6 +40,34 @@ grpc: # 可选的顶级节点名
 - auth: 基本的JWT验证支持
 
 如果使用其他拦截器,可在代码中使用Option的方式传入.
+
+```yaml
+- unaryInterceptors:          
+  - accessLog:
+      # 除了基本的字段,还默认支持以下:
+      # grpc.start_time,grpc.service,grpc.method,grpc.request.deadline,status,error,latency,peer.address,request,response
+      # 请以','分隔
+      format: "status,error,latency"
+  # 无配置项
+  - recovery:
+  # 与JWT一致
+  - auth:
+      signingAlgorithm: HS256
+      realm: woocoo
+      secret: 123456
+      privKey: config/privKey.pem
+      pubKey: config/pubKey.pem              
+- streamInterceptors:
+    - accessLog:
+        # 除了基本的字段,还默认支持以下:
+        # grpc.start_time,grpc.service,grpc.method,grpc.request.deadline,status,error,latency,peer.address
+        # 请以','分隔
+        format: "status,error,latency"
+    # 无配置项
+    - recovery:
+    # 与unaryInterceptors一致    
+    - auth:
+```
 
 ## 客户端
 

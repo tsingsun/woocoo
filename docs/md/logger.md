@@ -68,6 +68,23 @@ log:
 - LocalTime: false, 使用UTC时间
 - Compress: false, 不压缩
 
+### 时间格式
+
+时间格式的配置是相对特殊的,作用于zap.Time相似的方法,`timeEncoder`支持配置如下:
+
+- "rfc3339nano" 或 "RFC3339Nano" 对应 RFC3339NanoTimeEncoder.
+- "rfc3339" 或 "RFC3339" 对应 RFC3339TimeEncoder.
+- "iso8601" 或 "ISO8601" 对应 ISO8601TimeEncoder.
+- "millis" 对应 EpochMillisTimeEncoder.
+- "nanos" 对应 EpochNanosEncoder.
+
+在不满足时,可以自定义格式:
+
+```yaml
+  timeEncoder:
+	layout: 06/01/02 03:04pm
+```
+
 ## mulit-logger
 
 ```yaml

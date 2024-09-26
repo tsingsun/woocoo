@@ -44,6 +44,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         name: Install Node.js
+        working-directory: docs/website
         with:
           node-version: 18
           cache: pnpm

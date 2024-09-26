@@ -31,6 +31,8 @@ type (
 
 		tags []string
 	}
+	// AccessLogger is the interceptor for access log.
+	// UnaryServerInterceptor and SteamServerInterceptor will use the same logger.
 	AccessLogger struct {
 	}
 )
@@ -40,13 +42,15 @@ func (o *LoggerOptions) Apply(cnf *conf.Configuration) {
 	if err := cnf.Unmarshal(o); err != nil {
 		panic(err)
 	}
-	lc := log.Component(AccessLogComponentName)
-	operator := lc.Logger(log.WithOriginalLogger()).WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
-	// reuse grpc logger
-	lcl := log.Component(log.GrpcComponentName).Logger()
-	operator.SetContextLogger(lcl.ContextLogger())
-	lc.SetLogger(operator)
-	o.logger = lc
+	if o.logger == nil {
+		lc := log.Component(AccessLogComponentName)
+		operator := lc.Logger(log.WithOriginalLogger()).WithOptions(zap.AddStacktrace(zapcore.FatalLevel + 1))
+		// reuse grpc logger
+		lcl := log.Component(log.GrpcComponentName).Logger()
+		operator.SetContextLogger(lcl.ContextLogger())
+		lc.SetLogger(operator)
+		o.logger = lc
+	}
 	o.tags = strings.Split(o.Format, ",")
 	for i := range o.tags {
 		o.tags[i] = strings.TrimSpace(o.tags[i])

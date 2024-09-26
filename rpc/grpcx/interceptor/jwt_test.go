@@ -111,3 +111,78 @@ func TestJWT_SteamServerInterceptor(t *testing.T) {
 		assert.True(t, handlerCalled)
 	})
 }
+
+func TestJWTOptions_Exclude(t *testing.T) {
+	cfg := conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
+		"signingKey": "secret",
+		"exclude":    []string{"/excluded/method"},
+	}))
+
+	jwtInterceptor := JWT{}
+	unaryInterceptor := jwtInterceptor.UnaryServerInterceptor(cfg)
+
+	handler := func(ctx context.Context, req any) (any, error) {
+		return "handler called", nil
+	}
+
+	tests := []struct {
+		method string
+		expect string
+		err    error
+	}{
+		{"/excluded/method", "handler called", nil},
+		{"/included/method", "handler called", auth.ErrJWTMissing},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.method, func(t *testing.T) {
+			info := &grpc.UnaryServerInfo{
+				FullMethod: tt.method,
+			}
+			resp, err := unaryInterceptor(context.Background(), nil, info, handler)
+			if tt.err != nil {
+				assert.ErrorIs(t, err, tt.err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expect, resp)
+			}
+		})
+	}
+}
+
+func TestJWTOptions_Exclude_Stream(t *testing.T) {
+	cfg := conf.NewFromParse(conf.NewParserFromStringMap(map[string]any{
+		"signingKey": "secret",
+		"exclude":    []string{"/excluded/method"},
+	}))
+
+	jwtInterceptor := JWT{}
+	streamInterceptor := jwtInterceptor.SteamServerInterceptor(cfg)
+
+	handler := func(srv any, stream grpc.ServerStream) error {
+		return nil
+	}
+
+	tests := []struct {
+		method string
+		err    error
+	}{
+		{"/excluded/method", nil},
+		{"/included/method", auth.ErrJWTMissing},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.method, func(t *testing.T) {
+			stream := &mockStream{md: metadata.New(map[string]string{})}
+			info := &grpc.StreamServerInfo{
+				FullMethod: tt.method,
+			}
+			err := streamInterceptor(nil, stream, info, handler)
+			if tt.err != nil {
+				assert.ErrorIs(t, err, tt.err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

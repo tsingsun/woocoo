@@ -52,21 +52,25 @@ grpc: # 可选的顶级节点名
   - recovery:
   # 与JWT一致
   - auth:
+      # 不需要验证的方法
+      exclude: ["/helloworld.Greeter/SayHello"]
       signingAlgorithm: HS256
       realm: woocoo
       secret: 123456
       privKey: config/privKey.pem
       pubKey: config/pubKey.pem              
 - streamInterceptors:
-    - accessLog:
-        # 除了基本的字段,还默认支持以下:
-        # grpc.start_time,grpc.service,grpc.method,grpc.request.deadline,status,error,latency,peer.address
-        # 请以','分隔
-        format: "status,error,latency"
+  - accessLog:
+      # 不需要验证的方法
+      exclude: ["/helloworld.Greeter/SayHello"]
+      # 除了基本的字段,还默认支持以下:
+      # grpc.start_time,grpc.service,grpc.method,grpc.request.deadline,status,error,latency,peer.address
+      # 请以','分隔
+      format: "status,error,latency"
     # 无配置项
-    - recovery:
+  - recovery:
     # 与unaryInterceptors一致    
-    - auth:
+  - auth:
 ```
 
 ## 客户端

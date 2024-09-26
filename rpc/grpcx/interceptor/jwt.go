@@ -19,12 +19,17 @@ type (
 	// JWTOptions is the options for JWT interceptor.
 	JWTOptions struct {
 		auth.JWTOptions `json:",inline" yaml:",inline"`
+		// Exclude is a list of http paths to exclude from JWT auth
+		//
+		// path format must same as info.FullMethod started with "/".
+		Exclude []string `json:"exclude" yaml:"exclude"`
 	}
 	// JWT is the interceptor for JWT.
 	JWT struct {
 	}
 )
 
+// NewJWTOptions constructs a new JWTOptions struct with supplied options.
 func NewJWTOptions() *JWTOptions {
 	return &JWTOptions{
 		JWTOptions: *auth.NewJWTOptions(),
@@ -63,6 +68,14 @@ func (itcp JWT) UnaryServerInterceptor(cfg *conf.Configuration) grpc.UnaryServer
 	options.Apply(cfg)
 	var extractor = createExtractor(options)
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+		// check exclude
+		if len(options.Exclude) > 0 {
+			for _, e := range options.Exclude {
+				if e == info.FullMethod {
+					return handler(ctx, req)
+				}
+			}
+		}
 		// The keys within metadata.MD are normalized to lowercase.
 		// See: https://godoc.org/google.golang.org/grpc/metadata#New
 		newctx, err := itcp.withToken(extractor, options, ctx)
@@ -79,6 +92,14 @@ func (itcp JWT) SteamServerInterceptor(cfg *conf.Configuration) grpc.StreamServe
 	options.Apply(cfg)
 	var extractor = createExtractor(options)
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		// check exclude
+		if len(options.Exclude) > 0 {
+			for _, e := range options.Exclude {
+				if e == info.FullMethod {
+					return handler(srv, ss)
+				}
+			}
+		}
 		newctx, err := itcp.withToken(extractor, options, ss.Context())
 		if err != nil {
 			return err
@@ -103,9 +124,6 @@ func (JWT) withToken(extractor ValuesExtractor, options *JWTOptions, ctx context
 		}
 		newctx := context.WithValue(ctx, jwtKey{}, token)
 		return newctx, nil
-	}
-	if err != nil {
-		return nil, err
 	}
 	if lastTokenErr != nil {
 		return nil, lastTokenErr

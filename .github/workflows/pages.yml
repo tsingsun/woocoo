@@ -44,10 +44,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         name: Install Node.js
-        working-directory: docs/website
         with:
           node-version: 18
           cache: pnpm
+          cache-dependency-path: docs/website/pnpm-lock.yaml
 
       - name: Install dependencies
         working-directory: docs/website

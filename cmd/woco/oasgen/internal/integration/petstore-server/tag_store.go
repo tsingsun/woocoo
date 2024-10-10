@@ -19,3 +19,5 @@ type PlaceOrderRequest struct {
 	// PlaceOrderRequestBody An order for a pets from the pet store
 	Order `json:",inline"`
 }
+
+type GetInventoryResponse map[string]int32

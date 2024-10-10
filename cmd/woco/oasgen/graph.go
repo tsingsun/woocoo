@@ -93,16 +93,39 @@ func (c *Config) AddTypeMap(key string, t *code.TypeInfo) {
 	}
 }
 
+// AddSchema adds the given schema to the Graph. It supports only component schema yet.
 func (c *Config) AddSchema(ref string, schema *Schema) {
 	if c.schemas == nil {
 		c.schemas = make(map[string]*Schema)
 	}
-	if _, ok := c.schemas[ref]; ok {
+	key := c.GetSchemaKey(ref, schema)
+	if _, ok := c.schemas[key]; ok {
 		return
 	}
 
-	c.schemas[ref] = schema
+	c.schemas[key] = schema
 	c.Schemas = append(c.Schemas, schema)
+}
+
+func (c *Config) GetSchemaKey(in string, schema *Schema) (ref string) {
+	if schema.Spec.Ref != "" {
+		return strings.ToLower(schema.Spec.Ref)
+	}
+	switch {
+	case schema.IsComponent():
+		ref = ComponentsRefPrefix + in
+	case schema.IsRequest():
+		ref = RequestPrefix + in
+	case schema.IsResponse():
+		ref = ResponsePrefix + in
+	}
+	return strings.ToLower(ref)
+}
+
+func (c *Config) FindSchema(ref string) (*Schema, bool) {
+	ref = strings.ToLower(ref)
+	s, ok := c.schemas[ref]
+	return s, ok
 }
 
 // NewGraph creates a new Graph for the code generation from the given Spec definitions.

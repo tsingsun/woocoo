@@ -8,9 +8,14 @@ import (
 	"github.com/tsingsun/woocoo/cmd/woco/code"
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
+)
+
+const (
+	ComponentsRefPrefix = "#/components/schemas/"
+	RequestPrefix       = "#/components/requestBodies/"
+	ResponsePrefix      = "#/components/response/"
 )
 
 var (
@@ -28,25 +33,25 @@ var (
 	}
 )
 
-// SchemaOption helps gen schema
-type SchemaOption struct {
-	// Required indicates if the schema is required.
-	Required bool
-	// IsComponent indicates if the schema is a component schema.
-	IsComponent bool
-}
+// SchemaZone indicates the zone of the schema.
+type SchemaZone int
 
-// Schema is for schema of openapi3
-// a struct , the struct 's field all is Schema
+const (
+	// SchemaZoneComponent indicates the schema is a component schema.
+	SchemaZoneComponent SchemaZone = iota
+	// SchemaZoneRequest indicates the schema is in request parameters.
+	SchemaZoneRequest
+	// SchemaZoneResponse indicates the schema is in response.
+	SchemaZoneResponse
+)
+
+// Schema describe a struct or a property in schema.
 // Properties are sort by name, because openapi3 use map to store properties,map is not ordered.
 type Schema struct {
-	SchemaOption
-	Spec        *openapi3.SchemaRef // The original OpenAPIv3 Schema.
-	Name        string              // The name of the schema.
-	Type        *code.TypeInfo      // The type of the schema.
-	IsRef       bool
-	HasRegular  bool     // if schema has a pattern setting
-	validations []string // the expression string for validator
+	SchemaOptions
+	Type        *code.TypeInfo // The type of the schema.
+	HasRegular  bool           // if schema has a pattern setting
+	validations []string       // the expression string for validator
 	StructTags  []string
 	properties  []*Schema
 	Properties  map[string]*Schema
@@ -58,20 +63,32 @@ type Schema struct {
 	ItemSchema *Schema
 }
 
+func NewSchema(options ...SchemaOption) *Schema {
+	sch := &Schema{
+		SchemaOptions: NewSchemaOptions(options...),
+	}
+	sch.Properties = make(map[string]*Schema)
+	return sch
+}
+
+func (sch *Schema) AddProperties(name string, schema *Schema) {
+	sch.Properties[name] = schema
+	sch.properties = append(sch.properties, schema)
+}
+
 // GenSchemaType generates the type of the parameter by SPEC.
 // schema type from : the schema's sepc , additionalProperties, array items
-func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRef) {
+func (sch *Schema) GenSchemaType(c *Config) {
 	var info *code.TypeInfo
-	if spec == nil {
-		spec = sch.Spec
-	} else {
-		sch.Spec = spec
-	}
-	if tm := c.TypeMap[spec.Ref]; tm != nil {
+	if tm := c.TypeMap[sch.Spec.Ref]; tm != nil {
 		sch.Type = tm.Clone()
 		return
 	}
-	sv := spec.Value
+	var typeName = sch.Name
+	if sch.Spec.Ref != "" {
+		typeName = schemaNameFromRef(sch.Spec.Ref)
+	}
+	sv := sch.Spec.Value
 	sepcType := sv.Type
 	if sv.AllOf != nil {
 		sepcType = "object"
@@ -89,9 +106,8 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 			PkgPath:  c.Package,
 			PkgName:  code.PkgShortName(c.Package),
 		}
-		subSch := Schema{}
-		subSch.GenSchemaType(c, schemaNameFromRef(sv.Items.Ref), sv.Items)
-		sch.ItemSchema = &subSch
+		subSch := genSchemaRef(c, sch.With(WithSchemaSpec(sv.Items), WithSchemaName("")))
+		sch.ItemSchema = subSch
 		info.Ident = "[]" + subSch.Type.String()
 		//  has RType
 		if subSch.Type.RType != nil {
@@ -171,7 +187,7 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 		default:
 			if len(sv.Enum) != 0 {
 				// if empty name (anonymous) , ident will be empty, and TypeEnum.String() will be string.
-				info = &code.TypeInfo{Type: code.TypeEnum, Ident: helper.Pascal(name)}
+				info = &code.TypeInfo{Type: code.TypeEnum, Ident: helper.Pascal(sch.Name)}
 			} else {
 				info = &code.TypeInfo{Type: code.TypeString}
 			}
@@ -182,27 +198,23 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 		info = &code.TypeInfo{Type: code.TypeOther}
 		if sv.AdditionalProperties.Schema != nil {
 			if sv.AdditionalProperties.Schema.Ref != "" {
-				sch.GenSchemaType(c, schemaNameFromRef(sv.AdditionalProperties.Schema.Ref), sv.AdditionalProperties.Schema)
+				sch.Spec = sv.AdditionalProperties.Schema
+				sch.Name = schemaNameFromRef(sv.AdditionalProperties.Schema.Ref)
+				sch.GenSchemaType(c)
 			} else {
-				subSch := &Schema{}
-				subSch.GenSchemaType(c, "", sv.AdditionalProperties.Schema)
+				subSch := genSchemaRef(c, sch.With(WithSchemaSpec(sv.AdditionalProperties.Schema), WithSchemaName("")))
 				info.Ident = "map[string]" + subSch.Type.String()
 				sch.ItemSchema = subSch
 			}
 			info.Nillable = true
 
 			break
-		} else if isJsonRawObject(c, name, sv) {
+		} else if isJsonRawObject(c, sch.Name, sv) {
 			info.Type = code.TypeJSON
 			info.Nillable = true
 			break
 		}
-		// inline object,generate in package path
-		if spec.Ref != "" {
-			info.Ident = schemaNameFromRef(spec.Ref)
-		} else {
-			info.Ident = helper.Pascal(name)
-		}
+		info.Ident = helper.Pascal(typeName)
 		if info.Ident == "" {
 			panic("object should be a ident name")
 		}
@@ -219,7 +231,7 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 		return
 	}
 
-	if spec.Value.Nullable && !info.Nillable {
+	if sch.Spec.Value.Nullable && !info.Nillable {
 		if info.Ident != "" {
 			info.Ident = "*" + info.Ident
 		}
@@ -231,7 +243,8 @@ func (sch *Schema) GenSchemaType(c *Config, name string, spec *openapi3.SchemaRe
 
 var updateContentTypes = make(map[string]struct{})
 
-// AppendContentTypeStructTag parse content type and append to struct tags.if depends on Request or Response content type.
+// AppendContentTypeStructTag parse content type and append to struct tags, effected on ref schema.
+// if depends on Request or Response content type.
 // the name of schema ref will be Pascal format, but in openapi lower Camel format.
 func (sch *Schema) AppendContentTypeStructTag(c *Config, tagName string, contentTypes []string) {
 	for _, contentType := range contentTypes {
@@ -286,24 +299,22 @@ func (sch *Schema) AppendContentTypeStructTag(c *Config, tagName string, content
 			// array
 			ref = sch.Spec.Value.Items.Ref
 		}
-		if s, ok := c.schemas[ref]; ok {
-			var cts []string
-			for _, contentType := range contentTypes {
-				key := ref + ":" + contentType
-				if _, ok := updateContentTypes[key]; ok {
-					continue
+		if ref != "" {
+			if s, ok := c.FindSchema(ref); ok {
+				var cts []string
+				for _, contentType := range contentTypes {
+					key := ref + ":" + contentType
+					if _, ok := updateContentTypes[key]; ok {
+						continue
+					}
+					cts = append(cts, contentType)
+					updateContentTypes[key] = struct{}{}
 				}
-				cts = append(cts, contentType)
-				updateContentTypes[key] = struct{}{}
-			}
-			if len(cts) > 0 {
-				s.AppendContentTypeStructTag(c, s.Name, cts)
+				if len(cts) > 0 {
+					s.AppendContentTypeStructTag(c, s.Name, cts)
+				}
 			}
 		}
-		//else if sch.Type.Type == code.TypeOther && !sch.Type.Nillable {
-		//	// nillable like slice map, pointer do not need to be added to the schema,those are inline or has added to the schema
-		//	c.AddSchema(sch)
-		//}
 	}
 	for _, property := range sch.properties {
 		property.AppendContentTypeStructTag(c, property.Name, contentTypes)
@@ -326,6 +337,7 @@ func (sch *Schema) StructString() string {
 
 // TypeString returns the string representation of the schema's type.
 // Response type required is false
+// Most native types will be returned, time.Time will be returned point if not required.
 func (sch *Schema) TypeString() string {
 	s := sch.Type.String()
 
@@ -333,6 +345,18 @@ func (sch *Schema) TypeString() string {
 		return sch.StructString()
 	}
 	if sch.Type.Nillable {
+		return s
+	}
+	switch sch.Type.Type {
+	case code.TypeInt8, code.TypeInt16, code.TypeInt32, code.TypeInt, code.TypeInt64:
+		return s
+	case code.TypeUint8, code.TypeUint16, code.TypeUint32, code.TypeUint, code.TypeUint64:
+		return s
+	case code.TypeFloat32, code.TypeFloat64:
+		return s
+	case code.TypeString, code.TypeBytes, code.TypeEnum:
+		return s
+	case code.TypeBool:
 		return s
 	}
 	if !sch.Required && !sch.Type.Nillable {
@@ -427,20 +451,32 @@ func (sch *Schema) CollectTags() {
 	}
 }
 
-// CopyTo copies the schema's base properties to the target schema
-func (sch *Schema) CopyTo(tg *Schema) {
-	tg.properties = sch.properties
-	tg.Properties = sch.Properties
-	tg.StructTags = sch.StructTags
-	tg.validations = sch.validations
-	tg.HasRegular = sch.HasRegular
-	tg.IsReplace = sch.IsReplace
-	tg.IsInline = sch.IsInline
-	tg.IsAlias = sch.IsAlias
-	tg.Type = sch.Type
-	tg.IsArray = sch.IsArray
-	tg.ItemSchema = sch.ItemSchema
-	tg.IsComponent = sch.IsComponent
+// BuildFromConfig builds the schema from the config's SchemaMap
+func (sch *Schema) BuildFromConfig(c *Config) bool {
+	s, ok := c.FindSchema(sch.SchemaOptions.Spec.Ref)
+
+	if !ok {
+		return false
+	}
+	sch.properties = s.properties
+	sch.Properties = s.Properties
+	sch.StructTags = s.StructTags
+	sch.validations = s.validations
+	sch.HasRegular = s.HasRegular
+	sch.IsReplace = s.IsReplace
+	sch.IsInline = s.IsInline
+	sch.IsAlias = s.IsAlias
+	sch.Type = s.Type
+	sch.IsArray = s.IsArray
+	sch.ItemSchema = s.ItemSchema
+	// if it's an alias, we need to get the name for reference type
+	if s.IsAlias {
+		tt := *s.Type
+		sch.Type = &tt
+		sch.Type.Ident = helper.Pascal(s.Name)
+	}
+	sch.FixRequired()
+	return true
 }
 
 // FixRequired checks if the schema is required and updates the schema type if needed
@@ -480,6 +516,15 @@ func (sch *Schema) EnumsProperties() []*Schema {
 	return enums
 }
 
+func (sch *Schema) genItemSchema(c *Config, spec *openapi3.SchemaRef) {
+	if spec.Value.Items == nil {
+		return
+	}
+	popt := sch.SchemaOptions.With(WithSchemaSpec(spec.Value.Items), WithSchemaName(sch.Name))
+	gs := genSchemaRef(c, popt)
+	sch.ItemSchema = gs
+}
+
 // EnumValues returns the enum values of the schema, if any. It only supports string enum.
 func (sch *Schema) EnumValues() []string {
 	var vs []string
@@ -496,91 +541,13 @@ func (sch *Schema) EnumValues() []string {
 	return vs
 }
 
-func genSchemaRef(c *Config, name string, spec *openapi3.SchemaRef, opts SchemaOption) *Schema {
-	if spec.Ref != "" && name == "" { // if it's a ref, we need to get the name from the ref
-		name = schemaNameFromRef(spec.Ref)
-	}
-	sc := &Schema{
-		SchemaOption: opts,
-		Name:         name,
-		Spec:         spec,
-		Properties:   make(map[string]*Schema),
-		IsRef:        spec.Ref != "",
-	}
-
-	if sc.IsRef {
-		if s, ok := c.schemas[spec.Ref]; ok {
-			s.CopyTo(sc)
-			// if it's an alias, we need to get the name for reference type
-			if s.IsAlias {
-				tt := *s.Type
-				sc.Type = &tt
-				sc.Type.Ident = helper.Pascal(s.Name)
-			}
-
-			sc.FixRequired()
-			return sc
-		}
-	}
-	sc.GenSchemaType(c, name, spec)
-	sc.FixRequired()
-	for k, v := range spec.Value.Extensions {
-		switch k {
-		case goTag:
-			sc.StructTags = append(sc.StructTags, v.(string))
-		}
-	}
-
-	// allOf
-	if spec.Value != nil && len(spec.Value.AllOf) > 0 {
-		// allof node is a new schema
-		sc.IsRef = false
-		for i, one := range spec.Value.AllOf {
-			if one.Ref != "" {
-				gs := genSchemaRef(c, "", one, SchemaOption{})
-				// inline struct
-				gs.IsInline = true
-				sc.Properties[strconv.Itoa(i)] = gs
-				sc.properties = append(sc.properties, gs)
-			} else {
-				for _, oname := range sortPropertyKeys(one.Value.Properties) {
-					schemaRef := one.Value.Properties[oname]
-					gs := genSchemaRef(c, oname, schemaRef, SchemaOption{Required: helper.InStrSlice(one.Value.Required, oname)})
-					sc.Properties[oname] = gs
-					sc.properties = append(sc.properties, gs)
-				}
-			}
-		}
-	}
-	sc.CollectTags()
-	sc.setAlias()
-	// set to c.schemas , and avoid recursive
-	if sc.IsRef {
-		if sc.IsAlias {
-			// not the root schema, set alias to type todo set type other field
-			sc.Type.Ident = helper.Pascal(schemaNameFromRef(sc.Spec.Ref))
-		}
-	}
-	sc.genProperties(c, spec)
-	return sc
-}
-
 func (sch *Schema) genProperties(c *Config, spec *openapi3.SchemaRef) {
 	for _, pname := range sortPropertyKeys(spec.Value.Properties) {
 		schemaRef := sch.Spec.Value.Properties[pname]
-		gs := genSchemaRef(c, pname, schemaRef,
-			SchemaOption{
-				Required: helper.InStrSlice(spec.Value.Required, pname),
-			},
-		)
-		// if component schema is enum, we need to set the ident of the type to avoid conflict
-		if gs.IsEnum() && sch.IsComponent {
-			if gs.ItemSchema != nil {
-				gs.ItemSchema.Type.Ident = helper.Pascal(sch.Name) + helper.Pascal(pname)
-			} else {
-				gs.Type.Ident = helper.Pascal(sch.Name) + helper.Pascal(pname)
-			}
-		}
+		popt := sch.SchemaOptions.With(WithSchemaName(pname),
+			WithPrefixName(sch.Name), WithSchemaSpec(schemaRef),
+			WithSchemaRequired(helper.InStrSlice(spec.Value.Required, pname)))
+		gs := genSchemaRef(c, popt)
 		sch.Properties[pname] = gs
 		sch.properties = append(sch.properties, gs)
 	}
@@ -600,29 +567,6 @@ func (sch *Schema) setAlias() {
 	case sch.Type.Type == code.TypeJSON:
 		sch.IsAlias = true
 	}
-}
-
-func genComponentSchemas(c *Config, spec *openapi3.T) {
-	// copy c.TypeMap to tmpTypeMap
-	// make sure this mothod is run first,because type map will change in genSchemaRef by request or response
-	// and isReplace will be not correct
-	tmpTypeMap := make(map[string]*code.TypeInfo)
-	for k, v := range c.TypeMap {
-		tmpTypeMap[k] = v
-	}
-	for _, name := range sortPropertyKeys(spec.Components.Schemas) {
-		schemaRef := spec.Components.Schemas[name]
-		k := "#/components/schemas/" + name
-		gs := genSchemaRef(c, name, schemaRef, SchemaOption{IsComponent: true})
-		if tp, ok := tmpTypeMap[k]; ok { // schemas do not has a ref
-			gs.IsReplace = true
-			gs.Type = tp
-		}
-		//gs.setAlias()
-		c.AddTypeMap(k, gs.Type)
-		c.AddSchema(k, gs)
-	}
-	return
 }
 
 func isTypeMap(c *Config, name string) bool {

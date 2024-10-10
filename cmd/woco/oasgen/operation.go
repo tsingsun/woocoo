@@ -3,7 +3,6 @@ package oasgen
 import (
 	"fmt"
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/tsingsun/woocoo/cmd/woco/code"
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"net/http"
 	"sort"
@@ -41,15 +40,6 @@ type (
 		ResponseOK       *Response
 		ResponseNotFound *Response
 		IgnoreInterface  bool
-	}
-
-	// Parameter include parameter and requestBody
-	Parameter struct {
-		Name   string
-		Schema *Schema
-		Spec   *openapi3.Parameter
-		// position index in path uri
-		Index int
 	}
 
 	// Response is for response of openapi3
@@ -119,34 +109,6 @@ func genOperation(c *Config, spec *openapi3.T) (ops []*Operation) {
 	return
 }
 
-// generate parameter from spec. the spec must have schema or content
-// TODO Content Now only support application/json
-func genParameter(c *Config, spec *openapi3.ParameterRef) *Parameter {
-	pv := spec.Value
-	name := spec.Value.Name
-	ep := &Parameter{
-		Name: name,
-		Spec: pv,
-	}
-	switch {
-	case pv.Schema != nil:
-		ep.Schema = genSchemaRef(c, name, pv.Schema, SchemaOption{Required: ep.Spec.Required})
-		if !ep.Spec.Required {
-			ep.Schema.Type.AsPointer()
-		}
-	case pv.Content != nil:
-		mt, ok := pv.Content["application/json"]
-		if !ok {
-			return ep
-		}
-		ep.Schema = genSchemaRef(c, name, mt.Schema, SchemaOption{})
-	default:
-		panic(fmt.Errorf("parameter %s must have Spec or content", pv.Name))
-	}
-	ep.initStructTag()
-	return ep
-}
-
 func (op *Operation) GenSecurity(ssSpec openapi3.SecuritySchemes) {
 	if op.Spec.Security == nil {
 		return
@@ -171,8 +133,12 @@ func (op *Operation) GenSecurity(ssSpec openapi3.SecuritySchemes) {
 
 // GenRequest generate request parameters and body.
 func (op *Operation) GenRequest() {
+	tag := ""
+	if len(op.Spec.Tags) > 0 {
+		tag = op.Spec.Tags[0]
+	}
 	for _, p := range op.Spec.Parameters {
-		gp := genParameter(op.Config, p)
+		gp := genParameter(op.Config, op, p)
 		op.AddParameter(gp)
 		switch gp.Spec.In {
 		case "path":
@@ -201,35 +167,31 @@ func (op *Operation) GenRequest() {
 		if rb.Ref != "" {
 			rname = schemaNameFromRef(rb.Ref)
 		}
-		var (
-			schema *Schema
-			params []*Parameter
-		)
+		body := &RequestBody{
+			Spec: rb,
+			Name: rname,
+		}
 		for ct, mediaType := range rb.Value.Content {
 			op.Request.BodyContentTypes = append(op.Request.BodyContentTypes, ct)
-			if schema == nil {
-				schema = genSchemaRef(op.Config, rname, mediaType.Schema, SchemaOption{Required: rb.Value.Required})
+			if len(body.Properties) == 0 {
+				schema := genSchemaRef(
+					op.Config,
+					NewSchemaOptions(WithSchemaName(rname), WithSubSchemaSpec(mediaType.Schema), WithSchemaTag(tag),
+						WithSchemaRequired(rb.Value.Required), WithSchemaZone(SchemaZoneRequest), WithSchemaSkipAdd()),
+				)
 				if rb.Ref == "" && mediaType.Schema.Ref == "" {
 					for _, property := range schema.properties {
-						param := newParameterFromSchema(op.Config, property)
-						params = append(params, param)
+						body.Properties = append(body.Properties, property)
 					}
 				} else {
 					// from reference Spec
 					schema.IsInline = mediaType.Schema.Ref != ""
-					param := newParameterFromSchema(op.Config, schema)
-					params = append(params, param)
+					body.Properties = append(body.Properties, schema)
 				}
+				schema.AppendContentTypeStructTag(op.Config, schema.Name, op.Request.BodyContentTypes)
 			}
 		}
-		for _, param := range params {
-			param.Schema.AppendContentTypeStructTag(op.Config, param.Name, op.Request.BodyContentTypes)
-			if param.Name == rname { // if name is operation request name
-				param.Schema.StructTags = param.Schema.StructTags[:0]
-			}
-		}
-		op.AddParameter(params...)
-		op.Request.Body = params
+		op.Request.Body = body
 	}
 }
 
@@ -258,6 +220,10 @@ func (op *Operation) GenResponse(codeStr string, spec *openapi3.ResponseRef) *Re
 	if spec == nil {
 		return nil
 	}
+	tag := ""
+	if len(op.Spec.Tags) > 0 {
+		tag = op.Spec.Tags[0]
+	}
 	status, err := strconv.Atoi(codeStr)
 	if err != nil {
 		panic(fmt.Errorf("response status code must be int:%s", codeStr))
@@ -276,11 +242,8 @@ func (op *Operation) GenResponse(codeStr string, spec *openapi3.ResponseRef) *Re
 		mediaType := spec.Value.Content[name]
 		r.ContentTypes = append(r.ContentTypes, name)
 		if r.Schema == nil { // nil at first
-			schemaName := ""
-			if mediaType.Schema.Ref == "" {
-				schemaName = r.Name
-			}
-			r.Schema = genSchemaRef(op.Config, schemaName, mediaType.Schema, SchemaOption{})
+			r.Schema = genSchemaRef(op.Config, NewSchemaOptions(WithSchemaName(r.Name), WithSchemaSpec(mediaType.Schema),
+				WithSchemaZone(SchemaZoneResponse), WithSchemaTag(tag)))
 		}
 	}
 
@@ -297,7 +260,7 @@ func (op *Operation) AddParameter(params ...*Parameter) {
 }
 
 func (op *Operation) HasRequest() bool {
-	return len(op.Request.Parameters) > 0
+	return len(op.Request.Parameters) > 0 || op.Request.Body != nil
 }
 
 func (op *Operation) HasResponse() bool {
@@ -327,47 +290,6 @@ func (t *Tag) InterfaceName() string {
 		return "Service"
 	}
 	return t.Name
-}
-
-func newParameterFromSchema(c *Config, schema *Schema) *Parameter {
-	name := schema.Name
-	p := &Parameter{
-		Name:   name,
-		Schema: schema,
-		Spec: &openapi3.Parameter{
-			Name:        name,
-			In:          "",
-			Description: schema.Spec.Value.Description,
-			Required:    schema.Required,
-		},
-	}
-	return p
-}
-
-func (p *Parameter) initStructTag() {
-	tagName := p.Name
-	ts := make([]string, 0, 2)
-	switch p.Spec.In {
-	case "":
-		// from content
-		break
-	case "path":
-		// {:id}
-		ts = append(ts, fmt.Sprintf(`uri:"%s"`, tagName))
-	case "header":
-		ts = append(ts, fmt.Sprintf(`header:"%s"`, tagName))
-	case "cookie":
-		ts = append(ts, fmt.Sprintf(`cookie:"%s"`, tagName))
-	case "query":
-		fallthrough
-	default:
-		// query /id/ or form , body
-		if p.Schema.Type.Type == code.TypeTime {
-
-		}
-		ts = append(ts, fmt.Sprintf(`form:"%s"`, tagName))
-	}
-	p.Schema.StructTags = append(p.Schema.StructTags, ts...)
 }
 
 func sortSpecOperationKeys(spec map[string]*openapi3.Operation) []string {

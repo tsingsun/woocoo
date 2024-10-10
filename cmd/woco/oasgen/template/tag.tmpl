@@ -1,97 +1,95 @@
 {{/* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen.Tag */}}
 {{ define "tag" }}
-{{ $pkg := base $.Config.Package }}
-{{ template "header" $ }}
+    {{ $pkg := base $.Config.Package }}
+    {{ template "header" $ }}
 
-{{ template "import" $ }}
+    {{ template "import" $ }}
 
-{{ range .Operations }}
-    {{- if .HasRequest }}
-        // {{ .RequestName }} is the request object for ({{ .Method }} {{ .Path }})
-        type {{ .RequestName }} struct {
-        {{- if .Request.HasMultiBind }}
-            {{- if .Request.HasPath }}
-                PathParams {{ .RequestName }}PathParams
-            {{- end }}
-            {{- if .Request.HasHeader }}
-                HeaderParams {{ .RequestName }}HeaderParams
-            {{- end }}
-            {{- if .Request.HasCookie }}
-                CookieParams {{ .RequestName }}CookieParams
-            {{- end }}
-            {{- if .Request.HasQuery }}
-                QueryParams {{ .RequestName }}QueryParams
-            {{- end }}
-            {{- if .Request.HasBody }}
-                Body {{ .RequestName }}Body
-            {{- end }}
-        {{- else }}
-            {{- if .Request.HasPath }}
-                {{- range .Request.PathParameters }}{{ template "parameter-field" .}}{{ end }}
-            {{- end }}
-            {{- if .Request.HasHeader }}
-                {{- range .Request.HeaderParameters }}{{ template "parameter-field" .}}{{ end }}
-            {{- end }}
-            {{- if .Request.HasQuery }}
-                {{- range .Request.QueryParameters }}{{ template "parameter-field" .}}{{ end }}
-            {{- end }}
-            {{- if .Request.HasCookie }}
-                {{- range .Request.CookieParameters }}{{ template "parameter-field" .}}{{ end }}
-            {{- end }}
-            {{- if .Request.HasBody }}
-                {{- range .Request.Body }}{{ template "request-body" .}}{{ end }}
-            {{ end }}
-        {{- end }}
-        }
-        {{- if .Request.HasMultiBind }}
-            {{ if .Request.HasPath }}
-                type {{ .RequestName }}PathParams struct {
-                {{- range .Request.PathParameters }}{{ template "parameter-field" .}}{{ end }}
-                }
-            {{ end }}
-            {{ if .Request.HasHeader }}
-                type {{ .RequestName }}HeaderParams struct {
-                {{- range .Request.HeaderParameters }}{{ template "parameter-field" .}}{{ end }}
-                }
-            {{ end }}
-            {{ if .Request.HasQuery }}
-                type {{ .RequestName }}QueryParams struct {
-                {{- range .Request.QueryParameters }}{{ template "parameter-field" .}}{{ end }}
-                }
-            {{ end }}
-            {{ if .Request.HasCookie }}
-                type {{ .RequestName }}CookieParams struct {
-                {{- range .Request.CookieParameters }}{{ template "parameter-field" .}}{{ end }}
-                }
-            {{ end }}
-            {{ if .Request.HasBody }}
-                type {{ .RequestName }}Body struct {
-                {{- range .Request.Body }}{{ template "request-body" .}}{{ end }}
-                }
-            {{ end }}
-        {{- end }}
-
-        {{- range .Request.IndependentSchemas}}
-            {{- if not .IsEnum }}
-                {{- template "help/schema" .}}
-            {{- end }}
-            {{- template "help/enum" .}}
-
-        {{- end }}
-    {{ end }}
-    {{ if .HasResponse}}
-        {{ with .ResponseOK }}
-            {{ if and (not .Schema.IsRef) .Schema.Properties }}
-                {{- if .Spec.Description }}
-                    {{ stringToGoCommentWithPrefix .Spec.Description (pascal .Schema.Name) }}
+    {{ range .Operations }}
+        {{- if .HasRequest }}
+            // {{ .RequestName }} is the request object for ({{ .Method }} {{ .Path }})
+            type {{ .RequestName }} struct {
+            {{- if .Request.HasMultiBind }}
+                {{- if .Request.HasPath }}
+                    PathParams {{ .RequestName }}PathParams
                 {{- end }}
-                type {{ pascal .Schema.Name }} struct {
-                    {{- template "help/properties" .Schema}}
-                }
-            {{ end }}
+                {{- if .Request.HasHeader }}
+                    HeaderParams {{ .RequestName }}HeaderParams
+                {{- end }}
+                {{- if .Request.HasCookie }}
+                    CookieParams {{ .RequestName }}CookieParams
+                {{- end }}
+                {{- if .Request.HasQuery }}
+                    QueryParams {{ .RequestName }}QueryParams
+                {{- end }}
+                {{- if .Request.HasBody }}
+                    Body {{ .Request.Body.Name }}
+                {{- end }}
+            {{- else }}
+                {{- if .Request.HasPath }}
+                    {{- range .Request.PathParameters }}{{ template "parameter-field" .}}{{ end }}
+                {{- end }}
+                {{- if .Request.HasHeader }}
+                    {{- range .Request.HeaderParameters }}{{ template "parameter-field" .}}{{ end }}
+                {{- end }}
+                {{- if .Request.HasQuery }}
+                    {{- range .Request.QueryParameters }}{{ template "parameter-field" .}}{{ end }}
+                {{- end }}
+                {{- if .Request.HasCookie }}
+                    {{- range .Request.CookieParameters }}{{ template "parameter-field" .}}{{ end }}
+                {{- end }}
+                {{- if .Request.HasBody }}
+                    {{- range .Request.Body.Properties }}{{ template "request-body" .}}{{ end }}
+                {{ end }}
+            {{- end }}
+            }
+            {{- if .Request.HasMultiBind }}
+                {{ if .Request.HasPath }}
+                    type {{ .RequestName }}PathParams struct {
+                    {{- range .Request.PathParameters }}{{ template "parameter-field" .}}{{ end }}
+                    }
+                {{ end }}
+                {{ if .Request.HasHeader }}
+                    type {{ .RequestName }}HeaderParams struct {
+                    {{- range .Request.HeaderParameters }}{{ template "parameter-field" .}}{{ end }}
+                    }
+                {{ end }}
+                {{ if .Request.HasQuery }}
+                    type {{ .RequestName }}QueryParams struct {
+                    {{- range .Request.QueryParameters }}{{ template "parameter-field" .}}{{ end }}
+                    }
+                {{ end }}
+                {{ if .Request.HasCookie }}
+                    type {{ .RequestName }}CookieParams struct {
+                    {{- range .Request.CookieParameters }}{{ template "parameter-field" .}}{{ end }}
+                    }
+                {{ end }}
+                {{ if .Request.HasBody }}
+                    {{- if .Request.Body.Spec.Value.Description }}
+                        {{ stringToGoCommentWithPrefix .Spec.Description (pascal .Name) }}
+                    {{- end }}
+                    type {{ .Request.Body.Name }} struct {
+                    {{- range .Request.Body.Properties }}{{ template "request-body" .}}{{ end }}
+                    }
+                {{ end }}
+            {{- end }}
         {{ end }}
     {{ end }}
-{{ end }}
+    {{ $tag := .Name}}
+    {{- range .Schemas}}
+        {{- if eq .Tag $tag }}
+            {{- if not .SkipAdd }}
+                {{template "help/schema_request" .}}
+            {{- end }}
+        {{- end }}
+    {{- end}}
+    {{- range .Schemas}}
+        {{- if eq .Tag $tag }}
+            {{- if not .SkipAdd }}
+                {{template "help/schema_response" .}}
+            {{- end }}
+        {{- end }}
+    {{- end}}
 {{ end }}
 
 {{- define "parameter-field" }}
@@ -101,19 +99,17 @@
     {{ pascal .Name }} {{ .Schema.TypeString }} {{ .Schema.StructTagsString }}
 {{- end }}
 
-{{- /* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen.Parameter */}}
 {{- define "request-body" }}
-    {{- /* body parameter spec is in Schema, so get raw from .Schema  */}}
-    {{- if .Schema.IsInline }}
-        {{- if .Spec.Description }}
-            {{ stringToGoCommentWithPrefix .Spec.Description (pascal .Schema.Name) }}
+    {{- if .IsInline }}
+        {{- if .Spec.Value.Description }}
+            {{ stringToGoCommentWithPrefix .Spec.Value.Description (pascal .Name) }}
         {{- end }}
-        {{ .Schema.TypeString }} `json:",inline"`
+        {{ .TypeString }} `json:",inline"`
     {{- else }}
-        {{- if .Spec.Description }}
-            {{ stringToGoCommentWithPrefix .Spec.Description (pascal .Schema.Name) }}
+        {{- if .Spec.Value.Description }}
+            {{ stringToGoCommentWithPrefix .Spec.Value.Description (pascal .Name) }}
         {{- end }}
         {{- /* unlike parameter, body field keep base type not pointer  */}}
-        {{ pascal .Name }} {{ .Schema.Type }} {{ .Schema.StructTagsString }}
+        {{ pascal .Name }} {{ .Type }} {{ .StructTagsString }}
     {{- end }}
 {{- end }}

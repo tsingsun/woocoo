@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/tsingsun/woocoo/pkg/gds"
 	"time"
 )
 
@@ -43,7 +44,7 @@ func (s Service) LoginUser(ctx *gin.Context, req *LoginUserRequest) (_ string, e
 
 func (s Service) GetOrderById(ctx *gin.Context, req *GetOrderByIdRequest) (*Order, error) {
 	return &Order{
-		ID: 1, PetId: 1, Quantity: 1, ShipDate: time.Now(), Status: "placed", Complete: true,
+		ID: 1, PetId: 1, Quantity: 1, ShipDate: gds.Ptr(time.Now()), Status: "placed", Complete: true,
 	}, nil
 }
 

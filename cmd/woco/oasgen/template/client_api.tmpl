@@ -51,16 +51,16 @@ func (a *{{$nodeName}}) {{ .Name }}(ctx context.Context{{ if .HasRequest }}, req
         {{- $contentType := index .Request.BodyContentTypes 0 }}
         {{- if eq $contentType `"application/x-www-form-urlencoded"` }}
             forms := url.Values{}
-            {{- range .Request.Body }}
-                {{- $ps :=toStringFunc .Schema (printf "%s.%s" $parans (pascal .Name)) true }}
-                forms.Add("{{ .Spec.Name }}", {{ $ps }})
+            {{- range .Request.Body.Properties }}
+                {{- $ps :=toStringFunc . (printf "%s.%s" $parans (pascal .Name)) true }}
+                forms.Add("{{ .Name }}", {{ $ps }})
             {{- end }}
             body = strings.NewReader(forms.Encode())
         {{- else if eq $contentType `"multipart/form-data"` }}
             forms := url.Values{}
-            {{- range .Request.Body }}
-                {{- $ps := toStringFunc .Schema (printf "%s.%s" $parans (pascal .Name)) true }}
-                forms.Add("{{ .Spec.Name }}", {{ $ps }})
+            {{- range .Request.Body.Properties }}
+                {{- $ps := toStringFunc . (printf "%s.%s" $parans (pascal .Name)) true }}
+                forms.Add("{{ .Name }}", {{ $ps }})
             {{- end }}
             body = forms
         {{- else }}

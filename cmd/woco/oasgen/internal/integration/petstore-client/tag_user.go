@@ -12,11 +12,6 @@ type CreateUserRequest struct {
 	User `json:",inline"`
 }
 
-// CreateUserResponse Create user response
-type CreateUserResponse struct {
-	UserID string `json:"userID,omitempty"`
-}
-
 // CreateUserProfileRequest is the request object for (POST /user/profile)
 type CreateUserProfileRequest struct {
 	// CreateUserProfileRequestBody A JSON object
@@ -25,12 +20,12 @@ type CreateUserProfileRequest struct {
 
 // CreateUsersWithArrayInputRequest is the request object for (POST /user/createWithArray)
 type CreateUsersWithArrayInputRequest struct {
-	UserArray []*User
+	UserArray []*User `binding:"required" json:"userArray"`
 }
 
 // CreateUsersWithListInputRequest is the request object for (POST /user/createWithList)
 type CreateUsersWithListInputRequest struct {
-	UserArray []*User
+	UserArray []*User `binding:"required" json:"userArray"`
 }
 
 // DeleteUserRequest is the request object for (DELETE /user/{username})
@@ -60,6 +55,23 @@ type TokenRequest struct {
 	GrantType    GrantType `binding:"required,oneof=client_credentials" form:"grant_type"`
 }
 
+// UpdateUserRequest is the request object for (PUT /user/{username})
+type UpdateUserRequest struct {
+	PathParams UpdateUserRequestPathParams
+	Body       UpdateUserRequestBody
+}
+
+type UpdateUserRequestPathParams struct {
+	// Username name that need to be deleted
+	Username string `binding:"required" uri:"username"`
+}
+
+// UpdateUser This can only be done by the logged in user.
+type UpdateUserRequestBody struct {
+	// UpdateUserRequestBody A User who is purchasing from the pet store
+	User `json:",inline"`
+}
+
 // GrantType defines the type for the grant_type.grant_type enum field.
 type GrantType string
 
@@ -82,24 +94,11 @@ func GrantTypeValidator(gt GrantType) error {
 	}
 }
 
-// TokenResponse successful operation
 type TokenResponse struct {
 	AccessToken string `json:"access_token,omitempty"`
 	ExpiresIn   int    `json:"expires_in,omitempty"`
 }
 
-// UpdateUserRequest is the request object for (PUT /user/{username})
-type UpdateUserRequest struct {
-	PathParams UpdateUserRequestPathParams
-	Body       UpdateUserRequestBody
-}
-
-type UpdateUserRequestPathParams struct {
-	// Username name that need to be deleted
-	Username string `binding:"required" uri:"username"`
-}
-
-type UpdateUserRequestBody struct {
-	// UpdateUserRequestBody A User who is purchasing from the pet store
-	User `json:",inline"`
+type CreateUserResponse struct {
+	UserID string `json:"userID,omitempty"`
 }

@@ -80,12 +80,12 @@ func TestGenerateAfter(t *testing.T) {
 			shipDate, ok := orderType.FieldByName("ShipDate")
 			require.True(t, ok)
 			assert.EqualValues(t, `shipDate,omitempty`, shipDate.Tag.Get("json"))
-			assert.EqualValues(t, `time.Time`, shipDate.Type.String())
+			assert.EqualValues(t, `*time.Time`, shipDate.Type.String())
 
 			orderDate, ok := orderType.FieldByName("OrderDate")
 			require.True(t, ok)
 			assert.EqualValues(t, `omitempty,ltfield=ShipDate`, orderDate.Tag.Get("binding"))
-			assert.EqualValues(t, `time.Time`, orderDate.Type.String())
+			assert.EqualValues(t, `*time.Time`, orderDate.Type.String())
 
 			status, ok := orderType.FieldByName("Status")
 			require.True(t, ok)
@@ -153,7 +153,7 @@ func TestGenerateAfter(t *testing.T) {
 
 			arrayBody := reflect.TypeOf(CreateUsersWithArrayInputRequest{})
 			assert.EqualValues(t, `UserArray`, arrayBody.Field(0).Name)
-			assert.EqualValuesf(t, "", arrayBody.Field(0).Tag.Get("binding"), "array body should not have binding tag")
+			assert.EqualValuesf(t, "required", arrayBody.Field(0).Tag.Get("binding"), "ref the UserArray is require that should have binding tag")
 			assert.EqualValues(t, `[]*petstore.User`, arrayBody.Field(0).Type.String())
 
 			prHeader := reflect.TypeOf(DeletePetRequestHeaderParams{})

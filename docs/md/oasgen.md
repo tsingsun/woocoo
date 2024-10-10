@@ -46,6 +46,10 @@ woco oasgen --client
 woco oasgen -c ./oasgen/internal/integration/config.yaml --client
 ```
 
+:::note
+如果在monorepo中,需要指定`package`参数.遇到`root package or module was not found for`错误时,请检查`package`参数是否正确.
+:::
+
 接下来让我们看下配置文件内容:
 
 ```yaml

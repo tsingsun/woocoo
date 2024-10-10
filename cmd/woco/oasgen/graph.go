@@ -23,9 +23,11 @@ type (
 	// shared between all generated nodes.
 	Config struct {
 		OpenAPISchema string `json:"spec,omitempty"`
-		Package       string `json:"package"`
-		Target        string `json:"target,omitempty"`
-		Header        string `json:"header,omitempty"`
+		// Package is the package name for the generated code.
+		// If empty, the package name is derived from the Target directory. But if in mono repo project, the package name should be set.
+		Package string `json:"package"`
+		Target  string `json:"target,omitempty"`
+		Header  string `json:"header,omitempty"`
 		// Templates specifies a list of alternative templates to execute or
 		// to override the default. If nil, the default template is used.
 		//

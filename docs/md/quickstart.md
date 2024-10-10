@@ -15,7 +15,7 @@ $ go get github.com/tsingsun/woocoo
 
 ```
 
-## 通过woco cli快速开始
+## 通过cli快速开始
 
 还可以通过cli工具快速创建一个项目来了解:
 

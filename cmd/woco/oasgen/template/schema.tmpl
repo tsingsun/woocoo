@@ -8,10 +8,13 @@
 {{ template "import" $ }}
 
 {{- range .Schemas}}
-    {{- if not .IsEnum }}
-        {{- template "help/schema" .}}
-    {{- end }}
-    {{- template "help/enum" .}}
+    {{- if .IsComponent }}
+        {{- if .IsEnum }}
+            {{- template "help/enum" .}}
+        {{- else }}
+            {{- template "help/schema" .}}
+        {{- end }}
+    {{- end}}
 
 {{- end}}
 

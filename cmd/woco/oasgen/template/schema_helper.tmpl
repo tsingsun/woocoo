@@ -15,6 +15,24 @@
     {{- end }}
 {{- end }}
 
+{{- define "help/schema_request"}}
+    {{- if .IsRequest }}
+        {{- if not .IsEnum }}
+            {{- template "help/schema" .}}
+        {{- end }}
+        {{- template "help/enum" .}}
+    {{- end}}
+{{- end }}
+
+{{- define "help/schema_response"}}
+    {{- if .IsResponse }}
+        {{- if not .IsEnum }}
+            {{- template "help/schema" .}}
+        {{- end }}
+        {{- template "help/enum" .}}
+    {{- end}}
+{{- end }}
+
 {{- define "help/enum" }}
     {{- range .EnumsProperties }}
         {{/* Type ident store the name of enum name */}}

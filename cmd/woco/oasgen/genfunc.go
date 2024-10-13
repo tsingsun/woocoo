@@ -1,0 +1,150 @@
+package oasgen
+
+import (
+	"fmt"
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/tsingsun/woocoo/cmd/woco/code"
+	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
+	"strconv"
+)
+
+// genComponentSchemas generate component schemas
+//
+// make sure this method is run first,because type map will change in genSchemaRef by request or response
+// and isReplace will be not correct
+func genComponentSchemas(c *Config, spec *openapi3.T) {
+	tmpTypeMap := make(map[string]*code.TypeInfo)
+	for k, v := range c.TypeMap {
+		tmpTypeMap[k] = v
+	}
+	for _, name := range sortPropertyKeys(spec.Components.Schemas) {
+		schemaRef := spec.Components.Schemas[name]
+		k := ComponentsRefPrefix + name
+		gs := genSchemaRef(c, NewSchemaOptions(WithSchemaName(name), WithSchemaSpec(schemaRef), WithSchemaZone(SchemaZoneComponent)))
+		if tp, ok := tmpTypeMap[k]; ok { // schemas do not has a ref
+			gs.IsReplace = true
+			gs.Type = tp
+		}
+		c.AddTypeMap(k, gs.Type)
+		c.AddSchema(name, gs)
+	}
+	return
+}
+
+// generate parameter from spec. the spec must have schema or content
+// TODO Content Now only support application/json
+func genParameter(c *Config, op *Operation, spec *openapi3.ParameterRef) *Parameter {
+	pv := spec.Value
+	name := spec.Value.Name
+	ep := &Parameter{
+		Name: name,
+		Spec: pv,
+	}
+	switch {
+	case pv.Schema != nil:
+		ep.Schema = genSchemaRef(c, SchemaOptions{
+			PrefixName: op.Name,
+			Name:       name,
+			SchemaZone: SchemaZoneRequest,
+			Spec:       pv.Schema,
+			Required:   ep.Spec.Required})
+		if !ep.Spec.Required {
+			ep.Schema.Type.AsPointer()
+		}
+	case pv.Content != nil:
+		mt, ok := pv.Content["application/json"]
+		if !ok {
+			return ep
+		}
+		ep.Schema = genSchemaRef(c, SchemaOptions{
+			Name:       name,
+			SchemaZone: SchemaZoneRequest,
+			Spec:       mt.Schema,
+		})
+	default:
+		panic(fmt.Errorf("parameter %s must have Spec or content", pv.Name))
+	}
+	ep.initStructTag()
+	return ep
+}
+
+func genSchemaRef(c *Config, option SchemaOptions) *Schema {
+	sch := &Schema{
+		SchemaOptions: option,
+		Properties:    make(map[string]*Schema),
+	}
+	defer func() {
+		// add schema to config, if it is a ref, not add
+		if sch.IsRef || sch.IsArray || sch.Name == "" {
+			return
+		}
+		switch sch.Type.Type {
+		case code.TypeOther:
+			c.AddSchema(sch.Name, sch)
+		case code.TypeEnum:
+			key := helper.Pascal(sch.PrefixName) + helper.Pascal(sch.Name)
+			c.AddSchema(key, sch)
+		}
+	}()
+	if sch.IsRef {
+		// generate dependent schema
+		_, ok := c.FindSchema(sch.Spec.Ref)
+		if !ok {
+			genSchemaRef(c, option.With(WithSchemaSpec(option.Spec), WithNotRef(), WithSchemaName("")))
+		}
+		ok = sch.BuildFromConfig(c)
+		if ok {
+			return sch
+		}
+	}
+	sch.GenSchemaType(c)
+	sch.FixRequired()
+	for k, v := range sch.Spec.Value.Extensions {
+		switch k {
+		case goTag:
+			sch.StructTags = append(sch.StructTags, v.(string))
+		}
+	}
+
+	// allOf
+	if sch.Spec.Value != nil && len(sch.Spec.Value.AllOf) > 0 {
+		// allof node is a new schema
+		sch.IsRef = false
+		for i, one := range sch.Spec.Value.AllOf {
+			if one.Ref != "" {
+				gs := genSchemaRef(c, option.With(WithSchemaSpec(one), WithSchemaName("")))
+				// inline struct
+				gs.IsInline = true
+				sch.Properties[strconv.Itoa(i)] = gs
+				sch.properties = append(sch.properties, gs)
+			} else {
+				for _, oname := range sortPropertyKeys(one.Value.Properties) {
+					schemaRef := one.Value.Properties[oname]
+					gs := genSchemaRef(c, option.With(WithSchemaSpec(schemaRef), WithSchemaName(oname),
+						WithSchemaRequired(helper.InStrSlice(one.Value.Required, oname))))
+					sch.Properties[oname] = gs
+					sch.properties = append(sch.properties, gs)
+				}
+			}
+		}
+	}
+	sch.CollectTags()
+	sch.setAlias()
+	// set to c.schemas , and avoid recursive
+	if sch.IsRef {
+		if sch.IsAlias {
+			// not the root schema, set alias to type todo set type other field
+			sch.Type.Ident = helper.Pascal(schemaNameFromRef(sch.Spec.Ref))
+		}
+	}
+	// if component schema is enum, we need to set the ident of the type to avoid conflict
+	if sch.IsEnum() && sch.IsComponent() {
+		if sch.ItemSchema != nil {
+			sch.ItemSchema.Type.Ident = helper.Pascal(sch.PrefixName) + helper.Pascal(sch.Name)
+		} else {
+			sch.Type.Ident = helper.Pascal(sch.PrefixName) + helper.Pascal(sch.Name)
+		}
+	}
+	sch.genProperties(c, sch.Spec)
+	return sch
+}

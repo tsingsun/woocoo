@@ -119,34 +119,6 @@ func genOperation(c *Config, spec *openapi3.T) (ops []*Operation) {
 	return
 }
 
-// generate parameter from spec. the spec must have schema or content
-// TODO Content Now only support application/json
-func genParameter(c *Config, spec *openapi3.ParameterRef) *Parameter {
-	pv := spec.Value
-	name := spec.Value.Name
-	ep := &Parameter{
-		Name: name,
-		Spec: pv,
-	}
-	switch {
-	case pv.Schema != nil:
-		ep.Schema = genSchemaRef(c, name, pv.Schema, SchemaOption{Required: ep.Spec.Required})
-		if !ep.Spec.Required {
-			ep.Schema.Type.AsPointer()
-		}
-	case pv.Content != nil:
-		mt, ok := pv.Content["application/json"]
-		if !ok {
-			return ep
-		}
-		ep.Schema = genSchemaRef(c, name, mt.Schema, SchemaOption{})
-	default:
-		panic(fmt.Errorf("parameter %s must have Spec or content", pv.Name))
-	}
-	ep.initStructTag()
-	return ep
-}
-
 func (op *Operation) GenSecurity(ssSpec openapi3.SecuritySchemes) {
 	if op.Spec.Security == nil {
 		return
@@ -171,8 +143,12 @@ func (op *Operation) GenSecurity(ssSpec openapi3.SecuritySchemes) {
 
 // GenRequest generate request parameters and body.
 func (op *Operation) GenRequest() {
+	tag := ""
+	if len(op.Spec.Tags) > 0 {
+		tag = op.Spec.Tags[0]
+	}
 	for _, p := range op.Spec.Parameters {
-		gp := genParameter(op.Config, p)
+		gp := genParameter(op.Config, op, p)
 		op.AddParameter(gp)
 		switch gp.Spec.In {
 		case "path":
@@ -208,7 +184,10 @@ func (op *Operation) GenRequest() {
 		for ct, mediaType := range rb.Value.Content {
 			op.Request.BodyContentTypes = append(op.Request.BodyContentTypes, ct)
 			if schema == nil {
-				schema = genSchemaRef(op.Config, rname, mediaType.Schema, SchemaOption{Required: rb.Value.Required})
+				schema = genSchemaRef(
+					op.Config,
+					NewSchemaOptions(WithSchemaName(rname), WithSchemaSpec(mediaType.Schema), WithSchemaTag(tag),
+						WithSchemaRequired(rb.Value.Required), WithSchemaZone(SchemaZoneRequest)))
 				if rb.Ref == "" && mediaType.Schema.Ref == "" {
 					for _, property := range schema.properties {
 						param := newParameterFromSchema(op.Config, property)
@@ -258,6 +237,10 @@ func (op *Operation) GenResponse(codeStr string, spec *openapi3.ResponseRef) *Re
 	if spec == nil {
 		return nil
 	}
+	tag := ""
+	if len(op.Spec.Tags) > 0 {
+		tag = op.Spec.Tags[0]
+	}
 	status, err := strconv.Atoi(codeStr)
 	if err != nil {
 		panic(fmt.Errorf("response status code must be int:%s", codeStr))
@@ -276,11 +259,8 @@ func (op *Operation) GenResponse(codeStr string, spec *openapi3.ResponseRef) *Re
 		mediaType := spec.Value.Content[name]
 		r.ContentTypes = append(r.ContentTypes, name)
 		if r.Schema == nil { // nil at first
-			schemaName := ""
-			if mediaType.Schema.Ref == "" {
-				schemaName = r.Name
-			}
-			r.Schema = genSchemaRef(op.Config, schemaName, mediaType.Schema, SchemaOption{})
+			r.Schema = genSchemaRef(op.Config, NewSchemaOptions(WithSchemaName(r.Name), WithSchemaSpec(mediaType.Schema),
+				WithSchemaZone(SchemaZoneResponse), WithSchemaTag(tag)))
 		}
 	}
 

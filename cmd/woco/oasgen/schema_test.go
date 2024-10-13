@@ -10,9 +10,7 @@ import (
 func TestGenComponentSchema_genSchemaRef(t *testing.T) {
 	type args struct {
 		c    *Config
-		name string
-		spec *openapi3.SchemaRef
-		opts SchemaOption
+		opts SchemaOptions
 	}
 	tests := []struct {
 		name string
@@ -25,15 +23,17 @@ func TestGenComponentSchema_genSchemaRef(t *testing.T) {
 				c: &Config{
 					Package: "petstore",
 				},
-				name: "labelSet",
-				spec: &openapi3.SchemaRef{
-					Ref: "",
-					Value: &openapi3.Schema{
-						Type: "object",
-						AdditionalProperties: openapi3.AdditionalProperties{
-							Schema: &openapi3.SchemaRef{
-								Value: &openapi3.Schema{
-									Type: "string",
+				opts: SchemaOptions{
+					Name: "labelSet",
+					Spec: &openapi3.SchemaRef{
+						Ref: "",
+						Value: &openapi3.Schema{
+							Type: "object",
+							AdditionalProperties: openapi3.AdditionalProperties{
+								Schema: &openapi3.SchemaRef{
+									Value: &openapi3.Schema{
+										Type: "string",
+									},
 								},
 							},
 						},
@@ -41,7 +41,9 @@ func TestGenComponentSchema_genSchemaRef(t *testing.T) {
 				},
 			},
 			want: &Schema{
-				Name: "labelSet",
+				SchemaOptions: SchemaOptions{
+					Name: "labelSet",
+				},
 				Type: &code.TypeInfo{
 					Ident:   "map[string]string",
 					PkgName: "petstore",
@@ -56,21 +58,25 @@ func TestGenComponentSchema_genSchemaRef(t *testing.T) {
 				c: &Config{
 					Package: "petstore",
 				},
-				name: "PetStatus",
-				spec: &openapi3.SchemaRef{
-					Ref: "",
-					Value: &openapi3.Schema{
-						Type: "string",
-						Enum: []interface{}{
-							"available",
-							"pending",
-							"sold",
+				opts: SchemaOptions{
+					Name: "PetStatus",
+					Spec: &openapi3.SchemaRef{
+						Ref: "",
+						Value: &openapi3.Schema{
+							Type: "string",
+							Enum: []interface{}{
+								"available",
+								"pending",
+								"sold",
+							},
 						},
 					},
 				},
 			},
 			want: &Schema{
-				Name: "PetStatus",
+				SchemaOptions: SchemaOptions{
+					Name: "PetStatus",
+				},
 				Type: &code.TypeInfo{
 					Ident:   "PetStatus",
 					PkgName: "petstore",
@@ -82,7 +88,7 @@ func TestGenComponentSchema_genSchemaRef(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := genSchemaRef(tt.args.c, tt.args.name, tt.args.spec, tt.args.opts)
+			got := genSchemaRef(tt.args.c, tt.args.opts)
 			got.setAlias()
 			assert.Equal(t, tt.want.Name, got.Name)
 			assert.Equal(t, tt.want.IsAlias, got.IsAlias)
@@ -96,7 +102,7 @@ func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 		c    *Config
 		name string
 		spec *openapi3.SchemaRef
-		opts SchemaOption
+		opts SchemaOptions
 	}
 	tests := []struct {
 		name string
@@ -110,7 +116,9 @@ func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 					Package: "petstore",
 					schemas: map[string]*Schema{
 						"#/components/schemas/labelSet": {
-							Name: "labelSet",
+							SchemaOptions: SchemaOptions{
+								Name: "labelSet",
+							},
 							Type: &code.TypeInfo{
 								Ident: "map[string]string",
 							},
@@ -159,29 +167,37 @@ func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 				},
 			},
 			want: &Schema{
-				Name: "Tag",
+				SchemaOptions: SchemaOptions{
+					Name: "Tag",
+				},
 				Type: &code.TypeInfo{
 					Ident:   "*Tag",
 					PkgName: "petstore",
 				},
 				Properties: map[string]*Schema{
 					"id": {
-						Name: "ID",
+						SchemaOptions: SchemaOptions{
+							Name: "ID",
+						},
 						Type: &code.TypeInfo{
 							Type: code.TypeInt64,
 						},
 					},
 					"labels": {
-						Name: "labels",
+						SchemaOptions: SchemaOptions{
+							Name:  "Labels",
+							IsRef: true,
+						},
 						Type: &code.TypeInfo{
 							Ident:    "LabelSet",
 							Type:     code.TypeOther,
 							Nillable: true,
 						},
-						IsRef: true,
 					},
 					"name": {
-						Name: "Name",
+						SchemaOptions: SchemaOptions{
+							Name: "Name",
+						},
 						Type: &code.TypeInfo{
 							Type: code.TypeString,
 						},
@@ -192,7 +208,7 @@ func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := genSchemaRef(tt.args.c, tt.args.name, tt.args.spec, tt.args.opts)
+			got := genSchemaRef(tt.args.c, tt.args.opts)
 			assert.Equal(t, tt.want.Properties["labels"].Name, got.Properties["labels"].Name)
 			assert.Equal(t, tt.want.Properties["labels"].IsRef, got.Properties["labels"].IsRef)
 			assert.Equal(t, tt.want.Properties["labels"].Type.Ident, got.Properties["labels"].Type.Ident)

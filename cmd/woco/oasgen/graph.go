@@ -103,7 +103,7 @@ func (c *Config) AddSchema(ref string, schema *Schema) {
 		return
 	}
 
-	c.schemas[ref] = schema
+	c.schemas[key] = schema
 	c.Schemas = append(c.Schemas, schema)
 }
 

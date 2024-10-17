@@ -330,6 +330,18 @@ func (sch *Schema) TypeString() string {
 	if sch.Type.Nillable {
 		return s
 	}
+	switch sch.Type.Type {
+	case code.TypeInt8, code.TypeInt16, code.TypeInt32, code.TypeInt, code.TypeInt64:
+		return s
+	case code.TypeUint8, code.TypeUint16, code.TypeUint32, code.TypeUint, code.TypeUint64:
+		return s
+	case code.TypeFloat32, code.TypeFloat64:
+		return s
+	case code.TypeString, code.TypeBytes, code.TypeEnum:
+		return s
+	case code.TypeBool:
+		return s
+	}
 	if !sch.Required && !sch.Type.Nillable {
 		if strings.HasPrefix(s, "*") {
 			return s

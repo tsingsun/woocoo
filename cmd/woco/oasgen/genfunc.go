@@ -68,15 +68,24 @@ func genParameter(c *Config, op *Operation, spec *openapi3.ParameterRef) *Parame
 	return ep
 }
 
-func genSchemaRef(c *Config, option SchemaOptions) *Schema {
-	sch := &Schema{
+func genSchemaRef(c *Config, option SchemaOptions) (sch *Schema) {
+	sch = &Schema{
 		SchemaOptions: option,
 		Properties:    make(map[string]*Schema),
 	}
 	defer func() {
-		// add schema to config, if it is a ref, not add
-		if sch.IsRef || sch.IsArray || sch.Name == "" {
+		switch {
+		case sch.IsRef:
+			// reference to component no need to add schema map
 			return
+		case sch.IsArray:
+			return
+		case sch.Name == "":
+			return
+		case sch.Type.Ident == "":
+			// if native type, no need to generate schema
+			return
+
 		}
 		switch sch.Type.Type {
 		case code.TypeOther:

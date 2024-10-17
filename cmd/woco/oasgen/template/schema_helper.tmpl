@@ -19,8 +19,9 @@
     {{- if .IsRequest }}
         {{- if not .IsEnum }}
             {{- template "help/schema" .}}
+        {{- else }}
+            {{- template "help/enum" .}}
         {{- end }}
-        {{- template "help/enum" .}}
     {{- end}}
 {{- end }}
 
@@ -28,8 +29,9 @@
     {{- if .IsResponse }}
         {{- if not .IsEnum }}
             {{- template "help/schema" .}}
+        {{- else }}
+            {{- template "help/enum" .}}
         {{- end }}
-        {{- template "help/enum" .}}
     {{- end}}
 {{- end }}
 
@@ -73,7 +75,7 @@
         {{- if .IsInline }}
             {{ .Type }} `json:",inline"`
         {{- else }}
-            {{ pascal .Name }} {{ .Type }} {{ .StructTagsString }}
+            {{ pascal .Name }} {{ .TypeString }} {{ .StructTagsString }}
         {{- end }}
     {{- end }}
 {{- end}}

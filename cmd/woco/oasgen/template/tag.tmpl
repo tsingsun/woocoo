@@ -86,12 +86,12 @@
     {{ end }}
     {{ $tag := .Name}}
     {{- range .Schemas}}
-        {{- if eq .Name $tag }}
+        {{- if eq .Tag $tag }}
             {{template "help/schema_request" .}}
         {{- end }}
     {{- end}}
     {{- range .Schemas}}
-        {{- if eq .Name $tag }}
+        {{- if eq .Tag $tag }}
             {{template "help/schema_response" .}}
         {{- end }}
     {{- end}}

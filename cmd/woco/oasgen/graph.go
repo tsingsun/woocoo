@@ -108,6 +108,9 @@ func (c *Config) AddSchema(ref string, schema *Schema) {
 }
 
 func (c *Config) GetSchemaKey(in string, schema *Schema) (ref string) {
+	if schema.Spec.Ref != "" {
+		return strings.ToLower(schema.Spec.Ref)
+	}
 	switch {
 	case schema.IsComponent():
 		ref = ComponentsRefPrefix + in

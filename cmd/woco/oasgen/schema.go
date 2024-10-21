@@ -14,8 +14,8 @@ import (
 
 const (
 	ComponentsRefPrefix = "#/components/schemas/"
-	RequestPrefix       = "#/request/"
-	ResponsePrefix      = "#/response/"
+	RequestPrefix       = "#/components/requestBodies/"
+	ResponsePrefix      = "#/components/response/"
 )
 
 var (
@@ -45,8 +45,7 @@ const (
 	SchemaZoneResponse
 )
 
-// Schema is for schema of openapi3
-// a struct , the struct 's field all is Schema
+// Schema describe a struct or a property in schema.
 // Properties are sort by name, because openapi3 use map to store properties,map is not ordered.
 type Schema struct {
 	SchemaOptions
@@ -64,6 +63,19 @@ type Schema struct {
 	ItemSchema *Schema
 }
 
+func NewSchema(options ...SchemaOption) *Schema {
+	sch := &Schema{
+		SchemaOptions: NewSchemaOptions(options...),
+	}
+	sch.Properties = make(map[string]*Schema)
+	return sch
+}
+
+func (sch *Schema) AddProperties(name string, schema *Schema) {
+	sch.Properties[name] = schema
+	sch.properties = append(sch.properties, schema)
+}
+
 // GenSchemaType generates the type of the parameter by SPEC.
 // schema type from : the schema's sepc , additionalProperties, array items
 func (sch *Schema) GenSchemaType(c *Config) {
@@ -71,6 +83,10 @@ func (sch *Schema) GenSchemaType(c *Config) {
 	if tm := c.TypeMap[sch.Spec.Ref]; tm != nil {
 		sch.Type = tm.Clone()
 		return
+	}
+	var typeName = sch.Name
+	if sch.Spec.Ref != "" {
+		typeName = schemaNameFromRef(sch.Spec.Ref)
 	}
 	sv := sch.Spec.Value
 	sepcType := sv.Type
@@ -198,7 +214,7 @@ func (sch *Schema) GenSchemaType(c *Config) {
 			info.Nillable = true
 			break
 		}
-		info.Ident = helper.Pascal(sch.Name)
+		info.Ident = helper.Pascal(typeName)
 		if info.Ident == "" {
 			panic("object should be a ident name")
 		}
@@ -441,7 +457,6 @@ func (sch *Schema) BuildFromConfig(c *Config) bool {
 	if !ok {
 		return false
 	}
-
 	sch.properties = s.properties
 	sch.Properties = s.Properties
 	sch.StructTags = s.StructTags

@@ -1,5 +1,7 @@
 package oasgen
 
+import "github.com/getkin/kin-openapi/openapi3"
+
 type Request struct {
 	// Name is the name of the request, which is the name of the operation.
 	Name string
@@ -9,10 +11,16 @@ type Request struct {
 	QueryParameters  []*Parameter
 	HeaderParameters []*Parameter
 	CookieParameters []*Parameter
-	Body             []*Parameter
+	Body             *RequestBody
 	BodyContentTypes []string
 
 	BindKind BindKind
+}
+
+type RequestBody struct {
+	Name   string
+	Schema *Schema
+	Spec   *openapi3.RequestBodyRef
 }
 
 func (r *Request) HasPath() bool {
@@ -32,7 +40,7 @@ func (r *Request) HasCookie() bool {
 }
 
 func (r *Request) HasBody() bool {
-	return len(r.Body) > 0
+	return r.Body != nil
 }
 
 // HasMultiBind returns true if the request has multiple bind kind.

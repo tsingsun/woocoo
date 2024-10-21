@@ -3,7 +3,6 @@ package oasgen
 import (
 	"fmt"
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/tsingsun/woocoo/cmd/woco/code"
 	"github.com/tsingsun/woocoo/cmd/woco/internal/helper"
 	"net/http"
 	"sort"
@@ -41,15 +40,6 @@ type (
 		ResponseOK       *Response
 		ResponseNotFound *Response
 		IgnoreInterface  bool
-	}
-
-	// Parameter include parameter and requestBody
-	Parameter struct {
-		Name   string
-		Schema *Schema
-		Spec   *openapi3.Parameter
-		// position index in path uri
-		Index int
 	}
 
 	// Response is for response of openapi3
@@ -177,38 +167,24 @@ func (op *Operation) GenRequest() {
 		if rb.Ref != "" {
 			rname = schemaNameFromRef(rb.Ref)
 		}
-		var (
-			schema *Schema
-			params []*Parameter
-		)
+		body := &RequestBody{
+			Spec: rb,
+			Name: rname,
+		}
 		for ct, mediaType := range rb.Value.Content {
 			op.Request.BodyContentTypes = append(op.Request.BodyContentTypes, ct)
-			if schema == nil {
-				schema = genSchemaRef(
+			if body.Schema == nil {
+				schema := genSchemaRef(
 					op.Config,
-					NewSchemaOptions(WithSchemaName(rname), WithSchemaSpec(mediaType.Schema), WithSchemaTag(tag),
+					NewSchemaOptions(WithSchemaName(rname), WithSubSchemaSpec(mediaType.Schema), WithSchemaTag(tag),
 						WithSchemaRequired(rb.Value.Required), WithSchemaZone(SchemaZoneRequest)))
-				if rb.Ref == "" && mediaType.Schema.Ref == "" {
-					for _, property := range schema.properties {
-						param := newParameterFromSchema(op.Config, property)
-						params = append(params, param)
-					}
-				} else {
-					// from reference Spec
-					schema.IsInline = mediaType.Schema.Ref != ""
-					param := newParameterFromSchema(op.Config, schema)
-					params = append(params, param)
-				}
+				body.Schema = schema
+				// from reference Spec
+				schema.IsInline = mediaType.Schema.Ref != ""
 			}
 		}
-		for _, param := range params {
-			param.Schema.AppendContentTypeStructTag(op.Config, param.Name, op.Request.BodyContentTypes)
-			if param.Name == rname { // if name is operation request name
-				param.Schema.StructTags = param.Schema.StructTags[:0]
-			}
-		}
-		op.AddParameter(params...)
-		op.Request.Body = params
+		body.Schema.AppendContentTypeStructTag(op.Config, body.Schema.Name, op.Request.BodyContentTypes)
+		op.Request.Body = body
 	}
 }
 
@@ -277,7 +253,7 @@ func (op *Operation) AddParameter(params ...*Parameter) {
 }
 
 func (op *Operation) HasRequest() bool {
-	return len(op.Request.Parameters) > 0
+	return len(op.Request.Parameters) > 0 || op.Request.Body != nil
 }
 
 func (op *Operation) HasResponse() bool {
@@ -307,47 +283,6 @@ func (t *Tag) InterfaceName() string {
 		return "Service"
 	}
 	return t.Name
-}
-
-func newParameterFromSchema(c *Config, schema *Schema) *Parameter {
-	name := schema.Name
-	p := &Parameter{
-		Name:   name,
-		Schema: schema,
-		Spec: &openapi3.Parameter{
-			Name:        name,
-			In:          "",
-			Description: schema.Spec.Value.Description,
-			Required:    schema.Required,
-		},
-	}
-	return p
-}
-
-func (p *Parameter) initStructTag() {
-	tagName := p.Name
-	ts := make([]string, 0, 2)
-	switch p.Spec.In {
-	case "":
-		// from content
-		break
-	case "path":
-		// {:id}
-		ts = append(ts, fmt.Sprintf(`uri:"%s"`, tagName))
-	case "header":
-		ts = append(ts, fmt.Sprintf(`header:"%s"`, tagName))
-	case "cookie":
-		ts = append(ts, fmt.Sprintf(`cookie:"%s"`, tagName))
-	case "query":
-		fallthrough
-	default:
-		// query /id/ or form , body
-		if p.Schema.Type.Type == code.TypeTime {
-
-		}
-		ts = append(ts, fmt.Sprintf(`form:"%s"`, tagName))
-	}
-	p.Schema.StructTags = append(p.Schema.StructTags, ts...)
 }
 
 func sortSpecOperationKeys(spec map[string]*openapi3.Operation) []string {

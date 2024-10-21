@@ -23,7 +23,7 @@
                     QueryParams {{ .RequestName }}QueryParams
                 {{- end }}
                 {{- if .Request.HasBody }}
-                    Body {{ .RequestName }}Body
+                    Body {{ .Request.Body.Name }}
                 {{- end }}
             {{- else }}
                 {{- if .Request.HasPath }}
@@ -39,7 +39,7 @@
                     {{- range .Request.CookieParameters }}{{ template "parameter-field" .}}{{ end }}
                 {{- end }}
                 {{- if .Request.HasBody }}
-                    {{- range .Request.Body }}{{ template "request-body" .}}{{ end }}
+                    {{- range .Request.Body.Schema.Properties }}{{ template "request-body" .}}{{ end }}
                 {{ end }}
             {{- end }}
             }
@@ -65,23 +65,14 @@
                     }
                 {{ end }}
                 {{ if .Request.HasBody }}
-                    type {{ .RequestName }}Body struct {
-                    {{- range .Request.Body }}{{ template "request-body" .}}{{ end }}
+                    {{- if .Request.Body.Spec.Value.Description }}
+                        {{ stringToGoCommentWithPrefix .Spec.Description (pascal .Name) }}
+                    {{- end }}
+                    type {{ .Request.Body.Name }} struct {
+                    {{- range .Request.Body.Schema.Properties }}{{ template "request-body" .}}{{ end }}
                     }
                 {{ end }}
             {{- end }}
-        {{ end }}
-        {{ if .HasResponse}}
-            {{ with .ResponseOK }}
-                {{ if and (not .Schema.IsRef) .Schema.Properties }}
-                    {{- if .Spec.Description }}
-                        {{ stringToGoCommentWithPrefix .Spec.Description (pascal .Schema.Name) }}
-                    {{- end }}
-                    type {{ pascal .Schema.Name }} struct {
-                    {{- template "help/properties" .Schema}}
-                    }
-                {{ end }}
-            {{ end }}
         {{ end }}
     {{ end }}
     {{ $tag := .Name}}
@@ -104,19 +95,17 @@
     {{ pascal .Name }} {{ .Schema.TypeString }} {{ .Schema.StructTagsString }}
 {{- end }}
 
-{{- /* gotype: github.com/tsingsun/woocoo/cmd/woco/oasgen.Parameter */}}
 {{- define "request-body" }}
-    {{- /* body parameter spec is in Schema, so get raw from .Schema  */}}
-    {{- if .Schema.IsInline }}
-        {{- if .Spec.Description }}
-            {{ stringToGoCommentWithPrefix .Spec.Description (pascal .Schema.Name) }}
+    {{- if .IsInline }}
+        {{- if .Spec.Value.Description }}
+            {{ stringToGoCommentWithPrefix .Spec.Value.Description (pascal .Name) }}
         {{- end }}
-        {{ .Schema.TypeString }} `json:",inline"`
+        {{ .TypeString }} `json:",inline"`
     {{- else }}
-        {{- if .Spec.Description }}
-            {{ stringToGoCommentWithPrefix .Spec.Description (pascal .Schema.Name) }}
+        {{- if .Spec.Value.Description }}
+            {{ stringToGoCommentWithPrefix .Spec.Value.Description (pascal .Name) }}
         {{- end }}
         {{- /* unlike parameter, body field keep base type not pointer  */}}
-        {{ pascal .Name }} {{ .Schema.Type }} {{ .Schema.StructTagsString }}
+        {{ pascal .Name }} {{ .Type }} {{ .StructTagsString }}
     {{- end }}
 {{- end }}

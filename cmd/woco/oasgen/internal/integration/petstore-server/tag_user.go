@@ -8,29 +8,27 @@ import (
 
 // CreateUserRequest is the request object for (POST /user)
 type CreateUserRequest struct {
-	// CreateUserRequestBody A User who is purchasing from the pet store
-	User `json:",inline"`
-}
-
-// CreateUserResponse Create user response
-type CreateUserResponse struct {
-	UserID string `json:"userID,omitempty"`
+	Email     string `binding:"omitempty,email" json:"email,omitempty" xml:"email"`
+	FirstName string `json:"firstName,omitempty" xml:"firstName"`
+	ID        int64  `json:"id,omitempty" xml:"id"`
+	LastName  string `json:"lastName,omitempty" xml:"lastName"`
+	Password  string `json:"password,omitempty" xml:"password"`
+	Phone     string `json:"phone,omitempty" xml:"phone"`
+	// UserStatus User Status
+	UserStatus int32  `json:"user_status,omitempty" xml:"user_status"`
+	Username   string `json:"username,omitempty" xml:"username"`
 }
 
 // CreateUserProfileRequest is the request object for (POST /user/profile)
 type CreateUserProfileRequest struct {
-	// CreateUserProfileRequestBody A JSON object
-	JsonObject `json:",inline"`
 }
 
 // CreateUsersWithArrayInputRequest is the request object for (POST /user/createWithArray)
 type CreateUsersWithArrayInputRequest struct {
-	UserArray []*User
 }
 
 // CreateUsersWithListInputRequest is the request object for (POST /user/createWithList)
 type CreateUsersWithListInputRequest struct {
-	UserArray []*User
 }
 
 // DeleteUserRequest is the request object for (DELETE /user/{username})
@@ -60,6 +58,30 @@ type TokenRequest struct {
 	GrantType    GrantType `binding:"required,oneof=client_credentials" form:"grant_type"`
 }
 
+// UpdateUserRequest is the request object for (PUT /user/{username})
+type UpdateUserRequest struct {
+	PathParams UpdateUserRequestPathParams
+	Body       UpdateUserRequestBody
+}
+
+type UpdateUserRequestPathParams struct {
+	// Username name that need to be deleted
+	Username string `binding:"required" uri:"username"`
+}
+
+// UpdateUser This can only be done by the logged in user.
+type UpdateUserRequestBody struct {
+	Email     string `binding:"omitempty,email" json:"email,omitempty" xml:"email"`
+	FirstName string `json:"firstName,omitempty" xml:"firstName"`
+	ID        int64  `json:"id,omitempty" xml:"id"`
+	LastName  string `json:"lastName,omitempty" xml:"lastName"`
+	Password  string `json:"password,omitempty" xml:"password"`
+	Phone     string `json:"phone,omitempty" xml:"phone"`
+	// UserStatus User Status
+	UserStatus int32  `json:"user_status,omitempty" xml:"user_status"`
+	Username   string `json:"username,omitempty" xml:"username"`
+}
+
 // GrantType defines the type for the grant_type.grant_type enum field.
 type GrantType string
 
@@ -82,24 +104,17 @@ func GrantTypeValidator(gt GrantType) error {
 	}
 }
 
-// TokenResponse successful operation
+type TokenRequestBody struct {
+	ClientID     string    `binding:"required" form:"client_id"`
+	ClientSecret string    `binding:"required" form:"client_secret"`
+	GrantType    GrantType `binding:"required,oneof=client_credentials" form:"grant_type"`
+}
+
 type TokenResponse struct {
 	AccessToken string `json:"access_token,omitempty"`
 	ExpiresIn   int    `json:"expires_in,omitempty"`
 }
 
-// UpdateUserRequest is the request object for (PUT /user/{username})
-type UpdateUserRequest struct {
-	PathParams UpdateUserRequestPathParams
-	Body       UpdateUserRequestBody
-}
-
-type UpdateUserRequestPathParams struct {
-	// Username name that need to be deleted
-	Username string `binding:"required" uri:"username"`
-}
-
-type UpdateUserRequestBody struct {
-	// UpdateUserRequestBody A User who is purchasing from the pet store
-	User `json:",inline"`
+type CreateUserResponse struct {
+	UserID string `json:"userID,omitempty"`
 }

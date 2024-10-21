@@ -2,6 +2,8 @@
 
 package petstore
 
+import "time"
+
 // DeleteOrderRequest is the request object for (DELETE /store/order/{orderId})
 type DeleteOrderRequest struct {
 	// OrderId ID of the order that needs to be deleted
@@ -16,6 +18,14 @@ type GetOrderByIdRequest struct {
 
 // PlaceOrderRequest is the request object for (POST /store/order)
 type PlaceOrderRequest struct {
-	// PlaceOrderRequestBody An order for a pets from the pet store
-	Order `json:",inline"`
+	Complete  bool      `json:"complete,omitempty" xml:"complete"`
+	ID        int64     `json:"id,omitempty" xml:"id"`
+	OrderDate time.Time `binding:"omitempty,ltfield=ShipDate" json:"orderDate,omitempty" time_format:"2006-01-02T15:04:05Z07:00" xml:"orderDate"`
+	PetId     int64     `json:"petId,omitempty" xml:"petId"`
+	Quantity  int32     `json:"quantity,omitempty" xml:"quantity"`
+	ShipDate  time.Time `json:"shipDate,omitempty" time_format:"2006-01-02T15:04:05Z07:00" xml:"shipDate"`
+	// Status Order Status
+	Status OrderStatus `binding:"omitempty,oneof=placed approved delivered" json:"status,omitempty" xml:"status"`
 }
+
+type GetInventoryResponse map[string]int32

@@ -2,9 +2,15 @@
 
 package petstore
 
+import "time"
+
 // AddPetRequest is the request object for (POST /pet)
 type AddPetRequest struct {
-	NewPet `json:",inline"`
+	// Pet A pet for sale in the pet store
+	*Pet `json:",inline"`
+	// Owner A User who is purchasing from the pet store
+	Owner     *User     `binding:"required" json:"owner" xml:"User"`
+	Timestamp time.Time `binding:"required" json:"timestamp" time_format:"2006-01-02T15:04:05Z07:00" xml:"timestamp"`
 }
 
 // DeletePetRequest is the request object for (DELETE /pet/{petId})
@@ -42,8 +48,14 @@ type GetPetByIdRequest struct {
 
 // UpdatePetRequest is the request object for (PUT /pet)
 type UpdatePetRequest struct {
-	// Pet A pet for sale in the pet store
-	Pet `json:",inline"`
+	// Category A category for a pet
+	Category  *Category `json:"category,omitempty" xml:"Category"`
+	ID        int64     `json:"id,omitempty" xml:"id"`
+	Name      string    `binding:"required" json:"name" xml:"name"`
+	PhotoUrls []string  `binding:"required" json:"photoUrls" xml:"photoUrl"`
+	// Status pet status in the store
+	Status PetStatus `binding:"omitempty,oneof=available pending sold" json:"status,omitempty" xml:"status"`
+	Tags   []*Tag    `json:"tags,omitempty" xml:"tag"`
 }
 
 // UpdatePetWithFormRequest is the request object for (POST /pet/{petId})
@@ -79,6 +91,21 @@ type UploadFileRequest struct {
 type UploadFileRequestPathParams struct {
 	// PetId ID of pet to update
 	PetId int64 `binding:"required" uri:"petId"`
+}
+
+type UploadFileRequestBody struct {
+	// AdditionalMetadata Additional data to pass to server
+	AdditionalMetadata string `form:"additionalMetadata"`
+	// File file to upload
+	File []byte `form:"file"`
+	Md5  string `form:"md5"`
+}
+
+type UpdatePetWithFormRequestBody struct {
+	// Name Updated name of the pet
+	Name string `form:"name"`
+	// Status Updated status of the pet
+	Status string `form:"status"`
 }
 
 type UploadFileRequestBody struct {

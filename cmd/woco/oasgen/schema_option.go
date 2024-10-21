@@ -19,6 +19,23 @@ func WithSchemaSpec(spec *openapi3.SchemaRef) SchemaOption {
 	}
 }
 
+func WithSubSchemaSpec(spec *openapi3.SchemaRef) SchemaOption {
+	return func(options *SchemaOptions) {
+		options.Spec = spec
+		options.IsRef = spec.Ref != ""
+		options.AsProperty = true
+	}
+}
+
+func WithComponent(spec *openapi3.SchemaRef) SchemaOption {
+	return func(options *SchemaOptions) {
+		options.Spec = spec
+		options.IsRef = false
+		options.Name = ""
+		options.SchemaZone = SchemaZoneComponent
+	}
+}
+
 // WithSchemaName sets the name of the schema.It is from Spec and keep the original name for set go type Tag.
 func WithSchemaName(name string) SchemaOption {
 	return func(options *SchemaOptions) {
@@ -61,10 +78,13 @@ type SchemaOptions struct {
 	PrefixName string
 	// The original OpenAPIv3 Schema.
 	Spec *openapi3.SchemaRef
+	// AsProperty indicates if the schema is nested struct.
+	AsProperty bool
 	// Required indicates if the schema is required.
-	Required   bool
+	Required bool
+	// SchemaZone indicates the zone of the schema.
 	SchemaZone SchemaZone
-	// IsRef indicates if the schema is a reference to a component schema.If schema is build from `#/components/schema`,
+	// IsRef indicates if the schema is a reference to other schema.If schema is build from `#/components/schema`,
 	// value is false.
 	IsRef bool
 }
@@ -80,20 +100,13 @@ func (s SchemaOptions) With(opts ...SchemaOption) SchemaOptions {
 	for _, opt := range opts {
 		opt(&ns)
 	}
-	//if ns.Spec != nil {
-	//	if ns.Spec.Ref != "" {
-	//		if strings.HasPrefix(ns.Spec.Ref, ComponentsRefPrefix) {
-	//			ns.SchemaZone = SchemaZoneComponent
-	//		}
-	//	}
-	//}
 	ns.Named()
 	return ns
 }
 
 // Named returns the name of the schema, if Name is empty, we will get the name from the ref.
 func (s *SchemaOptions) Named() *SchemaOptions {
-	if s.Spec.Ref != "" && s.Name == "" { // if it's a ref, we need to get the name from the ref
+	if s.Spec != nil && s.Spec.Ref != "" && s.Name == "" { // if it's a ref, we need to get the name from the ref
 		s.Name = schemaNameFromRef(s.Spec.Ref)
 	}
 	return s

@@ -75,9 +75,6 @@ func genSchemaRef(c *Config, option SchemaOptions) (sch *Schema) {
 	}
 	defer func() {
 		switch {
-		case sch.IsRef:
-			// reference to component no need to add schema map
-			return
 		case sch.IsArray:
 			return
 		case sch.Name == "":
@@ -99,7 +96,7 @@ func genSchemaRef(c *Config, option SchemaOptions) (sch *Schema) {
 		// generate dependent schema
 		_, ok := c.FindSchema(sch.Spec.Ref)
 		if !ok {
-			genSchemaRef(c, option.With(WithSchemaSpec(option.Spec), WithNotRef(), WithSchemaName("")))
+			genSchemaRef(c, option.With(WithComponent(option.Spec)))
 		}
 		ok = sch.BuildFromConfig(c)
 		if ok {
@@ -115,7 +112,7 @@ func genSchemaRef(c *Config, option SchemaOptions) (sch *Schema) {
 		}
 	}
 
-	// allOf
+	// allOf, make sub schema as properties
 	if sch.Spec.Value != nil && len(sch.Spec.Value.AllOf) > 0 {
 		// allof node is a new schema
 		sch.IsRef = false
@@ -124,15 +121,13 @@ func genSchemaRef(c *Config, option SchemaOptions) (sch *Schema) {
 				gs := genSchemaRef(c, option.With(WithSchemaSpec(one), WithSchemaName("")))
 				// inline struct
 				gs.IsInline = true
-				sch.Properties[strconv.Itoa(i)] = gs
-				sch.properties = append(sch.properties, gs)
+				sch.AddProperties(strconv.Itoa(i), gs)
 			} else {
 				for _, oname := range sortPropertyKeys(one.Value.Properties) {
 					schemaRef := one.Value.Properties[oname]
 					gs := genSchemaRef(c, option.With(WithSchemaSpec(schemaRef), WithSchemaName(oname),
 						WithSchemaRequired(helper.InStrSlice(one.Value.Required, oname))))
-					sch.Properties[oname] = gs
-					sch.properties = append(sch.properties, gs)
+					sch.AddProperties(oname, gs)
 				}
 			}
 		}

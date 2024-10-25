@@ -33,7 +33,8 @@ func chain(rt http.RoundTripper, middlewares ...Middleware) http.RoundTripper {
 	return rt
 }
 
-func WithBase(base http.RoundTripper) Option {
+// WithBaseTransport allows you to set a base transport.
+func WithBaseTransport(base http.RoundTripper) Option {
 	return func(c *ClientConfig) {
 		c.base = base
 	}

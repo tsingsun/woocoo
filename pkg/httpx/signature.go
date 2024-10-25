@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -69,7 +70,8 @@ type SigningCtx struct {
 	SignedVals       map[string]string
 }
 
-// Signer is the interface for signature.
+// Signer is the interface for signature, it supports client signer request or server validate request.
+// Note that: only change the Request in AttachRequest, the server side not call this method.
 type Signer interface {
 	// BuildCanonicalRequest build and prepare data by canonical the request to use in sign action.
 	BuildCanonicalRequest(r *http.Request, ctx *SigningCtx) error
@@ -87,9 +89,9 @@ type SignerOption func(*SignerConfig)
 type SignerConfig struct {
 	// Credentials default id="" secret=""
 	Credentials map[string]string `yaml:"credentials" json:"credentials"`
-	// static values in signature
-	Data map[string]string `yaml:"data" json:"data"`
-	// SignedLookups will be ordered.
+	// SignedLookups indicate how to find data for signer, will be ordered.
+	// e.g. "content-type":"header" : key `content-type` will be located in `header`.
+	// support location: header(or location is empty), query, context.
 	SignedLookups map[string]string `yaml:"signedLookups" json:"signedLookups"`
 	// SignatureLookup indicate where to find the whole Signature info. Default: header:Authorization
 	AuthLookup string `yaml:"authLookup" json:"authLookup"`
@@ -691,5 +693,137 @@ func (s TokenSigner) AttachRequest(r *http.Request, ctx *SigningCtx) {
 		r.Header.Add(s.SignatureHeaderKey, sb.String())
 	} else {
 		r.Header.Set(s.SignatureHeaderKey, sb.String())
+	}
+}
+
+// HMACSigner is the signer for hmac auth.
+type HMACSigner struct {
+	*SignerConfig
+	lookUpSorted []string
+}
+
+// NewHMACSigner create hmac signer with configuration
+func NewHMACSigner(config *SignerConfig) (Signer, error) {
+	s := &HMACSigner{
+		SignerConfig: config,
+	}
+	if s.TimestampKey == "" {
+		s.TimestampKey = "date"
+	}
+	if s.DateFormat == "" {
+		// GMT format,
+		s.DateFormat = "Mon, 02 Jan 2006 15:04:05 GMT"
+	}
+	if s.Algorithm.name == "" {
+		s.Algorithm = *AlgorithmSha256
+	}
+	s.lookUpSorted = make([]string, 0, len(s.SignedLookups))
+	for key := range s.SignedLookups {
+		s.lookUpSorted = append(s.lookUpSorted, key)
+	}
+	sort.Strings(s.lookUpSorted)
+	return s, nil
+}
+
+func (s HMACSigner) BuildCanonicalRequest(r *http.Request, ctx *SigningCtx) error {
+	ctx.SignedVals[s.TimestampKey] = FormatSignTime(ctx.SignTime.UTC(), s.DateFormat)
+	for _, header := range s.ScopeHeaders {
+		ctx.CanonicalHeaders = append(ctx.CanonicalHeaders, header)
+		v := valueFromLookupExp(r, header)
+		if v == "" {
+			continue
+		}
+		ctx.SignedVals[header] = v
+	}
+	sort.Strings(ctx.CanonicalHeaders)
+	ctx.CanonicalUri = r.URL.Path
+	// CanonicalQueryString fetch from request.URL.RawQuery, use `&` as delimiter, key value pair, sorted by key.
+	ctx.CanonicalQueryString = r.URL.Query().Encode()
+	return nil
+}
+
+// AttachData attach data to request
+// CanonicalQueryString fetch from request.URL.RawQuery, use `&` as delimiter, key value pair, sorted by key.
+func (s HMACSigner) AttachData(_ *SigningCtx) error {
+	return nil
+}
+
+func (s HMACSigner) StringToSign(ctx *SigningCtx) error {
+	sb := strings.Builder{}
+	sb.WriteString(ctx.Request.Method)
+	sb.WriteString(s.Delimiter)
+	sb.WriteString(ctx.CanonicalUri)
+	sb.WriteString(s.Delimiter)
+	sb.WriteString(ctx.CanonicalQueryString)
+	sb.WriteString(s.Delimiter)
+	sb.WriteString(s.GetAccessKeyID())
+	sb.WriteString(s.Delimiter)
+	sb.WriteString(ctx.SignedVals[s.TimestampKey])
+	sb.WriteString(s.Delimiter)
+	for _, header := range ctx.CanonicalHeaders {
+		sb.WriteString(header)
+		sb.WriteString(":")
+		sb.WriteString(ctx.SignedVals[header])
+		sb.WriteString(s.Delimiter)
+	}
+	ctx.StringToSign = sb.String()
+	return nil
+}
+
+func (s HMACSigner) CalculateSignature(ctx *SigningCtx) error {
+	if err := s.StringToSign(ctx); err != nil {
+		return err
+	}
+	var hs hash.Hash
+	if s.GetAccessKeySecret() == "" {
+		hs = s.Algorithm.hash()
+	} else {
+		hs = hmac.New(s.Algorithm.hash, []byte(s.GetAccessKeySecret()))
+	}
+	if _, err := hs.Write([]byte(ctx.StringToSign)); err != nil {
+		return err
+	}
+	ctx.Signature = base64.StdEncoding.EncodeToString(hs.Sum(nil))
+	return nil
+}
+
+// AttachRequest attach request with signature.
+// The signature can set to header authorization or headers.
+func (s HMACSigner) AttachRequest(r *http.Request, ctx *SigningCtx) {
+	if s.AuthScheme == "" {
+		r.Header.Set(s.SignatureHeaderKey, ctx.Signature)
+		switch s.Algorithm.name {
+		case AlgorithmSha256.name:
+			r.Header.Set("X-HMAC-ALGORITHM", "hmac-sha256")
+		case AlgorithmSha1.name:
+			r.Header.Set("X-HMAC-ALGORITHM", "hmac-sha1")
+		}
+		r.Header.Set("X-HMAC-ACCESS-KEY", s.GetAccessKeyID())
+		r.Header.Set(s.TimestampKey, ctx.SignedVals[s.TimestampKey])
+		r.Header.Set("X-HMAC-SIGNED-HEADERS", strings.Join(ctx.CanonicalHeaders, ";"))
+	} else {
+		var sb strings.Builder
+		sb.WriteString(s.AuthScheme)
+		sb.WriteString(s.AuthHeaderDelimiter)
+		sb.WriteString(s.GetAccessKeyID())
+		sb.WriteString(s.AuthHeaderDelimiter)
+		sb.WriteString(ctx.Signature)
+		sb.WriteString(s.AuthHeaderDelimiter)
+		sb.WriteString(s.Algorithm.name)
+		sb.WriteString(s.AuthHeaderDelimiter)
+		sb.WriteString(ctx.SignedVals[s.TimestampKey])
+		sb.WriteString(s.AuthHeaderDelimiter)
+		// use ';'
+		for i, h := range s.AuthHeaders {
+			sb.WriteString(h)
+			if i != len(s.SignedLookups)-1 {
+				sb.WriteString(";")
+			}
+		}
+		if h := r.Header.Values(s.SignatureHeaderKey); len(h) > 0 {
+			r.Header.Add(s.SignatureHeaderKey, sb.String())
+		} else {
+			r.Header.Set(s.SignatureHeaderKey, sb.String())
+		}
 	}
 }

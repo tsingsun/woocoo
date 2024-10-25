@@ -107,6 +107,11 @@ func (c *ClientConfig) Validate() error {
 	return nil
 }
 
+// BaseTransport returns the base transport
+func (c *ClientConfig) BaseTransport() http.RoundTripper {
+	return c.base
+}
+
 // Exchange converts an authorization code into a token if you use oauth2 config.
 func (c *ClientConfig) Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
 	if c.OAuth2 == nil {
@@ -199,9 +204,13 @@ type OAuth2Config struct {
 }
 
 // SetOAuthStorage set TokenStorage to OAuth2Config
-func (oa *OAuth2Config) SetOAuthStorage(ts TokenStorage) error {
+func (oa *OAuth2Config) SetOAuthStorage(ts TokenStorage) {
 	oa.storage = ts
-	return nil
+}
+
+// SetTokenSource set TokenSource to OAuth2Config, Support customer TokenSource.
+func (oa *OAuth2Config) SetTokenSource(ts oauth2.TokenSource) {
+	oa.ts = ts
 }
 
 type TokenSource struct {

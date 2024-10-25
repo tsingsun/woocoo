@@ -223,6 +223,7 @@ func TestTokenSigner_wechat(t *testing.T) {
 	payload, err := json.Marshal(dv)
 	require.NoError(t, err)
 	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
+	require.NoError(t, err)
 	req = req.WithContext(context.WithValue(context.Background(), "jsapi_ticket", jsapiTicket)) //nolint:staticcheck
 	assert.NoError(t, err)
 
@@ -285,6 +286,34 @@ func TestJWTToken(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
+func TestHMAC(t *testing.T) {
+	cnf := conf.NewFromStringMap(map[string]any{
+		"timestampKey": "Date",
+		"algorithm":    "sha256",
+		"authLookup":   "header:X-HMAC-SIGNATURE",
+		"signedLookups": map[string]any{
+			"User-Agent": "",
+			"x-custom-a": "",
+		},
+		"credentials": map[string]string{
+			"id":     "user-key",
+			"secret": "my-secret-key",
+		},
+	})
+	signer, err := NewSignature(WithConfiguration(cnf), WithSigner(NewHMACSigner))
+	require.NoError(t, err)
+	gotSig := signer.singer.(*HMACSigner)
+	t.Run("get", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "http://127.0.0.1:9080/index.html?name=james&age=36", nil)
+		st, err := time.Parse(gotSig.DateFormat, "Tue, 19 Jan 2021 11:33:20 GMT")
+		require.NoError(t, err)
+		req.Header.Add("User-Agent", "curl/7.29.0")
+		req.Header.Add("x-custom-a", "test")
+		assert.NoError(t, signer.Sign(req, "", st))
+		sh := req.Header.Get("X-HMAC-SIGNATURE")
+		assert.Equal(t, "8XV1GB7Tq23OJcoz6wjqTs4ZLxr9DiLoY4PxzScWGYg=", sh)
+	})
+}
 func TestAlgorithm(t *testing.T) {
 	t.Run("not support", func(t *testing.T) {
 		cnf := conf.NewFromStringMap(map[string]any{

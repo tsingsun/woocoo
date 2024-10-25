@@ -14,6 +14,7 @@ import (
 
 const (
 	TokenSignerName = "tokenSign"
+	HMACSignerName  = "hmacSign"
 	SignerName      = "sign"
 )
 
@@ -102,6 +103,9 @@ func (mw *Middleware) build(cnf *conf.Configuration) (err error) {
 	switch mw.name {
 	case TokenSignerName:
 		mw.Signer, err = mw.config.SignerConfig.BuildSigner(httpx.WithSigner(httpx.NewTokenSigner))
+	case HMACSignerName:
+		mw.Signer, err = mw.config.SignerConfig.BuildSigner(httpx.WithSigner(httpx.NewHMACSigner))
+	case SignerName:
 	default:
 		mw.Signer, err = mw.config.SignerConfig.BuildSigner(httpx.WithSigner(httpx.NewDefaultSigner))
 	}

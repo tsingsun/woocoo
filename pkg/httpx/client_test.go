@@ -353,7 +353,7 @@ func TestNewClient_Option(t *testing.T) {
 			args: args{
 				cnf: conf.New(),
 				opts: []Option{
-					WithBase(&http.Transport{}),
+					WithBaseTransport(&http.Transport{}),
 				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {

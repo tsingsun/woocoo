@@ -29,7 +29,7 @@ require (
 	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/net v0.25.0
 	golang.org/x/oauth2 v0.20.0
-	golang.org/x/sync v0.7.0
+	golang.org/x/sync v0.9.0
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/text v0.15.0
 	google.golang.org/grpc v1.65.0

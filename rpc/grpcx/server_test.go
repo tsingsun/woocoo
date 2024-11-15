@@ -62,6 +62,9 @@ grpc:
   engine:
   - keepalive:
       time: 1h
+  - keepaliveEnforcementPolicy:
+      minTime: 1m
+      permitWithoutStream: true
   - tls:
       cert: "x509/server.crt"
       key: "x509/server.key"

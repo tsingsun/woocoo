@@ -1,6 +1,7 @@
 package option
 
 import (
+	"google.golang.org/grpc"
 	"testing"
 	"time"
 
@@ -42,5 +43,26 @@ func TestKeepAliveOption_DialOption(t *testing.T) {
 		opt := KeepAliveOption{}
 		dialOpt := opt.DialOption(cfg)
 		assert.NotNil(t, dialOpt)
+	})
+}
+
+func TestKeepaliveEnforcementPolicy(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		cfg := conf.NewFromStringMap(map[string]any{
+			"minTime":             "5s",
+			"permitWithoutStream": "true",
+		})
+		opt := KeepaliveEnforcementPolicy(cfg)
+		srv := grpc.NewServer(opt)
+		assert.NotNil(t, srv)
+	})
+	t.Run("error time", func(t *testing.T) {
+		cfg := conf.NewFromStringMap(map[string]any{
+			"minTime":             "X",
+			"permitWithoutStream": "true",
+		})
+		assert.Panics(t, func() {
+			KeepaliveEnforcementPolicy(cfg)
+		})
 	})
 }

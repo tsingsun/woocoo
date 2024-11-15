@@ -29,3 +29,13 @@ func (KeepAliveOption) DialOption(cfg *conf.Configuration) grpc.DialOption {
 	}
 	return grpc.WithKeepaliveParams(sp)
 }
+
+// KeepaliveEnforcementPolicy keepalive enforcement policy for the server.
+func KeepaliveEnforcementPolicy(cfg *conf.Configuration) grpc.ServerOption {
+	ep := keepalive.EnforcementPolicy{}
+	if err := cfg.Unmarshal(&ep); err != nil {
+		panic(err)
+	}
+
+	return grpc.KeepaliveEnforcementPolicy(ep)
+}

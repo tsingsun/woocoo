@@ -90,6 +90,7 @@ func registryWarp() {
 		}
 		return grpc.WithConnectParams(p)
 	})
+	RegisterGrpcServerOption("keepaliveEnforcementPolicy", option.KeepaliveEnforcementPolicy)
 }
 
 // RegisterGrpcServerOption register grpc server option

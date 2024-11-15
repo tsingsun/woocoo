@@ -104,6 +104,28 @@ func TestParser_Unmarshal(t *testing.T) {
 			},
 		},
 		{
+			name: "map exist key will new",
+			fields: fields{parser: NewParserFromStringMap(
+				map[string]any{"map": map[string]any{
+					"a": map[string]any{"a": 1},
+					"b": nil,
+				}})},
+			args: args{
+				key: "map",
+				dst: map[string]*parseTarget{
+					"a": {B: "s"}, "b": {},
+					"c": {},
+				},
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				assert.NoError(t, err)
+				assert.Equal(t, map[string]*parseTarget{
+					"a": {A: 1}, "b": {}, "c": {},
+				}, i[1])
+				return false
+			},
+		},
+		{
 			name:   "sliceString",
 			fields: fields{parser: NewParserFromStringMap(map[string]any{"slice": []string{"a", "b", "c"}})},
 			args: args{
@@ -117,7 +139,7 @@ func TestParser_Unmarshal(t *testing.T) {
 			},
 		},
 		{
-			name:   "sliceMerge",
+			name:   "slice not merge",
 			fields: fields{parser: NewParserFromStringMap(map[string]any{"slice": []string{"a", "b", "c"}})},
 			args: args{
 				key: "slice",
@@ -125,8 +147,8 @@ func TestParser_Unmarshal(t *testing.T) {
 			},
 			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				assert.NoError(t, err)
-				assert.Len(t, i[1].([]string), 4)
-				assert.Equal(t, []string{"a", "b", "c", "f"}, i[1])
+				assert.Len(t, i[1].([]string), 3)
+				assert.Equal(t, []string{"a", "b", "c"}, i[1])
 				return false
 			},
 		},
@@ -136,6 +158,25 @@ func TestParser_Unmarshal(t *testing.T) {
 			args: args{
 				key: "struct",
 				dst: parseTarget{},
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				assert.NoError(t, err)
+				assert.EqualValues(t, parseTarget{
+					1, "string", []string{"c1", "c2"},
+				}, i[1])
+				return false
+			},
+		},
+		{
+			name:   "keepStructData",
+			fields: fields{parser: NewParserFromStringMap(map[string]any{"struct": map[string]any{"a": 1, "c": []string{"c1", "c2"}}})},
+			args: args{
+				key: "struct",
+				dst: parseTarget{
+					A: 2,
+					B: "string",
+					C: []string{"c3", "c4", "c5"},
+				},
 			},
 			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				assert.NoError(t, err)
@@ -251,7 +292,7 @@ func TestParser_UnmarshalExact(t *testing.T) {
 			},
 		},
 		{
-			name:   "sliceMerge",
+			name:   "slice no merge",
 			fields: fields{parser: NewParserFromStringMap(map[string]any{"slice": []string{"a", "b", "c"}})},
 			args: args{
 				key: "slice",
@@ -259,8 +300,8 @@ func TestParser_UnmarshalExact(t *testing.T) {
 			},
 			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				assert.NoError(t, err)
-				assert.Len(t, i[1].([]string), 4)
-				assert.Equal(t, []string{"a", "b", "c", "f"}, i[1])
+				assert.Len(t, i[1].([]string), 3)
+				assert.Equal(t, []string{"a", "b", "c"}, i[1])
 				return false
 			},
 		},

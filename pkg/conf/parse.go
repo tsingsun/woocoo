@@ -2,6 +2,7 @@ package conf
 
 import (
 	"fmt"
+	"github.com/go-viper/mapstructure/v2"
 	"io"
 	"os"
 	"reflect"
@@ -12,7 +13,6 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/providers/rawbytes"
 	"github.com/knadh/koanf/v2"
-	"github.com/mitchellh/mapstructure"
 )
 
 const (

@@ -589,6 +589,51 @@ path:
 				assert.Equal(t, []string{"zgroup", "agroup", "dgroup", "cgroup"}, keylist)
 			},
 		},
+		{
+			name: "object list",
+			fields: fields{
+				cnf: NewFromBytes([]byte(`
+path:
+  groups:
+  - key: value
+    property: pValue
+  - key: value2
+  - key: value3
+  - key: value4
+`)),
+			},
+			args: args{
+				path: "path.groups",
+				cb: func(name string, sub *Configuration) {
+					namelist = append(namelist, sub.String("key"))
+				},
+			},
+			check: func(keylist []string) {
+				assert.Equal(t, []string{"value", "value2", "value3", "value4"}, keylist)
+			},
+		},
+		{
+			name: "not support not map",
+			fields: fields{
+				cnf: NewFromBytes([]byte(`
+path:
+  groups:
+  - key
+  - key
+  - key
+  - key
+`)),
+			},
+			args: args{
+				path: "path.groups",
+				cb: func(name string, sub *Configuration) {
+					t.Fail()
+				},
+			},
+			check: func(keylist []string) {
+				assert.Empty(t, keylist)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -258,21 +258,54 @@ func (c *Configuration) passRoot(sub *Configuration) {
 	}
 }
 
-// Each iterates the slice path of the Configuration.
+// Each iterates the slice path of the Configuration.Slice item can be a map or a slice.
+// if the item is a map, the root value will be the first key in the map.
+// if the item is a slice, the root value will be empty.
+// slice example:
+//
+//	path:
+//	- slice: "sv"
+//	- slice: "sv2"
+//	- slice: "sv3"
+//
+// map example:
+//
+//	path:
+//	- key:
+//	    sub: "sv"
+//
+// because koanf should be map value, so not support like:
+//
+//	path:
+//	- string
+//	- string2
 func (c *Configuration) Each(path string, cb func(root string, sub *Configuration)) {
 	ops := c.ParserOperator().Slices(path)
-	for _, op := range ops {
+	// check sub item has root value
+	var getRoot = func(kf *koanf.Koanf) string {
 		var root string
-		for s := range op.Raw() {
-			// first is the node key
-			root = s
-			break
+		for s := range kf.KeyMap() {
+			keys := strings.Split(s, kf.Delim())
+			switch {
+			case len(keys) > 1:
+				root = keys[0]
+				break
+			case len(keys) == 1:
+				root = s
+			}
 		}
-		kf := op.Cut(root)
-		if len(kf.Keys()) == 0 {
-			cb(root, c.CutFromOperator(op))
+		return root
+	}
+	for _, op := range ops {
+		if root := getRoot(op); root != "" {
+			kf := op.Cut(root)
+			if len(kf.Keys()) == 0 {
+				cb(root, c.CutFromOperator(op))
+			} else {
+				cb(root, c.CutFromOperator(kf))
+			}
 		} else {
-			cb(root, c.CutFromOperator(kf))
+			cb(root, c.CutFromOperator(op))
 		}
 	}
 }

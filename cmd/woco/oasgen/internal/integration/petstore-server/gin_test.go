@@ -2,9 +2,9 @@ package petstore
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web/handler"
@@ -43,8 +43,8 @@ func (s *ginTestSuite) TestAddPet() {
 	r.Header.Add("Content-Type", binding.MIMEJSON)
 	w := httptest.NewRecorder()
 	s.Router.ServeHTTP(w, r)
-	assert.Equal(s.T(), 200, w.Code)
-	assert.Contains(s.T(), w.Body.String(), `"id":1,"name":"name"`)
+	s.Equal(200, w.Code)
+	s.Contains(w.Body.String(), `"id":1,"name":"name"`)
 }
 
 func (s *ginTestSuite) TestDeletePet() {
@@ -66,34 +66,37 @@ func (s *ginTestSuite) TestUpdatePetWithForm() {
 	r.Form.Add("status", "status")
 	w := httptest.NewRecorder()
 	s.Router.ServeHTTP(w, r)
-	assert.Equal(s.T(), 500, w.Code)
-	assert.JSONEq(s.T(), `{"errors":[{"code":500,"message":"UpdatePetWithForm Error"}]}`, w.Body.String())
+	s.Equal(500, w.Code)
+	s.JSONEq(`{"errors":[{"code":500,"message":"UpdatePetWithForm Error"}]}`, w.Body.String())
 }
 
 func (s *ginTestSuite) TestLoginUser() {
 	r := httptest.NewRequest("GET", "/user/login?username=a&password=b", nil)
 	w := httptest.NewRecorder()
 	s.Router.ServeHTTP(w, r)
-	assert.Equal(s.T(), 400, w.Code)
+	s.Equal(400, w.Code)
 
 	r = httptest.NewRequest("GET", "/user/login?username=abc&password=b", nil)
 	r.Header.Set("accept", binding.MIMEXML)
 	w = httptest.NewRecorder()
 	s.Router.ServeHTTP(w, r)
-	assert.Equal(s.T(), 200, w.Code)
-	assert.Equal(s.T(), `<string>ok</string>`, w.Body.String())
+	s.Equal(200, w.Code)
+	s.Equal(`<string>ok</string>`, w.Body.String())
 }
 
 func (s *ginTestSuite) TestGetOrderById() {
 	r := httptest.NewRequest("GET", "/store/order/1", nil)
 	w := httptest.NewRecorder()
 	s.Router.ServeHTTP(w, r)
-	assert.Equal(s.T(), 200, w.Code)
-
+	s.Equal(200, w.Code)
+	var resp Order
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	s.NoError(err)
+	s.Nil(resp.OrderDate)
 	r = httptest.NewRequest("GET", "/store/order/6", nil)
 	w = httptest.NewRecorder()
 	s.Router.ServeHTTP(w, r)
-	assert.Equal(s.T(), 400, w.Code)
+	s.Equal(400, w.Code)
 
 }
 
@@ -149,7 +152,7 @@ func (s *ginTestSuite) TestPostOrder() {
 		r.Header.Set("Content-Type", binding.MIMEJSON)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		assert.Equal(t, 200, w.Code)
+		s.Equal(200, w.Code)
 	})
 	t.Run("wrong time", func(t *testing.T) {
 		bf := bytes.NewBufferString(`{"id":1,"status":"placed","shipDate":"2006-01-02"}`)
@@ -157,8 +160,8 @@ func (s *ginTestSuite) TestPostOrder() {
 		r.Header.Set("Content-Type", binding.MIMEJSON)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		assert.Equal(t, 400, w.Code)
-		assert.Contains(t, w.Header().Get("Content-Type"), binding.MIMEJSON)
+		s.Equal(400, w.Code)
+		s.Contains(w.Header().Get("Content-Type"), binding.MIMEJSON)
 	})
 	t.Run("with time", func(t *testing.T) {
 		bf := bytes.NewBufferString(`{"id":1,"status":"placed","shipDate":"2006-01-02T15:04:05Z","orderDate":"2005-01-02T15:04:05Z"}`)
@@ -166,7 +169,7 @@ func (s *ginTestSuite) TestPostOrder() {
 		r.Header.Set("Content-Type", binding.MIMEJSON)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		assert.Equal(t, 200, w.Code)
+		s.Equal(200, w.Code)
 	})
 	t.Run("with time validate failure", func(t *testing.T) {
 		bf := bytes.NewBufferString(`{"id":1,"status":"placed","shipDate":"2006-01-02T15:04:05Z","orderDate":"2007-01-02T15:04:05Z"}`)
@@ -174,7 +177,7 @@ func (s *ginTestSuite) TestPostOrder() {
 		r.Header.Set("Content-Type", binding.MIMEJSON)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		assert.Equal(t, 400, w.Code)
+		s.Equal(400, w.Code)
 	})
 }
 
@@ -183,14 +186,14 @@ func (s *ginTestSuite) TestDeletePetRequest() {
 		r := httptest.NewRequest("DELETE", "/pet/1", nil)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		assert.Equal(s.T(), 200, w.Code)
+		s.Equal(200, w.Code)
 	})
 	s.Run("with api key", func() {
 		r := httptest.NewRequest("DELETE", "/pet/1", nil)
 		r.Header.Add("api_key", "wrong")
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		assert.Equal(s.T(), 401, w.Code)
+		s.Equal(401, w.Code)
 	})
 }
 
@@ -202,7 +205,7 @@ func (s *ginTestSuite) TestTokenRequest() {
 		r.Header.Set("Content-Type", binding.MIMEPOSTForm)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		assert.Equal(s.T(), 200, w.Code)
+		s.Equal(200, w.Code)
 	})
 	s.Run("wrong enum value", func() {
 		bf := bytes.NewBufferString(`client_id=1&client_secret=2&grant_type=wrong`)
@@ -210,6 +213,6 @@ func (s *ginTestSuite) TestTokenRequest() {
 		r.Header.Set("Content-Type", binding.MIMEPOSTForm)
 		w := httptest.NewRecorder()
 		s.Router.ServeHTTP(w, r)
-		assert.Equal(s.T(), 400, w.Code)
+		s.Equal(400, w.Code)
 	})
 }

@@ -766,6 +766,13 @@ components:
           format: int64
         name:
           type: string
+        lang:
+          type: object
+          properties:
+            code:
+              type: string
+            name:
+              type: string
         labels:
           $ref: '#/components/schemas/labelSet'
       xml:

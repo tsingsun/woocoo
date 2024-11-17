@@ -15,6 +15,26 @@
     {{- end }}
 {{- end }}
 
+{{- define "help/schema_request"}}
+    {{- if .IsRequest }}
+        {{- if not .IsEnum }}
+            {{- template "help/schema" .}}
+        {{- else }}
+            {{- template "help/enum" .}}
+        {{- end }}
+    {{- end}}
+{{- end }}
+
+{{- define "help/schema_response"}}
+    {{- if .IsResponse }}
+        {{- if not .IsEnum }}
+            {{- template "help/schema" .}}
+        {{- else }}
+            {{- template "help/enum" .}}
+        {{- end }}
+    {{- end}}
+{{- end }}
+
 {{- define "help/enum" }}
     {{- range .EnumsProperties }}
         {{/* Type ident store the name of enum name */}}
@@ -55,7 +75,7 @@
         {{- if .IsInline }}
             {{ .Type }} `json:",inline"`
         {{- else }}
-            {{ pascal .Name }} {{ .Type }} {{ .StructTagsString }}
+            {{ pascal .Name }} {{ .TypeString }} {{ .StructTagsString }}
         {{- end }}
     {{- end }}
 {{- end}}

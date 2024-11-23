@@ -103,6 +103,8 @@ func NewFromStringMap(data map[string]any, opts ...Option) *Configuration {
 // NewFromParse create from parser
 func NewFromParse(parser *Parser, opts ...Option) *Configuration {
 	cnf := New(opts...)
+	// clear the local path
+	cnf.opts.localPath = ""
 	cnf.parser = parser
 	return cnf
 }
@@ -120,7 +122,7 @@ func (c *Configuration) AsGlobal() *Configuration {
 	return c
 }
 
-// Load parse configuration from file
+// Load parse configuration from file. panic if load failed, it is better call it when start up your application.
 func (c *Configuration) Load() *Configuration {
 	if err := c.loadInternal(); err != nil {
 		panic("config load error:" + err.Error())
@@ -129,27 +131,34 @@ func (c *Configuration) Load() *Configuration {
 	return c
 }
 
+// Reload configuration,if only work for local path configuration
+func (c *Configuration) Reload() {
+	c.parser = nil
+	c.Load()
+}
+
 // load configuration,if the RemoteProvider is set,will ignore local configuration
 func (c *Configuration) loadInternal() (err error) {
 	// if parser is nil, use default local config file
 	if c.parser == nil {
 		c.parser = NewParser()
 	}
-	if len(c.parser.AllKeys()) == 0 {
+	if c.opts.localPath != "" {
 		TryLoadEnvFromFile(filepath.Dir(c.opts.localPath), "")
 		err = c.parser.LoadFileWithEnv(c.opts.localPath)
 		if err != nil {
 			return err
 		}
 	}
-
-	if c.IsSet("includeFiles") {
-		for _, v := range c.StringSlice("includeFiles") {
+	const ifs = "includeFiles"
+	if c.IsSet(ifs) {
+		c.opts.includeFiles = c.StringSlice(ifs)
+		for i, v := range c.opts.includeFiles {
 			path, err := tryAbs(c.GetBaseDir(), v)
 			if err != nil {
 				panic(fmt.Errorf("config file no exists:%s,cause by:%s", path, err))
 			}
-			c.opts.includeFiles = append(c.opts.includeFiles, path)
+			c.opts.includeFiles[i] = path
 		}
 	}
 	// make sure the "include files" in attach files is not working
@@ -320,6 +329,7 @@ func (c *Configuration) Map(path string, cb func(root string, sub *Configuration
 	}
 }
 
+// Copy return a new copied Configuration
 func (c *Configuration) Copy() *Configuration {
 	return c.CutFromOperator(c.Parser().k.Copy())
 }

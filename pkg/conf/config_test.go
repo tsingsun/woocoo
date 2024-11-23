@@ -243,6 +243,32 @@ func TestConfiguration_Load(t *testing.T) {
 	}
 }
 
+func TestConfiguration_Reload(t *testing.T) {
+	t.Run("not local path", func(t *testing.T) {
+		cnf := NewFromStringMap(map[string]any{
+			"includeFiles": []string{"err"},
+		})
+		assert.NotPanics(t, func() {
+			cnf.Reload()
+		})
+	})
+	t.Run("local", func(t *testing.T) {
+		cnf := New(WithLocalPath(testdata.TestConfigFile()),
+			WithBaseDir(testdata.BaseDir())).Load()
+		cnf.Reload()
+	})
+	t.Run("env", func(t *testing.T) {
+		cnf := New(WithLocalPath(testdata.Path("etc/env.yaml"))).Load()
+		cnf.Reload()
+		ev, err := strconv.Atoi(os.Getenv("INT"))
+		assert.NoError(t, err)
+		assert.EqualValues(t, ev, cnf.Get("env.int"))
+		assert.EqualValues(t, ev, cnf.Get("env.intSpace"))
+		assert.EqualValues(t, ev, cnf.Get("env.intUnder"))
+
+	})
+}
+
 func TestConfiguration_Unmarshal(t *testing.T) {
 	type fields struct {
 		opts        options

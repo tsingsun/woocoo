@@ -28,12 +28,7 @@ func NewParser() *Parser {
 
 // NewParserFromFile creates a new Parser by reading the given file.
 func NewParserFromFile(fileName string) (*Parser, error) {
-	// Read yaml config from file.
-	p := NewParser()
-	if err := p.k.Load(file.Provider(fileName), yaml.Parser()); err != nil {
-		return nil, fmt.Errorf("unable to read the file %v: %w", fileName, err)
-	}
-	return p, nil
+	return NewParserFromProvider(file.Provider(fileName))
 }
 
 // NewParserFromBuffer creates a new Parser by reading the given yaml buffer.
@@ -42,13 +37,7 @@ func NewParserFromBuffer(buf io.Reader) (*Parser, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	p := NewParser()
-	if err := p.k.Load(rawbytes.Provider(content), yaml.Parser()); err != nil {
-		return nil, err
-	}
-
-	return p, nil
+	return NewParserFromProvider(rawbytes.Provider(content))
 }
 
 // NewParserFromStringMap creates a parser from a map[string]any.
@@ -59,12 +48,19 @@ func NewParserFromStringMap(data map[string]any) *Parser {
 	return p
 }
 
+// NewParserFromProvider creates a new Parser by the given provider.
+func NewParserFromProvider(provider koanf.Provider) (*Parser, error) {
+	p := NewParser()
+	err := p.k.Load(provider, yaml.Parser())
+	return p, err
+}
+
 // NewParserFromOperator creates a parser from a koanf.Koanf.
 func NewParserFromOperator(k *koanf.Koanf) *Parser {
 	return &Parser{k: k}
 }
 
-func loadFileWithEnv(path string) (koanf.Provider, error) {
+func fsProviderWithEnv(path string) (koanf.Provider, error) {
 	fs, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -129,12 +125,7 @@ func (l *Parser) Get(key string) any {
 
 // Set sets the value for the key.
 func (l *Parser) Set(key string, value any) {
-	// koanf doesn't offer a direct setting mechanism so merging is required.
-	merged := koanf.New(KeyDelimiter)
-	if err := merged.Load(confmap.Provider(map[string]any{key: value}, KeyDelimiter), nil); err != nil {
-		panic(err)
-	}
-	if err := l.k.Merge(merged); err != nil {
+	if err := l.k.Set(key, value); err != nil {
 		panic(err)
 	}
 }
@@ -147,11 +138,20 @@ func (l *Parser) IsSet(key string) bool {
 
 // LoadFileWithEnv loads the given file and env, and merges it into the config.
 func (l *Parser) LoadFileWithEnv(path string) error {
-	provider, err := loadFileWithEnv(path)
+	provider, err := fsProviderWithEnv(path)
 	if err != nil {
 		return err
 	}
 	return l.k.Load(provider, yaml.Parser())
+}
+
+// LoadProviderWithEnv loads the given provider and env, and merges it into the config.
+func (l *Parser) LoadProviderWithEnv(provider koanf.Provider) error {
+	bs, err := provider.ReadBytes()
+	if err != nil {
+		return err
+	}
+	return l.k.Load(rawbytes.Provider(ParseEnv(bs)), yaml.Parser())
 }
 
 // MergeStringMap merges the configuration from the given map with the existing config.

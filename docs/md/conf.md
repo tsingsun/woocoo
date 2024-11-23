@@ -3,7 +3,45 @@ id: conf
 ---
 # 配置
 
-程序配置文件默认位置程序运行目录下`etc/app.yaml`.通过快速开始创建的配置文件大约如下:
+配置是工程化程序的重要组件, 默认选择采用`ymal`格式,并且对文件型配置支持较为友好.
+
+## 使用方法
+
+```go
+import (
+	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/knadh/koanf/providers/s3"
+)
+
+func main() {
+	// 以程序运行目录为根目录,默认指向的`etc/app.yaml`
+	conf.New()
+	// 以appdir目录为根目录的配置,默认指向的`etc/app.yaml`
+	conf.New(conf.WithBaseDir("appdir"))
+	// 以指定配置文件路径
+	conf.New(conf.WithLocalPath("xxx.yaml"))
+	// 在默认配置文件并加载其他配置文件
+	conf.New(conf.WithIncludeFiles("1.yaml","2.yaml"))
+	// 还支持bytes[],map[string]any为数据源的初始化方法
+	// conf.NewFromBytes,conf.NewFromStringMap
+	// 扩展初始化方法,如使用koanf s3 provider库
+	s3config := s3.Config{
+		AccessKey: "xxx",
+		Secret:   "xxx",
+		Bucket:   "bucket",
+		Region:   "us-east-1",
+		Endpoint: "https://s3.amazonaws.com",
+		ObjectKey: "app.yaml",
+    }   
+	parse := conf.NewParserFromProvider(s3.Provider(s3config))
+	conf.NewFromParse()
+}
+
+```
+
+> 关于更多的Provider,可参考[Koanf Provider](https://github.com/knadh/koanf?tab=readme-ov-file#bundled-providers)
+
+我们结合通过快速开始创建的项目, 其配置文件大至如下:
 
 ```yaml
 namespace: default

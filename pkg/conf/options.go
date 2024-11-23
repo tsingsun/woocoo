@@ -19,26 +19,25 @@ type options struct {
 // Option the function to apply configuration option
 type Option func(*options)
 
-// WithLocalPath init local instance file path
-// A s is file path
-func WithLocalPath(s string) Option {
+// WithLocalPath use a local configuration file. if used, try local env files(named: env or env.local) in dir of the local file.
+func WithLocalPath(path string) Option {
 	return func(o *options) {
-		abs, err := tryAbs(o.basedir, s)
+		abs, err := tryAbs(o.basedir, path)
 		if err != nil {
-			panic(fmt.Sprintf("local file %q is not exists", s))
+			panic(fmt.Sprintf("local file %q is not exists", path))
 		}
 		o.localPath = abs
 	}
 }
 
 // WithBaseDir init base directory where configuration files location, usually is the directory which application executable file is in
-// parameter s can be an absolute path or relative path.
-func WithBaseDir(s string) Option {
+// parameter s can be an absolute path or relative path. Note that It also sets default config file name to "etc/app.yaml"
+func WithBaseDir(path string) Option {
 	return func(o *options) {
 		var err error
-		o.basedir, err = filepath.Abs(s)
+		o.basedir, err = filepath.Abs(path)
 		if err != nil {
-			panic(fmt.Sprintf("base dir %q is not exists", s))
+			panic(fmt.Sprintf("base dir %q is not exists", path))
 		}
 		o.localPath = filepath.Join(o.basedir, defaultConfigFile)
 	}

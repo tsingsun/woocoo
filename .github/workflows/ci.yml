@@ -72,6 +72,6 @@ jobs:
       run: make build
 
     - name: Run coverage
-      run: make test-coverage
+      run: TEST_WIP=true make test-coverage
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

@@ -10,8 +10,9 @@ import (
 
 // Category A category for a pet
 type Category struct {
-	ID   int64  `json:"id,omitempty" xml:"id"`
-	Name string `binding:"omitempty,regex=oas_pattern_0" json:"name,omitempty" xml:"name"`
+	EnumObject EnumObject `binding:"omitempty,oneof=field1 field2 field3" json:"enumObject,omitempty" xml:"enumObject"`
+	ID         int64      `json:"id,omitempty" xml:"id"`
+	Name       string     `binding:"omitempty,regex=oas_pattern_0" json:"name,omitempty" xml:"name"`
 }
 
 // EnumObject defines the type for the EnumObject.EnumObject enum field.
@@ -44,8 +45,8 @@ type NewPet struct {
 	// Pet A pet for sale in the pet store
 	*Pet `json:",inline"`
 	// Owner A User who is purchasing from the pet store
-	Owner     User      `binding:"required" json:"owner"`
-	Timestamp time.Time `binding:"required" json:"timestamp" time_format:"2006-01-02T15:04:05Z07:00"`
+	Owner     User      `binding:"required" xml:"User"`
+	Timestamp time.Time `binding:"required" time_format:"2006-01-02T15:04:05Z07:00" xml:"timestamp"`
 }
 
 // Order An order for a pets from the pet store
@@ -105,30 +106,6 @@ type NewPets []*NewPet
 
 type Pets []*Pet
 
-// OrderStatus defines the type for the status.status enum field.
-type OrderStatus string
-
-// OrderStatus values.
-const (
-	OrderStatusPlaced    OrderStatus = "placed"
-	OrderStatusApproved  OrderStatus = "approved"
-	OrderStatusDelivered OrderStatus = "delivered"
-)
-
-func (s OrderStatus) String() string {
-	return string(s)
-}
-
-// OrderStatusValidator is a validator for the OrderStatus field enum values.
-func OrderStatusValidator(s OrderStatus) error {
-	switch s {
-	case OrderStatusPlaced, OrderStatusApproved, OrderStatusDelivered:
-		return nil
-	default:
-		return fmt.Errorf("OrderStatus does not allow the value '%s'", s)
-	}
-}
-
 // PetStatus defines the type for the status.status enum field.
 type PetStatus string
 
@@ -150,5 +127,29 @@ func PetStatusValidator(s PetStatus) error {
 		return nil
 	default:
 		return fmt.Errorf("PetStatus does not allow the value '%s'", s)
+	}
+}
+
+// OrderStatus defines the type for the status.status enum field.
+type OrderStatus string
+
+// OrderStatus values.
+const (
+	OrderStatusPlaced    OrderStatus = "placed"
+	OrderStatusApproved  OrderStatus = "approved"
+	OrderStatusDelivered OrderStatus = "delivered"
+)
+
+func (s OrderStatus) String() string {
+	return string(s)
+}
+
+// OrderStatusValidator is a validator for the OrderStatus field enum values.
+func OrderStatusValidator(s OrderStatus) error {
+	switch s {
+	case OrderStatusPlaced, OrderStatusApproved, OrderStatusDelivered:
+		return nil
+	default:
+		return fmt.Errorf("OrderStatus does not allow the value '%s'", s)
 	}
 }

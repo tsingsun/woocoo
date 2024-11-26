@@ -98,10 +98,12 @@ func genSchemaRef(c *Config, option SchemaOptions) (sch *Schema) {
 		}
 	}()
 	if sch.IsRef {
+		// prefixName should be empty if ref
+		sch.PrefixName = ""
 		// generate dependent schema
 		_, ok := c.FindSchema(sch.Spec.Ref)
 		if !ok {
-			genSchemaRef(c, option.With(WithComponent(option.Spec)))
+			genSchemaRef(c, sch.SchemaOptions.With(WithComponent(sch.SchemaOptions.Spec)))
 		}
 		ok = sch.BuildFromConfig(c)
 		if ok {
@@ -123,14 +125,14 @@ func genSchemaRef(c *Config, option SchemaOptions) (sch *Schema) {
 		sch.IsRef = false
 		for i, one := range sch.Spec.Value.AllOf {
 			if one.Ref != "" {
-				gs := genSchemaRef(c, option.With(WithSchemaSpec(one), WithSchemaName("")))
+				gs := genSchemaRef(c, sch.SchemaOptions.With(WithSchemaSpec(one), WithSchemaName("")))
 				// inline struct
 				gs.IsInline = true
 				sch.AddProperties(strconv.Itoa(i), gs)
 			} else {
 				for _, oname := range sortPropertyKeys(one.Value.Properties) {
 					schemaRef := one.Value.Properties[oname]
-					gs := genSchemaRef(c, option.With(WithSchemaSpec(schemaRef), WithSchemaName(oname),
+					gs := genSchemaRef(c, sch.SchemaOptions.With(WithSchemaSpec(schemaRef), WithSchemaName(oname),
 						WithSchemaRequired(helper.InStrSlice(one.Value.Required, oname))))
 					sch.AddProperties(oname, gs)
 				}
@@ -148,10 +150,12 @@ func genSchemaRef(c *Config, option SchemaOptions) (sch *Schema) {
 	}
 	// if component schema is enum, we need to set the ident of the type to avoid conflict
 	if sch.IsEnum() && sch.IsComponent() {
+		// prefixName work for request or object nest schema.
+		identName := helper.Pascal(sch.PrefixName) + helper.Pascal(sch.Name)
 		if sch.ItemSchema != nil {
-			sch.ItemSchema.Type.Ident = helper.Pascal(sch.PrefixName) + helper.Pascal(sch.Name)
+			sch.ItemSchema.Type.Ident = identName
 		} else {
-			sch.Type.Ident = helper.Pascal(sch.PrefixName) + helper.Pascal(sch.Name)
+			sch.Type.Ident = identName
 		}
 	}
 	sch.genProperties(c, sch.Spec)

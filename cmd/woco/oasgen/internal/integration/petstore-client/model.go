@@ -10,8 +10,9 @@ import (
 
 // Category A category for a pet
 type Category struct {
-	ID   int64  `json:"id,omitempty" xml:"id"`
-	Name string `binding:"omitempty,regex=oas_pattern_0" json:"name,omitempty" xml:"name"`
+	EnumObject EnumObject `binding:"omitempty,oneof=field1 field2 field3" json:"enumObject,omitempty" xml:"enumObject"`
+	ID         int64      `json:"id,omitempty" xml:"id"`
+	Name       string     `binding:"omitempty,regex=oas_pattern_0" json:"name,omitempty" xml:"name"`
 }
 
 // EnumObject defines the type for the EnumObject.EnumObject enum field.
@@ -74,10 +75,10 @@ type Pet struct {
 
 // Tag A tag for a pet
 type Tag struct {
-	ID     int64
-	Labels LabelSet
-	Lang   *Lang
-	Name   string
+	ID     int64    `json:"id,omitempty" xml:"id"`
+	Labels LabelSet `json:"labels,omitempty" xml:"labels"`
+	Lang   *Lang    `json:"lang,omitempty" xml:"lang"`
+	Name   string   `json:"name,omitempty" xml:"name"`
 }
 
 // User A User who is purchasing from the pet store
@@ -97,8 +98,8 @@ type User struct {
 type JsonObject json.RawMessage
 
 type Lang struct {
-	Code string
-	Name string
+	Code string `json:"code,omitempty" xml:"code"`
+	Name string `json:"name,omitempty" xml:"name"`
 }
 
 type NewPets []*NewPet

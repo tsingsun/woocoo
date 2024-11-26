@@ -569,6 +569,10 @@ func (sch *Schema) setAlias() {
 	}
 }
 
+func (sch *Schema) OrderedProperties() []*Schema {
+	return sch.properties
+}
+
 func isTypeMap(c *Config, name string) bool {
 	k := "#/components/schemas/" + name
 	_, ok := c.TypeMap[k]

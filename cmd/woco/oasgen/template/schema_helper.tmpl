@@ -68,7 +68,7 @@
 {{- end }}
 
 {{- define "help/properties" }}
-    {{- range .Properties }}
+    {{- range .OrderedProperties }}
         {{- if .Spec.Value.Description }}
             {{ stringToGoCommentWithPrefix .Spec.Value.Description (pascal .Name) }}
         {{- end }}

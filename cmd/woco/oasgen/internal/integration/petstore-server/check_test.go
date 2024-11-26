@@ -51,7 +51,9 @@ func TestGenerateAfter(t *testing.T) {
 		t.Run("category", func(t *testing.T) {
 			categoryS := Category{}
 			categoryType := reflect.TypeOf(categoryS)
-			assert.EqualValues(t, `id,omitempty`, categoryType.Field(0).Tag.Get("json"))
+			assert.EqualValues(t, `enumObject,omitempty`, categoryType.Field(0).Tag.Get("json"))
+			assert.EqualValues(t, "EnumObject", categoryType.Field(0).Type.Name())
+			assert.EqualValues(t, `id,omitempty`, categoryType.Field(1).Tag.Get("json"))
 		})
 		t.Run("order", func(t *testing.T) {
 			order := Order{}

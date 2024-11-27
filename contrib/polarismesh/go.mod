@@ -1,6 +1,7 @@
 module github.com/tsingsun/woocoo/contrib/polarismesh
 
 go 1.22
+toolchain go1.22.9
 
 require (
 	github.com/knadh/koanf/parsers/yaml v0.1.0
@@ -8,8 +9,8 @@ require (
 	github.com/polarismesh/specification v1.4.1
 	github.com/stretchr/testify v1.9.0
 	github.com/tsingsun/woocoo v0.5.1
-	google.golang.org/grpc v1.65.0
-	google.golang.org/protobuf v1.34.1
+	google.golang.org/grpc v1.68.0
+	google.golang.org/protobuf v1.34.2
 )
 
 require (
@@ -45,11 +46,11 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
-	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
+	golang.org/x/net v0.29.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/text v0.18.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

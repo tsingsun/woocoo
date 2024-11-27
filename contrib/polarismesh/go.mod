@@ -6,7 +6,7 @@ require (
 	github.com/knadh/koanf/parsers/yaml v0.1.0
 	github.com/polarismesh/polaris-go v1.5.8
 	github.com/polarismesh/specification v1.4.1
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tsingsun/woocoo v0.5.1
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.1

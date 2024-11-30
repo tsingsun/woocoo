@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"runtime/debug"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
 	gqlgen "github.com/99designs/gqlgen/graphql/handler"
@@ -282,7 +283,7 @@ func doWebHandler(ctx context.Context, c *gin.Context, handlerFunc gin.HandlerFu
 			errList = append(errList, gqlerror.Errorf(err.Error()))
 		}
 		// if it is a subscription, do not return Response Data
-		if c.IsWebsocket() {
+		if isStreamSocket(c) {
 			c.Errors = nil
 		}
 		res = &graphql.Response{
@@ -296,7 +297,7 @@ func doOperationHandler(ctx context.Context, next graphql.OperationHandler, hand
 	c, _ := FromIncomingContext(ctx)
 	ctx, res := doWebHandler(ctx, c, handlerFunc)
 	if res != nil {
-		if c.IsWebsocket() {
+		if isStreamSocket(c) {
 			return graphql.OneShot(res)
 		} else {
 			return func(ctx context.Context) *graphql.Response {
@@ -337,11 +338,24 @@ func envResponseError(c *gin.Context, errList gqlerror.List) graphql.ResponseHan
 	res := &graphql.Response{
 		Errors: errList,
 	}
-	if c != nil && c.IsWebsocket() {
+	if isStreamSocket(c) {
 		c.Errors = nil
 		return graphql.OneShot(res)
 	}
 	return func(ctx context.Context) *graphql.Response {
 		return res
 	}
+}
+
+func isStreamSocket(c *gin.Context) bool {
+	if c != nil {
+		if c.IsWebsocket() {
+			return true
+		}
+		cceptHeader := c.Request.Header.Get("Accept")
+		if strings.Contains(strings.ToLower(cceptHeader), "text/event-stream") {
+			return true
+		}
+	}
+	return false
 }

@@ -1,0 +1,37 @@
+web:
+  server:
+    addr: 127.0.0.1:0
+  engine:
+    routerGroups:
+    - default:
+        middlewares:
+        - graphql:
+            middlewares:
+              operation:
+              - jwt:
+                  signingMethod: "HS256"
+                  signingKey: "secret"
+              - accessLog:
+              response:
+web2:
+  server:
+    addr: 127.0.0.1:0
+  engine:
+    routerGroups:
+    - default:
+        middlewares:
+        - recovery:
+        - accessLog:
+        - jwt:
+            signingMethod: "HS256"
+            signingKey: "secret"
+    - graphql:
+        basePath: "/graphql"
+        middlewares:
+        - graphql:
+            middlewares:
+              operation:
+              response:
+                - accessLog:
+                    format: "host,remoteIp,error,resp"
+                - user:

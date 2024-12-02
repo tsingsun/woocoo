@@ -4,22 +4,21 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
+	"github.com/tsingsun/woocoo/pkg/security"
+	"github.com/tsingsun/woocoo/web"
+	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/99designs/gqlgen/graphql"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/pkg/security"
-	"github.com/tsingsun/woocoo/web"
-	"github.com/vektah/gqlparser/v2/ast"
 )
 
 var gqlSchemaMock = graphql.ExecutableSchemaMock{
@@ -56,7 +55,7 @@ func TestHandler_ApplyFunc(t *testing.T) {
 queryPath: "/query"
 docPath: "/doc"
 group: "/graphql"
-header: 
+docHeader: 
   Authorization: "Bearer 123456"
   X-Tenant-Id: "1"
 `)),
@@ -134,7 +133,7 @@ web:
                 queryPath: "/query"
                 docPath: "/doc"
                 group: "/graphql"
-                header:
+                docHeader:
                   Authorization: "Bearer 123456"
                   X-Tenant-Id: "1"
 `

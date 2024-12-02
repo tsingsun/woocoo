@@ -23,6 +23,7 @@ import (
 
 const (
 	graphqlHandlerName = "graphql"
+	useStream          = "sse_or_websocket"
 )
 
 var (
@@ -43,7 +44,7 @@ type Options struct {
 	// Endpoint is the URL to send GraphQL requests to in the playground.
 	Endpoint string `yaml:"endpoint" json:"endpoint"`
 	// DocHeader is the header to send GraphQL requests to in the playground.
-	DocHeader map[string]string `yaml:"header" json:"header"`
+	DocHeader map[string]string `yaml:"docHeader" json:"docHeader"`
 	// WithAuthorization indicates whether parse graphql operations to resource-action data for default authorization.
 	//
 	// if you want to use custom authorization, you can set it to false, then after RegisterSchema returns the graphql server,
@@ -66,6 +67,8 @@ type Options struct {
 	//      - tenant: ...
 	//
 	Middlewares map[string]any `yaml:"middlewares" json:"middlewares"`
+
+	devMode bool
 }
 
 var (
@@ -115,6 +118,7 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if err = cfg.Unmarshal(&h.opts); err != nil {
 		panic(err)
 	}
+	h.opts.devMode = cfg.Development
 	if h.opts.WithAuthorization && security.DefaultAuthorizer == nil {
 		panic("security.DefaultAuthorizer is nil")
 	}
@@ -124,6 +128,9 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	}
 	optionCache[h.opts.Group] = h.opts
 	return func(c *gin.Context) {
+		if CheckStreamConnection(c) {
+			c.Set(useStream, true)
+		}
 		ctx := context.WithValue(c.Request.Context(), gin.ContextKey, c)
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
@@ -178,10 +185,15 @@ func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server
 		}
 	})
 	cnf.Each("response", func(name string, cfg *conf.Configuration) {
-		if hf, ok := websrv.HandlerManager().Get(name); ok {
-			mid := hf()
-			websrv.HandlerManager().RegisterMiddleware(web.GetMiddlewareKey(routerGroup.Group.BasePath(), name), mid)
-			server.AroundResponses(WrapResponseHandler(mid.ApplyFunc(cfg)))
+		switch name {
+		case handler.AccessLogName:
+			server.AroundResponses(newStreamLogger().ApplyFunc(cfg))
+		default:
+			if hf, ok := websrv.HandlerManager().Get(name); ok {
+				mid := hf()
+				websrv.HandlerManager().RegisterMiddleware(web.GetMiddlewareKey(routerGroup.Group.BasePath(), name), mid)
+				server.AroundResponses(WrapResponseHandler(mid.ApplyFunc(cfg)))
+			}
 		}
 	})
 
@@ -218,7 +230,7 @@ func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server
 	}
 
 	server.SetRecoverFunc(func(ctx context.Context, err any) error {
-		if conf.Global().Development {
+		if opt.devMode {
 			log.Println(err)
 			debug.PrintStack()
 		}
@@ -263,7 +275,10 @@ func WrapResponseHandler(handlerFunc gin.HandlerFunc) graphql.ResponseMiddleware
 }
 
 func doResponseHandler(ctx context.Context, next graphql.ResponseHandler, handlerFunc gin.HandlerFunc) *graphql.Response {
-	c, _ := FromIncomingContext(ctx)
+	c, err := FromIncomingContext(ctx)
+	if err != nil {
+		return next(ctx)
+	}
 	ctx, res := doWebHandler(ctx, c, handlerFunc)
 	if res != nil {
 		return res
@@ -283,7 +298,7 @@ func doWebHandler(ctx context.Context, c *gin.Context, handlerFunc gin.HandlerFu
 			errList = append(errList, gqlerror.Errorf(err.Error()))
 		}
 		// if it is a subscription, do not return Response Data
-		if isStreamSocket(c) {
+		if isStreamConnection(c) {
 			c.Errors = nil
 		}
 		res = &graphql.Response{
@@ -294,10 +309,13 @@ func doWebHandler(ctx context.Context, c *gin.Context, handlerFunc gin.HandlerFu
 }
 
 func doOperationHandler(ctx context.Context, next graphql.OperationHandler, handlerFunc gin.HandlerFunc) graphql.ResponseHandler {
-	c, _ := FromIncomingContext(ctx)
+	c, err := FromIncomingContext(ctx)
+	if err != nil {
+		return next(ctx)
+	}
 	ctx, res := doWebHandler(ctx, c, handlerFunc)
 	if res != nil {
-		if isStreamSocket(c) {
+		if isStreamConnection(c) {
 			return graphql.OneShot(res)
 		} else {
 			return func(ctx context.Context) *graphql.Response {
@@ -338,7 +356,7 @@ func envResponseError(c *gin.Context, errList gqlerror.List) graphql.ResponseHan
 	res := &graphql.Response{
 		Errors: errList,
 	}
-	if isStreamSocket(c) {
+	if isStreamConnection(c) {
 		c.Errors = nil
 		return graphql.OneShot(res)
 	}
@@ -347,15 +365,18 @@ func envResponseError(c *gin.Context, errList gqlerror.List) graphql.ResponseHan
 	}
 }
 
-func isStreamSocket(c *gin.Context) bool {
-	if c != nil {
-		if c.IsWebsocket() {
-			return true
-		}
-		cceptHeader := c.Request.Header.Get("Accept")
-		if strings.Contains(strings.ToLower(cceptHeader), "text/event-stream") {
-			return true
-		}
+func isStreamConnection(c *gin.Context) bool {
+	_, ok := c.Get(useStream)
+	return ok
+}
+
+// CheckStreamConnection check if the request is a stream connection which is a websocket or SSE request.
+func CheckStreamConnection(c *gin.Context) bool {
+	if c.IsWebsocket() {
+		return true
+	}
+	if strings.Contains(strings.ToLower(c.Request.Header.Get("Accept")), "text/event-stream") {
+		return true
 	}
 	return false
 }

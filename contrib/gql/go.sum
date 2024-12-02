@@ -132,6 +132,8 @@ github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsT
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/tsingsun/woocoo v0.5.1 h1:Yb34bGPRV3//PQrtz0omy0dSBp/d99i41V+SrmUSyjM=
 github.com/tsingsun/woocoo v0.5.1/go.mod h1:vfgL54er0eeiUY+61btgKFvYuKOLrEaoJOc81wRnfMo=
+github.com/tsingsun/woocoo v0.5.2-0.20241202093219-65c540512afa h1:z1a+q4mwJ+mWI4+WuUKfTivI2FaCPftlnhNzdT6Bzd8=
+github.com/tsingsun/woocoo v0.5.2-0.20241202093219-65c540512afa/go.mod h1:vfgL54er0eeiUY+61btgKFvYuKOLrEaoJOc81wRnfMo=
 github.com/twitchyliquid64/golang-asm v0.15.1 h1:SU5vSMR7hnwNxj24w34ZyCi/FmDZTkS4MhqMhdFk5YI=
 github.com/twitchyliquid64/golang-asm v0.15.1/go.mod h1:a1lVb/DtPvCB8fslRZhAngC2+aY1QWCk3Cedj/Gdt08=
 github.com/ugorji/go/codec v1.2.12 h1:9LC83zGrHhuUA9l16C9AHXAqEV/2wBQ4nkvumAE65EE=

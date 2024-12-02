@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go.uber.org/zap"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -29,6 +30,8 @@ type ServerOptions struct {
 	configuration  *conf.Configuration // not root configuration
 	handlerManager *HandlerManager     // middleware manager
 	gracefulStop   bool                // run with grace full shutdown
+	// listener is the net.Listener
+	listener net.Listener
 }
 
 type Server struct {
@@ -98,15 +101,7 @@ func (s *Server) Apply(cfg *conf.Configuration) error {
 	return nil
 }
 
-func (s *Server) beforeRun() error {
-	if s.opts.Addr == "" {
-		return errors.New("web server configuration incorrect: miss listen address")
-	}
-	return nil
-}
-
 func (s *Server) Start(ctx context.Context) error {
-	logger.Info(fmt.Sprintf("listening and serving HTTP on %s", s.opts.Addr))
 	err := s.ListenAndServe()
 	if err != nil && errors.Is(err, http.ErrServerClosed) {
 		return nil
@@ -134,13 +129,16 @@ func (s *Server) Stop(ctx context.Context) error {
 //
 //	http.ErrServerClosed or other error
 func (s *Server) ListenAndServe() (err error) {
-	if err = s.beforeRun(); err != nil {
-		return
+	s.opts.listener, err = net.Listen("tcp", s.opts.Addr)
+	if err != nil {
+		return err
 	}
+	s.opts.Addr = s.opts.listener.Addr().String()
+	logger.Info(fmt.Sprintf("listening and serving HTTP on %s", s.opts.Addr))
 	if s.opts.TLS != nil {
-		err = s.httpSrv.ListenAndServeTLS(s.opts.TLS.Cert, s.opts.TLS.Key)
+		err = s.httpSrv.ServeTLS(s.opts.listener, s.opts.TLS.Cert, s.opts.TLS.Key)
 	} else {
-		err = s.httpSrv.ListenAndServe()
+		err = s.httpSrv.Serve(s.opts.listener)
 	}
 	return
 }
@@ -185,15 +183,14 @@ func (s *Server) Run() error {
 	return nil
 }
 
-func (s *Server) httpServerStop(ctx context.Context) error {
+func (s *Server) httpServerStop(ctx context.Context) (err error) {
 	if s.opts.gracefulStop {
-		if err := s.httpSrv.Shutdown(ctx); err != nil {
-			logger.Error("server forced to runAndClose", zap.Error(err))
-		}
+		err = s.httpSrv.Shutdown(ctx)
 	} else {
-		if err := s.httpSrv.Close(); err != nil {
-			logger.Error("Server forced to runAndClose", zap.Error(err))
-		}
+		err = s.httpSrv.Close()
+	}
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.Error("server forced to runAndClose", zap.Error(err))
 	}
 	return nil
 }

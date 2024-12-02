@@ -43,12 +43,12 @@ web:
     addr: :8080
   engine:    
     routerGroups:
-      - default:                    
-          middlewares:
-            - graphql:
-                # 配置...
-      - api:
-        # .....
+    - default:                    
+        middlewares:
+        - graphql:
+        # 配置...
+    - api:
+      # .....
 ```
 加载该中间件处理器.
 ```go
@@ -63,18 +63,35 @@ _, err := RegisterSchema(srv, &gqlSchema, &gqlSchema)
 
 ## gql中间件.
 
-contrib/gql包实现了web middleware的转化为gqlgen中间件,主要配置和web中间件的配置是一致的.根据实际情况选择
+contrib/gql包实现了web middleware的转化为gqlgen中间件(注:有局限),主要配置和web中间件的配置是一致的.根据实际情况选择放入的位置.
+
+:::warning
+如果复用Web中间件, 其中间件采用了`c.Next`会导致Context上下文顺序错误,这类中间件不可复用.
+:::
+
 ```yaml
 web:
   server:
     addr: :8080
   engine:    
     routerGroups:
-      - default:                    
-          middlewares:
-            - accessLog:
-            - graphql:
-                middlewares:
-                  operation:
-                    - jwt: # ...
+    - default:                    
+        middlewares:
+        - accessLog:
+        - graphql:
+            middlewares:
+              operation:
+              - jwt: # ...
+```
+
+### accessLog
+
+针对流式交互(WebSocket,SSE),其数据流并非走Req-Resp方式,因此无法通过web中间件实现日志记录.所以针对日志有独立的实现. 
+
+```yaml
+middlewares:
+- accessLog:
+    # 额外输出格式: 与web.logger类似格式.
+    # resp: 流响应数据
+    format: host,remoteIp,latency,latencyHuman,error,resp
 ```

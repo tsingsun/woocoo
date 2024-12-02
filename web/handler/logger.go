@@ -25,7 +25,14 @@ var (
 	AccessLogComponentName = "web.accessLog"
 	defaultLoggerFormat    = "id,remoteIp,host,method,uri,userAgent,status,error," +
 		"latency,bytesIn,bytesOut"
+	LoggerFieldSkip = zap.Skip()
 )
+
+type loggerTag struct {
+	FullKey string
+	typ     loggerTagType
+	key     string
+}
 
 type LoggerConfig struct {
 	Skipper Skipper
@@ -56,13 +63,30 @@ type LoggerConfig struct {
 	// Optional. Default value DefaultLoggerConfig.Format.
 	Format string        `json:"format" yaml:"format"`
 	Level  zapcore.Level `json:"level" yaml:"level"`
-	tags   []loggerTag
+	Tags   []loggerTag
 }
 
-type loggerTag struct {
-	fullKey string
-	typ     loggerTagType
-	key     string
+func (h *LoggerConfig) BuildTag(format string) {
+	var tags []loggerTag
+	ts := strings.Split(format, ",")
+	for _, tag := range ts {
+		tag = strings.TrimSpace(tag)
+		switch {
+		case strings.HasPrefix(tag, "header:"):
+			tags = append(tags, loggerTag{FullKey: tag, typ: loggerTagTypeHeader, key: tag[7:]})
+		case strings.HasPrefix(tag, "query:"):
+			tags = append(tags, loggerTag{FullKey: tag, typ: loggerTagTypeQuery, key: tag[6:]})
+		case strings.HasPrefix(tag, "form:"):
+			tags = append(tags, loggerTag{FullKey: tag, typ: loggerTagTypeForm, key: tag[5:]})
+		case strings.HasPrefix(tag, "cookie:"):
+			tags = append(tags, loggerTag{FullKey: tag, typ: loggerTagTypeCookie, key: tag[7:]})
+		case strings.HasPrefix(tag, "context:"):
+			tags = append(tags, loggerTag{FullKey: tag, typ: loggerTagTypeContext, key: tag[8:]})
+		default:
+			tags = append(tags, loggerTag{FullKey: tag, typ: loggerTagTypeString})
+		}
+	}
+	h.Tags = tags
 }
 
 // LoggerMiddleware is a middleware that logs each request.
@@ -106,35 +130,12 @@ func (h *LoggerMiddleware) buildLogger() {
 	h.logger.SetLogger(operator)
 }
 
-func (h *LoggerMiddleware) buildTag(format string) {
-	var tags []loggerTag
-	ts := strings.Split(format, ",")
-	for _, tag := range ts {
-		tag = strings.TrimSpace(tag)
-		switch {
-		case strings.HasPrefix(tag, "header:"):
-			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeHeader, key: tag[7:]})
-		case strings.HasPrefix(tag, "query:"):
-			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeQuery, key: tag[6:]})
-		case strings.HasPrefix(tag, "form:"):
-			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeForm, key: tag[5:]})
-		case strings.HasPrefix(tag, "cookie:"):
-			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeCookie, key: tag[7:]})
-		case strings.HasPrefix(tag, "context:"):
-			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeContext, key: tag[8:]})
-		default:
-			tags = append(tags, loggerTag{fullKey: tag, typ: loggerTagTypeString})
-		}
-	}
-	h.config.tags = tags
-}
-
 // ApplyFunc build a gin.HandlerFunc for NewAccessLog middleware
 func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if err := cfg.Unmarshal(&h.config); err != nil {
 		panic(err)
 	}
-	h.buildTag(h.config.Format)
+	h.config.BuildTag(h.config.Format)
 	h.buildLogger()
 	if h.config.Skipper == nil && len(h.config.Exclude) > 0 {
 		pm := StringsToMap(h.config.Exclude)
@@ -149,7 +150,6 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		h.config.Skipper = DefaultSkipper
 	}
 	traceIDKey := h.logger.Logger().TraceIDKey
-
 	return func(c *gin.Context) {
 		start := time.Now()
 		logCarrier := log.NewCarrier()
@@ -159,15 +159,14 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			return
 		}
 		req := c.Request
-		stop := time.Now()
 		res := c.Writer
-		latency := stop.Sub(start)
+		latency := time.Now().Sub(start)
 		path := c.Request.URL.Path
 
-		fields := make([]zap.Field, len(h.config.tags))
+		fields := make([]zap.Field, len(h.config.Tags))
 		privateErr := false
-		for i, tag := range h.config.tags {
-			switch tag.fullKey {
+		for i, tag := range h.config.Tags {
+			switch tag.FullKey {
 			case "id":
 				id := req.Header.Get("X-Request-Id")
 				fields[i] = zap.String(traceIDKey, id)
@@ -211,26 +210,26 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			default:
 				switch tag.typ {
 				case loggerTagTypeHeader:
-					fields[i] = zap.String(tag.fullKey, c.Request.Header.Get(tag.key))
+					fields[i] = zap.String(tag.FullKey, c.Request.Header.Get(tag.key))
 				case loggerTagTypeQuery:
-					fields[i] = zap.String(tag.fullKey, c.Query(tag.key))
+					fields[i] = zap.String(tag.FullKey, c.Query(tag.key))
 				case loggerTagTypeForm:
-					fields[i] = zap.String(tag.fullKey, c.PostForm(tag.key))
+					fields[i] = zap.String(tag.FullKey, c.PostForm(tag.key))
 				case loggerTagTypeCookie:
 					cookie, err := c.Cookie(tag.key)
 					// if no found, skip
 					if err == nil {
-						fields[i] = zap.String(tag.fullKey, cookie)
+						fields[i] = zap.String(tag.FullKey, cookie)
 					}
 				case loggerTagTypeContext:
 					val := c.Value(tag.key)
 					if val != nil {
-						fields[i] = zap.Any(tag.fullKey, val)
+						fields[i] = zap.Any(tag.FullKey, val)
 					}
 				}
 			}
 			if fields[i].Type == zapcore.UnknownType {
-				fields[i] = zap.Skip()
+				fields[i] = LoggerFieldSkip
 			}
 		}
 		if fc := GetLogCarrierFromGinContext(c); fc != nil && len(fc.Fields) > 0 {

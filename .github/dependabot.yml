@@ -3,30 +3,28 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: daily
+      interval: monthly
   - package-ecosystem: gomod
     directory: /
     schedule:
-      interval: daily
+      interval: monthly
   - package-ecosystem: gomod
     directory: /contrib/telemetry/
     schedule:
-      interval: daily
+      interval: monthly
   - package-ecosystem: gomod
     directory: /contrib/gql/
     schedule:
-      interval: daily
+      interval: monthly
   - package-ecosystem: gomod
     directory: /contrib/polarismesh/
     schedule:
-      interval: daily
+      interval: monthly
   - package-ecosystem: gomod
     directory: /cmd/woco/
     schedule:
-      interval: daily
+      interval: monthly
   - package-ecosystem: "npm"
     directory: "/docs"
-    schedule:
-      interval: "daily"
     ignore:
       - dependency-name: "*"

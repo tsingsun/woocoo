@@ -233,17 +233,32 @@ jwt:
 ```
 更多的具有配置内容,可查看代码实现.
 
-## CROS
+## CORS
 
-CROS是跨域资源共享的简称,由于web服务的特殊性,因此我们提供了CROS中间件,可通过配置文件进行配置.
+CORS是跨域资源共享的简称,由于web服务的特殊性,因此我们提供了CORS中间件,可通过配置文件进行配置.
 
 ```yaml
-cros:
+cors:
   # 简易配置可设置为 allowOrigins: ['*']
   allowOrigins: ["http://localhost:8080","https://github.com"]  
   # 简易配置可设置为: ["*"]
+  # 默认值为 Origin,Content-Type,Accept,Authorization
   allowHeaders: "Origin,Content-Type,Accept,Authorization"
+  # 默认值为 (GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS)
+  allowMethods: true
+  # 用于控制是否允许浏览器发送跨域请求时携带认证信息（如 cookies、HTTP 认证信息等）
+  allowCredentials: true
+  # 表示预检请求的结果可以被缓存时长。默认12小时
+  maxAge: "1h"
+  # 是否允许通配符 http://some-domain/*, https://api.* or http://some.*.subdomain.com
+  allowWildcard: false
 ```
+
+更多的额外的配置可参考[github](https://github.com/gin-contrib/cors)中的`cors.Config`,对应在配置文件中加入即可.
+
+关于CORS的参考: 
+
+[预检请求](https://developer.chrome.com/blog/private-network-access-preflight?hl=zh-cn)
 
 ## 签名HTTP
 

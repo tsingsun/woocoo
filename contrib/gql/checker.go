@@ -27,11 +27,12 @@ func (t *testResponseWriter) WriteHeader(statusCode int) {
 	t.status = statusCode
 }
 
+// SupportStream checks whether the server supports streaming
 func SupportStream(server *gqlgen.Server) bool {
 	var checkSupportedResponse = func(w *testResponseWriter) bool {
 		return !(w.status == http.StatusBadRequest && strings.Contains(string(w.body), "transport not supported"))
 	}
-	// Websocket
+	// Websocket request, make it error thought miss Connection header
 	r, err := http.NewRequest(http.MethodGet, "/", nil)
 	if err != nil {
 		panic(err)
@@ -41,7 +42,9 @@ func SupportStream(server *gqlgen.Server) bool {
 	if !ts.Supports(r) {
 		panic("testStreamSupport invalid, please check graphql package")
 	}
-	w := &testResponseWriter{}
+	w := &testResponseWriter{
+		header: make(http.Header),
+	}
 	server.ServeHTTP(w, r)
 	if checkSupportedResponse(w) {
 		return true
@@ -53,7 +56,9 @@ func SupportStream(server *gqlgen.Server) bool {
 	}
 	r.Header.Set("Accept", "text/event-stream")
 	r.Header.Set("Content-Type", "application/json")
-	w = &testResponseWriter{}
+	w = &testResponseWriter{
+		header: make(http.Header),
+	}
 	sse := &transport.SSE{}
 	if !sse.Supports(r) {
 		panic("testStreamSupport invalid, please check code")

@@ -69,6 +69,8 @@ type Options struct {
 	Middlewares map[string]any `yaml:"middlewares" json:"middlewares"`
 
 	devMode bool
+	// whether support websocket or sse.
+	isSupportStream bool
 }
 
 var (
@@ -128,7 +130,7 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	}
 	optionCache[h.opts.Group] = h.opts
 	return func(c *gin.Context) {
-		if CheckStreamConnection(c) {
+		if h.opts.isSupportStream && CheckStreamConnection(c) {
 			c.Set(useStream, true)
 		}
 		ctx := context.WithValue(c.Request.Context(), gin.ContextKey, c)
@@ -176,6 +178,7 @@ func RegisterGraphqlServer(websrv *web.Server, servers ...*gqlgen.Server) error 
 
 // buildGraphqlServer create a graphiql server
 func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server *gqlgen.Server, opt *Options) *gqlgen.Server {
+	opt.isSupportStream = SupportStream(server)
 	cnf := conf.NewFromStringMap(opt.Middlewares)
 	cnf.Each("operation", func(name string, cfg *conf.Configuration) {
 		if hf, ok := websrv.HandlerManager().Get(name); ok {

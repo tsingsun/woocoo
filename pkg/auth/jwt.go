@@ -196,22 +196,22 @@ func parseKey(keyStr string) ([]byte, error) {
 // - string: "raw key",such as hs256 key or rsa rwa key string
 // private key: if need to use private key,such as rsa private key
 func ParseSigningKeyFromString(keystr, method string, privateKey bool) (any, error) {
+	key, err := parseKey(keystr)
+	if err != nil {
+		return nil, err
+	}
 	switch strings.ToUpper(method) {
 	case "RS256", "RS384", "RS512":
-		bt, err := parseKey(keystr)
-		if err != nil {
-			return nil, err
-		}
 		if privateKey {
-			return jwt.ParseRSAPrivateKeyFromPEM(bt)
+			return jwt.ParseRSAPrivateKeyFromPEM(key)
 		}
-		return jwt.ParseRSAPublicKeyFromPEM(bt)
+		return jwt.ParseRSAPublicKeyFromPEM(key)
 	case "ES256", "ES384", "ES512":
 		fallthrough
 	case "PS256", "PS384", "PS512":
 		fallthrough
 	case "HS256", "HS384", "HS512":
-		return []byte(keystr), nil
+		return key, nil
 	}
 	return nil, fmt.Errorf("jwt middleware requires signing method")
 }

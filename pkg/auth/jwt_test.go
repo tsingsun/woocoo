@@ -47,7 +47,15 @@ func TestJwtOptions(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, id, "67a87482e91f4f2e9220f51376185b7e")
 	})
-	t.Run("keys", func(t *testing.T) {
+	t.Run("secret in file", func(t *testing.T) {
+		opt := NewJWTOptions()
+		opt.SigningMethod = "HS256"
+		opt.SigningKey = "file:///" + testdata.Path(filepath.Join("etc", "jwt-secret-file.pem"))
+		require.NoError(t, opt.Init())
+		_, err := opt.ParseTokenFunc(nil, tokens.String("secretKidToken"))
+		assert.NoError(t, err)
+	})
+	t.Run("keys invalid", func(t *testing.T) {
 		opt := NewJWTOptions()
 		opt.SigningKeys = map[string]any{
 			"secret": "secret",

@@ -1,5 +1,5 @@
 {{/* gotype: github.com/tsingsun/woocoo/cmd/woco/project.Graph */}}
-{{- define "makefile"}}
+{{- define "makefile" -}}
 version := $(shell /bin/date "+%Y-%m-%d %H:%M")
 BUILD_NAME={{ pkgName $.Package}}
 
@@ -16,12 +16,13 @@ linux:
 {{"\t"}}$(if $(shell command -v upx), upx $(BUILD_NAME)-linux)
 {{ end }}
 
-{{- define "gitignore" }}
-### Go template
-go.work*
+{{- define "gitignore" -}}
+# System or IDE files
+*.DS_Store
 .vscode
 .idea
 .run
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -38,4 +39,9 @@ go.work*
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
 {{ end }}

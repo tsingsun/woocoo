@@ -24,16 +24,16 @@ grpc:
     addr: 127.0.0.1:20001
     namespace: woocoo
     version: "1.0"
-    engine:
-      - compression:
-          name: gzip
-          level: 1
-      - unaryInterceptors:
-          - trace:
-          - accessLog:
-              timestampFormat: "2006-01-02 15:04:05"
-          - recovery:
-      - streamInterceptors:
+  engine:
+    - compression:
+        name: gzip
+        level: 1
+    - unaryInterceptors:
+        - trace:
+        - accessLog:
+            timestampFormat: "2006-01-02 15:04:05"
+        - recovery:
+    - streamInterceptors:
   client:
     target:
       namespace: woocoo

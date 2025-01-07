@@ -10,24 +10,10 @@ import (
 const interceptorName = "otel"
 
 func init() {
-	grpcx.RegisterGrpcUnaryInterceptor(interceptorName, UnaryServerInterceptor)
-	grpcx.RegisterGrpcStreamInterceptor(interceptorName, StreamServerInterceptor)
-	grpcx.RegisterUnaryClientInterceptor(interceptorName, UnaryClientInterceptor)
-	grpcx.RegisterStreamClientInterceptor(interceptorName, StreamClientInterceptor)
-}
-
-func UnaryServerInterceptor(_ *conf.Configuration) grpc.UnaryServerInterceptor {
-	return otelgrpc.UnaryServerInterceptor()
-}
-
-func StreamServerInterceptor(_ *conf.Configuration) grpc.StreamServerInterceptor {
-	return otelgrpc.StreamServerInterceptor()
-}
-
-func UnaryClientInterceptor(_ *conf.Configuration) grpc.UnaryClientInterceptor {
-	return otelgrpc.UnaryClientInterceptor()
-}
-
-func StreamClientInterceptor(_ *conf.Configuration) grpc.StreamClientInterceptor {
-	return otelgrpc.StreamClientInterceptor()
+	grpcx.RegisterGrpcServerOption(interceptorName, func(_ *conf.Configuration) grpc.ServerOption {
+		return grpc.StatsHandler(otelgrpc.NewServerHandler())
+	})
+	grpcx.RegisterDialOption(interceptorName, func(_ *conf.Configuration) grpc.DialOption {
+		return grpc.WithStatsHandler(otelgrpc.NewClientHandler())
+	})
 }

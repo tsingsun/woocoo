@@ -156,7 +156,7 @@ Private错误将会被记录到日志中,同时以配置文件中的message输�
 
 默认通过gin.Context方法`c.Error(error)`方法产生的为private类型的错误.
 
-我们也提供了一个方法来支持错误代表(code)和错误信息(message)的输出.
+我们也提供了一个方法来支持错误代码(code)和错误信息(message)的输出.
 ```go
 // SetContextError set the error to Context,and the error will be handled by ErrorHandleMiddleware
 func SetContextError(c *gin.Context, code int, err error) {
@@ -181,7 +181,29 @@ func SetContextError(c *gin.Context, code int, err error) {
 }
 ```
 
-同时也可以通过程序化来自定义处理程序,来应不同的需求:
+### 自定义错误映射
+
+内置了Error的映射方法,你可以通过程序化来自定义错误映射,来应不同的需求, 有两类错误映射:
+
+- codeMap: key:int,value:string ,你可以将http.StatusCode配置为错误码来映射错误信息.
+- errorMap: key:error,value:string ,你可以将error配置为错误码来映射错误信息.适应于底层返回错误难以被识别的错误.
+
+```go
+customCodeMap:= map[int]any{
+	// init by yourself
+	500: "系统错误,请联系管理员",
+	10000: "自定义错误信息",
+}
+customErrorMap:= map[int]any{
+	"error pkg error": "系统错误,请联系管理员"
+}
+handler.SetErrorMap(customCodeMap, customErrorMap)
+
+```
+
+### 自定义错误解析
+
+可以通过程序化来自定义处理程序,来应不同的需求:
 
 ```go
 // ExampleErrorHandleMiddleware_customErrorParser is the example for customer ErrorHandle

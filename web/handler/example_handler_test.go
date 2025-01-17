@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web/handler"
 	"net/http"
 )
@@ -35,6 +36,6 @@ func ExampleErrorHandleMiddleware_customErrorParser() {
 			return 0, errs
 		}
 	}))
-	// use in web server
-	gin.Default().Use(hdl.ApplyFunc(nil))
+	// use in web server, you can pass a custom conf.Configuration
+	gin.Default().Use(hdl.ApplyFunc(conf.New()))
 }

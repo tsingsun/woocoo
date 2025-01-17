@@ -21,7 +21,8 @@ type (
 		Accepts         string      `json:"accepts" yaml:"accepts"`
 		NegotiateFormat []string    `json:"-" yaml:"-"`
 		ErrorParser     ErrorParser `json:"-" yaml:"-"`
-		// Message is the string while the error is private
+		// Message is the message you want mask all private error, it will not mask public error.
+		// see gin.ErrorType
 		Message string `json:"message" yaml:"message"`
 	}
 
@@ -42,9 +43,8 @@ func NewErrorHandle(opts ...MiddlewareOption) *ErrorHandleMiddleware {
 	}
 	mipts := NewMiddlewareOption(opts...)
 	if mipts.ConfigFunc != nil {
-		mw.opts.ConfigFunc(mw.config)
+		mipts.ConfigFunc(mw.config)
 	}
-	mw.opts.applyOptions(opts...)
 	return mw
 }
 
@@ -92,18 +92,55 @@ var DefaultErrorParser ErrorParser = func(c *gin.Context, public error) (int, an
 	for i, e := range c.Errors {
 		switch e.Type {
 		case gin.ErrorTypePublic:
-			errs[i] = FormatResponseError(code, e.Err)
+			errs[i] = DefaultErrorFormater(code, e.Err)
 		case gin.ErrorTypePrivate:
 			if public == nil {
-				errs[i] = FormatResponseError(code, e.Err)
+				errs[i] = DefaultErrorFormater(code, e.Err)
 			} else {
-				errs[i] = FormatResponseError(code, public)
+				errs[i] = DefaultErrorFormater(code, public)
 			}
 		default:
-			errs[i] = FormatResponseError(int(e.Type), e.Err)
+			errs[i] = DefaultErrorFormater(int(e.Type), e.Err)
 		}
 	}
 	return code, gin.H{"errors": errs}
+}
+
+// DefaultErrorFormater is the default error formater
+var DefaultErrorFormater = FormatResponseError
+
+var (
+	errorCodeMap = map[int]string{}
+	errorMap     = map[string]string{}
+)
+
+// SetErrorMap set the error code map and error message map for ErrorHandler.
+func SetErrorMap(cm map[int]string, em map[string]string) {
+	if cm != nil {
+		errorCodeMap = cm
+	}
+	if em != nil {
+		errorMap = em
+	}
+}
+
+// FormatResponseError converts a http error to gin.H
+func FormatResponseError(code int, err error) gin.H {
+	gh := gin.H{}
+	if code != 0 {
+		gh["code"] = code
+		if txt, ok := errorCodeMap[code]; ok {
+			gh["message"] = txt
+			return gh
+		}
+	}
+	ne := err.Error()
+	if txt, ok := errorMap[ne]; ok {
+		gh["message"] = txt
+	} else {
+		gh["message"] = ne
+	}
+	return gh
 }
 
 // NegotiateResponse calls different Render according to acceptably Accept format.
@@ -135,14 +172,6 @@ func NegotiateResponse(c *gin.Context, code int, data any, offered []string) {
 			c.AbortWithError(http.StatusNotAcceptable, errors.New("the accepted formats are not offered by the server")) // nolint: errcheck
 		}
 	}
-}
-
-// FormatResponseError converts a http error to gin.H
-func FormatResponseError(code int, err error) gin.H {
-	if code != 0 {
-		return gin.H{"code": code, "message": err.Error()}
-	}
-	return gin.H{"message": err.Error()}
 }
 
 // SetContextError set the error to Context, and the error will be handled by ErrorHandleMiddleware

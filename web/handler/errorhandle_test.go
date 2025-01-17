@@ -117,7 +117,6 @@ func TestErrorHandleMiddleware_ApplyFunc(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := ErrorHandle().(*ErrorHandleMiddleware)
 			assert.Equal(t, e.Name(), ErrorHandlerName)
-			gin.SetMode(gin.ReleaseMode)
 			web := gin.New()
 			got := e.ApplyFunc(tt.args.cfg)
 			web.Use(got)
@@ -154,7 +153,6 @@ func TestSetContextError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httptest.NewRequest("GET", "/", nil)
 			w := httptest.NewRecorder()
-			gin.SetMode(gin.ReleaseMode)
 			srv := gin.New()
 			srv.Use(eh)
 			srv.GET("/", func(c *gin.Context) {
@@ -168,6 +166,7 @@ func TestSetContextError(t *testing.T) {
 }
 
 func TestErrorResponse(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
 	type field struct {
 		midCfg *conf.Configuration
 	}
@@ -215,7 +214,7 @@ func TestErrorResponse(t *testing.T) {
 			r := httptest.NewRequest("GET", "/", nil)
 			r.Header.Set("Accept", tt.args.accept)
 			w := httptest.NewRecorder()
-			gin.SetMode(gin.ReleaseMode)
+
 			srv := gin.New()
 			srv.Use(eh)
 			srv.GET("/", func(c *gin.Context) {
@@ -224,6 +223,133 @@ func TestErrorResponse(t *testing.T) {
 			srv.ServeHTTP(w, r)
 			assert.Equal(t, tt.wantCode, w.Code)
 			assert.Contains(t, w.Header().Get("Content-Type"), tt.wantContentType)
+		})
+	}
+}
+
+func TestCustomErrorFormater(t *testing.T) {
+	const (
+		ErrBodyNotAllowed = "username/password not correct"
+		ErrPrivateMasked  = "private mask"
+	)
+
+	customCodeMap := map[int]string{
+		10000: "miss required param",
+		10001: "invalid param",
+	}
+
+	customErrorMap := map[string]string{
+		http.ErrBodyNotAllowed.Error(): ErrBodyNotAllowed,
+		http.ErrMissingFile.Error():    "miss required file",
+		errors.New("private").Error():  ErrPrivateMasked,
+	}
+	type args struct {
+		customCodeMap  map[int]string
+		customErrorMap map[string]string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		check   func(t *testing.T, hf http.HandlerFunc)
+		wantErr string
+	}{
+		{
+			name: "empty",
+			args: args{
+				customCodeMap:  nil,
+				customErrorMap: nil,
+			},
+			check: func(t *testing.T, hf http.HandlerFunc) {
+				assert.HTTPBodyContains(t, hf, "GET", "/", nil, "abc")
+				assert.HTTPBodyContains(t, hf, "GET", "/p", nil, "private")
+			},
+		},
+		{
+			name: "custom",
+			args: args{
+				customCodeMap:  customCodeMap,
+				customErrorMap: customErrorMap,
+			},
+			check: func(t *testing.T, hf http.HandlerFunc) {
+				assert.HTTPBodyContains(t, hf, "GET", "/", nil, "abc")
+				assert.HTTPBodyContains(t, hf, "GET", "/p", nil, ErrPrivateMasked)
+			},
+		},
+	}
+	for _, tt := range tests {
+		SetErrorMap(tt.args.customCodeMap, tt.args.customErrorMap)
+		e := ErrorHandleMiddleware{}
+		eh := e.ApplyFunc(conf.New())
+		srv := gin.New()
+		srv.Use(eh)
+		srv.GET("/", func(c *gin.Context) {
+			SetContextError(c, int(gin.ErrorTypePublic), errors.New("abc"))
+		})
+		srv.GET("/p", func(c *gin.Context) {
+			SetContextError(c, int(gin.ErrorTypePrivate), errors.New("private"))
+		})
+		tt.check(t, srv.ServeHTTP)
+	}
+}
+
+func TestCustomErrorHandler(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	hdl := NewErrorHandle(WithMiddlewareConfig(func(config any) {
+		codeMap := map[uint64]any{
+			10000: "miss required param",
+			10001: "invalid param",
+		}
+		errorMap := map[interface{ Error() string }]string{
+			http.ErrBodyNotAllowed: "username/password not correct",
+			http.ErrMissingFile:    "miss required file",
+		}
+		c := config.(*ErrorHandleConfig)
+		c.Accepts = "application/json,application/xml"
+		c.Message = "internal error"
+		c.ErrorParser = func(c *gin.Context, public error) (int, any) {
+			var errs = make([]gin.H, len(c.Errors))
+			for i, e := range c.Errors {
+				if txt, ok := codeMap[uint64(e.Type)]; ok {
+					errs[i] = gin.H{"code": i, "message": txt}
+					continue
+				}
+				if txt, ok := errorMap[e.Err]; ok {
+					errs[i] = gin.H{"code": i, "message": txt}
+					continue
+				}
+				errs[i] = gin.H{"code": e.Type, "message": e.Error()}
+			}
+			return 0, errs
+		}
+	}))
+
+	tests := []struct {
+		name  string
+		cfg   *conf.Configuration
+		code  int
+		err   error
+		check func(t *testing.T, r *httptest.ResponseRecorder)
+	}{
+		{
+			name: "with-config",
+			cfg:  conf.New(),
+			code: http.StatusForbidden,
+			err:  errors.New("username/password not correct"),
+			check: func(t *testing.T, r *httptest.ResponseRecorder) {
+				assert.Contains(t, r.Body.String(), "username/password not correct")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := gin.New()
+			srv.Use(hdl.ApplyFunc(tt.cfg))
+			srv.GET("/", func(c *gin.Context) {
+				SetContextError(c, tt.code, tt.err)
+			})
+			r := httptest.NewRecorder()
+			srv.ServeHTTP(r, httptest.NewRequest("GET", "/", nil))
+			tt.check(t, r)
 		})
 	}
 }

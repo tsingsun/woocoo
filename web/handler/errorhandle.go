@@ -110,37 +110,40 @@ var DefaultErrorParser ErrorParser = func(c *gin.Context, public error) (int, an
 var DefaultErrorFormater = FormatResponseError
 
 var (
-	errorCodeMap = map[int]string{}
-	errorMap     = map[string]string{}
+	errorCodeMap    = map[int]string{}
+	errorMap        = map[string]string{}
+	useErrorCodeMap bool
+	useErrorMap     bool
 )
 
 // SetErrorMap set the error code map and error message map for ErrorHandler.
 func SetErrorMap(cm map[int]string, em map[string]string) {
 	if cm != nil {
 		errorCodeMap = cm
+		useErrorCodeMap = len(errorCodeMap) > 0
 	}
 	if em != nil {
 		errorMap = em
+		useErrorMap = len(errorMap) > 0
 	}
 }
 
 // FormatResponseError converts a http error to gin.H
 func FormatResponseError(code int, err error) gin.H {
-	gh := gin.H{}
-	if code != 0 {
-		gh["code"] = code
+	if useErrorCodeMap {
 		if txt, ok := errorCodeMap[code]; ok {
-			gh["message"] = txt
-			return gh
+			return gin.H{"code": code, "message": txt}
 		}
 	}
-	ne := err.Error()
-	if txt, ok := errorMap[ne]; ok {
-		gh["message"] = txt
-	} else {
-		gh["message"] = ne
+	if useErrorMap {
+		if txt, ok := errorMap[err.Error()]; ok {
+			return gin.H{"code": code, "message": txt}
+		}
 	}
-	return gh
+	if code > 0 {
+		return gin.H{"code": code, "message": err.Error()}
+	}
+	return gin.H{"message": err.Error()}
 }
 
 // NegotiateResponse calls different Render according to acceptably Accept format.

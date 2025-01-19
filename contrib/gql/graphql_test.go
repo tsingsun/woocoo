@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -13,6 +14,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/web"
+	"github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"net/http"
@@ -365,6 +367,23 @@ web:
 		web.WithMiddlewareNewFunc(graphqlHandlerName, Middleware))
 	expectedPanic := "gql panic"
 	expectedPanicErr := errors.New("gql panic error")
+	schema := gqlparser.MustLoadSchema(&ast.Source{Input: `
+		type Query {
+			hello: Boolean!
+		}
+		type Mutation {
+			name: String!
+		}
+		type Subscription {
+			name: String!
+		}
+		enum EnumType{
+			"""Description for VALUE1"""
+  			VALUE1
+			"""Description for VALUE2"""
+  			VALUE2
+		}
+	`})
 	mock := graphql.ExecutableSchemaMock{
 		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
 			panic("mock out the Complexity method")
@@ -378,32 +397,18 @@ web:
 				if ps := gctx.Request.Header.Get("panicerr"); ps != "" {
 					panic(expectedPanicErr)
 				}
+				if ps := gctx.Request.Header.Get("Type-Query"); ps != "" {
+					return &graphql.Response{
+						Data: []byte(`{"__type":{"name":"EnumType","enumValues":[{"name":"VALUE1","description":"Description for VALUE1"},{"name":"VALUE2","description":"Description for VALUE2"}]}}`),
+					}
+				}
 				return &graphql.Response{
 					Data: []byte("{}"),
 				}
 			}
 		},
 		SchemaFunc: func() *ast.Schema {
-			return &ast.Schema{
-				Query: &ast.Definition{
-					Kind: ast.Object,
-					Name: "Query",
-					Fields: []*ast.FieldDefinition{
-						{
-							Name:     "hello",
-							Type:     ast.NamedType("Boolean", &ast.Position{}),
-							Position: &ast.Position{},
-						},
-					},
-				},
-				Types: map[string]*ast.Definition{
-					"Boolean": {
-						Kind:     ast.Scalar,
-						Name:     "Boolean",
-						Position: &ast.Position{},
-					},
-				},
-			}
+			return schema
 		},
 	}
 
@@ -459,6 +464,43 @@ web:
 		srv.Router().ServeHTTP(w, r)
 		assert.Equal(t, http.StatusForbidden, w.Code)
 		assert.Contains(t, w.Body.String(), "mock error")
+	})
+	t.Run("type query", func(t *testing.T) {
+		cli := client.New(srv.Router(), func(bd *client.Request) {
+			bd.HTTP = bd.HTTP.WithContext(security.WithContext(context.Background(),
+				security.NewGenericPrincipalByClaims(jwt.MapClaims{"sub": 1})))
+			bd.HTTP.URL.Path = "/query"
+			bd.HTTP.Header.Set("Type-Query", "1")
+
+		})
+		query := `
+query EnumType{ 
+  __type(name: "EnumType") {
+    name,
+    enumValues { 
+      name, 
+      description 
+    } 
+  } 
+}
+`
+		var resp map[string]any
+		err = cli.Post(query, &resp)
+		require.NoError(t, err)
+		assert.Equal(t,
+			map[string]any{
+				"name": "EnumType",
+				"enumValues": []any{
+					map[string]any{
+						"name":        "VALUE1",
+						"description": "Description for VALUE1",
+					},
+					map[string]any{
+						"name":        "VALUE2",
+						"description": "Description for VALUE2",
+					},
+				},
+			}, resp["__type"])
 	})
 }
 

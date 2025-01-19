@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
-	"net/http"
-	"runtime/debug"
-	"strings"
-
 	"github.com/99designs/gqlgen/graphql"
 	gqlgen "github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
+	"github.com/99designs/gqlgen/graphql/handler/lru"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -19,6 +17,10 @@ import (
 	"github.com/tsingsun/woocoo/web/handler"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
+	"log"
+	"net/http"
+	"runtime/debug"
+	"strings"
 )
 
 const (
@@ -142,11 +144,19 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 // RegisterSchema is builder for initializing graphql schemas, initialize order is based on the router group order.
 // graphql middleware must registry to web server first though web.RegisterMiddleware(gql.New())
 //
-// it graphql pkg handler.NewDefaultServer to create a graphql server
+// you must not add transport for websocket or sse after call this method that will cause Options.isSupportStream not correct.
+// if you want to use websocket or sse, you must call RegisterGraphqlServer.
 func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss []*gqlgen.Server, err error) {
 	ss = make([]*gqlgen.Server, len(schemas))
 	for i, schema := range schemas {
-		ss[i] = gqlgen.NewDefaultServer(schema)
+		srv := gqlgen.New(schema)
+		srv.AddTransport(transport.Options{})
+		srv.AddTransport(transport.GET{})
+		srv.AddTransport(transport.POST{})
+		srv.AddTransport(transport.MultipartForm{})
+		srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
+		srv.Use(extension.Introspection{})
+		ss[i] = srv
 	}
 	err = RegisterGraphqlServer(websrv, ss...)
 	if err != nil {
@@ -177,7 +187,7 @@ func RegisterGraphqlServer(websrv *web.Server, servers ...*gqlgen.Server) error 
 }
 
 // buildGraphqlServer create a graphiql server
-func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server *gqlgen.Server, opt *Options) *gqlgen.Server {
+func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server *gqlgen.Server, opt *Options) {
 	opt.isSupportStream = SupportStream(server)
 	cnf := conf.NewFromStringMap(opt.Middlewares)
 	cnf.Each("operation", func(name string, cfg *conf.Configuration) {
@@ -213,23 +223,23 @@ func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server
 	var DocHandler = func(c *gin.Context) {
 		docHandler.ServeHTTP(c.Writer, c.Request)
 	}
-
+	var addHandler = func(gr interface {
+		POST(string, ...gin.HandlerFunc) gin.IRoutes
+		GET(string, ...gin.HandlerFunc) gin.IRoutes
+	}) {
+		gr.POST(opt.QueryPath, QueryHandler)
+		if opt.WebSocketPath != "" {
+			gr.GET(opt.WebSocketPath, QueryHandler)
+		}
+		if opt.DocPath != "" {
+			server.Use(extension.Introspection{})
+			gr.GET(opt.DocPath, DocHandler)
+		}
+	}
 	if routerGroup.Group.BasePath() == "/" {
-		routerGroup.Router.Engine.POST(opt.QueryPath, QueryHandler)
-		if opt.WebSocketPath != "" {
-			routerGroup.Router.Engine.GET(opt.WebSocketPath, QueryHandler)
-		}
-		if opt.DocPath != "" {
-			routerGroup.Router.Engine.GET(opt.DocPath, DocHandler)
-		}
+		addHandler(routerGroup.Router.Engine)
 	} else {
-		routerGroup.Group.POST(opt.QueryPath, QueryHandler)
-		if opt.WebSocketPath != "" {
-			routerGroup.Group.GET(opt.WebSocketPath, QueryHandler)
-		}
-		if opt.DocPath != "" {
-			routerGroup.Group.GET(opt.DocPath, DocHandler)
-		}
+		addHandler(routerGroup.Group)
 	}
 
 	server.SetRecoverFunc(func(ctx context.Context, err any) error {
@@ -249,8 +259,6 @@ func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server
 			return fmt.Errorf("%v", err)
 		}
 	})
-
-	return server
 }
 
 // FromIncomingContext retrieves the gin.Context from the context.Context
@@ -340,6 +348,10 @@ func CheckPermissions(opt *Options) graphql.OperationMiddleware {
 		errList := gqlerror.List{}
 		for _, op := range op.Operation.SelectionSet {
 			opf := op.(*ast.Field)
+			// introspectSchema or introspectType ignore
+			if opf.Name == "__type" || opf.Name == "__schema" {
+				continue
+			}
 			allowed, err := security.IsAllowed(gctx, security.ArnKindGql, opt.AppCode, gctx.Request.Method, opf.Name)
 			if err != nil {
 				errList = append(errList, gqlerror.Errorf("action %s is not allowed due to err:%s ", opf.Name, err))

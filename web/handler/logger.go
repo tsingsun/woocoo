@@ -26,7 +26,7 @@ const (
 var (
 	AccessLogComponentName = "web.accessLog"
 	defaultLoggerFormat    = "id,remoteIp,host,method,uri,userAgent,status,error," +
-		"latency,bodyIn,bytesIn,bytesOut"
+		"latency,bytesIn,bytesOut"
 	LoggerFieldSkip = zap.Skip()
 )
 

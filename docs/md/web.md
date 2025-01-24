@@ -114,6 +114,7 @@ middlewares:
 - error
 - latency (纳秒)
 - latencyHuman (可读性)
+- bodyIn (请求体)
 - bytesIn (进站大小)
 - bytesOut (出站大小)
 - header:NAME 

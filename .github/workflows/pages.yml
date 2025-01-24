@@ -51,7 +51,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: docs/website
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --strict-store-pkg-content-check=false
 
       - name: Build
         working-directory: docs/website

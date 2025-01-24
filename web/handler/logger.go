@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"bytes"
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"io"
 	"strings"
 	"time"
 )
@@ -24,7 +26,7 @@ const (
 var (
 	AccessLogComponentName = "web.accessLog"
 	defaultLoggerFormat    = "id,remoteIp,host,method,uri,userAgent,status,error," +
-		"latency,bytesIn,bytesOut"
+		"latency,bodyIn,bytesIn,bytesOut"
 	LoggerFieldSkip = zap.Skip()
 )
 
@@ -52,6 +54,7 @@ type LoggerConfig struct {
 	// - error
 	// - latency (In nanoseconds)
 	// - latencyHuman (Human readable)
+	// - bodyIn (request body)
 	// - bytesIn (Bytes received)
 	// - bytesOut (Bytes sent)
 	// - header:<NAME>
@@ -61,9 +64,11 @@ type LoggerConfig struct {
 	//
 	//
 	// Optional. Default value DefaultLoggerConfig.Format.
-	Format string        `json:"format" yaml:"format"`
-	Level  zapcore.Level `json:"level" yaml:"level"`
-	Tags   []loggerTag
+	Format string `json:"format" yaml:"format"`
+	// if true log request body
+	logBodyIn bool
+	Level     zapcore.Level `json:"level" yaml:"level"`
+	Tags      []loggerTag
 }
 
 func (h *LoggerConfig) BuildTag(format string) {
@@ -72,6 +77,8 @@ func (h *LoggerConfig) BuildTag(format string) {
 	for _, tag := range ts {
 		tag = strings.TrimSpace(tag)
 		switch {
+		case tag == "bodyIn":
+			h.logBodyIn = true
 		case strings.HasPrefix(tag, "header:"):
 			tags = append(tags, loggerTag{FullKey: tag, typ: loggerTagTypeHeader, key: tag[7:]})
 		case strings.HasPrefix(tag, "query:"):
@@ -89,7 +96,9 @@ func (h *LoggerConfig) BuildTag(format string) {
 	h.Tags = tags
 }
 
-// LoggerMiddleware is a middleware that logs each request.
+// LoggerMiddleware is a middleware that logs https requests.
+//
+// Default Skipper will not skip error request whatever you set exclude paths.
 type LoggerMiddleware struct {
 	config LoggerConfig
 	logger log.ComponentLogger
@@ -150,14 +159,25 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		h.config.Skipper = DefaultSkipper
 	}
 	traceIDKey := h.logger.Logger().TraceIDKey
+	logBodyIn := h.config.logBodyIn
 	return func(c *gin.Context) {
 		start := time.Now()
 		logCarrier := log.NewCarrier()
 		c.Set(AccessLogComponentName, logCarrier)
+
+		var body []byte
+		if logBodyIn {
+			if c.Request.Body != nil {
+				body, _ = io.ReadAll(c.Request.Body)
+				c.Request.Body = io.NopCloser(bytes.NewReader(body))
+			}
+		}
+
 		c.Next()
 		if h.config.Skipper(c) {
 			return
 		}
+
 		req := c.Request
 		res := c.Writer
 		latency := time.Now().Sub(start)
@@ -234,6 +254,9 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		}
 		if fc := GetLogCarrierFromGinContext(c); fc != nil && len(fc.Fields) > 0 {
 			fields = append(fields, fc.Fields...)
+		}
+		if len(body) > 0 {
+			fields = append(fields, zap.String("bodyIn", string(body)))
 		}
 		clog := h.logger.Ctx(c)
 		if privateErr {

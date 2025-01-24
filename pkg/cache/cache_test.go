@@ -368,7 +368,7 @@ func TestMarshalFunc(t *testing.T) {
 				err := DefaultUnmarshalFunc(bt, &want)
 				require.NoError(t, err)
 				assert.Equal(t, data, want)
-				assert.NotSame(t, bt, want)
+				assert.NotSame(t, &bt, &want)
 			},
 		},
 		{

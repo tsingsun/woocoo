@@ -19,6 +19,7 @@ func TestLoggerMiddleware(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
 	type args struct {
 		cfg     *conf.Configuration
+		request *http.Request
 		handler gin.HandlerFunc
 	}
 	tests := []struct {
@@ -183,12 +184,55 @@ func TestLoggerMiddleware(t *testing.T) {
 				return true
 			},
 		},
+		{
+			name: "log body in",
+			args: args{
+				cfg: conf.NewFromStringMap(map[string]any{
+					"format": "bodyIn",
+				}),
+				request: httptest.NewRequest("POST", "/?query=1", strings.NewReader(`
+{
+	"username": "testuser",
+	"password": "testpass",
+	"age": 28,
+	"hobbies": ["reading", "swimming", "coding"]
+}`)),
+				handler: func(c *gin.Context) {
+					// get body correct
+					var user struct {
+						Username string   `json:"username"`
+						Password string   `json:"password"`
+						Age      int      `json:"age"`
+						Hobbies  []string `json:"hobbies"`
+					}
+					if err := c.ShouldBindJSON(&user); err != nil {
+						_ = c.AbortWithError(http.StatusInternalServerError, err)
+					}
+					assert.Equal(t, "testuser", user.Username)
+				},
+			},
+			want: func() any {
+				logdata := wctest.InitBuffWriteSyncer()
+				return logdata
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				r := i[1].(*httptest.ResponseRecorder)
+				assert.Equal(t, http.StatusOK, r.Code)
+				ss := i[0].(*logtest.Buffer)
+				all := ss.String()
+				assert.Contains(t, all, `testuser`)
+				return true
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest("GET", "/?query=1", nil)
-			r.Header.Set("accept", "*")
-			r.AddCookie(&http.Cookie{Name: "c1", Domain: "localhost", Value: "cookievalue"})
+			r := tt.args.request
+			if r == nil {
+				r = httptest.NewRequest("GET", "/?query=1", nil)
+				r.Header.Set("accept", "*")
+				r.AddCookie(&http.Cookie{Name: "c1", Domain: "localhost", Value: "cookievalue"})
+			}
 			w := httptest.NewRecorder()
 			want := tt.want()
 			accessLog := AccessLog()
@@ -199,8 +243,11 @@ func TestLoggerMiddleware(t *testing.T) {
 			srv.GET("/", func(c *gin.Context) {
 				tt.args.handler(c)
 			})
+			srv.POST("/", func(c *gin.Context) {
+				tt.args.handler(c)
+			})
 			srv.ServeHTTP(w, r)
-			if !tt.wantErr(t, nil, want) {
+			if !tt.wantErr(t, nil, want, w) {
 				return
 			}
 		})

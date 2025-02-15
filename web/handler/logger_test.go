@@ -224,6 +224,48 @@ func TestLoggerMiddleware(t *testing.T) {
 				return true
 			},
 		},
+		{
+			name: "log empty body in",
+			args: args{
+				cfg: conf.NewFromStringMap(map[string]any{
+					"format": "bodyIn",
+				}),
+				request: httptest.NewRequest("POST", "/", strings.NewReader("")),
+				handler: func(c *gin.Context) {
+				},
+			},
+			want: func() any {
+				logdata := wctest.InitBuffWriteSyncer()
+				return logdata
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				ss := i[0].(*logtest.Buffer)
+				all := ss.String()
+				assert.NotContains(t, all, `bodyIn: ""`)
+				return true
+			},
+		},
+		{
+			name: "log nil body in",
+			args: args{
+				cfg: conf.NewFromStringMap(map[string]any{
+					"format": "bodyIn",
+				}),
+				request: httptest.NewRequest("POST", "/", nil),
+				handler: func(c *gin.Context) {
+				},
+			},
+			want: func() any {
+				logdata := wctest.InitBuffWriteSyncer()
+				return logdata
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				ss := i[0].(*logtest.Buffer)
+				all := ss.String()
+				assert.NotContains(t, all, `bodyIn: ""`)
+				return true
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

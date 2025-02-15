@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -77,8 +78,6 @@ func (h *LoggerConfig) BuildTag(format string) {
 	for _, tag := range ts {
 		tag = strings.TrimSpace(tag)
 		switch {
-		case tag == "bodyIn":
-			h.logBodyIn = true
 		case strings.HasPrefix(tag, "header:"):
 			tags = append(tags, loggerTag{FullKey: tag, typ: loggerTagTypeHeader, key: tag[7:]})
 		case strings.HasPrefix(tag, "query:"):
@@ -90,6 +89,9 @@ func (h *LoggerConfig) BuildTag(format string) {
 		case strings.HasPrefix(tag, "context:"):
 			tags = append(tags, loggerTag{FullKey: tag, typ: loggerTagTypeContext, key: tag[8:]})
 		default:
+			if tag == "bodyIn" {
+				h.logBodyIn = true
+			}
 			tags = append(tags, loggerTag{FullKey: tag, typ: loggerTagTypeString})
 		}
 	}
@@ -167,7 +169,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 
 		var body []byte
 		if logBodyIn {
-			if c.Request.Body != nil {
+			if c.Request.Body != nil && c.Request.Body != http.NoBody {
 				body, _ = io.ReadAll(c.Request.Body)
 				c.Request.Body = io.NopCloser(bytes.NewReader(body))
 			}
@@ -212,6 +214,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			case "status":
 				fields[i] = zap.Int("status", res.Status())
 			case "error":
+				fields[i] = LoggerFieldSkip
 				if len(c.Errors) > 0 {
 					v := c.Errors.ByType(gin.ErrorTypePrivate).String()
 					if v != "" {
@@ -223,6 +226,12 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 				fields[i] = zap.Duration("latency", latency)
 			case "latencyHuman":
 				fields[i] = zap.String("latencyHuman", latency.String())
+			case "bodyIn":
+				if len(body) > 0 {
+					fields[i] = zap.String("bodyIn", string(body))
+				} else {
+					fields[i] = LoggerFieldSkip
+				}
 			case "bytesIn":
 				fields[i] = zap.Int64("bytesIn", req.ContentLength)
 			case "bytesOut":
@@ -240,23 +249,23 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 					// if no found, skip
 					if err == nil {
 						fields[i] = zap.String(tag.FullKey, cookie)
+					} else {
+						fields[i] = LoggerFieldSkip
 					}
 				case loggerTagTypeContext:
 					val := c.Value(tag.key)
 					if val != nil {
 						fields[i] = zap.Any(tag.FullKey, val)
+					} else {
+						fields[i] = LoggerFieldSkip
 					}
+				default:
+					fields[i] = LoggerFieldSkip
 				}
-			}
-			if fields[i].Type == zapcore.UnknownType {
-				fields[i] = LoggerFieldSkip
 			}
 		}
 		if fc := GetLogCarrierFromGinContext(c); fc != nil && len(fc.Fields) > 0 {
 			fields = append(fields, fc.Fields...)
-		}
-		if len(body) > 0 {
-			fields = append(fields, zap.String("bodyIn", string(body)))
 		}
 		clog := h.logger.Ctx(c)
 		if privateErr {

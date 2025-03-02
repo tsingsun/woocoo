@@ -209,8 +209,17 @@ func (oa *OAuth2Config) SetOAuthStorage(ts TokenStorage) {
 }
 
 // SetTokenSource set TokenSource to OAuth2Config, Support customer TokenSource.
+//
+// if TokenStorage is not nil, the TokenSource will be wrapped by Cacheable TokenSource.
 func (oa *OAuth2Config) SetTokenSource(ts oauth2.TokenSource) {
-	oa.ts = ts
+	if oa.storage != nil {
+		oa.ts = &TokenSource{
+			storage: oa.storage,
+			base:    ts,
+		}
+	} else {
+		oa.ts = ts
+	}
 }
 
 type TokenSource struct {

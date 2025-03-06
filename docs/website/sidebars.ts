@@ -27,9 +27,9 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Web',
-          items: ['web','graphql']
+          items: ['gin','graphql']
         },
-        'grpc','cache'
+        'grpc','db','cache'
       ],
       collapsed: false,
     },

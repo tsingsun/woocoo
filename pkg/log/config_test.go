@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
-	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -211,9 +213,9 @@ log:
 }
 
 func TestConfig_BuildZap(t *testing.T) {
+	require.NoError(t, os.RemoveAll(testdata.Tmp("")))
 	type fields struct {
 		Tee       []zap.Config
-		Single    *zap.Config
 		Rotate    *rotate
 		useRotate bool
 		basedir   string
@@ -247,7 +249,6 @@ func TestConfig_BuildZap(t *testing.T) {
 					},
 					zap.NewDevelopmentConfig(),
 				},
-				Single: nil,
 				Rotate: &rotate{
 					lumberjack.Logger{
 						MaxSize:    1,
@@ -259,6 +260,29 @@ func TestConfig_BuildZap(t *testing.T) {
 				},
 				useRotate: true,
 				basedir:   testdata.Tmp(""),
+			},
+			args:    args{opts: nil},
+			wantZl:  nil,
+			wantErr: false,
+		},
+		{
+			name: "no-rotate",
+			fields: fields{
+				Tee: []zap.Config{
+					{
+						Level:         zap.NewAtomicLevelAt(zapcore.WarnLevel),
+						Encoding:      "json",
+						OutputPaths:   []string{"stdout", "parent/" + t.Name() + "-warn.log"}, //ref path
+						EncoderConfig: zap.NewProductionEncoderConfig(),
+					},
+					{
+						Level:         zap.NewAtomicLevelAt(zapcore.ErrorLevel),
+						Encoding:      "json",
+						OutputPaths:   []string{"stderr", testdata.Tmp("parent2/" + t.Name() + "-error.log")}, //abs
+						EncoderConfig: zap.NewProductionEncoderConfig(),
+					},
+				},
+				basedir: testdata.Tmp(""),
 			},
 			args:    args{opts: nil},
 			wantZl:  nil,
@@ -284,28 +308,28 @@ func TestConfig_BuildZap(t *testing.T) {
 			gotZl.Warn(tt.name, field)
 			gotZl.Error(tt.name, field, zap.Error(fmt.Errorf("error")))
 			_ = gotZl.Sync()
+			gotZl = nil
 			for _, tee := range tt.fields.Tee {
 				for _, outputPath := range tee.OutputPaths {
 					if outputPath == "stdout" || outputPath == "stderr" {
 						continue
 					}
-					if lf := testdata.Tmp(outputPath); path.IsAbs(lf) {
+					if lf := testdata.Tmp(outputPath); filepath.IsAbs(lf) {
 						bs, err := os.Open(lf)
 						assert.NoError(t, err)
 						lc, err := lineCounter(bs)
 						assert.NoError(t, err)
 						if strings.Index(outputPath, "warn") > 0 {
-							assert.Equal(t, 2, lc)
+							assert.Equal(t, 2, lc, lf)
 						} else if strings.Index(outputPath, "error") > 0 {
-							assert.Equal(t, 1, lc)
+							assert.Equal(t, 1, lc, lf)
 							if !tt.fields.Tee[0].DisableStacktrace {
-								bs, _ := os.Open(lf)
+								bs.Seek(0, io.SeekStart)
 								c, err := io.ReadAll(bs)
 								require.NoError(t, err)
 								assert.Contains(t, string(c), "stacktrace")
 							}
 						}
-						assert.NoError(t, os.Remove(lf))
 					}
 				}
 			}
@@ -351,5 +375,64 @@ func lineCounter(r io.Reader) (int, error) {
 		case err != nil:
 			return count, err
 		}
+	}
+}
+
+func Test_convertPath(t *testing.T) {
+	type args struct {
+		path      string
+		base      string
+		useRotate bool
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "abs",
+			args: args{
+				path:      testdata.Path("test.log"),
+				base:      testdata.Tmp(""),
+				useRotate: false,
+			},
+			want:    testdata.Path("test.log"),
+			wantErr: assert.NoError,
+		},
+		{
+			name: "rel",
+			args: args{
+				path:      "test.log",
+				base:      testdata.Tmp(""),
+				useRotate: false,
+			},
+			want:    testdata.Tmp("test.log"),
+			wantErr: assert.NoError,
+		},
+		{
+			name: "file uri",
+			args: args{
+				path:      "file:///" + testdata.Path("test.log"),
+				base:      testdata.Tmp(""),
+				useRotate: true,
+			},
+			want: func() string {
+				if runtime.GOOS == "windows" {
+					return rotateSchema + ":///" + url.PathEscape(testdata.Path("test.log"))
+				}
+				return rotateSchema + "://" + url.PathEscape(testdata.Path("test.log"))
+			}(),
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := convertPath(tt.args.path, tt.args.base, tt.args.useRotate)
+			if !tt.wantErr(t, err, tt.args) {
+				return
+			}
+			assert.Equal(t, tt.want, got)
+		})
 	}
 }

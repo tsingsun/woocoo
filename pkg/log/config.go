@@ -3,6 +3,7 @@ package log
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -236,26 +237,37 @@ func (c *Config) newRotateWriter() *rotate {
 	}
 }
 
-func convertPath(path string, base string, useRotate bool) (string, error) {
-	u, err := url.Parse(path)
+func convertPath(path string, base string, useRotate bool) (cp string, err error) {
+	isFile := false
+	defer func() {
+		if isFile {
+			err = os.MkdirAll(filepath.Dir(cp), 0755)
+			if useRotate {
+				if runtime.GOOS == "windows" {
+					cp = rotateSchema + ":///" + cp
+				} else {
+					cp = rotateSchema + "://" + cp
+				}
+			}
+		}
+	}()
+	if path == "stdout" || path == "stderr" {
+		return path, nil
+	}
+	if filepath.IsAbs(path) {
+		isFile = true
+		return path, nil
+	}
+	uri, err := url.Parse(path)
 	if err != nil {
 		return "", fmt.Errorf("can't parse %q as a URL: %v", path, err)
 	}
-	if path == "stdout" || path == "stderr" || (u.Scheme != "" && u.Scheme != "file") {
-		return path, nil
+	if uri.Scheme == "" {
+		// ref path
+		cp = filepath.Join(base, path)
+		isFile = true
+		return
 	}
-	if u.Scheme != "file" {
-		var absPath string
-		if !filepath.IsAbs(u.Path) {
-			absPath = filepath.Join(base, path)
-			if runtime.GOOS == "windows" {
-				absPath = "/" + absPath
-			}
-			u.Path = absPath
-		}
-	}
-	if useRotate {
-		u.Scheme = rotateSchema
-	}
-	return u.String(), nil
+	uri.Scheme = rotateSchema
+	return uri.String(), nil
 }

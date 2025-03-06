@@ -379,6 +379,10 @@ func lineCounter(r io.Reader) (int, error) {
 }
 
 func Test_convertPath(t *testing.T) {
+	rotateSchemaPrefix := rotateSchema + "://"
+	if runtime.GOOS == "windows" {
+		rotateSchemaPrefix = rotateSchemaPrefix + "/"
+	}
 	type args struct {
 		path      string
 		base      string
@@ -411,17 +415,27 @@ func Test_convertPath(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
+			name: "rotate-rel",
+			args: args{
+				path:      "test.log",
+				base:      testdata.Tmp(""),
+				useRotate: true,
+			},
+			want:    rotateSchemaPrefix + testdata.Tmp("test.log"),
+			wantErr: assert.NoError,
+		},
+		{
 			name: "file uri",
 			args: args{
-				path:      "file:///" + testdata.Path("test.log"),
+				path:      rotateSchemaPrefix + testdata.Path("test.log"),
 				base:      testdata.Tmp(""),
 				useRotate: true,
 			},
 			want: func() string {
 				if runtime.GOOS == "windows" {
-					return rotateSchema + ":///" + url.PathEscape(testdata.Path("test.log"))
+					return rotateSchemaPrefix + url.PathEscape(testdata.Path("test.log"))
 				}
-				return rotateSchema + "://" + url.PathEscape(testdata.Path("test.log"))
+				return rotateSchemaPrefix + testdata.Path("test.log")
 			}(),
 			wantErr: assert.NoError,
 		},

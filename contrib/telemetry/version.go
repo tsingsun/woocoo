@@ -2,7 +2,7 @@ package telemetry
 
 // Version is the current release version of the woocoo instrumentation.
 func Version() string {
-	return "0.38.1"
+	return "0.1.33"
 }
 
 // SemVersion is the semantic version to be supplied to tracer/meter creation.

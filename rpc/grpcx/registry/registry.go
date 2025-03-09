@@ -89,7 +89,7 @@ type DialOptions struct {
 
 // TargetToOptions parse resolver target to DialOptions
 //
-// Deprecated: registry driver should provide a function to instead
+// this method is sample convertor,registry driver should provide a function to instead
 func TargetToOptions(target resolver.Target) (*DialOptions, error) {
 	options := &DialOptions{}
 	if len(target.URL.RawQuery) > 0 {
@@ -136,14 +136,15 @@ type ServiceInfo struct {
 
 // ToAttributes convert metadata to grpc attributes
 func (si ServiceInfo) ToAttributes() *attributes.Attributes {
-	var val *attributes.Attributes
+	var val *attributes.Attributes // val will check if val is nil
 	for k, v := range si.Metadata {
-		val.WithValue(k, v)
+		val = val.WithValue(k, v)
 	}
 	return val
 }
 
 // Address is the address of the service,example: host:port,ip:port
+// the port in service info must initial by grpc before method called.
 func (si ServiceInfo) Address() string {
 	return si.Host + ":" + strconv.Itoa(si.Port)
 }

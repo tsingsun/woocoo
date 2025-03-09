@@ -114,9 +114,10 @@ func (c *Client) Dial(target string, opts ...grpc.DialOption) (*grpc.ClientConn,
 //
 // The target will be parsed as a URL.your resolver must parse the target.
 func (c *Client) DialContext(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	tarp := c.targetPrefix()
 	if target == "" {
-		target = c.targetPrefix() + c.registryOptions.ServiceName
-	} else if !strings.HasPrefix(target, c.targetPrefix()) {
+		target = tarp + c.registryOptions.ServiceName
+	} else if tarp == "" || !strings.HasPrefix(target, tarp) {
 		return grpc.DialContext(ctx, target, append(c.dialOptions, opts...)...)
 	}
 	// attach service info

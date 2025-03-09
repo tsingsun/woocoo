@@ -174,7 +174,7 @@ grpc:
 	}
 	gc := helloworld.NewGreeterClient(conn)
 	resp, err := gc.SayHello(context.Background(), &helloworld.HelloRequest{Name: "woocoo"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, resp.Message, "Hello woocoo")
 }
 

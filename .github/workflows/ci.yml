@@ -46,7 +46,7 @@ jobs:
           - "9090:9090"
           - "9091:9091"
       otel:
-        image: otel/opentelemetry-collector-contrib:0.79.0
+        image: otel/opentelemetry-collector-contrib:0.121.0
         ports:
           - "4317:4317"
           - "4318:4318"

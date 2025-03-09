@@ -14,7 +14,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"os"
-	"strings"
 	"testing"
 	"time"
 )
@@ -105,6 +104,7 @@ func TestNewConfig(t *testing.T) {
 				}).Sub("otel"),
 				opts: func() (opts []Option) {
 					opts = append(opts,
+						WithName("test-with-new"),
 						WithTracerProvider(zipkinProvider(t)), WithPropagator(b3.New()),
 						WithMeterProvider(prometheusProvider(t)),
 						WithResourceAttributes(map[string]string{"test": "test"}),
@@ -114,7 +114,7 @@ func TestNewConfig(t *testing.T) {
 				}(),
 			},
 			want: &Config{
-				ServiceName:                  "test-with",
+				ServiceName:                  "test-with-new",
 				TraceExporter:                "",
 				MetricPeriodicReaderInterval: time.Second * 30,
 				resourceAttributes: map[string]string{
@@ -226,7 +226,7 @@ func TestOtlp(t *testing.T) {
 		{
 			name: "otlp",
 			args: args{
-				cnf: conf.NewFromStringMap(map[string]interface{}{
+				cnf: conf.NewFromStringMap(map[string]any{
 					"appName": "test",
 					"otel": map[string]any{
 						"traceExporter": "otlp",
@@ -236,7 +236,7 @@ func TestOtlp(t *testing.T) {
 								"dialOption": []any{
 									map[string]any{"tls": nil},
 									map[string]any{"block": nil},
-									map[string]any{"timeout": "1s"},
+									map[string]any{"timeout": "5s"},
 								},
 							},
 						},
@@ -253,18 +253,10 @@ func TestOtlp(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// server is not ready(github action), so we need to recover panic
-			defer func() {
-				if r := recover(); r != nil {
-					if strings.Contains(r.(error).Error(), "context deadline exceeded") {
-						return
-					}
-					t.Errorf("panic: %v", r)
-				}
-			}()
 			got := NewConfig(tt.args.cnf)
 			tt.do(t, got)
 			got.Shutdown()
+			time.Sleep(time.Second)
 		})
 	}
 }

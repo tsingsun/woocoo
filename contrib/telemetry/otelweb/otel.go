@@ -8,16 +8,16 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web"
 	"github.com/tsingsun/woocoo/web/handler"
-	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
 const (
-	otelName   = "otel"
-	tracerKey  = "otel-go-contrib-tracer"
-	tracerName = "go.opentelemetry.io/contrib/instrumentation/github.com/tsingsun/woocoo/contrib/telemetry/otelweb"
+	otelName  = "otel"
+	tracerKey = "otel-go-contrib-tracer"
+	ScopeName = "go.opentelemetry.io/contrib/instrumentation/github.com/tsingsun/woocoo/otelweb"
 )
 
 // Middleware returns middleware that will trace incoming requests.
@@ -89,7 +89,10 @@ func middleware(cfg *otelwoocoo.Config) gin.HandlerFunc {
 		span.SetAttributes(attrs...)
 		span.SetStatus(spanStatus, spanMessage)
 		if len(c.Errors) > 0 {
-			span.SetAttributes(attribute.String("web.errors", c.Errors.String()))
+			span.SetStatus(codes.Error, c.Errors.String())
+			for _, e := range c.Errors {
+				span.RecordError(e.Err)
+			}
 		}
 	}
 }

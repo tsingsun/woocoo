@@ -162,20 +162,34 @@ grpc:
 		}
 	}()
 	time.Sleep(time.Second)
-	cli, err := NewClient(cfg.Sub("grpc"))
-	require.NoError(t, err)
-	assert.True(t, cli.withTransportCredentials)
-	conn, err := cli.Dial(cfg.String("grpc.server.addr"))
-	assert.NoError(t, err)
-	// timeout is not a dial option
-	assert.Len(t, cli.dialOptions, 5)
-	if conn.GetState() != connectivity.Ready {
-		t.Fail()
-	}
-	gc := helloworld.NewGreeterClient(conn)
-	resp, err := gc.SayHello(context.Background(), &helloworld.HelloRequest{Name: "woocoo"})
-	require.NoError(t, err)
-	assert.Equal(t, resp.Message, "Hello woocoo")
+	t.Run("dial target", func(t *testing.T) {
+		cli, err := NewClient(cfg.Sub("grpc"))
+		require.NoError(t, err)
+		assert.True(t, cli.withTransportCredentials)
+		conn, err := cli.Dial(cfg.String("grpc.server.addr"))
+		assert.NoError(t, err)
+		// timeout is not a dial option
+		assert.Len(t, cli.dialOptions, 5)
+		if conn.GetState() != connectivity.Ready {
+			t.Fail()
+		}
+		gc := helloworld.NewGreeterClient(conn)
+		resp, err := gc.SayHello(context.Background(), &helloworld.HelloRequest{Name: "woocoo"})
+		require.NoError(t, err)
+		assert.Equal(t, resp.Message, "Hello woocoo")
+	})
+	t.Run("dial empty", func(t *testing.T) {
+		cli, err := NewClient(cfg.Sub("grpc"))
+		require.NoError(t, err)
+		assert.True(t, cli.withTransportCredentials)
+		conn, err := cli.Dial("")
+		assert.NoError(t, err)
+		// timeout is not a dial option
+		assert.Len(t, cli.dialOptions, 5)
+		if conn.GetState() != connectivity.Ready {
+			t.Fail()
+		}
+	})
 }
 
 func TestClient_DialRegistry(t *testing.T) {

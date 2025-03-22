@@ -77,7 +77,11 @@ grpc: # 可选的顶级节点名
 
 ```yaml
 grpc:
+  # 对于客户端,配置服务端, 可以自动获取Dial参数.
+  server:
+    addr: :20000
   client:
+    # target段主要配合服务发现,如不需要可去掉
     target:
       namespace: woocoo
       serviceName: helloworld.Greeter
@@ -95,8 +99,9 @@ grpc:
 在 grpcx.Client 定义了grpc client工具.可以方便通过配置文件创建.但目前的功能还只是快速connection的创建
 
 ```go
-// 如果指定了service的配置,可自动获取
-grpcx.NewClient(cfg).Dial("127.0.0.1:8080")
+// 如果指定了server的配置或者使用服务发现, Dial可置为空
+client,_ := grpcx.NewClient(cfg)
+client.Dial("")
 ```
 
 ## 服务发现

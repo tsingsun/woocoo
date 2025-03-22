@@ -116,7 +116,13 @@ func (c *Client) Dial(target string, opts ...grpc.DialOption) (*grpc.ClientConn,
 func (c *Client) DialContext(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	tarp := c.targetPrefix()
 	if target == "" {
-		target = tarp + c.registryOptions.ServiceName
+		if tarp != "" {
+			// use registry
+			target = tarp + c.registryOptions.ServiceName
+		} else {
+			target = c.serverConfig.Addr
+			return grpc.DialContext(ctx, target, append(c.dialOptions, opts...)...)
+		}
 	} else if tarp == "" || !strings.HasPrefix(target, tarp) {
 		return grpc.DialContext(ctx, target, append(c.dialOptions, opts...)...)
 	}

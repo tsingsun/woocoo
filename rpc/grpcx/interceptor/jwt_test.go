@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/auth"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/test/testproto"
 	"go.uber.org/zap"
@@ -101,8 +102,9 @@ func TestJWT_SteamServerInterceptor(t *testing.T) {
 		stream := &mockStream{md: metadata.New(map[string]string{"authorization": "Bearer " + hs256Token})}
 		handlerCalled := false
 		handler := func(srv any, stream grpc.ServerStream) error {
-			_, ok := JWTFromIncomingContext(stream.Context())
+			principal, ok := security.FromContext(stream.Context())
 			require.True(t, ok)
+			assert.EqualValues(t, "1234567890", principal.Identity().Name())
 			handlerCalled = true
 			return nil
 		}

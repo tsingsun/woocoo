@@ -6,6 +6,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/tsingsun/woocoo/pkg/auth"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/tsingsun/woocoo/pkg/security"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"strings"
@@ -15,7 +16,6 @@ import (
 type ValuesExtractor func(ctx context.Context) ([]string, error)
 
 type (
-	jwtKey struct{}
 	// JWTOptions is the options for JWT interceptor.
 	JWTOptions struct {
 		auth.JWTOptions `json:",inline" yaml:",inline"`
@@ -43,15 +43,6 @@ func (mw *JWTOptions) Apply(cfg *conf.Configuration) {
 	if err := mw.JWTOptions.Init(); err != nil {
 		panic(err)
 	}
-}
-
-// JWTFromIncomingContext extracts the token from the incoming context which `ParseTokenFunc` used default token parser.
-func JWTFromIncomingContext(ctx context.Context) (*jwt.Token, bool) {
-	token, ok := ctx.Value(jwtKey{}).(*jwt.Token)
-	if !ok {
-		return nil, false
-	}
-	return token, true
 }
 
 // Name returns the name of the interceptor.
@@ -122,7 +113,12 @@ func (JWT) withToken(extractor ValuesExtractor, options *JWTOptions, ctx context
 			lastTokenErr = err
 			continue
 		}
-		newctx := context.WithValue(ctx, jwtKey{}, token)
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return nil, auth.ErrJWTClaims
+		}
+		prpl := security.NewGenericPrincipalByClaims(claims)
+		newctx := security.WithContext(ctx, prpl)
 		return newctx, nil
 	}
 	if lastTokenErr != nil {

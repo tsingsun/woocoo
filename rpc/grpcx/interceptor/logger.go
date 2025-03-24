@@ -18,7 +18,7 @@ import (
 
 var (
 	defaultLoggerFormat = "grpc.start_time,grpc.service,grpc.method,grpc.request.deadline,status,error,latency," +
-		"peer.address,request,response"
+		"peer.address"
 	defaultLoggerOptions = LoggerOptions{
 		Format: defaultLoggerFormat,
 	}
@@ -26,6 +26,20 @@ var (
 
 type (
 	LoggerOptions struct {
+		// Tags to construct the logger format.
+		//
+		// - id (Request ID or trace ID)
+		// - grpc.start_time
+		// - grpc.service
+		// - grpc.method
+		// - grpc.request.deadline
+		// - status
+		// - error
+		// - latency
+		// - peer.address
+		// option:
+		// - request
+		// - response
 		Format string `json:"format" yaml:"format"`
 		logger log.ComponentLogger
 

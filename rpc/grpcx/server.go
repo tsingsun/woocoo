@@ -140,6 +140,9 @@ func (s *Server) Apply(cfg *conf.Configuration) error {
 // ListenAndServe call net listen to start grpc server and registry service
 func (s *Server) ListenAndServe() (err error) {
 	err = s.applyNetwork()
+	if err != nil {
+		return err
+	}
 	logger.Info(fmt.Sprintf("start grpc server on %s", s.opts.Addr))
 	// registry run
 	if s.registry != nil {

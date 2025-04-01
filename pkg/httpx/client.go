@@ -208,6 +208,11 @@ func (oa *OAuth2Config) SetOAuthStorage(ts TokenStorage) {
 	oa.storage = ts
 }
 
+// GetTokenSource get TokenSource from OAuth2Config
+func (oa *OAuth2Config) GetTokenSource() oauth2.TokenSource {
+	return oa.ts
+}
+
 // SetTokenSource set TokenSource to OAuth2Config, Support customer TokenSource.
 //
 // if TokenStorage is not nil, the TokenSource will be wrapped by Cacheable TokenSource.
@@ -337,18 +342,12 @@ func NewClient(cfg *ClientConfig) (c *http.Client, err error) {
 	}
 	c = &http.Client{Transport: cfg.base, Timeout: cfg.Timeout}
 	if cfg.OAuth2 != nil {
-		if cfg.OAuth2.ts != nil {
-			c.Transport = &oauth2.Transport{
-				Base:   c.Transport,
-				Source: cfg.OAuth2.ts,
-			}
-			return
-		} else {
-			c.Transport = &oauth2.Transport{
-				Base:   c.Transport,
-				Source: cfg.TokenSource(context.Background()),
-			}
-			return
+		if cfg.OAuth2.ts == nil {
+			cfg.OAuth2.ts = cfg.TokenSource(context.Background())
+		}
+		c.Transport = &oauth2.Transport{
+			Base:   c.Transport,
+			Source: cfg.OAuth2.ts,
 		}
 	}
 	return

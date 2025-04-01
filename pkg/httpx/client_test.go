@@ -573,4 +573,24 @@ func TestOAuth2(t *testing.T) {
 			assert.Equal(t, 1, tokencount)
 		})
 	})
+
+	t.Run("with manual set ts", func(t *testing.T) {
+		tc := ClientConfig{
+			Timeout: 2 * time.Second,
+			OAuth2: &OAuth2Config{
+				Config: oauth2.Config{
+					ClientID: "client",
+					Endpoint: oauth2.Endpoint{
+						TokenURL: ts.URL + "/token",
+					},
+				},
+			},
+		}
+		tc.OAuth2.SetOAuthStorage(&customerTokenStorage{})
+		tc.OAuth2.SetTokenSource(&customerTokenSource{})
+		source := tc.OAuth2.GetTokenSource()
+		tk, err := source.Token()
+		require.NoError(t, err)
+		assert.Equal(t, "test", tk.AccessToken)
+	})
 }

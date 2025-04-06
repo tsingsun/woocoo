@@ -292,18 +292,16 @@ func (c *Configuration) Each(path string, cb func(root string, sub *Configuratio
 	ops := c.ParserOperator().Slices(path)
 	// check sub item has root value
 	var getRoot = func(kf *koanf.Koanf) string {
-		var root string
-		for s := range kf.KeyMap() {
-			keys := strings.Split(s, kf.Delim())
-			switch {
-			case len(keys) > 1:
-				root = keys[0]
+		raw := kf.Raw()
+		for k, _ := range raw {
+			if len(raw) == 1 {
+				return k
+			} else {
 				break
-			case len(keys) == 1:
-				root = s
 			}
+
 		}
-		return root
+		return ""
 	}
 	for _, op := range ops {
 		if root := getRoot(op); root != "" {

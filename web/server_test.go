@@ -75,7 +75,7 @@ web:
                 privKey: config/privKey.pem
                 pubKey: config/pubKey.pem  
 `
-	cfg := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
+	cfg := conf.NewFromBytes([]byte(cfgStr))
 	tests := []struct {
 		name       string
 		srv        *Server
@@ -135,7 +135,7 @@ web:
       cert: "x509/server.crt"
       key: "x509/server.key"
 `
-	cnf := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
+	cnf := conf.NewFromBytes([]byte(cfgStr))
 	cnf.SetBaseDir(testdata.BaseDir())
 	cnfWithouttls := cnf.Copy()
 	cnfWithouttls.ParserOperator().Delete("web.server.tls")

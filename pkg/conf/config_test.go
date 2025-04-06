@@ -624,6 +624,9 @@ path:
   - key: value
     property: pValue
   - key: value2
+    itemsub:
+      a: b
+      c: d
   - key: value3
   - key: value4
 `)),

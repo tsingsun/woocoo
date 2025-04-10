@@ -41,7 +41,12 @@ type (
 		// - request
 		// - response
 		Format string `json:"format" yaml:"format"`
-		logger log.ComponentLogger
+		// AppendFormat is the format to append to the default logger format.
+		// out of default format:
+		// - request
+		// - response
+		AppendFormat string `json:"appendFormat" yaml:"appendFormat"`
+		logger       log.ComponentLogger
 
 		tags []string
 	}
@@ -65,9 +70,12 @@ func (o *LoggerOptions) Apply(cnf *conf.Configuration) {
 		lc.SetLogger(operator)
 		o.logger = lc
 	}
-	o.tags = strings.Split(o.Format, ",")
-	for i := range o.tags {
-		o.tags[i] = strings.TrimSpace(o.tags[i])
+	ts := strings.Split(o.Format+","+o.AppendFormat, ",")
+	for _, v := range ts {
+		if v == "" {
+			continue
+		}
+		o.tags = append(o.tags, v)
 	}
 }
 

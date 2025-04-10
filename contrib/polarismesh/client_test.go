@@ -111,7 +111,7 @@ func (api *httpAPI) circuitBreaker() *httpAPI {
         "enable": true,
         "level": "METHOD",
         "description": "",
-        "ruleMatcher": {
+        "rule_matcher": {
             "source": {
                 "service": "*",
                 "namespace": "circuitBreakerTest"
@@ -125,29 +125,29 @@ func (api *httpAPI) circuitBreaker() *httpAPI {
                 }
             }
         },
-        "errorConditions": [
+        "error_conditions": [
             {
-                "inputType": "RET_CODE",
+                "input_type": "RET_CODE",
                 "condition": {
                     "type": "NOT_EQUALS",
                     "value": "0"
                 }
             }
         ],
-        "triggerCondition": [
+        "trigger_condition": [
             {
-                "triggerType": "ERROR_RATE", 
-                "errorPercent": 1,
+                "trigger_type": "ERROR_RATE", 
+                "error_percent": 1,
                 "interval": 30,
-                "minimumRequest": 5
+                "minimum_request": 5
             }
         ],
         "recoverCondition": {
-            "sleepWindow": 30,
+            "sleep_window": 30,
             "consecutiveSuccess": 3
         },
         "faultDetectConfig": {
-            "enable": false
+            "enable": true
         },
         "fallbackConfig": {
             "enable": true,

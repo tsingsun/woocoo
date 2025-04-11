@@ -7,7 +7,7 @@ toolchain go1.23.0
 require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/stretchr/testify v1.10.0
-	github.com/tsingsun/woocoo v0.5.5
+	github.com/tsingsun/woocoo v0.5.7
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.58.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.58.0
 	go.opentelemetry.io/contrib/propagators/b3 v1.33.0
@@ -46,7 +46,7 @@ require (
 	github.com/go-playground/validator/v10 v10.23.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/goccy/go-json v0.10.4 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.24.0 // indirect
 	github.com/hashicorp/go-envparse v0.1.0 // indirect

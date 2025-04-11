@@ -33,7 +33,7 @@ func TestGrpcContextLogger(t *testing.T) {
 	log.Component(log.GrpcComponentName).Logger().WithTraceID = true
 
 	clfg := conf.NewFromStringMap(map[string]any{
-		"format": "request,response",
+		"appendFormat": "request,response",
 	})
 	gs, addr := testproto.NewPingGrpcService(t, grpc.ChainUnaryInterceptor(AccessLogger{}.UnaryServerInterceptor(clfg), applog()))
 	assert.NotNil(t, gs)
@@ -50,6 +50,8 @@ func TestGrpcContextLogger(t *testing.T) {
 	ls := logdata.String()
 	assert.Contains(t, ls, "some_trace_id")
 	assert.Contains(t, ls, "logger_test")
+	assert.Contains(t, ls, `"request"`)
+	assert.Contains(t, ls, `"response"`)
 }
 
 func TestLoggerUnaryServerInterceptor(t *testing.T) {

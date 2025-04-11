@@ -45,7 +45,6 @@ type (
 		// the base grpc balancer
 		balancer balancer.Balancer
 
-		host    string
 		options *dialOptions
 		// must init by GetAllInstances, otherwise will be miss cluster info
 		response    *model.InstancesResponse
@@ -217,10 +216,14 @@ func (pnp *polarisNamingPicker) Pick(info balancer.PickInfo) (balancer.PickResul
 	subSc, ok := pnp.readySCs[addr]
 	if ok {
 		reporter := &resultReporter{
-			instance:      targetInstance,
-			consumerAPI:   pnp.balancer.consumerAPI,
-			sourceService: srcService,
-			startTime:     time.Now(),
+			method:         info.FullMethodName,
+			instance:       targetInstance,
+			consumerAPI:    pnp.balancer.consumerAPI,
+			startTime:      time.Now(),
+			sourceService:  srcService,
+			namespace:      pnp.options.Namespace,
+			service:        pnp.options.Service,
+			circuitBreaker: pnp.options.CircuitBreaker,
 		}
 		return balancer.PickResult{
 			SubConn: subSc,
@@ -326,10 +329,14 @@ func collectRouteLabels(routing *apitraffic.Routing) map[string]struct{} {
 }
 
 type resultReporter struct {
-	instance      model.Instance
-	consumerAPI   polaris.ConsumerAPI
-	startTime     time.Time
-	sourceService *model.ServiceInfo
+	method         string
+	namespace      string
+	service        string
+	instance       model.Instance
+	consumerAPI    polaris.ConsumerAPI
+	startTime      time.Time
+	sourceService  *model.ServiceInfo
+	circuitBreaker bool
 }
 
 // use by balancer.PickResult.Done

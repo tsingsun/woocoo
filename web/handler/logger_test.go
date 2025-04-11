@@ -266,6 +266,27 @@ func TestLoggerMiddleware(t *testing.T) {
 				return true
 			},
 		},
+		{
+			name: "append format",
+			args: args{
+				cfg: conf.NewFromStringMap(map[string]any{
+					"appendFormat": "header:accept,",
+				}),
+				request: httptest.NewRequest("GET", "/?query=1", nil),
+				handler: func(c *gin.Context) {
+				},
+			},
+			want: func() any {
+				logdata := wctest.InitBuffWriteSyncer()
+				return logdata
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				ss := i[0].(*logtest.Buffer)
+				all := ss.String()
+				assert.Contains(t, all, `header:accept`)
+				return true
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

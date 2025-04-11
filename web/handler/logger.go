@@ -66,6 +66,8 @@ type LoggerConfig struct {
 	//
 	// Optional. Default value DefaultLoggerConfig.Format.
 	Format string `json:"format" yaml:"format"`
+	// AppendFormat is the format to append to the default logger format.
+	AppendFormat string `json:"appendFormat" yaml:"appendFormat"`
 	// if true log request body
 	logBodyIn bool
 	Level     zapcore.Level `json:"level" yaml:"level"`
@@ -77,6 +79,9 @@ func (h *LoggerConfig) BuildTag(format string) {
 	ts := strings.Split(format, ",")
 	for _, tag := range ts {
 		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			continue
+		}
 		switch {
 		case strings.HasPrefix(tag, "header:"):
 			tags = append(tags, loggerTag{FullKey: tag, typ: loggerTagTypeHeader, key: tag[7:]})
@@ -146,7 +151,8 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if err := cfg.Unmarshal(&h.config); err != nil {
 		panic(err)
 	}
-	h.config.BuildTag(h.config.Format)
+	format := h.config.Format + "," + h.config.AppendFormat
+	h.config.BuildTag(format)
 	h.buildLogger()
 	if h.config.Skipper == nil && len(h.config.Exclude) > 0 {
 		pm := StringsToMap(h.config.Exclude)

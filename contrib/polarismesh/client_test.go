@@ -147,7 +147,7 @@ func (api *httpAPI) circuitBreaker() *httpAPI {
             "consecutiveSuccess": 3
         },
         "faultDetectConfig": {
-            "enable": true
+            "enable": false
         },
         "fallbackConfig": {
             "enable": true,

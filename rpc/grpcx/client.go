@@ -85,7 +85,8 @@ func (c *Client) Apply(cfg *conf.Configuration) error {
 		if err != nil {
 			return err
 		}
-		pluginOptions = append(pluginOptions, rdo...)
+		// let registry defined can be overridden by user customer, but make registry resolver as default.
+		pluginOptions = append(rdo, pluginOptions...)
 		pluginOptions = append(pluginOptions, grpc.WithResolvers(rb))
 	}
 	// custom dial options, the highest priority

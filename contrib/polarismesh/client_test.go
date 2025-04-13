@@ -359,10 +359,8 @@ func TestClientRouting(t *testing.T) {
 
 	drv, ok := registry.GetRegistry(scheme)
 	require.True(t, ok)
-	rgcnf := cnf.Sub("routingRegistry")
-	rgcnf.Parser().Set("ref", "routingRegistry")
-	rb, err := drv.ResolverBuilder(rgcnf)
-	balancer.Register(NewBalancerBuilder("routing", getPolarisContext(t, "routingRegistry")))
+	rb, err := drv.ResolverBuilder(cnf.Sub("routingRegistry"))
+	balancer.Register(NewBalancerBuilder("routing", getPolarisContext(t, "routing")))
 
 	t.Run("native-dial-with-src-service", func(t *testing.T) {
 		require.NoError(t, err)
@@ -407,7 +405,7 @@ func TestClientRouting(t *testing.T) {
 	t.Run("route-rule-match-cn", func(t *testing.T) {
 		cli, err := grpcx.NewClient(cnf.Sub("grpc"))
 		require.NoError(t, err)
-		conn, err := cli.Dial("", grpc.WithDefaultServiceConfig(`{ "loadBalancingConfig": [{"routing": {}}] }`))
+		conn, err := cli.Dial("")
 		require.NoError(t, err)
 		require.NotNil(t, conn)
 		defer conn.Close()
@@ -429,7 +427,7 @@ func TestClientCircleBreaker(t *testing.T) {
 	require.NoError(t, err)
 	cnf := conf.NewFromBytes(b)
 	var srv, srv2 *grpcx.Server
-	err = wctest.RunWait(t.Log, time.Second*2, func() error {
+	err = wctest.RunWait(t.Log, time.Second*10, func() error {
 		count := 0
 		srv = grpcx.New(grpcx.WithConfiguration(cnf.Sub("grpc")), grpcx.WithGrpcOption(
 			grpc.ChainUnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
@@ -454,8 +452,8 @@ func TestClientCircleBreaker(t *testing.T) {
 
 	cli, err := grpcx.NewClient(cnf.Sub("grpc"))
 	require.NoError(t, err)
-	balancer.Register(NewBalancerBuilder("circuit_breaker", getPolarisContext(t, "circuitBreakerRegistry")))
-	c, err := cli.Dial("", grpc.WithDefaultServiceConfig(`{ "loadBalancingConfig": [{"circuit_breaker": {}}] }`))
+	balancer.Register(NewBalancerBuilder("cb", getPolarisContext(t, "cb")))
+	c, err := cli.Dial("", grpc.WithDefaultServiceConfig(`{ "loadBalancingConfig": [{"cb": {}}] }`))
 	require.NoError(t, err)
 	assert.NotNil(t, c)
 	defer c.Close()

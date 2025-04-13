@@ -22,7 +22,7 @@ var (
 	// DefaultNamespace default namespace when namespace is not set
 	DefaultNamespace = "default"
 	// LoadBalanceConfig config for do the balance
-	LoadBalanceConfig = fmt.Sprintf("{\n  \"loadBalancingConfig\": [ { \"%s\": {} } ]}", scheme)
+	LoadBalanceConfig = fmt.Sprintf(`{ "loadBalancingConfig": [ { "%s": {} } ]}`, scheme)
 )
 
 var (
@@ -54,7 +54,7 @@ func SetPolarisContextOnceByConfig(cfg config.Configuration) (err error) {
 }
 
 // InitPolarisContext create polaris context by config
-func InitPolarisContext(cnf *conf.Configuration) (cfg config.Configuration, ctx api.SDKContext, err error) {
+func InitPolarisContext(cnf *conf.Configuration) (ctx api.SDKContext, err error) {
 	var (
 		parser *conf.Parser
 	)
@@ -62,7 +62,7 @@ func InitPolarisContext(cnf *conf.Configuration) (cfg config.Configuration, ctx 
 	if pcnf.IsSet("configFile") {
 		parser, err = conf.NewParserFromFile(cnf.Abs(pcnf.String("configFile")))
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	} else {
 		parser = pcnf.Parser()
@@ -71,18 +71,17 @@ func InitPolarisContext(cnf *conf.Configuration) (cfg config.Configuration, ctx 
 	if err != nil {
 		return
 	}
-	cfg, err = config.LoadConfiguration(bts)
+	pConfig, err := config.LoadConfiguration(bts)
 	if err != nil {
 		return
 	}
-	// default global
-	if cnf.IsSet("global") && !cnf.Bool("global") {
-		ctx, err = api.InitContextByConfig(cfg)
-	} else {
-		if err = SetPolarisContextOnceByConfig(cfg); err != nil {
-			return nil, nil, err
+	if cnf.Bool(globalConfigKey) {
+		if err = SetPolarisContextOnceByConfig(pConfig); err != nil {
+			return nil, err
 		}
 		ctx, err = PolarisContext()
+	} else {
+		ctx, err = api.InitContextByConfig(pConfig)
 	}
 	return
 }

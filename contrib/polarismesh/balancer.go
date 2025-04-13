@@ -1,10 +1,12 @@
 package polarismesh
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/polarismesh/polaris-go"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/serviceconfig"
 	"strconv"
 	"strings"
 	"time"
@@ -15,19 +17,9 @@ import (
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/balancer/base"
 	"google.golang.org/grpc/grpclog"
-	"google.golang.org/grpc/status"
 )
 
 var (
-	reportInfoAnalyzer ReportInfoAnalyzer = func(info balancer.DoneInfo) (model.RetStatus, uint32) {
-		recErr := info.Err
-		if nil != recErr {
-			st, _ := status.FromError(recErr)
-			code := uint32(st.Code())
-			return api.RetFail, code
-		}
-		return api.RetSuccess, 0
-	}
 	// ErrorPolarisServiceRouteRuleEmpty error service route rule is empty
 	ErrorPolarisServiceRouteRuleEmpty = errors.New("service route rule is empty")
 )
@@ -35,28 +27,6 @@ var (
 type (
 	// ReportInfoAnalyzer analyze balancer.DoneInfo to polaris report info
 	ReportInfoAnalyzer func(info balancer.DoneInfo) (model.RetStatus, uint32)
-
-	balancerBuilder struct {
-		name   string
-		sdkCtx api.SDKContext
-	}
-
-	polarisBalancer struct {
-		// the base grpc balancer
-		balancer balancer.Balancer
-
-		options *dialOptions
-		// must init by GetAllInstances, otherwise will be miss cluster info
-		response    *model.InstancesResponse
-		picker      *polarisNamingPicker
-		consumerAPI polaris.ConsumerAPI
-		routerAPI   polaris.RouterAPI
-		lbCfg       *LBConfig
-	}
-
-	pickerBuilder struct {
-		balancer *polarisBalancer
-	}
 
 	polarisNamingPicker struct {
 		balancer *polarisBalancer
@@ -66,6 +36,71 @@ type (
 		response *model.InstancesResponse
 	}
 )
+
+type balancerBuilder struct {
+	name   string
+	sdkCtx api.SDKContext
+}
+
+// NewBalancerBuilder creates a new polaris balancer builder
+func NewBalancerBuilder(name string, ctx api.SDKContext) balancer.Builder {
+	return &balancerBuilder{
+		name:   name,
+		sdkCtx: ctx,
+	}
+}
+
+// Build implements balancer.Builder interface.
+// It will try to load from registry to use the same instance.
+func (b balancerBuilder) Build(cc balancer.ClientConn, opts balancer.BuildOptions) balancer.Balancer {
+	grpclog.Infof("[Polaris][Balancer] start to build polaris balancer")
+	if b.sdkCtx == nil {
+		ctx, _ := getPolarisContextFromDriver(b.name)
+		if ctx != nil {
+			b.sdkCtx = ctx
+		} else {
+			var err error
+			b.sdkCtx, err = PolarisContext()
+			if err != nil {
+				grpclog.Errorln("[Polaris][Balancer] failed to create balancer: " + err.Error())
+				return nil
+			}
+		}
+	}
+	pb := &pickerBuilder{}
+	bb := base.NewBalancerBuilder(b.Name(), pb, base.Config{HealthCheck: true})
+	bl := &polarisBalancer{
+		Balancer:    bb.Build(cc, opts),
+		consumerAPI: polaris.NewConsumerAPIByContext(b.sdkCtx),
+		routerAPI:   polaris.NewRouterAPIByContext(b.sdkCtx),
+	}
+	pb.balancer = bl
+
+	return bl
+}
+
+// ParseConfig implement google.golang.org/grpc/balancer.ConfigParser.
+func (b balancerBuilder) ParseConfig(cfgStr json.RawMessage) (serviceconfig.LoadBalancingConfig, error) {
+	cfg := &LBConfig{}
+	if err := json.Unmarshal(cfgStr, cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+type polarisBalancer struct {
+	// the base grpc balancer
+	balancer.Balancer
+
+	options *dialOptions
+	// must init by GetAllInstances, otherwise will be miss cluster info
+	response    *model.InstancesResponse
+	picker      *polarisNamingPicker
+	consumerAPI polaris.ConsumerAPI
+	routerAPI   polaris.RouterAPI
+	lbCfg       *LBConfig
+}
 
 // UpdateClientConnState update client connection state. receive from resolver watcher
 func (p *polarisBalancer) UpdateClientConnState(state balancer.ClientConnState) error {
@@ -82,59 +117,15 @@ func (p *polarisBalancer) UpdateClientConnState(state balancer.ClientConnState) 
 	if state.BalancerConfig != nil {
 		p.lbCfg = state.BalancerConfig.(*LBConfig)
 	}
-	return p.balancer.UpdateClientConnState(state)
-}
-
-func (p *polarisBalancer) ResolverError(err error) {
-	p.balancer.ResolverError(err)
-}
-
-func (p *polarisBalancer) UpdateSubConnState(conn balancer.SubConn, state balancer.SubConnState) {
-	p.balancer.UpdateSubConnState(conn, state)
-}
-
-func (p *polarisBalancer) Close() {
-	p.balancer.Close()
-}
-
-// SetReportInfoAnalyzer sets report info analyzer
-func SetReportInfoAnalyzer(analyzer ReportInfoAnalyzer) {
-	reportInfoAnalyzer = analyzer
-}
-
-// NewBalancerBuilder creates a new polaris balancer builder
-func NewBalancerBuilder(name string, ctx api.SDKContext) balancer.Builder {
-	return &balancerBuilder{
-		name:   name,
-		sdkCtx: ctx,
-	}
-}
-
-// Build implements balancer.Builder interface.
-func (b balancerBuilder) Build(cc balancer.ClientConn, opts balancer.BuildOptions) balancer.Balancer {
-	grpclog.Infof("[Polaris][Balancer] start to build polaris balancer")
-	if b.sdkCtx == nil {
-		var err error
-		b.sdkCtx, err = PolarisContext()
-		if err != nil {
-			grpclog.Errorln("[Polaris][Balancer] failed to create balancer: " + err.Error())
-			return nil
-		}
-	}
-	pb := &pickerBuilder{}
-	bb := base.NewBalancerBuilder(b.Name(), pb, base.Config{HealthCheck: true})
-	bl := &polarisBalancer{
-		balancer:    bb.Build(cc, opts),
-		consumerAPI: polaris.NewConsumerAPIByContext(b.sdkCtx),
-		routerAPI:   polaris.NewRouterAPIByContext(b.sdkCtx),
-	}
-	pb.balancer = bl
-
-	return bl
+	return p.Balancer.UpdateClientConnState(state)
 }
 
 func (b balancerBuilder) Name() string {
 	return b.name
+}
+
+type pickerBuilder struct {
+	balancer *polarisBalancer
 }
 
 // Build creates a picker, trigger when connection changed to ready

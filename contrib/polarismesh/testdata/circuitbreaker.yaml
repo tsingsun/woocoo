@@ -1,43 +1,5 @@
-grpc:
-  server:
-    addr: 127.0.0.1:23112
-    namespace: circuitBreakerTest
-    version: "1.0"
-    engine:
-      - unaryInterceptors:
-          - recovery:
-    registryMeta:
-      location: default
-  registry:
-    ref: circuitBreakerRegistry
-    scheme: polaris
-  client:
-    target:
-      namespace: circuitBreakerTest
-      serviceName: helloworld.Greeter
-      metadata:
-        version: "1.0"
-        route: true
-        circuitBreaker: true
-    dialOption:
-      - tls:
-      - block:
-      - timeout: 10s
-grpc2:
-  server:
-    addr: 127.0.0.1:23113
-    namespace: circuitBreakerTest
-    version: "1.0"
-    engine:
-      - unaryInterceptors:
-          - recovery:
-    registryMeta:
-      location: amoy
-  registry:
-    ref: circuitBreakerRegistry
-    scheme: polaris
-
-circuitBreakerRegistry:
+circuitBreakerRegistry: &circuitBreakerRegistry
+  name: cb
   scheme: polaris
   global: false
   ttl: 10s
@@ -63,3 +25,40 @@ circuitBreakerRegistry:
         plugin:
           errorRate:
             metricStatTimeWindow: 10s
+
+grpc:
+  server:
+    addr: 127.0.0.1:23112
+    namespace: circuitBreakerTest
+    version: "1.0"
+    engine:
+      - unaryInterceptors:
+          - recovery:
+    registryMeta:
+      location: default
+  registry:
+    <<: *circuitBreakerRegistry
+  client:
+    target:
+      namespace: circuitBreakerTest
+      serviceName: helloworld.Greeter
+      metadata:
+        version: "1.0"
+        route: true
+        circuitBreaker: true
+    dialOption:
+      - tls:
+      - block:
+      - timeout: 10s
+grpc2:
+  server:
+    addr: 127.0.0.1:23113
+    namespace: circuitBreakerTest
+    version: "1.0"
+    engine:
+      - unaryInterceptors:
+          - recovery:
+    registryMeta:
+      location: amoy
+  registry:
+    <<: *circuitBreakerRegistry

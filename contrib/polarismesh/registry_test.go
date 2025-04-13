@@ -11,18 +11,11 @@ import (
 	"time"
 )
 
-// GetPolarisContextFromDriver get polaris context from registry driver,the ref name is polaris registry config ref name.
-func getPolarisContextFromDriver(ref string) api.SDKContext {
-	drv, ok := registry.GetRegistry(scheme)
-	if !ok {
-		panic("polaris resolver not registered")
-	}
-	return drv.(*Driver).refBuilders[ref].(*resolverBuilder).sdkCtx
-}
-
 func getPolarisContext(t *testing.T, ref string) (ctx api.SDKContext) {
 	assert.NotPanics(t, func() {
-		ctx = getPolarisContextFromDriver(ref)
+		var err error
+		ctx, err = getPolarisContextFromDriver(ref)
+		require.NoError(t, err)
 	})
 	return
 }
@@ -159,9 +152,7 @@ func TestRegistry_GetServiceInfos(t *testing.T) {
 	assert.NoError(t, err)
 	cnf := conf.NewFromBytes([]byte(`
 registry:
-  scheme: polaris
-  ref: "polarisGetServiceInfos"
-polarisGetServiceInfos:
+  name: polarisGetServiceInfos
   scheme: polaris
   ttl: 10s
   polaris:

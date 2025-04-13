@@ -1,57 +1,5 @@
-grpc:
-  server:
-    addr: 127.0.0.1:22110
-    namespace: routingTest
-    version: "1.0"
-    engine:
-      - unaryInterceptors:
-          - recovery:
-    registryMeta:
-      location: default
-      custom: custom
-  registry:
-    ref: routingRegistry
-    scheme: polaris
-  client:
-    target:
-      namespace: routingTest
-      serviceName: helloworld.Greeter
-      metadata:
-        version: "1.0"
-        route: true
-        srcService: helloworld.Greeter
-        header_country: CN
-    dialOption:
-      - tls:
-      - block:
-      - timeout: 10s
-grpc2:
-  server:
-    addr: 127.0.0.1:22113
-    namespace: routingTest
-    version: "1.0"
-    engine:
-      - unaryInterceptors:
-          - recovery:
-    registryMeta:
-      location: CN
-  registry:
-    ref: routingRegistry
-    scheme: polaris
-grpc3:
-  server:
-    addr: 127.0.0.1:22114
-    namespace: routingTest
-    version: "1.0"
-    engine:
-      - unaryInterceptors:
-          - recovery:
-    registryMeta:
-      location: US
-  registry:
-    ref: routingRegistry
-    scheme: polaris
-routingRegistry:
+routingRegistry: &routingRegistry
+  name: routing
   scheme: polaris
   global: false
   ttl: 10s
@@ -69,3 +17,57 @@ routingRegistry:
             type: push
             address: 127.0.0.1:9091
             interval: 1s
+
+grpc:
+  server:
+    addr: 127.0.0.1:22110
+    namespace: routingTest
+    version: "1.0"
+    engine:
+      - unaryInterceptors:
+          - recovery:
+    registryMeta:
+      location: default
+      custom: custom
+  registry:
+    <<: *routingRegistry
+  client:
+    target:
+      namespace: routingTest
+      serviceName: helloworld.Greeter
+      metadata:
+        version: "1.0"
+        route: true
+        srcService: helloworld.Greeter
+        header_country: CN
+    dialOption:
+      - tls:
+      - block:
+      - timeout: 10s
+      - serviceConfig: |
+          { "loadBalancingConfig": [{"routing": {"lb_policy": "ringHash"}}] }
+grpc2:
+  server:
+    addr: 127.0.0.1:22113
+    namespace: routingTest
+    version: "1.0"
+    engine:
+      - unaryInterceptors:
+          - recovery:
+    registryMeta:
+      location: CN
+  registry:
+    <<: *routingRegistry
+grpc3:
+  server:
+    addr: 127.0.0.1:22114
+    namespace: routingTest
+    version: "1.0"
+    engine:
+      - unaryInterceptors:
+          - recovery:
+    registryMeta:
+      location: US
+  registry:
+    <<: *routingRegistry
+

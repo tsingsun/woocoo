@@ -32,27 +32,31 @@ go get github.com/tsingsun/woocoo/polarismesh
 在woocoo微服务`registry`配置节中,指定相应的北极星网格:
 
 ```yaml
+polarisRegistry: &polarisRegistry
+  name: routing # Optional ,默认为 polaris
+  scheme: polaris # 必须指定为polaris
+  global: true # Optional 默认为true. 配置是否为全局,如设置true,则上下文为全局.
+  ttl: 10s # Optional 心跳时间,[0-60]s, 不设置时, 将使用Polaris默认值.
+  polaris:
+    # 可以采用配置文件方式.此时内嵌配置无效
+    # configFile: etc/polaris.yaml
+    # 直接内嵌配置中配置
+    global:
+      serverConnector:
+        addresses:
+          - 127.0.0.1:8091
 grpc:
   registry:
-    scheme: polaris # 必须指定为polaris
-    ttl: 30s # 心跳时间,[0-60]s
-    # 元数据对应Paloris的metadata
+    <<: *polarisRegistry
+    # 配置元数据.
     registryMeta:
       key1: value1
       key2: value2
-    polaris:
-      ... # 该节占下同北极星网格本身的配置  
 
 # 也可以指定为一个独立的配置节,使用独立的配置文件,如下:
 grpc2:
   registry:
-    scheme: polaris # 仍然需要指定为polaris
-    ref: registry # 以root为起点的配置节路径,对于引用的注册中心,会默认将第一个初始化全局配置.
-registry:
-  ttl: 30s # 心跳时间,[0-60]s
-  polaris:
-    # 采用配置文件方式.此时内嵌配置无效
-    configFile: etc/polaris.yaml  
+    <<: *polarisRegistry
 ```
 
 ### client
@@ -77,6 +81,7 @@ grpc:
       serviceName: helloworld.Greeter # 服务名称
       metadata:        
         route: true # 是否启用动态路由,默认为false
+        circuitBreaker: true # 是否启用熔断降级,默认为false
         header_location: amoy #                
 ```
 
@@ -125,7 +130,7 @@ conn, err := grpc.Dial(scheme+"://routingTest/helloworld.Greeter?route=true",
 ```yaml
 grpc:
   registry:
-    ref: "circuit_breaker"
+    name: "circuit_breaker"
     scheme: polaris
 
 circuit_breaker:

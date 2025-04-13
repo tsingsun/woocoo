@@ -25,7 +25,7 @@ import (
 
 const (
 	scheme                      = "polaris"
-	refConfigKey                = "ref"
+	globalConfigKey             = "global"
 	keyDialOptions              = "options"
 	keyDialOptionRoute          = "route"
 	keyDialOptionNamespace      = "namespace"
@@ -82,51 +82,49 @@ func (drv *Driver) GetRegistry(name string) (registry.Registry, error) {
 }
 
 // CreateRegistry creates a polaris registry.
-func (drv *Driver) CreateRegistry(cnf *conf.Configuration) (registry.Registry, error) {
+func (drv *Driver) CreateRegistry(cfg *conf.Configuration) (registry.Registry, error) {
 	drv.mu.Lock()
 	defer drv.mu.Unlock()
-	pcnf := cnf
-	ref := cnf.String(refConfigKey)
-	if ref != "" {
-		if v, ok := drv.refRegtries[ref]; ok {
-			return v, nil
-		}
-		pcnf = cnf.Root().Sub(ref)
-	}
-	r := New()
-	r.Apply(pcnf)
 
-	if ref != "" {
-		drv.refRegtries[ref] = r
+	name := cfg.String("name")
+	if name == "" {
+		name = scheme
+	}
+	if v, ok := drv.refRegtries[name]; ok {
+		return v, nil
+	}
+
+	r := New()
+	r.Apply(cfg)
+
+	if !cfg.Bool(globalConfigKey) {
+		drv.refRegtries[name] = r
 	}
 	return r, nil
 }
 
 // ResolverBuilder creates a polaris resolver builder.
-func (drv *Driver) ResolverBuilder(cnf *conf.Configuration) (resolver.Builder, error) {
+func (drv *Driver) ResolverBuilder(cfg *conf.Configuration) (resolver.Builder, error) {
 	drv.mu.Lock()
 	defer drv.mu.Unlock()
 	var (
 		rb = &resolverBuilder{}
 	)
-
-	ccfg := cnf
-	ref := cnf.String(refConfigKey)
-	if ref != "" {
-		if v, ok := drv.refBuilders[ref]; ok {
-			return v, nil
-		}
-		ccfg = cnf.Root().Sub(ref)
+	name := cfg.String("name")
+	if name == "" {
+		name = scheme
 	}
-	_, sdkCtx, err := InitPolarisContext(ccfg)
+	if v, ok := drv.refBuilders[name]; ok {
+		return v, nil
+	}
+	sdkCtx, err := InitPolarisContext(cfg)
 	if err != nil {
 		return nil, err
 	}
-	if ref != "" {
-		drv.refBuilders[ref] = rb
-	}
 	rb.sdkCtx = sdkCtx
-
+	if !cfg.Bool(globalConfigKey) {
+		drv.refBuilders[name] = rb
+	}
 	return rb, nil
 }
 
@@ -136,7 +134,10 @@ func (drv *Driver) WithDialOptions(registryOpt registry.DialOptions) (opts []grp
 	if err = convertDialOptions(&registryOpt, do); err != nil {
 		return nil, fmt.Errorf("WithDialOptions:failed to convert dial options: %v", err)
 	}
-	opts = append(opts, grpc.WithChainUnaryInterceptor(injectCallerInfo(do)), grpc.WithDefaultServiceConfig(LoadBalanceConfig))
+	opts = append(opts,
+		grpc.WithChainUnaryInterceptor(injectCallerInfo(do)),
+		grpc.WithDefaultServiceConfig(LoadBalanceConfig),
+	)
 	return
 }
 
@@ -253,12 +254,30 @@ func (r *Registry) GetServiceInfos(service string) ([]*registry.ServiceInfo, err
 // Apply the configuration to the registry and set the first config as the default global config
 func (r *Registry) Apply(cnf *conf.Configuration) {
 	r.opts.TTL = cnf.Duration("ttl")
-	_, ctx, err := InitPolarisContext(cnf)
+	ctx, err := InitPolarisContext(cnf)
 	if err != nil {
 		panic(err)
 	}
 	r.registerContext.sdkctx = ctx
 	r.registerContext.providerAPI = api.NewProviderAPIByContext(ctx)
+}
+
+// get polaris context from registry driver,the ref name is polaris registry config ref name.
+func getPolarisContextFromDriver(schemeName string) (ctx api.SDKContext, err error) {
+	rd, ok := registry.GetRegistry(scheme)
+	if !ok {
+		return nil, fmt.Errorf("getRegistryContext: registry driver not found, scheme: %s", scheme)
+	}
+	drv, ok := rd.(*Driver)
+	if !ok {
+		return nil, fmt.Errorf("getRegistryContext: registry driver not found, scheme: %s", scheme)
+	}
+	r, err := drv.GetRegistry(schemeName)
+	if err != nil {
+		return nil, err
+	}
+	tr := r.(*Registry)
+	return tr.registerContext.sdkctx, nil
 }
 
 // polaris parse the target to options

@@ -8,6 +8,7 @@ import (
 	"github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"math/rand"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -100,19 +101,35 @@ func TestTinyLFU_Get(t *testing.T) {
 	require.NoError(t, err)
 	t.Parallel()
 	t.Run("string with ttl", func(t *testing.T) {
-		assert.NoError(t, local.Set(context.Background(), "key", "value"))
+		ctx := context.Background()
+		assert.NoError(t, local.Set(ctx, "key", "value"))
 		var v string
-		err := local.Get(context.Background(), "key", &v)
+		err := local.Get(ctx, "key", &v)
 		assert.NoError(t, err)
 		assert.Equal(t, "value", v)
-		err = local.Get(context.Background(), "key", &v)
+		err = local.Get(ctx, "key", &v)
 		assert.NoError(t, err, "repeat get to check if del for expired")
 
-		assert.NoError(t, local.Set(context.Background(), "key", "value", cache.WithTTL(time.Second)))
-		assert.True(t, local.Has(context.Background(), "key"))
+		assert.NoError(t, local.Set(ctx, "key", "value", cache.WithTTL(time.Second)))
+		assert.True(t, local.Has(ctx, "key"))
 		time.Sleep(time.Second)
-		err = local.Get(context.Background(), "key", &v)
+		err = local.Get(ctx, "key", &v)
 		assert.ErrorIs(t, err, cache.ErrCacheMiss)
+
+		var count int
+		geterFunc := func(ctx context.Context, key string) (any, error) {
+			count++
+			return "getter" + strconv.Itoa(count), nil
+		}
+		err = local.Get(ctx, "getterKey", &v, cache.WithGetter(geterFunc), cache.WithTTL(time.Second))
+		assert.NoError(t, err)
+		assert.Equal(t, "getter1", v)
+		err = local.Get(ctx, "getterKey", &v)
+		assert.NoError(t, err)
+		assert.Equal(t, "getter1", v)
+
+		err = local.Get(ctx, "pointer", v, cache.WithGetter(geterFunc), cache.WithTTL(time.Second))
+		assert.ErrorIs(t, err, cache.ErrReceiverMustPointer)
 	})
 
 	t.Run("get native value", func(t *testing.T) {
@@ -124,6 +141,11 @@ func TestTinyLFU_Get(t *testing.T) {
 		assert.NoError(t, local.Set(ctx, "key", "valueRaw", cache.WithRaw()))
 		require.NoError(t, local.Get(ctx, "key", &s, cache.WithRaw()))
 		assert.Equal(t, "valueRaw", s)
+		assert.NoError(t, local.Get(ctx, "getterS", &s, cache.WithGetter(
+			func(ctx context.Context, key string) (any, error) {
+				return "getterS", nil
+			})))
+		assert.Equal(t, "getterS", s)
 
 		var v []byte
 		assert.NoError(t, local.Set(ctx, "key", []byte("value")))
@@ -132,25 +154,50 @@ func TestTinyLFU_Get(t *testing.T) {
 		assert.NoError(t, local.Set(ctx, "key", []byte("rawValue"), cache.WithRaw()))
 		require.NoError(t, local.Get(ctx, "key", &v, cache.WithRaw()))
 		assert.Equal(t, []byte("rawValue"), v)
+		assert.NoError(t, local.Get(ctx, "getterBS", &v, cache.WithGetter(
+			func(ctx context.Context, key string) (any, error) {
+				return []byte("getter"), nil
+			})))
+		assert.Equal(t, []byte("getter"), v)
 
 		var m map[string]string
 		assert.NoError(t, local.Set(ctx, "key", map[string]string{"name": "value"}, cache.WithRaw()))
 		require.NoError(t, local.Get(ctx, "key", &m, cache.WithRaw()))
 		assert.Equal(t, m, map[string]string{"name": "value"})
+		assert.NoError(t, local.Get(ctx, "getterM", &m, cache.WithGetter(
+			func(ctx context.Context, key string) (any, error) {
+				return map[string]string{"name": "value"}, nil
+			})))
+		assert.Equal(t, map[string]string{"name": "value"}, m)
 
 		var i int
 		assert.NoError(t, local.Set(ctx, "key", 1, cache.WithRaw()))
 		require.NoError(t, local.Get(ctx, "key", &i, cache.WithRaw()))
 		assert.Equal(t, 1, i)
+		assert.NoError(t, local.Get(ctx, "getterI", &i, cache.WithGetter(
+			func(ctx context.Context, key string) (any, error) {
+				return 2, nil
+			})))
+		assert.Equal(t, 2, i)
 
 		var f float64
 		assert.NoError(t, local.Set(ctx, "key", 1.1, cache.WithRaw()))
 		require.NoError(t, local.Get(ctx, "key", &f, cache.WithRaw()))
 		assert.Equal(t, 1.1, f)
+		assert.NoError(t, local.Get(ctx, "getterF", &f, cache.WithGetter(
+			func(ctx context.Context, key string) (any, error) {
+				return 2.0, nil
+			})))
+		assert.Equal(t, 2.0, f)
 
 		var b bool
 		assert.NoError(t, local.Set(ctx, "key", true, cache.WithRaw()))
 		require.NoError(t, local.Get(ctx, "key", &b, cache.WithRaw()))
+		assert.Equal(t, true, b)
+		assert.NoError(t, local.Get(ctx, "getterB", &b, cache.WithGetter(
+			func(ctx context.Context, key string) (any, error) {
+				return true, nil
+			})))
 		assert.Equal(t, true, b)
 	})
 	t.Run("nil value", func(t *testing.T) {
@@ -169,27 +216,44 @@ func TestTinyLFU_Get(t *testing.T) {
 		type T struct {
 			Name string
 		}
-		require.NoError(t, local.Set(context.Background(), "key", &T{Name: "pointer"}, cache.WithRaw()))
-		err := local.Get(context.Background(), "key", T{Name: "pointer"}, cache.WithRaw())
-		require.ErrorContains(t, err, "output value must be a pointer")
+		ctx := context.Background()
+		var (
+			tt  T
+			ttp *T
+		)
+		assert.NoError(t, local.Get(ctx, "key", &tt, cache.WithGetter(
+			func(ctx context.Context, key string) (any, error) {
+				return T{Name: "getter"}, nil
+			})))
+		assert.Equal(t, T{Name: "getter"}, tt)
+
+		assert.NoError(t, local.Get(ctx, "keypoint", &ttp, cache.WithGetter(
+			func(ctx context.Context, key string) (any, error) {
+				return &T{Name: "pointer"}, nil
+			})))
+		assert.Equal(t, "pointer", ttp.Name)
+
+		require.NoError(t, local.Set(ctx, "key", &T{Name: "pointer"}, cache.WithRaw()))
+		err := local.Get(ctx, "key", T{Name: "pointer"}, cache.WithRaw())
+		assert.ErrorIs(t, err, cache.ErrReceiverMustPointer)
 
 		var v *T
-		err = local.Get(context.Background(), "key", &v, cache.WithRaw())
+		err = local.Get(ctx, "key", &v, cache.WithRaw())
 		assert.NoError(t, err)
 		assert.Equal(t, "pointer", v.Name)
 		v.Name = "value2"
 		var v1 *T
-		err = local.Get(context.Background(), "key", &v1, cache.WithRaw())
+		err = local.Get(ctx, "key", &v1, cache.WithRaw())
 		assert.NoError(t, err)
 		assert.Equal(t, "value2", v1.Name, "point same value")
 
-		require.NoError(t, local.Set(context.Background(), "key", T{Name: "struct"}))
+		require.NoError(t, local.Set(ctx, "key", T{Name: "struct"}))
 		var v2 T
-		require.NoError(t, local.Get(context.Background(), "key", &v2))
+		require.NoError(t, local.Get(ctx, "key", &v2))
 		assert.Equal(t, "struct", v2.Name)
 		v2.Name = "value3"
 		var v3 T
-		require.NoError(t, local.Get(context.Background(), "key", &v3))
+		require.NoError(t, local.Get(ctx, "key", &v3))
 		assert.Equal(t, "struct", v3.Name, "value type must not change")
 	})
 	t.Run("subsidiary", func(t *testing.T) {

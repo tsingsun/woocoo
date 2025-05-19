@@ -102,7 +102,22 @@ func NewTinyLFU(cnf *conf.Configuration) (*TinyLFU, error) {
 // Get returns the value for the given key, or ErrCacheMiss. If the value is nil, the value will not be set
 func (c *TinyLFU) Get(ctx context.Context, key string, value any, opts ...cache.Option) (err error) {
 	opt := cache.ApplyOptions(opts...)
-	return c.GetInner(ctx, key, value, opt.Raw)
+	err = c.GetInner(ctx, key, value, opt.Raw)
+	if errors.Is(err, cache.ErrCacheMiss) {
+		if opt.Getter == nil {
+			return err
+		}
+		gv, err := opt.Getter(ctx, key)
+		if err != nil {
+			return err
+		}
+		if reflect.TypeOf(value).Kind() != reflect.Ptr {
+			return cache.ErrReceiverMustPointer
+		}
+		reflect.ValueOf(value).Elem().Set(reflect.ValueOf(gv))
+		return c.SetInner(ctx, key, gv, opt.TTL, opt)
+	}
+	return err
 }
 
 func (c *TinyLFU) GetInner(_ context.Context, key string, value any, raw bool) error {
@@ -139,7 +154,7 @@ func (c *TinyLFU) GetInner(_ context.Context, key string, value any, raw bool) e
 		*value = val.(float64)
 	default:
 		if reflect.TypeOf(value).Kind() != reflect.Ptr {
-			return errors.New("cache: output value must be a pointer")
+			return cache.ErrReceiverMustPointer
 		}
 		reflect.ValueOf(value).Elem().Set(reflect.ValueOf(val))
 	}

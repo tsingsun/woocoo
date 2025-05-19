@@ -22,8 +22,9 @@ const (
 )
 
 var (
-	ErrDriverNameMiss = errors.New("cache: driverName is empty")
-	ErrCacheMiss      = errors.New("cache: key is missing")
+	ErrDriverNameMiss      = errors.New("cache: driverName is empty")
+	ErrCacheMiss           = errors.New("cache: key is missing")
+	ErrReceiverMustPointer = errors.New("cache: value receiver must be a pointer")
 )
 
 // Cache is the interface for cache.

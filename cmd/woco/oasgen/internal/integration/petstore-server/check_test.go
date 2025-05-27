@@ -123,6 +123,16 @@ func TestGenerateAfter(t *testing.T) {
 			assert.EqualValues(t, `username,omitempty`, userType.Field(7).Tag.Get("json"))
 			assert.EqualValues(t, `string`, userType.Field(7).Type.String())
 		})
+		t.Run("newPet", func(t *testing.T) {
+			np := NewPet{}
+			newpetType := reflect.TypeOf(np)
+			assert.EqualValues(t, `*petstore.Pet`, newpetType.Field(0).Type.String())
+			assert.EqualValues(t, `Pet`, newpetType.Field(0).Name)
+			assert.EqualValues(t, `owner`, newpetType.Field(1).Tag.Get("json"))
+			assert.EqualValues(t, `User`, newpetType.Field(1).Tag.Get("xml"))
+			assert.EqualValues(t, `timestamp`, newpetType.Field(2).Tag.Get("json"))
+			assert.EqualValues(t, `timestamp`, newpetType.Field(2).Tag.Get("xml"))
+		})
 	})
 	t.Run("checkModel-allof", func(t *testing.T) {
 		newpet := reflect.TypeOf(NewPet{})

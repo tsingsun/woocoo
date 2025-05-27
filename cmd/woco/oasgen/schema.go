@@ -89,12 +89,14 @@ func (sch *Schema) GenSchemaType(c *Config) {
 		typeName = schemaNameFromRef(sch.Spec.Ref)
 	}
 	sv := sch.Spec.Value
-	sepcType := sv.Type
+	var sepcType string
 	if sv.AllOf != nil {
 		sepcType = "object"
-	} else if sv.Type == "" && (sv.OneOf == nil || sv.AnyOf == nil) {
+	} else if len(sv.Type.Slice()) == 0 && (sv.OneOf == nil || sv.AnyOf == nil) {
 		// todo check oneOf and anyOf
 		sepcType = "object"
+	} else if len(sv.Type.Slice()) != 0 {
+		sepcType = sv.Type.Slice()[0]
 	}
 
 	switch sepcType {
@@ -414,7 +416,7 @@ func (sch *Schema) CollectTags() {
 			sch.validations = append(sch.validations, fmt.Sprintf("min=%d", specValue.MinLength))
 		}
 	}
-	if sch.Spec.Value.Type == "array" {
+	if sch.Spec.Value.Type.Is("array") {
 		if specValue.MaxItems != nil {
 			sch.validations = append(sch.validations, fmt.Sprintf("max=%d", specValue.MaxItems))
 		}
@@ -583,7 +585,7 @@ func isJsonRawObject(c *Config, name string, schema *openapi3.Schema) bool {
 	if isTypeMap(c, name) {
 		return false
 	}
-	if schema.Type != "object" {
+	if !schema.Type.Is("object") {
 		return false
 	}
 	if len(schema.Properties) != 0 {

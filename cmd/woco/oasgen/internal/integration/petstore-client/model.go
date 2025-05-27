@@ -45,8 +45,8 @@ type NewPet struct {
 	// Pet A pet for sale in the pet store
 	*Pet `json:",inline"`
 	// Owner A User who is purchasing from the pet store
-	Owner     User      `binding:"required" json:"owner"`
-	Timestamp time.Time `binding:"required" json:"timestamp" time_format:"2006-01-02T15:04:05Z07:00"`
+	Owner     User      `binding:"required" json:"owner" xml:"User"`
+	Timestamp time.Time `binding:"required" json:"timestamp" time_format:"2006-01-02T15:04:05Z07:00" xml:"timestamp"`
 }
 
 // Order An order for a pets from the pet store
@@ -106,30 +106,6 @@ type NewPets []*NewPet
 
 type Pets []*Pet
 
-// PetStatus defines the type for the status.status enum field.
-type PetStatus string
-
-// PetStatus values.
-const (
-	PetStatusAvailable PetStatus = "available"
-	PetStatusPending   PetStatus = "pending"
-	PetStatusSold      PetStatus = "sold"
-)
-
-func (s PetStatus) String() string {
-	return string(s)
-}
-
-// PetStatusValidator is a validator for the PetStatus field enum values.
-func PetStatusValidator(s PetStatus) error {
-	switch s {
-	case PetStatusAvailable, PetStatusPending, PetStatusSold:
-		return nil
-	default:
-		return fmt.Errorf("PetStatus does not allow the value '%s'", s)
-	}
-}
-
 // OrderStatus defines the type for the status.status enum field.
 type OrderStatus string
 
@@ -151,5 +127,29 @@ func OrderStatusValidator(s OrderStatus) error {
 		return nil
 	default:
 		return fmt.Errorf("OrderStatus does not allow the value '%s'", s)
+	}
+}
+
+// PetStatus defines the type for the status.status enum field.
+type PetStatus string
+
+// PetStatus values.
+const (
+	PetStatusAvailable PetStatus = "available"
+	PetStatusPending   PetStatus = "pending"
+	PetStatusSold      PetStatus = "sold"
+)
+
+func (s PetStatus) String() string {
+	return string(s)
+}
+
+// PetStatusValidator is a validator for the PetStatus field enum values.
+func PetStatusValidator(s PetStatus) error {
+	switch s {
+	case PetStatusAvailable, PetStatusPending, PetStatusSold:
+		return nil
+	default:
+		return fmt.Errorf("PetStatus does not allow the value '%s'", s)
 	}
 }

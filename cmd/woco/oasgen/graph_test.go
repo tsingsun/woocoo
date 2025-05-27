@@ -19,7 +19,7 @@ func TestNewGraph(t *testing.T) {
 		require.NoError(t, err)
 		g, err := NewGraph(c, s)
 		require.NoError(t, err)
-		assert.Equal(t, 12, len(g.Schemas))
+		assert.Equal(t, 19, len(g.Schemas))
 		assert.Equal(t, 3, len(g.Nodes))
 	})
 }

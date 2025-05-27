@@ -171,10 +171,12 @@ func (op *Operation) GenRequest() {
 			Spec: rb,
 			Name: rname,
 		}
+
+		var schema *Schema
 		for ct, mediaType := range rb.Value.Content {
 			op.Request.BodyContentTypes = append(op.Request.BodyContentTypes, ct)
-			if len(body.Properties) == 0 {
-				schema := genSchemaRef(
+			if len(body.Properties) == 0 { // use this statement to check schema whether initialed
+				schema = genSchemaRef(
 					op.Config,
 					NewSchemaOptions(WithSchemaName(rname), WithSubSchemaSpec(mediaType.Schema), WithSchemaTag(tag),
 						WithSchemaRequired(rb.Value.Required), WithSchemaZone(SchemaZoneRequest), WithSchemaSkipAdd()),
@@ -188,8 +190,8 @@ func (op *Operation) GenRequest() {
 					schema.IsInline = mediaType.Schema.Ref != ""
 					body.Properties = append(body.Properties, schema)
 				}
-				schema.AppendContentTypeStructTag(op.Config, schema.Name, op.Request.BodyContentTypes)
 			}
+			schema.AppendContentTypeStructTag(op.Config, schema.Name, op.Request.BodyContentTypes)
 		}
 		op.Request.Body = body
 	}

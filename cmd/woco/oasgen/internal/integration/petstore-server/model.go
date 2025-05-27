@@ -45,8 +45,8 @@ type NewPet struct {
 	// Pet A pet for sale in the pet store
 	*Pet `json:",inline"`
 	// Owner A User who is purchasing from the pet store
-	Owner     User      `binding:"required" xml:"User"`
-	Timestamp time.Time `binding:"required" time_format:"2006-01-02T15:04:05Z07:00" xml:"timestamp"`
+	Owner     User      `binding:"required" json:"owner" xml:"User"`
+	Timestamp time.Time `binding:"required" json:"timestamp" time_format:"2006-01-02T15:04:05Z07:00" xml:"timestamp"`
 }
 
 // Order An order for a pets from the pet store

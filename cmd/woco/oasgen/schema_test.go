@@ -28,11 +28,11 @@ func TestGenComponentSchema_genSchemaRef(t *testing.T) {
 					Spec: &openapi3.SchemaRef{
 						Ref: "",
 						Value: &openapi3.Schema{
-							Type: "object",
+							Type: &openapi3.Types{"object"},
 							AdditionalProperties: openapi3.AdditionalProperties{
 								Schema: &openapi3.SchemaRef{
 									Value: &openapi3.Schema{
-										Type: "string",
+										Type: &openapi3.Types{"string"},
 									},
 								},
 							},
@@ -63,7 +63,7 @@ func TestGenComponentSchema_genSchemaRef(t *testing.T) {
 					Spec: &openapi3.SchemaRef{
 						Ref: "",
 						Value: &openapi3.Schema{
-							Type: "string",
+							Type: &openapi3.Types{"string"},
 							Enum: []interface{}{
 								"available",
 								"pending",
@@ -130,7 +130,7 @@ func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 				spec: &openapi3.SchemaRef{
 					Ref: "",
 					Value: &openapi3.Schema{
-						Type:        "object",
+						Type:        &openapi3.Types{"object"},
 						Title:       "Pet Tag",
 						Description: "A tag for a pet",
 						XML: &openapi3.XML{
@@ -140,18 +140,18 @@ func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 							"id": {
 								Ref: "",
 								Value: &openapi3.Schema{
-									Type:   "integer",
+									Type:   &openapi3.Types{"integer"},
 									Format: "int64",
 								},
 							},
 							"labels": {
 								Ref: "#/components/schemas/labelSet",
 								Value: &openapi3.Schema{
-									Type: "object",
+									Type: &openapi3.Types{"object"},
 									AdditionalProperties: openapi3.AdditionalProperties{
 										Schema: &openapi3.SchemaRef{
 											Value: &openapi3.Schema{
-												Type: "string",
+												Type: &openapi3.Types{"string"},
 											},
 										},
 									},
@@ -159,7 +159,7 @@ func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 							},
 							"name": {
 								Value: &openapi3.Schema{
-									Type: "string",
+									Type: &openapi3.Types{"string"},
 								},
 							},
 						},
@@ -177,7 +177,7 @@ func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 				Properties: map[string]*Schema{
 					"id": {
 						SchemaOptions: SchemaOptions{
-							Name: "ID",
+							Name: "id",
 						},
 						Type: &code.TypeInfo{
 							Type: code.TypeInt64,
@@ -185,7 +185,7 @@ func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 					},
 					"labels": {
 						SchemaOptions: SchemaOptions{
-							Name:  "Labels",
+							Name:  "labels",
 							IsRef: true,
 						},
 						Type: &code.TypeInfo{
@@ -196,7 +196,7 @@ func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 					},
 					"name": {
 						SchemaOptions: SchemaOptions{
-							Name: "Name",
+							Name: "name",
 						},
 						Type: &code.TypeInfo{
 							Type: code.TypeString,
@@ -208,6 +208,8 @@ func Test_genSchemaRef_IncludeAlias(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tt.args.opts.Spec = tt.args.spec
+			tt.args.opts.Name = tt.args.name
 			got := genSchemaRef(tt.args.c, tt.args.opts)
 			assert.Equal(t, tt.want.Properties["labels"].Name, got.Properties["labels"].Name)
 			assert.Equal(t, tt.want.Properties["labels"].IsRef, got.Properties["labels"].IsRef)

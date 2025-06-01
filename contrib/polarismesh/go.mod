@@ -1,9 +1,9 @@
 module github.com/tsingsun/woocoo/contrib/polarismesh
 
-go 1.22
+go 1.23.0
 
 require (
-	github.com/knadh/koanf/parsers/yaml v0.1.0
+	github.com/knadh/koanf/parsers/yaml v1.0.0
 	github.com/polarismesh/polaris-go v1.5.9
 	github.com/polarismesh/specification v1.4.1
 	github.com/stretchr/testify v1.9.0

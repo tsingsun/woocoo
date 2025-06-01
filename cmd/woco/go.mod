@@ -9,7 +9,7 @@ require (
 	github.com/go-openapi/inflect v0.19.0
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/google/uuid v1.4.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tsingsun/woocoo v0.5.7
 	github.com/urfave/cli/v2 v2.27.1
 	golang.org/x/text v0.21.0

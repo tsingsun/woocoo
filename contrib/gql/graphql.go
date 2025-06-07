@@ -252,7 +252,8 @@ func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server
 			return fmt.Errorf("gql.SetRecoverFunc: %v : %v", err, e)
 		}
 		handler.HandleRecoverError(gctx, err, 3)
-		gctx.AbortWithStatus(http.StatusInternalServerError)
+		// clear errors, let gql server handle those.
+		clear(gctx.Errors)
 		if ue, ok := err.(error); ok {
 			return ue
 		} else {

@@ -3,6 +3,7 @@ package gql
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql"
@@ -434,7 +435,7 @@ web:
 		r := reuqest("/query", "1")
 		r.Header.Set("panic", "1")
 		srv.Router().ServeHTTP(w, r)
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 		assert.Contains(t, w.Body.String(), expectedPanic)
 	})
 	t.Run("panic err", func(t *testing.T) {
@@ -442,7 +443,7 @@ web:
 		r := reuqest("/query", "1")
 		r.Header.Set("panicerr", "1")
 		srv.Router().ServeHTTP(w, r)
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 		assert.Contains(t, w.Body.String(), expectedPanicErr.Error())
 	})
 	t.Run("reject", func(t *testing.T) {
@@ -514,5 +515,85 @@ func Test_envResponseError(t *testing.T) {
 		h := envResponseError(c, gqlerror.List{gqlerror.Errorf("test")})
 		res := h(c)
 		assert.Len(t, res.Errors, 1)
+	})
+}
+
+func TestErrHandler(t *testing.T) {
+	var cfgStr = `
+web:
+  server:
+  engine:
+    routerGroups:
+    - default:
+        middlewares:
+        - recovery:
+        - errorHandle:
+        - graphql:
+`
+
+	cfg := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
+	srv := web.New(web.WithConfiguration(cfg.Sub("web")),
+		web.WithMiddlewareNewFunc(graphqlHandlerName, Middleware))
+	expectedPanic := "gql panic"
+	expectedPanicErr := errors.New("gql panic error")
+	schema := gqlparser.MustLoadSchema(&ast.Source{Input: `
+		type Query {
+			hello: Boolean!
+		}
+		type Mutation {
+			name: String!
+		}
+	`})
+	mock := graphql.ExecutableSchemaMock{
+		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
+			panic("mock out the Complexity method")
+		},
+		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {
+			return func(ctx context.Context) *graphql.Response {
+				gctx, _ := FromIncomingContext(ctx)
+				if ps := gctx.Request.Header.Get("panic"); ps != "" {
+					panic(expectedPanic)
+				}
+				if ps := gctx.Request.Header.Get("panicerr"); ps != "" {
+					panic(expectedPanicErr)
+				}
+				return &graphql.Response{
+					Data: []byte("{}"),
+				}
+			}
+		},
+		SchemaFunc: func() *ast.Schema {
+			return schema
+		},
+	}
+
+	_, err := RegisterSchema(srv, &mock)
+	require.NoError(t, err)
+	var reuqest = func(target, uid string) *http.Request {
+		r := httptest.NewRequest("POST", target, bytes.NewReader([]byte(`{"query":"query hello { hello }"}`)))
+		r.Header.Set("Content-Type", "application/json")
+		return r
+	}
+	t.Run("string panic", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := reuqest("/query", "1")
+		r.Header.Add("panic", "1")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+		var rt graphql.Response
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rt), w.Body.String())
+		assert.Len(t, rt.Errors, 1)
+		assert.Equal(t, expectedPanic, rt.Errors[0].Message)
+	})
+	t.Run("err panic", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := reuqest("/query", "1")
+		r.Header.Add("panicerr", "1")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+		var rt graphql.Response
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rt))
+		assert.Len(t, rt.Errors, 1)
+		assert.Equal(t, expectedPanicErr.Error(), rt.Errors[0].Message)
 	})
 }

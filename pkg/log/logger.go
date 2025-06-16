@@ -73,12 +73,9 @@ func InitGlobalLogger() *Logger {
 
 // NewFromConf create a logger by configuration path "log", it will be set as global logger but run only once.
 func NewFromConf(cfg *conf.Configuration) *Logger {
-	sync.OnceFunc(func() {
-		l := New(nil)
-		l.Apply(cfg)
-		l.AsGlobal()
-	})()
-	return global
+	l := New(nil)
+	l.Apply(cfg)
+	return l
 }
 
 // Global return struct logger if you want to use zap style logging.

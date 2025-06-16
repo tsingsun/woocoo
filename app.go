@@ -45,7 +45,8 @@ func New(opts ...Option) *App {
 		}
 	}
 	if app.opts.cnf.IsSet("log") {
-		log.NewFromConf(app.opts.cnf.Sub("log"))
+		ll := log.NewFromConf(app.opts.cnf.Sub("log"))
+		ll.AsGlobal()
 	} else {
 		log.InitGlobalLogger() // reset global logger, assign component logger.
 	}

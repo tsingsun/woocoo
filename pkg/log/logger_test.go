@@ -108,6 +108,7 @@ func TestNewBuiltIn(t *testing.T) {
 				return
 			}
 			got := NewFromConf(conf.Global().Sub("log"))
+			got.AsGlobal()
 			assert.Same(t, global, got)
 			assert.NotNil(t, global)
 		})

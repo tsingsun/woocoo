@@ -14,7 +14,6 @@ import (
 var (
 	global          *Logger
 	globalComponent ComponentLogger
-	builtin         sync.Once
 	compoenetMu     sync.RWMutex
 	components      = map[string]*component{}
 )
@@ -53,6 +52,8 @@ type Logger struct {
 	WithTraceID   bool
 	TraceIDKey    string
 	contextLogger ContextLogger
+	// level of zap cores
+	logLevels []zap.AtomicLevel
 }
 
 // New create an Instance from zap
@@ -64,10 +65,6 @@ func New(zl *zap.Logger) *Logger {
 	}
 }
 
-func NewNop() *Logger {
-	return New(zap.NewNop())
-}
-
 func InitGlobalLogger() *Logger {
 	global = New(zap.Must(zap.NewProduction(zap.AddCallerSkip(CallerSkip))))
 	global.AsGlobal()
@@ -76,11 +73,11 @@ func InitGlobalLogger() *Logger {
 
 // NewFromConf create a logger by configuration path "log", it will be set as global logger but run only once.
 func NewFromConf(cfg *conf.Configuration) *Logger {
-	builtin.Do(func() {
+	sync.OnceFunc(func() {
 		l := New(nil)
 		l.Apply(cfg)
 		l.AsGlobal()
-	})
+	})()
 	return global
 }
 
@@ -114,11 +111,27 @@ func (l *Logger) Apply(cfg *conf.Configuration) {
 	if err != nil {
 		panic(fmt.Errorf("apply log configuration err:%w", err))
 	}
+	l.logLevels = make([]zap.AtomicLevel, len(config.ZapConfigs))
+	for i, zc := range config.ZapConfigs {
+		l.logLevels[i] = zc.Level
+	}
 	l.Logger = zl
 	l.WithTraceID = config.WithTraceID
 	if config.TraceIDKey != "" {
 		l.TraceIDKey = config.TraceIDKey
 	}
+}
+
+// SetLevel set log level to zap core level.
+func (l *Logger) SetLevel(lvl string) error {
+	level, err := zapcore.ParseLevel(lvl)
+	if err != nil {
+		return err
+	}
+	for _, atomicLevel := range l.logLevels {
+		atomicLevel.SetLevel(level)
+	}
+	return nil
 }
 
 // With creates a child logger and adds structured context to it. Fields added

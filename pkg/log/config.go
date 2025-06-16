@@ -135,7 +135,8 @@ func (c *Config) fixZapConfig(zc *zap.Config) error {
 	return nil
 }
 
-// BuildZap build a zap.Logger by Config
+// BuildZap build a zap.Logger by Config.
+// Multi Zap Config not means multi loggers. It collects all zap cores and build a zap.Logger.
 func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 	once.Do(func() {
 		// register encoder
@@ -201,11 +202,7 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 		}
 	}
 	opts = append(opts, copts...)
-	if len(cores) == 1 {
-		zl = zap.New(cores[0], opts...)
-	} else {
-		zl = zap.New(zapcore.NewTee(cores...), opts...)
-	}
+	zl = zap.New(zapcore.NewTee(cores...), opts...)
 	return
 }
 

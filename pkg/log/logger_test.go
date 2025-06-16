@@ -500,3 +500,37 @@ func TestLogger_IOWriter(t *testing.T) {
 		assert.Contains(t, logdata.String(), "Warning")
 	})
 }
+
+func TestLogger_SetLevel(t *testing.T) {
+	t.Run("single", func(t *testing.T) {
+		logdata := &logtest.Buffer{}
+		cfg := zap.NewProductionConfig()
+		en := zapcore.NewJSONEncoder(cfg.EncoderConfig)
+		core := zapcore.NewCore(en, logdata, cfg.Level)
+		zp := zap.New(core)
+		l := &Logger{
+			Logger:    zp,
+			logLevels: []zap.AtomicLevel{cfg.Level},
+		}
+		l.Info("info-msg")
+		assert.Contains(t, logdata.String(), "info-msg")
+		require.NoError(t, l.SetLevel(zap.WarnLevel.String()))
+		l.Info("ignore-msg")
+		assert.NotContains(t, logdata.String(), "ignore-msg")
+	})
+	t.Run("multi", func(t *testing.T) {
+		var cfgStr = `
+development: true
+log:
+  cores:
+    - level: debug
+    - level: info
+`
+		cfg := conf.NewFromBytes([]byte(cfgStr)).Load()
+		logger := NewFromConf(cfg.Sub("log"))
+		logger.Info("info")
+		require.NoError(t, logger.SetLevel(zap.WarnLevel.String()))
+		logger.Info("ignore")
+		logger.Warn("TestLogger_SetLevel")
+	})
+}

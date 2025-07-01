@@ -1,9 +1,9 @@
 module github.com/tsingsun/woocoo/contrib/polarismesh
 
-go 1.22
+go 1.23.0
 
 require (
-	github.com/knadh/koanf/parsers/yaml v0.1.0
+	github.com/knadh/koanf/parsers/yaml v1.1.0
 	github.com/polarismesh/polaris-go v1.5.9
 	github.com/polarismesh/specification v1.4.1
 	github.com/stretchr/testify v1.9.0
@@ -45,6 +45,7 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.3 // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect

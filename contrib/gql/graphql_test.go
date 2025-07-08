@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/gin-gonic/gin"
@@ -15,14 +16,36 @@ import (
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/pkg/security"
 	"github.com/tsingsun/woocoo/web"
+	"github.com/tsingsun/woocoo/web/handler"
 	"github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+type MockResponse struct {
+	Name string `json:"name"`
+}
+
+func (mr *MockResponse) UnmarshalGQL(v any) error {
+	return nil
+}
+
+func (mr *MockResponse) MarshalGQL(w io.Writer) {
+	buf := new(bytes.Buffer)
+	err := json.NewEncoder(buf).Encode(mr)
+	if err != nil {
+		panic(err)
+	}
+
+	ba := bytes.NewBuffer(bytes.TrimRight(buf.Bytes(), "\n"))
+
+	fmt.Fprint(w, ba)
+}
 
 var gqlSchemaMock = graphql.ExecutableSchemaMock{
 	ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
@@ -518,7 +541,7 @@ func Test_envResponseError(t *testing.T) {
 	})
 }
 
-func TestErrHandler(t *testing.T) {
+func TestRecovery(t *testing.T) {
 	var cfgStr = `
 web:
   server:
@@ -596,4 +619,109 @@ web:
 		assert.Len(t, rt.Errors, 1)
 		assert.Equal(t, expectedPanicErr.Error(), rt.Errors[0].Message)
 	})
+}
+
+func TestWorkWithErrorHandler(t *testing.T) {
+	var cfgStr = `
+web:
+  server:
+  engine:
+    routerGroups:
+    - default:
+        middlewares:
+        - recovery:
+        - errorHandle:
+        - graphql:
+`
+
+	cfg := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
+	srv := web.New(web.WithConfiguration(cfg.Sub("web")),
+		web.WithMiddlewareNewFunc(graphqlHandlerName, Middleware))
+	schema := gqlparser.MustLoadSchema(&ast.Source{Input: `
+		type Query {
+			hello: Boolean!
+		}
+		type Mutation {
+			name: String!
+		}
+	`})
+	mock := graphql.ExecutableSchemaMock{
+		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
+			panic("mock out the Complexity method")
+		},
+		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {
+			opCtx := graphql.GetOperationContext(ctx)
+			switch opCtx.Operation.Operation {
+			case ast.Query:
+				ran := false
+				return func(ctx context.Context) *graphql.Response {
+					if ran {
+						return nil
+					}
+					ran = true
+					gctx, _ := FromIncomingContext(ctx)
+					ps := gctx.Request.Header.Get("ginError")
+					switch ps {
+					case "0":
+						graphql.AddError(ctx, errors.New("common error"))
+					default:
+						graphql.AddError(ctx, &gin.Error{
+							Err:  errors.New("gin error"),
+							Type: 10000, // custom code
+						})
+					}
+
+					return &graphql.Response{
+						Data: []byte(`null`),
+					}
+				}
+			case ast.Mutation:
+				return graphql.OneShot(graphql.ErrorResponse(ctx, "mutations are not supported"))
+			case ast.Subscription:
+				return graphql.OneShot(graphql.ErrorResponse(ctx, "subscription are not supported"))
+			default:
+				return graphql.OneShot(graphql.ErrorResponse(ctx, "unsupported GraphQL operation"))
+			}
+		},
+		SchemaFunc: func() *ast.Schema {
+			return schema
+		},
+	}
+	_, err := RegisterSchema(srv, &mock)
+	require.NoError(t, err)
+	var reuqest = func(target, uid string) *http.Request {
+		r := httptest.NewRequest("POST", target, bytes.NewReader([]byte(`{"query":"query hello { hello }"}`)))
+		r.Header.Set("Content-Type", "application/json")
+		return r
+	}
+	t.Run("common error", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := reuqest("/query", "1")
+		r.Header.Add("ginError", "0")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusOK, w.Code)
+		var rt graphql.Response
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rt), w.Body.String())
+		assert.Len(t, rt.Errors, 1)
+		assert.EqualValues(t, "common error", rt.Errors[0].Message)
+		assert.Nil(t, rt.Errors[0].Extensions)
+	})
+	handler.SetErrorMap(
+		map[int]string{10000: "10000 error"},
+		map[string]string{"custom error": "custom error"},
+	)
+
+	t.Run("gin error", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := reuqest("/query", "1")
+		r.Header.Add("ginError", "1")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusOK, w.Code)
+		var rt graphql.Response
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rt), w.Body.String())
+		assert.Len(t, rt.Errors, 1)
+		assert.EqualValues(t, 10000, rt.Errors[0].Extensions["code"])
+		assert.EqualValues(t, "10000 error", rt.Errors[0].Message)
+	})
+
 }

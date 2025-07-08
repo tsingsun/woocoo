@@ -260,6 +260,34 @@ func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server
 			return fmt.Errorf("%v", err)
 		}
 	})
+	// Work with handler.ErrorHandler and replace graphql.DefaultErrorPresenter(ctx, err)
+	server.SetErrorPresenter(ErrorPresenter)
+}
+
+// ErrorPresenter is a graphql.ErrorPresenterFunc. it tries to convert gin.Error to gqlerror.Error and mask the error by woocoo handler.ErrorHandler
+func ErrorPresenter(ctx context.Context, err error) *gqlerror.Error {
+	var gqlErr *gqlerror.Error
+	if !errors.As(err, &gqlErr) {
+		gqlErr = &gqlerror.Error{
+			Path:    graphql.GetPath(ctx),
+			Err:     err,
+			Message: err.Error(),
+		}
+	}
+	var ginErr *gin.Error
+	if errors.As(err, &ginErr) {
+		code, errTxt := handler.LookupErrorCode(int(ginErr.Type), ginErr.Err)
+		if code > 0 {
+			err = errors.New(errTxt)
+			gqlErr.Err = errors.New(errTxt)
+			gqlErr.Message = errTxt
+			if gqlErr.Extensions == nil {
+				gqlErr.Extensions = map[string]interface{}{}
+			}
+			gqlErr.Extensions["code"] = code
+		}
+	}
+	return gqlErr
 }
 
 // FromIncomingContext retrieves the gin.Context from the context.Context
@@ -307,7 +335,7 @@ func doWebHandler(ctx context.Context, c *gin.Context, handlerFunc gin.HandlerFu
 	var res *graphql.Response
 	if len(c.Errors) > 0 {
 		for _, err := range c.Errors {
-			errList = append(errList, gqlerror.Errorf(err.Error()))
+			errList = append(errList, ErrorPresenter(ctx, err))
 		}
 		// if it is a subscription, do not return Response Data
 		if isStreamConnection(c) {

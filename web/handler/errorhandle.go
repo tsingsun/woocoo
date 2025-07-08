@@ -130,20 +130,34 @@ func SetErrorMap(cm map[int]string, em map[string]string) {
 
 // FormatResponseError converts a http error to gin.H
 func FormatResponseError(code int, err error) gin.H {
+	code, txt := LookupErrorCode(code, err)
+	if code != 0 {
+		return gin.H{
+			"code":    code,
+			"message": txt,
+		}
+	}
+	return gin.H{
+		"message": txt,
+	}
+}
+
+// LookupErrorCode lookup error code and customer message where you want to mask the error.
+func LookupErrorCode(code int, err error) (int, string) {
 	if useErrorCodeMap {
 		if txt, ok := errorCodeMap[code]; ok {
-			return gin.H{"code": code, "message": txt}
+			return code, txt
 		}
 	}
 	if useErrorMap {
 		if txt, ok := errorMap[err.Error()]; ok {
-			return gin.H{"code": code, "message": txt}
+			return code, txt
 		}
 	}
 	if code > 0 {
-		return gin.H{"code": code, "message": err.Error()}
+		return code, err.Error()
 	}
-	return gin.H{"message": err.Error()}
+	return 0, err.Error()
 }
 
 // NegotiateResponse calls different Render according to acceptably Accept format.

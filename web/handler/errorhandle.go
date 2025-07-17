@@ -120,12 +120,12 @@ var (
 func SetErrorMap(cm map[int]string, em map[string]string) {
 	if cm != nil {
 		errorCodeMap = cm
-		useErrorCodeMap = len(errorCodeMap) > 0
 	}
+	useErrorCodeMap = len(errorCodeMap) > 0
 	if em != nil {
 		errorMap = em
-		useErrorMap = len(errorMap) > 0
 	}
+	useErrorMap = len(errorMap) > 0
 }
 
 // FormatResponseError converts a http error to gin.H

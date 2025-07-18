@@ -183,9 +183,11 @@ duration: 1s
 func TestConfiguration_Exists(t *testing.T) {
 	cnf := New()
 	assert.False(t, cnf.Exists())
+	assert.Contains(t, cnf.LocalPath(), "app.yaml")
 
 	cnf = New(WithBaseDir(testdata.BaseDir()))
 	assert.True(t, cnf.Exists())
+	assert.Contains(t, cnf.LocalPath(), "app.yaml")
 }
 
 func TestConfiguration_Load(t *testing.T) {

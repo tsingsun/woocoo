@@ -115,6 +115,11 @@ func (c *Configuration) Exists() bool {
 	return err == nil
 }
 
+// LocalPath return the local configuration file path
+func (c *Configuration) LocalPath() string {
+	return c.opts.localPath
+}
+
 // AsGlobal set the Configuration as global
 func (c *Configuration) AsGlobal() *Configuration {
 	global.Configuration = c

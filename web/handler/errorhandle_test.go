@@ -1,17 +1,27 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+type errRes struct {
+	Errors []struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Meta    any    `json:"meta"`
+	} `json:"errors"`
+}
 
 func TestErrorHandleMiddleware_ApplyFunc(t *testing.T) {
 	mkerr := errors.New("mock error")
@@ -68,6 +78,28 @@ func TestErrorHandleMiddleware_ApplyFunc(t *testing.T) {
 			check: func(t *testing.T, r *httptest.ResponseRecorder, middleware *ErrorHandleMiddleware) {
 				assert.Equal(t, http.StatusInternalServerError, r.Code)
 				assert.NotContains(t, r.Body.String(), "code")
+				assert.NotContains(t, r.Body.String(), "meta")
+			},
+		},
+		{
+			name: "format gin error type with meta",
+			handle: func(c *gin.Context) {
+				ge := c.Error(errors.New("gin error {{key}}"))
+				ge.Type = 0
+				ge.SetMeta(map[string]any{
+					"key": "var key",
+				})
+			},
+			args: args{cfg: conf.New()},
+			check: func(t *testing.T, r *httptest.ResponseRecorder, middleware *ErrorHandleMiddleware) {
+				assert.Equal(t, http.StatusInternalServerError, r.Code)
+				var resp errRes
+				require.NoError(t, json.Unmarshal(r.Body.Bytes(), &resp))
+				assert.Equal(t, resp.Errors[0].Code, 0)
+				assert.Equal(t, resp.Errors[0].Message, "gin error {{key}}")
+				assert.Equal(t, resp.Errors[0].Meta, map[string]any{
+					"key": "var key",
+				})
 			},
 		},
 		{

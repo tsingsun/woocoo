@@ -664,6 +664,14 @@ web:
 					switch ps {
 					case "0":
 						graphql.AddError(ctx, errors.New("common error"))
+					case "withMeta":
+						graphql.AddError(ctx, &gin.Error{
+							Err:  errors.New("gin error {{field}}"),
+							Type: 50000, // custom code
+							Meta: map[string]any{
+								"field": "value",
+							},
+						})
 					default:
 						graphql.AddError(ctx, &gin.Error{
 							Err:  errors.New("gin error"),
@@ -723,5 +731,19 @@ web:
 		assert.EqualValues(t, 10000, rt.Errors[0].Extensions["code"])
 		assert.EqualValues(t, "10000 error", rt.Errors[0].Message)
 	})
-
+	t.Run("gin error with meta", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := reuqest("/query", "1")
+		r.Header.Add("ginError", "withMeta")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusOK, w.Code)
+		var rt graphql.Response
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rt), w.Body.String())
+		assert.Len(t, rt.Errors, 1)
+		assert.EqualValues(t, 50000, rt.Errors[0].Extensions["code"])
+		assert.EqualValues(t, "gin error {{field}}", rt.Errors[0].Message)
+		assert.EqualValues(t, map[string]any{
+			"field": "value",
+		}, rt.Errors[0].Extensions["meta"])
+	})
 }

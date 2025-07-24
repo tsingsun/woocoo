@@ -278,13 +278,15 @@ func ErrorPresenter(ctx context.Context, err error) *gqlerror.Error {
 	if errors.As(err, &ginErr) {
 		code, errTxt := handler.LookupErrorCode(int(ginErr.Type), ginErr.Err)
 		if code > 0 {
-			err = errors.New(errTxt)
 			gqlErr.Err = errors.New(errTxt)
 			gqlErr.Message = errTxt
 			if gqlErr.Extensions == nil {
-				gqlErr.Extensions = map[string]interface{}{}
+				gqlErr.Extensions = make(map[string]any)
 			}
 			gqlErr.Extensions["code"] = code
+			if ginErr.Meta != nil {
+				gqlErr.Extensions["meta"] = ginErr.Meta
+			}
 		}
 	}
 	return gqlErr

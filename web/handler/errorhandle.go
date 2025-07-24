@@ -90,18 +90,23 @@ var DefaultErrorParser ErrorParser = func(c *gin.Context, public error) (int, an
 		code = http.StatusInternalServerError
 	}
 	for i, e := range c.Errors {
+		var se gin.H
 		switch e.Type {
 		case gin.ErrorTypePublic:
-			errs[i] = DefaultErrorFormater(code, e.Err)
+			se = DefaultErrorFormater(code, e.Err)
 		case gin.ErrorTypePrivate:
 			if public == nil {
-				errs[i] = DefaultErrorFormater(code, e.Err)
+				se = DefaultErrorFormater(code, e.Err)
 			} else {
-				errs[i] = DefaultErrorFormater(code, public)
+				se = DefaultErrorFormater(code, public)
 			}
 		default:
-			errs[i] = DefaultErrorFormater(int(e.Type), e.Err)
+			se = DefaultErrorFormater(int(e.Type), e.Err)
 		}
+		if e.Meta != nil {
+			se["meta"] = e.Meta
+		}
+		errs[i] = se
 	}
 	return code, gin.H{"errors": errs}
 }

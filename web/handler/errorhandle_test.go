@@ -265,7 +265,7 @@ func TestCustomErrorFormater(t *testing.T) {
 		ErrPrivateMasked  = "private mask"
 	)
 
-	customCodeMap := map[int]string{
+	customCodeMap := map[uint64]string{
 		10000: "miss required param",
 		10001: "invalid param",
 	}
@@ -276,7 +276,7 @@ func TestCustomErrorFormater(t *testing.T) {
 		errors.New("private").Error():  ErrPrivateMasked,
 	}
 	type args struct {
-		customCodeMap  map[int]string
+		customCodeMap  map[uint64]string
 		customErrorMap map[string]string
 	}
 	tests := []struct {

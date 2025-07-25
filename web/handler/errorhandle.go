@@ -115,14 +115,14 @@ var DefaultErrorParser ErrorParser = func(c *gin.Context, public error) (int, an
 var DefaultErrorFormater = FormatResponseError
 
 var (
-	errorCodeMap    = map[int]string{}
+	errorCodeMap    = map[uint64]string{}
 	errorMap        = map[string]string{}
 	useErrorCodeMap bool
 	useErrorMap     bool
 )
 
 // SetErrorMap set the error code map and error message map for ErrorHandler.
-func SetErrorMap(cm map[int]string, em map[string]string) {
+func SetErrorMap(cm map[uint64]string, em map[string]string) {
 	if cm != nil {
 		errorCodeMap = cm
 	}
@@ -133,36 +133,34 @@ func SetErrorMap(cm map[int]string, em map[string]string) {
 	useErrorMap = len(errorMap) > 0
 }
 
-// FormatResponseError converts a http error to gin.H
+// FormatResponseError converts an http error to gin.H
 func FormatResponseError(code int, err error) gin.H {
-	code, txt := LookupErrorCode(code, err)
-	if code != 0 {
+	code, txt := LookupErrorCode(uint64(code), err)
+	if code > 0 {
 		return gin.H{
 			"code":    code,
 			"message": txt,
 		}
 	}
 	return gin.H{
-		"message": txt,
+		"message": err.Error(),
 	}
 }
 
 // LookupErrorCode lookup error code and customer message where you want to mask the error.
-func LookupErrorCode(code int, err error) (int, string) {
+// It will return the error code and error message, if the error code is not found, it will return -1.
+func LookupErrorCode(code uint64, err error) (int, string) {
 	if useErrorCodeMap {
 		if txt, ok := errorCodeMap[code]; ok {
-			return code, txt
+			return int(code), txt
 		}
 	}
 	if useErrorMap {
 		if txt, ok := errorMap[err.Error()]; ok {
-			return code, txt
+			return int(code), txt
 		}
 	}
-	if code > 0 {
-		return code, err.Error()
-	}
-	return 0, err.Error()
+	return -1, ""
 }
 
 // NegotiateResponse calls different Render according to acceptably Accept format.

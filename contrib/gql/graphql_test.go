@@ -715,7 +715,7 @@ web:
 		assert.Nil(t, rt.Errors[0].Extensions)
 	})
 	handler.SetErrorMap(
-		map[int]string{10000: "10000 error"},
+		map[uint64]string{10000: "10000 error"},
 		map[string]string{"custom error": "custom error"},
 	)
 

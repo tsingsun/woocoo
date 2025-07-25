@@ -9,12 +9,12 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/stretchr/testify v1.10.0
 	github.com/tsingsun/woocoo v0.6.2-0.20250725145229-6bf119de76fa
-	github.com/vektah/gqlparser/v2 v2.5.19
+	github.com/vektah/gqlparser/v2 v2.5.30
 	go.uber.org/zap v1.26.0
 )
 
 require (
-	github.com/agnivade/levenshtein v1.1.1 // indirect
+	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/bytedance/sonic v1.12.6 // indirect
 	github.com/bytedance/sonic/loader v0.2.1 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect

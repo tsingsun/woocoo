@@ -240,6 +240,55 @@ func ExampleErrorHandleMiddleware_customErrorParser() {
 }
 ```
 
+### 模板化错误
+
+在某些场景下,错误信息需要模板化,比如错误码,错误信息等需要多语言支持, 在这种情况下可以进阶协议.
+
+前端可根据格式进行展示,如下RestApi:
+
+```json
+{
+  "errors": [
+    {
+      "code": 10000,
+      "message": "自定义错误信息: %s %f",
+      "meta": ["string", 1.1]
+    },
+    {
+      "code": 500,
+      "message": "系统错误,请联系管理员.{{key}}",
+      "meta": {
+        "key": "value"
+      }
+    }
+  ]
+}
+```
+
+该协议在适配graphql时,会做如下变化:
+```json
+{
+  "errors": [
+    {
+      "message": "自定义错误信息: %s %f", 
+      "extensions": {
+        "code": 10000,
+        "meta": ["string", 1.1]
+      }
+    },
+    {
+      "message": "系统错误,请联系管理员.{{key}}",
+      "extensions": {
+        "code": 500,
+        "meta": {
+          "key": "value"
+        }
+      }
+    }
+  ]
+}
+```
+
 ## JSON Web Token(JWT)
 
 基于JWT的应用非常广泛,因此也内置了该中间件.`jwt`支持了较多的功能:

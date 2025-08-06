@@ -88,7 +88,11 @@ func NewOtlpTracer(c *Config) (tp trace.TracerProvider, shutdown func(ctx contex
 		sdktrace.WithResource(c.Resource),
 		sdktrace.WithSpanProcessor(bsp),
 	)
-	shutdown = exporter.Shutdown
+	// use otlptracegrpc.WithGRPCConn, caller should close the connection.
+	shutdown = func(ctx context.Context) error {
+		defer conn.Close()
+		return exporter.Shutdown(ctx)
+	}
 	return
 }
 

@@ -32,12 +32,22 @@ web:
         - otel:
 ```
 
-- 在grpc服务采用拦截器集成使用.
+- 在grpc服务采用grpc option集成使用.
+```yaml
+grpc:
+  engine:
+    - otel:
+```
+
+- 在grpc客户端采用dial option集成使用.
 ```yaml
 grpc:
   server:
-    interceptors:
-    - otel:
+    addr: 127.0.0.1:30001
+  client:
+    dialOption:
+      - unaryInterceptors:
+          - otel:
 ```
 
 ### 传播
@@ -100,12 +110,55 @@ service:
   # otlp
   traceExporter: "otlp"
   otlp:
-    endpoint: "127.0.0.1:4317"  
+    endpoint: "127.0.0.1:4317"
+    #与grpcx.Client的初始化配置一致
     client:
       dialOption:
         - tls: 
-        - block:
-        - timeout: 5s
   metricExporter: "otlp"
 ```
 > metric如果同为otlp,则配置同trace,但在连接层面上为不同的连接.
+
+## 进一步集成
+
+对于在Web或Grpc普通接入,我们可以采用中间件的方式集成,而我们在更多情况下需要使用代码集成,如后台进程或并发.
+
+OpenTelemetry提供了跨进程/协程的传播机制:
+
+```go
+import (
+    "go.opentelemetry.io/otel"
+    "go.opentelemetry.io/otel/propagation"
+)
+
+// 发送端
+func sendData(ctx context.Context, ch chan<- Message) {
+    // 创建消息并注入跟踪信息
+    msg := Message{Data: "example"}
+    
+    // 将跟踪信息注入消息
+    propagator := otel.GetTextMapPropagator()
+    carrier := propagation.MapCarrier{}
+    propagator.Inject(ctx, carrier)
+    
+    msg.TraceInfo = carrier
+    
+    ch <- msg
+}
+
+// 接收端
+func receiveData(ctx context.Context, ch <-chan Message) {
+    msg := <-ch
+    
+    // 从消息中提取跟踪信息
+    propagator := otel.GetTextMapPropagator()
+    carrier := propagation.MapCarrier(msg.TraceInfo)
+    ctx = propagator.Extract(ctx, carrier)
+    
+    // 继续处理，保持跟踪连续性
+    _, span := tracer.Start(ctx, "process-message")
+    defer span.End()
+    // ...
+}
+```
+

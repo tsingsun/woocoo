@@ -1,9 +1,12 @@
 package telemetry
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"reflect"
 )
 
@@ -64,4 +67,30 @@ func Attribute(key string, value any) attribute.KeyValue {
 		return attribute.String(key, string(b))
 	}
 	return attribute.String(key, fmt.Sprint(value))
+}
+
+// Inject set cross-cutting concerns from the Context into the carrier.
+func Inject(ctx context.Context) propagation.TextMapCarrier {
+	if globalConfig == nil || globalConfig.Tracer == nil {
+		return nil
+	}
+	// 将跟踪信息注入消息
+	propagator := globalConfig.TextMapPropagator
+	carrier := propagation.MapCarrier{}
+	propagator.Inject(ctx, carrier)
+	return carrier
+}
+
+// StartWith starts a span and extracts the carrier info to the parameter context.
+// Note: parameter 'ctx' is the parent context need extract.
+func StartWith(ctx context.Context, spanName string, carrier propagation.TextMapCarrier, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	if globalConfig == nil || globalConfig.Tracer == nil {
+		return ctx, nil
+	}
+	if carrier != nil {
+		propagator := globalConfig.TextMapPropagator
+		ctx = propagator.Extract(ctx, carrier)
+	}
+	ctx, span := globalConfig.Tracer.Start(ctx, spanName, opts...)
+	return ctx, span
 }

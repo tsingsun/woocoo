@@ -18,7 +18,7 @@ WooCoo选择Gin作为Web框架,因此本包生成的服务端代码也是基于G
 
 安装woocoo cli
 ```
-go install github.com/tsingsun/woocoo/cmd/woco
+go install github.com/tsingsun/woocoo/cmd/woco@main
 ```
 
 命令行参数说明:

@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"net/http"
+	"runtime/debug"
+	"strings"
+
 	"github.com/99designs/gqlgen/graphql"
 	gqlgen "github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
@@ -17,10 +22,6 @@ import (
 	"github.com/tsingsun/woocoo/web/handler"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
-	"log"
-	"net/http"
-	"runtime/debug"
-	"strings"
 )
 
 const (
@@ -155,7 +156,6 @@ func RegisterSchema(websrv *web.Server, schemas ...graphql.ExecutableSchema) (ss
 		srv.AddTransport(transport.POST{})
 		srv.AddTransport(transport.MultipartForm{})
 		srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
-		srv.Use(extension.Introspection{})
 		ss[i] = srv
 	}
 	err = RegisterGraphqlServer(websrv, ss...)

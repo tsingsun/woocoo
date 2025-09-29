@@ -8,7 +8,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/gorilla/websocket v1.5.0
 	github.com/stretchr/testify v1.10.0
-	github.com/tsingsun/woocoo v0.6.2-0.20250725145229-6bf119de76fa
+	github.com/tsingsun/woocoo v0.6.2
 	github.com/vektah/gqlparser/v2 v2.5.19
 	go.uber.org/zap v1.26.0
 )

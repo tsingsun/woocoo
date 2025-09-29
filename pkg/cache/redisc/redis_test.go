@@ -3,6 +3,9 @@ package redisc
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -11,8 +14,6 @@ import (
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/test/testdata"
 	"github.com/tsingsun/woocoo/test/wctest"
-	"testing"
-	"time"
 )
 
 func initStandaloneRedisc(t *testing.T) (*Redisc, *miniredis.Miniredis) {
@@ -544,43 +545,45 @@ func TestCache_Once(t *testing.T) {
 			name: "single",
 			do: func() {
 				rc, rdb := initStandaloneRedisc(t)
-				assert.NoError(t, rc.Set(context.Background(), "key", "123", cache.WithTTL(time.Hour), cache.WithSkip(cache.SkipLocal)))
+				key := t.Name() + "single-key"
+				assert.NoError(t, rc.Set(context.Background(), key, "123", cache.WithTTL(time.Hour), cache.WithSkip(cache.SkipLocal)))
 				err := wctest.RunWait(t.Log, time.Second*2, func() error {
 					want := ""
-					assert.NoError(t, rc.Get(context.Background(), "key", &want, cache.WithGroup(), cache.WithSkip(cache.SkipLocal)))
+					assert.NoError(t, rc.Get(context.Background(), key, &want, cache.WithGroup(), cache.WithSkip(cache.SkipLocal)))
 					assert.Equal(t, "123", want)
 					return nil
 				}, func() error {
 					want := ""
-					assert.NoError(t, rc.Get(context.Background(), "key",
+					assert.NoError(t, rc.Get(context.Background(), key,
 						&want, cache.WithGroup(), cache.WithSkip(cache.SkipLocal)))
 					assert.Equal(t, "123", want)
 					return nil
 				})
 				assert.NoError(t, err)
 				assert.LessOrEqual(t, int(rc.stats.Hits), 2)
-				assert.True(t, rdb.Exists("key"))
+				assert.True(t, rdb.Exists(key))
 			},
 		},
 		{
 			name: "take",
 			do: func() {
 				rc, rdb := initStandaloneRedisc(t)
-				assert.NoError(t, rc.Set(context.Background(), "key", "123", cache.WithTTL(time.Hour), cache.WithSkip(cache.SkipLocal)))
+				key := t.Name() + "take-key"
+				assert.NoError(t, rc.Set(context.Background(), key, "123", cache.WithTTL(time.Hour), cache.WithSkip(cache.SkipLocal)))
 				err := wctest.RunWait(t.Log, time.Second, func() error {
 					want := ""
-					assert.NoError(t, rc.Get(context.Background(), "key", &want, cache.WithGroup(), cache.WithSkip(cache.SkipLocal)))
+					assert.NoError(t, rc.Get(context.Background(), key, &want, cache.WithGroup(), cache.WithSkip(cache.SkipLocal)))
 					assert.Equal(t, "123", want)
 					return nil
 				}, func() error {
 					want := ""
-					assert.NoError(t, rc.Get(context.Background(), "key", &want, cache.WithGroup(), cache.WithSkip(cache.SkipLocal)))
+					assert.NoError(t, rc.Get(context.Background(), key, &want, cache.WithGroup(), cache.WithSkip(cache.SkipLocal)))
 					assert.Equal(t, "123", want)
 					return nil
 				})
 				assert.NoError(t, err)
 				assert.EqualValues(t, rc.stats.Hits, uint64(1))
-				assert.True(t, rdb.Exists("key"))
+				assert.True(t, rdb.Exists(key))
 			},
 		},
 	}

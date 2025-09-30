@@ -1,13 +1,18 @@
 package otelweb
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	otelwoocoo "github.com/tsingsun/woocoo/contrib/telemetry"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web"
 	"github.com/tsingsun/woocoo/web/handler"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
@@ -23,11 +28,19 @@ const (
 // Middleware returns middleware that will trace incoming requests.
 type Middleware struct {
 	cfg *otelwoocoo.Config
+	// RecordRequestBody whether to record request body
+	// not recommend to enable it in production environment
+	RecordRequestBody bool `yaml:"recordRequestBody" json:"recordRequestBody"`
+	// MaxBodySize limit the max size of request body to read, default is 4096
+	MaxBodySize int `yaml:"maxBodySize" json:"maxBodySize"`
 }
 
 // New see handler.MiddlewareNewFunc
 func New() handler.Middleware {
-	return &Middleware{}
+	return &Middleware{
+		RecordRequestBody: false,
+		MaxBodySize:       4096,
+	}
 }
 
 // RegisterMiddleware return a web Option for otel middleware
@@ -39,9 +52,12 @@ func (h *Middleware) Name() string {
 	return otelName
 }
 
-func (h *Middleware) ApplyFunc(_ *conf.Configuration) gin.HandlerFunc {
+func (h *Middleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	h.cfg = otelwoocoo.GlobalConfig()
-	return middleware(h.cfg)
+	if err := cfg.Unmarshal(h); err != nil {
+		panic(fmt.Errorf("unmarshal otelweb middleware config error: %w", err))
+	}
+	return middleware(h)
 }
 
 // Shutdown will flush the tracer's span processor and then shut it down.
@@ -55,9 +71,9 @@ func (h *Middleware) Shutdown(_ context.Context) error {
 // middleware returns middleware that will trace incoming requests.
 // The service parameter should describe the name of the (virtual)
 // server handling the request.
-func middleware(cfg *otelwoocoo.Config) gin.HandlerFunc {
-	prop := cfg.TextMapPropagator
-	tracer := cfg.Tracer
+func middleware(h *Middleware) gin.HandlerFunc {
+	prop := h.cfg.TextMapPropagator
+	tracer := h.cfg.Tracer
 	return func(c *gin.Context) {
 		c.Set(tracerKey, tracer)
 		savedCtx := c.Request.Context()
@@ -77,9 +93,20 @@ func middleware(cfg *otelwoocoo.Config) gin.HandlerFunc {
 		}
 		ctx, span := tracer.Start(ctx, spanName, opts...)
 		defer span.End()
+		if h.RecordRequestBody && c.Request.Body != nil && c.Request.Body != http.NoBody {
+			var body []byte
+			body, _ = io.ReadAll(c.Request.Body)
+			if len(body) > h.MaxBodySize {
+				span.SetAttributes(attribute.String("http.request.body", string(body[:h.MaxBodySize])))
+			} else {
+				span.SetAttributes(attribute.String("http.request.body", string(body)))
+
+			}
+			c.Request.Body = io.NopCloser(bytes.NewReader(body))
+		}
+
 		// pass the span through the request context
 		c.Request = c.Request.WithContext(ctx)
-
 		// serve the request to the next middleware
 		c.Next()
 

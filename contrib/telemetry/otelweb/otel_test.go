@@ -1,8 +1,13 @@
 package otelweb
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,9 +23,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 func init() {
@@ -45,6 +47,8 @@ func TestMiddleware_NewConfig(t *testing.T) {
 						"traceExporter":  "stdout",
 						"metricExporter": "stdout",
 					},
+					"recordRequestBody": true,
+					"maxBodySize":       1028,
 				}),
 			},
 			handlerFunc: func(c *gin.Context) {},
@@ -57,15 +61,18 @@ func TestMiddleware_NewConfig(t *testing.T) {
 			h := New().(*Middleware)
 			assert.Equal(t, "otel", h.Name())
 			router := gin.New()
-			router.Use(h.ApplyFunc(tt.args.cfg))
-			router.GET("/ping", tt.handlerFunc)
-			r := httptest.NewRequest("GET", "/ping", nil)
+			mid := h.ApplyFunc(tt.args.cfg)
+			assert.Equal(t, h.RecordRequestBody, tt.args.cfg.Bool("recordRequestBody"))
+			assert.Equal(t, h.MaxBodySize, tt.args.cfg.Int("maxBodySize"))
+			router.Use(mid)
+			router.POST("/ping", tt.handlerFunc)
+			r := httptest.NewRequest("POST", "/ping", bytes.NewBufferString("OK"))
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, r)
 			assert.NoError(t, h.Shutdown(context.Background()))
 
 			wcweb := web.New(RegisterMiddleware())
-			wcweb.Router().GET("/ping", tt.handlerFunc)
+			wcweb.Router().POST("/ping", tt.handlerFunc)
 			wcweb.Router().ServeHTTP(w, r)
 			assert.Equal(t, http.StatusOK, w.Code)
 		})
@@ -97,8 +104,6 @@ func TestPropagationWithGlobalPropagators(t *testing.T) {
 	})
 	otelcfg := otelwoocoo.NewConfig(cnf, otelwoocoo.WithTracerProvider(provider, nil))
 	defer otelcfg.Shutdown()
-	r := httptest.NewRequest("GET", "/user/123", nil)
-	w := httptest.NewRecorder()
 
 	ctx := context.Background()
 	sc := trace.NewSpanContext(trace.SpanContextConfig{
@@ -107,17 +112,38 @@ func TestPropagationWithGlobalPropagators(t *testing.T) {
 	})
 	ctx = trace.ContextWithRemoteSpanContext(ctx, sc)
 	ctx, _ = provider.Tracer(ScopeName).Start(ctx, "test")
-	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(r.Header))
 
+	body := "len 10 body"
 	router := gin.New()
-	router.Use(middleware(otelcfg))
+	router.Use(middleware(&Middleware{cfg: otelcfg, RecordRequestBody: true, MaxBodySize: len(body) - 2}))
 	router.GET("/user/:id", func(c *gin.Context) {
 		span := trace.SpanFromContext(c.Request.Context())
 		assert.Equal(t, sc.TraceID(), span.SpanContext().TraceID())
 		assert.Equal(t, sc.SpanID(), span.SpanContext().SpanID())
 	})
+	router.POST("/user/:id", func(c *gin.Context) {
+		span := trace.SpanFromContext(c.Request.Context())
+		assert.Equal(t, sc.TraceID(), span.SpanContext().TraceID())
+		assert.Equal(t, sc.SpanID(), span.SpanContext().SpanID())
+		// get body string
+		bodyBytes, err := c.GetRawData()
+		require.NoError(t, err)
+		assert.Equal(t, body, string(bodyBytes))
+	})
+	t.Run("nil body", func(t *testing.T) {
+		r := httptest.NewRequest("GET", "/user/123", nil)
+		otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(r.Header))
+		w := httptest.NewRecorder()
 
-	router.ServeHTTP(w, r)
+		router.ServeHTTP(w, r)
+	})
+	t.Run("with body", func(t *testing.T) {
+		r := httptest.NewRequest("POST", "/user/123", bytes.NewBufferString(body))
+		otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(r.Header))
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, r)
+	})
 }
 
 func TestPropagationWithCustomPropagators(t *testing.T) {
@@ -143,7 +169,7 @@ func TestPropagationWithCustomPropagators(t *testing.T) {
 	b3.Inject(ctx, propagation.HeaderCarrier(r.Header))
 
 	router := gin.New()
-	router.Use(middleware(otelcfg))
+	router.Use(middleware(&Middleware{cfg: otelcfg}))
 	router.GET("/user/:id", func(c *gin.Context) {
 		span := trace.SpanFromContext(c.Request.Context())
 		assert.Equal(t, sc.TraceID(), span.SpanContext().TraceID())
@@ -163,7 +189,7 @@ func TestChildSpanFromGlobalTracer(t *testing.T) {
 	defer otelcfg.Shutdown()
 
 	router := gin.New()
-	router.Use(middleware(otelcfg))
+	router.Use(middleware(&Middleware{cfg: otelcfg}))
 
 	router.GET("/user/:id", func(c *gin.Context) {})
 
@@ -184,7 +210,7 @@ func TestError(t *testing.T) {
 	defer otelcfg.Shutdown()
 	// setup
 	router := gin.New()
-	router.Use(middleware(otelcfg))
+	router.Use(middleware(&Middleware{cfg: otelcfg}))
 
 	// configure a handler that returns an error and 5xx status
 	// code

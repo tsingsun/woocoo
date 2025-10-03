@@ -43,10 +43,10 @@ web:
           basePath: "/"
           # 中间件配置
           middlewares:
+            # panic处理中间件    
+            - recovery:
             # 访问日志中间件
             - accessLog:
-            # 异常处理中间件    
-            - recovery:
             # 错误处理中间件    
             - errorHandle:
 ```
@@ -81,8 +81,8 @@ web:
 中间件的加载是有顺序的,因此定制程序配置文件时,请根据实际情况配置. 一般前置的几个中间件如下:
 
 ```yaml
-accessLog: #...
 recovery:  #...
+accessLog: #...
 errorHandle: #...
 ```
 

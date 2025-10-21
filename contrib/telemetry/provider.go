@@ -3,6 +3,9 @@ package telemetry
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"time"
+
 	"github.com/tsingsun/woocoo/rpc/grpcx"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -15,8 +18,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/encoding/gzip"
-	"os"
-	"time"
 )
 
 // NewStdTracer return a stdout tracer provider and an error if any
@@ -74,6 +75,7 @@ func NewOtlpTracer(c *Config) (tp trace.TracerProvider, shutdown func(ctx contex
 	// Set up a trace exporter
 	exporter, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithGRPCConn(conn),
+		otlptracegrpc.WithHeaders(c.Headers),
 	)
 	if err != nil {
 		//log.Fatalf("%s: %v", "failed to create trace exporter", err)
@@ -110,6 +112,7 @@ func NewOtlpMetric(c *Config) (mp metric.MeterProvider, shutdown func(ctx contex
 	}
 	exporter, err := otlpmetricgrpc.New(context.Background(),
 		otlpmetricgrpc.WithGRPCConn(conn),
+		otlpmetricgrpc.WithHeaders(c.Headers),
 	)
 	if err != nil {
 		return

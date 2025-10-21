@@ -78,6 +78,7 @@ type Config struct {
 	MeterProvider                metric.MeterProvider          `json:"-" yaml:"-"`
 	Meter                        metric.Meter                  `json:"-" yaml:"-"`
 	TextMapPropagator            propagation.TextMapPropagator `json:"-" yaml:"-"`
+	Headers                      map[string]string             `json:"headers,omitempty" yaml:"headers,omitempty"`
 
 	resourceAttributes map[string]string
 	// with options
@@ -92,6 +93,7 @@ func NewConfig(cnf *conf.Configuration, opts ...Option) *Config {
 	c := &Config{
 		cnf:                          cnf,
 		MetricPeriodicReaderInterval: time.Second * 30,
+		Headers:                      make(map[string]string),
 		asGlobal:                     true,
 		resourceAttributes:           make(map[string]string),
 	}
@@ -221,7 +223,6 @@ func (c *Config) parseEnvKeys() {
 // getDefaultResource return a local runtime info
 func getDefaultResource(c *Config) *resource.Resource {
 	hostname, _ := os.Hostname()
-	resource.Environment()
 	return resource.NewWithAttributes(
 		semconv.SchemaURL,
 		semconv.ServiceNameKey.String(c.ServiceName),

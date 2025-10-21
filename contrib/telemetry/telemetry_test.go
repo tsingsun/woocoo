@@ -2,6 +2,10 @@ package telemetry
 
 import (
 	"context"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -13,9 +17,6 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"os"
-	"testing"
-	"time"
 )
 
 func TestAttribute(t *testing.T) {
@@ -241,6 +242,9 @@ func TestOtlp(t *testing.T) {
 							},
 						},
 						"metricExporter": "otlp",
+						"headers": map[string]any{
+							"Authentication": "123456",
+						},
 					},
 				}).Sub("otel"),
 			},

@@ -3,6 +3,12 @@ package handler
 import (
 	"bufio"
 	"errors"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -10,11 +16,6 @@ import (
 	"github.com/tsingsun/woocoo/test/logtest"
 	"github.com/tsingsun/woocoo/test/wctest"
 	"go.uber.org/zap"
-	"net"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
 )
 
 type ResponseWrite struct {
@@ -66,7 +67,7 @@ func TestHandleRecoverError(t *testing.T) {
 				c: &gin.Context{
 					Request: httptest.NewRequest("GET", "/", nil),
 					Writer:  &ResponseWrite{},
-					Keys: map[string]any{
+					Keys: map[any]any{
 						AccessLogComponentName: log.NewCarrier(),
 					},
 				},

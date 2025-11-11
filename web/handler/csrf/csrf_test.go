@@ -1,12 +1,13 @@
 package csrf
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/tsingsun/woocoo/pkg/conf"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/tsingsun/woocoo/pkg/conf"
 )
 
 func TestApply(t *testing.T) {
@@ -72,7 +73,8 @@ func TestCSRF(t *testing.T) {
 	})
 	t.Run("cookie", func(t *testing.T) {
 		srv.Use(CSRF().ApplyFunc(conf.NewFromStringMap(map[string]any{
-			"authKey": "test",
+			"authKey":        "test",
+			"trustedOrigins": []string{"localhost"},
 			"cookie": map[string]any{
 				"name":     "test",
 				"path":     "/",
@@ -104,7 +106,17 @@ func TestCSRF(t *testing.T) {
 		r.Header.Set("X-CSRF-Token", token)
 		w = httptest.NewRecorder()
 		srv.ServeHTTP(w, r)
+		assert.Equal(t, 403, w.Code, "origin or referer check not pass")
+
+		r = httptest.NewRequest("POST", "/cookie/", nil)
+		r.Host = "localhost"
+		r.Header.Set("Cookie", gck)
+		r.Header.Set("Origin", "http://localhost/")
+		r.Header.Set("X-CSRF-Token", token)
+		w = httptest.NewRecorder()
+		srv.ServeHTTP(w, r)
 		assert.Equal(t, 200, w.Code)
+
 		ps := strings.Split(gck, ";")
 		ps[0] = "_gorilla_csrf=" + "wrong"
 		wrongCookie := strings.Join(ps, ";")

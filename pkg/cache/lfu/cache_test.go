@@ -3,14 +3,15 @@ package lfu
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/tsingsun/woocoo/pkg/cache"
-	"github.com/tsingsun/woocoo/pkg/conf"
 	"math/rand"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tsingsun/woocoo/pkg/cache"
+	"github.com/tsingsun/woocoo/pkg/conf"
 )
 
 func TestNewTinyLFU(t *testing.T) {
@@ -44,7 +45,7 @@ ttl: "string"
 `
 		cnf := conf.NewFromBytes([]byte(cnfstr))
 		_, err := NewTinyLFU(cnf)
-		assert.ErrorContains(t, err, `error decoding 'ttl': time: invalid duration "string"`)
+		assert.ErrorContains(t, err, `'ttl' time: invalid duration`)
 	})
 }
 

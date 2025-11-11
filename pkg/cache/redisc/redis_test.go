@@ -160,7 +160,7 @@ func TestNew(t *testing.T) {
 				}),
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				return assert.ErrorContains(t, err, `error decoding 'ttl': time: invalid duration "string"`)
+				return assert.ErrorContains(t, err, `'ttl' time: invalid duration`)
 			},
 		},
 	}

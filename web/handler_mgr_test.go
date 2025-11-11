@@ -2,13 +2,14 @@ package web
 
 import (
 	"context"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"github.com/tsingsun/woocoo/web/handler"
 	"github.com/tsingsun/woocoo/web/handler/gzip"
-	"testing"
 )
 
 type mockMiddleware struct{}
@@ -82,7 +83,7 @@ func TestManager_Register(t *testing.T) {
 			m.Register(tt.args.name, tt.args.handler)
 			if got, ok := m.Get(tt.args.name); ok {
 				c := &gin.Context{
-					Keys: make(map[string]any),
+					Keys: make(map[any]any),
 				}
 				got().ApplyFunc(conf.New())(c)
 				assert.Equal(t, tt.want, c.GetInt(tt.args.name))

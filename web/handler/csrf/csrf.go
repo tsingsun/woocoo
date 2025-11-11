@@ -2,11 +2,12 @@ package csrf
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/csrf"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web/handler"
-	"net/http"
 )
 
 type Config struct {
@@ -21,8 +22,9 @@ type Config struct {
 
 	AuthKey string `json:"authKey" yaml:"authKey"`
 	// Default: X-CSRF-Token
-	RequestHeader string        `json:"requestHeader" yaml:"requestHeader"`
-	Cookie        *CookieConfig `json:"cookie" yaml:"cookie"`
+	RequestHeader  string        `json:"requestHeader" yaml:"requestHeader"`
+	Cookie         *CookieConfig `json:"cookie" yaml:"cookie"`
+	TrustedOrigins []string      `json:"trustedOrigins" yaml:"trustedOrigins"`
 }
 
 type CookieConfig struct {
@@ -98,6 +100,9 @@ func (mw *Middleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 		}
 		if mw.config.Cookie.SameSite != 0 {
 			opts = append(opts, csrf.SameSite(csrf.SameSiteMode(mw.config.Cookie.SameSite)))
+		}
+		if mw.config.TrustedOrigins != nil {
+			opts = append(opts, csrf.TrustedOrigins(mw.config.TrustedOrigins))
 		}
 	}
 	opts = append(opts, csrf.ErrorHandler(

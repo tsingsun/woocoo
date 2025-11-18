@@ -2,6 +2,11 @@ package handler
 
 import (
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -9,10 +14,6 @@ import (
 	"github.com/tsingsun/woocoo/test/logtest"
 	"github.com/tsingsun/woocoo/test/wctest"
 	"go.uber.org/zap"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
 )
 
 func TestLoggerMiddleware(t *testing.T) {
@@ -284,6 +285,52 @@ func TestLoggerMiddleware(t *testing.T) {
 				ss := i[0].(*logtest.Buffer)
 				all := ss.String()
 				assert.Contains(t, all, `header:accept`)
+				return true
+			},
+		},
+		{
+			name: "log carrier",
+			args: args{
+				cfg:     conf.NewFromStringMap(map[string]any{}),
+				request: httptest.NewRequest("GET", "/?query=1", nil),
+				handler: func(c *gin.Context) {
+					fc := GetLogCarrierFromGinContext(c)
+					fc.Fields = append(fc.Fields, zap.String("field", "value"))
+				},
+			},
+			want: func() any {
+				logdata := wctest.InitBuffWriteSyncer()
+				return logdata
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				ss := i[0].(*logtest.Buffer)
+				all := ss.String()
+				assert.Contains(t, all, `"level":"info"`)
+				assert.Contains(t, all, `"field":"value"`)
+				return true
+			},
+		},
+		{
+			name: "log carrier with err",
+			args: args{
+				cfg:     conf.NewFromStringMap(map[string]any{}),
+				request: httptest.NewRequest("GET", "/?query=1", nil),
+				handler: func(c *gin.Context) {
+					fc := GetLogCarrierFromGinContext(c)
+					fc.Fields = append(fc.Fields, zap.String("field", "value"), zap.Error(errors.New("error1")), zap.Error(errors.New("error2")))
+				},
+			},
+			want: func() any {
+				logdata := wctest.InitBuffWriteSyncer()
+				return logdata
+			},
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
+				ss := i[0].(*logtest.Buffer)
+				all := ss.String()
+				assert.Contains(t, all, `"level":"error"`)
+				assert.Contains(t, all, `"field":"value"`)
+				assert.Contains(t, all, `"error":"error1"`)
+				assert.Contains(t, all, `"error":"error2"`)
 				return true
 			},
 		},

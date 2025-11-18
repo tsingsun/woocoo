@@ -6,6 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
 	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/gin-gonic/gin"
@@ -20,11 +26,6 @@ import (
 	"github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
 )
 
 type MockResponse struct {
@@ -630,6 +631,7 @@ web:
     - default:
         middlewares:
         - recovery:
+        - accessLog:
         - errorHandle:
         - graphql:
 `
@@ -671,6 +673,11 @@ web:
 							Meta: map[string]any{
 								"field": "value",
 							},
+						})
+					case "withMultiError":
+						graphql.AddError(ctx, errors.New("multi error 1"))
+						graphql.AddError(ctx, &gin.Error{
+							Err: errors.New("multi error 2"),
 						})
 					default:
 						graphql.AddError(ctx, &gin.Error{
@@ -745,5 +752,15 @@ web:
 		assert.EqualValues(t, map[string]any{
 			"field": "value",
 		}, rt.Errors[0].Extensions["meta"])
+	})
+	t.Run("multi error", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := reuqest("/query", "1")
+		r.Header.Add("ginError", "withMultiError")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusOK, w.Code)
+		var rt graphql.Response
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rt), w.Body.String())
+		assert.Len(t, rt.Errors, 2)
 	})
 }

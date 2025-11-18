@@ -22,6 +22,7 @@ import (
 	"github.com/tsingsun/woocoo/web/handler"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
+	"go.uber.org/zap"
 )
 
 const (
@@ -265,7 +266,15 @@ func buildGraphqlServer(websrv *web.Server, routerGroup *web.RouterGroup, server
 }
 
 // ErrorPresenter is a graphql.ErrorPresenterFunc. it tries to convert gin.Error to gqlerror.Error and mask the error by woocoo handler.ErrorHandler
+// and keep the original error to log in access logger.
+// Graphql Error Protocol is not strict, but it will use extensions to store the error info and not suite for woocoo ErrorHandler, so do not use Gin Context.Error(err error) to log.
 func ErrorPresenter(ctx context.Context, err error) *gqlerror.Error {
+	gctx, _ := FromIncomingContext(ctx)
+	if gctx != nil {
+		if fc := handler.GetLogCarrierFromGinContext(gctx); fc != nil {
+			fc.Fields = append(fc.Fields, zap.Error(err))
+		}
+	}
 	var gqlErr *gqlerror.Error
 	if !errors.As(err, &gqlErr) {
 		gqlErr = &gqlerror.Error{

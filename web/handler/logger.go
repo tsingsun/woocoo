@@ -2,15 +2,16 @@ package handler
 
 import (
 	"bytes"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"io"
-	"net/http"
-	"strings"
-	"time"
 )
 
 type loggerTagType int
@@ -106,6 +107,7 @@ func (h *LoggerConfig) BuildTag(format string) {
 // LoggerMiddleware is a middleware that logs https requests.
 //
 // Default Skipper will not skip error request whatever you set exclude paths.
+// It's log level will auto set to error if zap.Field key named "error" exists or the gin error is private.
 type LoggerMiddleware struct {
 	config LoggerConfig
 	logger log.ComponentLogger
@@ -271,6 +273,14 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			}
 		}
 		if fc := GetLogCarrierFromGinContext(c); fc != nil && len(fc.Fields) > 0 {
+			if !privateErr {
+				for _, field := range fc.Fields {
+					if field.Key == "error" {
+						privateErr = true
+						break
+					}
+				}
+			}
 			fields = append(fields, fc.Fields...)
 		}
 		clog := h.logger.Ctx(c)
@@ -282,6 +292,7 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	}
 }
 
+// GetLogCarrierFromGinContext get log.FieldCarrier from gin.Context
 func GetLogCarrierFromGinContext(c *gin.Context) *log.FieldCarrier {
 	if fc, ok := c.Get(AccessLogComponentName); ok {
 		return fc.(*log.FieldCarrier)

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -273,15 +274,27 @@ func (h *LoggerMiddleware) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 			}
 		}
 		if fc := GetLogCarrierFromGinContext(c); fc != nil && len(fc.Fields) > 0 {
-			if !privateErr {
+			if privateErr {
+				// has gin error already, skip to check context log field.
+				fields = append(fields, fc.Fields...)
+			} else {
+				var errs error
 				for _, field := range fc.Fields {
 					if field.Key == "error" {
-						privateErr = true
-						break
+						e, ok := field.Interface.(error)
+						if ok {
+							errs = errors.Join(errs, e)
+						}
+						// use zap.String("error","error test") will be ignored.
+						continue
 					}
+					fields = append(fields, field)
+				}
+				if errs != nil {
+					privateErr = true
+					fields = append(fields, zap.String("error", errs.Error()))
 				}
 			}
-			fields = append(fields, fc.Fields...)
 		}
 		clog := h.logger.Ctx(c)
 		if privateErr {

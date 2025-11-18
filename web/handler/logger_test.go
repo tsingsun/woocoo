@@ -329,8 +329,7 @@ func TestLoggerMiddleware(t *testing.T) {
 				all := ss.String()
 				assert.Contains(t, all, `"level":"error"`)
 				assert.Contains(t, all, `"field":"value"`)
-				assert.Contains(t, all, `"error":"error1"`)
-				assert.Contains(t, all, `"error":"error2"`)
+				assert.Contains(t, all, `"error":"error1\nerror2"`)
 				return true
 			},
 		},

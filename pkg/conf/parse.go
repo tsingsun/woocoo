@@ -2,11 +2,12 @@ package conf
 
 import (
 	"fmt"
-	"github.com/go-viper/mapstructure/v2"
 	"io"
 	"os"
 	"reflect"
 	_ "unsafe"
+
+	"github.com/go-viper/mapstructure/v2"
 
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/confmap"
@@ -176,7 +177,7 @@ func (l *Parser) Sub(key string) (*Parser, error) {
 
 	if len(subParser.ToStringMap()) == 0 {
 		if l.Get(key) != nil {
-			return nil, fmt.Errorf("key is not a map")
+			return nil, fmt.Errorf("key '%s' is not a map", key)
 		}
 	}
 

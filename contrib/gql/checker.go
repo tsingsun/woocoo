@@ -1,10 +1,12 @@
 package gql
 
 import (
-	gqlgen "github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"io"
 	"net/http"
 	"strings"
+
+	gqlgen "github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
 )
 
 type testResponseWriter struct {
@@ -50,7 +52,7 @@ func SupportStream(server *gqlgen.Server) bool {
 		return true
 	}
 	// sse
-	r, err = http.NewRequest(http.MethodPost, "/", nil)
+	r, err = http.NewRequest(http.MethodPost, "/", io.NopCloser(strings.NewReader("")))
 	if err != nil {
 		panic(err)
 	}

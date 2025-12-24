@@ -194,7 +194,7 @@ web:
 		r := httptest.NewRequest("GET", "/graphql", nil)
 		w := httptest.NewRecorder()
 		g2.ServeHTTP(w, r)
-		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }
 

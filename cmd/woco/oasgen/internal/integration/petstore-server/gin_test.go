@@ -3,14 +3,15 @@ package petstore
 import (
 	"bytes"
 	"encoding/json"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/stretchr/testify/suite"
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/web/handler"
-	"net/http/httptest"
-	"strings"
-	"testing"
 )
 
 func init() {
@@ -67,7 +68,7 @@ func (s *ginTestSuite) TestUpdatePetWithForm() {
 	w := httptest.NewRecorder()
 	s.Router.ServeHTTP(w, r)
 	s.Equal(500, w.Code)
-	s.JSONEq(`{"errors":[{"code":500,"message":"UpdatePetWithForm Error"}]}`, w.Body.String())
+	s.JSONEq(`{"errors":[{"message":"UpdatePetWithForm Error"}]}`, w.Body.String(), "private error ignore code")
 }
 
 func (s *ginTestSuite) TestLoginUser() {

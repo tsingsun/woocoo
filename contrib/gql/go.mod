@@ -1,6 +1,6 @@
 module github.com/tsingsun/woocoo/contrib/gql
 
-go 1.24.0
+go 1.24
 
 require (
 	github.com/99designs/gqlgen v0.17.68
@@ -8,7 +8,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/gorilla/websocket v1.5.0
 	github.com/stretchr/testify v1.11.1
-	github.com/tsingsun/woocoo v0.7.0
+	github.com/tsingsun/woocoo v0.7.1
 	github.com/vektah/gqlparser/v2 v2.5.23
 	go.uber.org/zap v1.26.0
 )

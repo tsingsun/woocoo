@@ -679,6 +679,11 @@ web:
 						graphql.AddError(ctx, &gin.Error{
 							Err: errors.New("multi error 2"),
 						})
+					case "publicError":
+						graphql.AddError(ctx, &gin.Error{
+							Err:  errors.New("public error message"),
+							Type: gin.ErrorTypePublic,
+						})
 					default:
 						graphql.AddError(ctx, &gin.Error{
 							Err:  errors.New("gin error"),
@@ -762,5 +767,107 @@ web:
 		var rt graphql.Response
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rt), w.Body.String())
 		assert.Len(t, rt.Errors, 2)
+	})
+}
+
+func TestWorkWithPublicErrorMsg(t *testing.T) {
+	const publicMsg = "internal server error"
+	var cfgStr = `
+web:
+  server:
+  engine:
+    routerGroups:
+    - default:
+        middlewares:
+        - recovery:
+        - accessLog:
+        - errorHandle:
+        - graphql:
+            publicErrorMsg: "` + publicMsg + `"
+`
+
+	cfg := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
+	srv := web.New(web.WithConfiguration(cfg.Sub("web")),
+		web.WithMiddlewareNewFunc(graphqlHandlerName, Middleware))
+	schema := gqlparser.MustLoadSchema(&ast.Source{Input: `
+		type Query {
+			hello: Boolean!
+		}
+	`})
+	mock := graphql.ExecutableSchemaMock{
+		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
+			panic("mock out the Complexity method")
+		},
+		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {
+			opCtx := graphql.GetOperationContext(ctx)
+			switch opCtx.Operation.Operation {
+			case ast.Query:
+				ran := false
+				return func(ctx context.Context) *graphql.Response {
+					if ran {
+						return nil
+					}
+					ran = true
+					gctx, _ := FromIncomingContext(ctx)
+					ps := gctx.Request.Header.Get("ginError")
+					switch ps {
+					case "privateError":
+						// private error (default type) should show publicErrorMsg
+						graphql.AddError(ctx, &gin.Error{
+							Err:  errors.New("private error message"),
+							Type: gin.ErrorTypePrivate,
+						})
+					case "publicError":
+						// public error should show original error message
+						graphql.AddError(ctx, &gin.Error{
+							Err:  errors.New("public error message"),
+							Type: gin.ErrorTypePublic,
+						})
+					}
+					return &graphql.Response{
+						Data: []byte(`null`),
+					}
+				}
+			default:
+				return graphql.OneShot(graphql.ErrorResponse(ctx, "unsupported GraphQL operation"))
+			}
+		},
+		SchemaFunc: func() *ast.Schema {
+			return schema
+		},
+	}
+	_, err := RegisterSchema(srv, &mock)
+	require.NoError(t, err)
+	var request = func(ginError string) *http.Request {
+		r := httptest.NewRequest("POST", "/query", bytes.NewReader([]byte(`{"query":"query hello { hello }"}`)))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("ginError", ginError)
+		return r
+	}
+
+	t.Run("private error should show publicErrorMsg", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := request("privateError")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusOK, w.Code)
+		var rt graphql.Response
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rt), w.Body.String())
+		assert.Len(t, rt.Errors, 1)
+		// private error should be masked by publicErrorMsg
+		assert.EqualValues(t, publicMsg, rt.Errors[0].Message)
+		assert.NotContains(t, rt.Errors[0].Message, "private error message")
+	})
+
+	t.Run("public error should show original message", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := request("publicError")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusOK, w.Code)
+		var rt graphql.Response
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rt), w.Body.String())
+		assert.Len(t, rt.Errors, 1)
+		// public error should show original error message
+		assert.EqualValues(t, "public error message", rt.Errors[0].Message)
+		assert.NotContains(t, rt.Errors[0].Message, publicMsg)
 	})
 }

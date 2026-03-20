@@ -32,6 +32,9 @@ const (
 
 var (
 	ErrMissGinContext = errors.New("could not retrieve gin.Context")
+	// hold the error for publicErrorMsg
+	errPublic      error
+	publicErrorMsg = ""
 )
 
 // Options handler option
@@ -71,6 +74,9 @@ type Options struct {
 	//      - tenant: ...
 	//
 	Middlewares map[string]any `yaml:"middlewares" json:"middlewares"`
+	// PublicErrorMsg public error message for error handler, notice that it is global variable, will override by the last middleware.
+	// It is masked the application error when error can not translate by error handler.
+	PublicErrorMsg string `yaml:"publicErrorMsg" json:"publicErrorMsg"`
 
 	devMode bool
 	// whether support websocket or sse.
@@ -91,7 +97,7 @@ var (
 
 // Handler for graphql.
 //
-// While Subscription, response flow is defference from query or mutation.
+// While Subscription, response flow is deference from query or mutation.
 type Handler struct {
 	// store multiple graphql options, gql-servers can be in different group
 	opts Options
@@ -131,6 +137,11 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 
 	if h.opts.Endpoint == "" {
 		h.opts.Endpoint = h.opts.Group + h.opts.QueryPath
+	}
+	// accept race problem
+	publicErrorMsg = h.opts.PublicErrorMsg
+	if publicErrorMsg != "" {
+		errPublic = errors.New(publicErrorMsg)
 	}
 	optionCache[h.opts.Group] = h.opts
 	return func(c *gin.Context) {
@@ -285,12 +296,23 @@ func ErrorPresenter(ctx context.Context, err error) *gqlerror.Error {
 	}
 	var ginErr *gin.Error
 	if errors.As(err, &ginErr) {
-		code, errTxt := handler.LookupErrorCode(uint64(ginErr.Type), ginErr.Err)
+		gcode := uint64(ginErr.Type)
+		code, errTxt := handler.LookupErrorCode(gcode, ginErr.Err)
 		if code > 0 {
 			gqlErr.Err = errors.New(errTxt)
 			gqlErr.Message = errTxt
 		} else {
-			code = int(ginErr.Type)
+			code = int(gcode)
+			switch ginErr.Type {
+			case gin.ErrorTypePublic:
+				gqlErr.Err = ginErr.Err
+				gqlErr.Message = ginErr.Err.Error()
+			default:
+				if errPublic != nil {
+					gqlErr.Err = errPublic
+					gqlErr.Message = publicErrorMsg
+				}
+			}
 		}
 		if gqlErr.Extensions == nil {
 			gqlErr.Extensions = make(map[string]any)
@@ -313,7 +335,8 @@ func FromIncomingContext(ctx context.Context) (*gin.Context, error) {
 	return ginContext, nil
 }
 
-// WrapOperationHandler wrap gin.HandlerFunc to graphql.OperationMiddleware
+// WrapOperationHandler wrap gin.Hand
+// lerFunc to graphql.OperationMiddleware
 func WrapOperationHandler(handlerFunc gin.HandlerFunc) graphql.OperationMiddleware {
 	return func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
 		return doOperationHandler(ctx, next, handlerFunc)

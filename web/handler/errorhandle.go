@@ -2,11 +2,12 @@ package handler
 
 import (
 	"errors"
+	"net/http"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"net/http"
-	"strings"
 )
 
 var (
@@ -93,15 +94,11 @@ var DefaultErrorParser ErrorParser = func(c *gin.Context, public error) (int, an
 		var se gin.H
 		switch e.Type {
 		case gin.ErrorTypePublic:
-			se = DefaultErrorFormater(code, e.Err)
+			se = DefaultErrorFormater(code, e.Err, nil)
 		case gin.ErrorTypePrivate:
-			if public == nil {
-				se = DefaultErrorFormater(code, e.Err)
-			} else {
-				se = DefaultErrorFormater(code, public)
-			}
+			se = DefaultErrorFormater(code, e.Err, public)
 		default:
-			se = DefaultErrorFormater(int(e.Type), e.Err)
+			se = DefaultErrorFormater(int(e.Type), e.Err, public)
 		}
 		if e.Meta != nil {
 			se["meta"] = e.Meta
@@ -134,12 +131,17 @@ func SetErrorMap(cm map[uint64]string, em map[string]string) {
 }
 
 // FormatResponseError converts an http error to gin.H
-func FormatResponseError(code int, err error) gin.H {
+func FormatResponseError(code int, err, public error) gin.H {
 	code, txt := LookupErrorCode(uint64(code), err)
 	if code > 0 {
 		return gin.H{
 			"code":    code,
 			"message": txt,
+		}
+	}
+	if public != nil {
+		return gin.H{
+			"message": public.Error(),
 		}
 	}
 	return gin.H{

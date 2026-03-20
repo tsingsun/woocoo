@@ -138,7 +138,7 @@ func (h *Handler) ApplyFunc(cfg *conf.Configuration) gin.HandlerFunc {
 	if h.opts.Endpoint == "" {
 		h.opts.Endpoint = h.opts.Group + h.opts.QueryPath
 	}
-	// accept race problem
+	// accept race problem, override by last option
 	publicErrorMsg = h.opts.PublicErrorMsg
 	if publicErrorMsg != "" {
 		errPublic = errors.New(publicErrorMsg)
@@ -320,6 +320,21 @@ func ErrorPresenter(ctx context.Context, err error) *gqlerror.Error {
 		gqlErr.Extensions["code"] = code
 		if ginErr.Meta != nil {
 			gqlErr.Extensions["meta"] = ginErr.Meta
+		}
+	} else {
+		// for plain error (not gin.Error), check errorMap only
+		// use the underlying error if it's a gqlerror.Error
+		underlyingErr := err
+		if gqlErr.Err != nil {
+			underlyingErr = gqlErr.Err
+		}
+		_, errTxt := handler.LookupErrorCode(0, underlyingErr)
+		if errTxt != "" {
+			gqlErr.Err = errors.New(errTxt)
+			gqlErr.Message = errTxt
+		} else if errPublic != nil {
+			gqlErr.Err = errPublic
+			gqlErr.Message = publicErrorMsg
 		}
 	}
 	return gqlErr

@@ -871,3 +871,188 @@ web:
 		assert.NotContains(t, rt.Errors[0].Message, publicMsg)
 	})
 }
+
+func TestWorkWithResolverError(t *testing.T) {
+	// Reset global state before test
+	handler.SetErrorMap(nil, nil)
+
+	const publicMsg = "internal server error"
+	var cfgStr = `
+web:
+  server:
+  engine:
+    routerGroups:
+    - default:
+        middlewares:
+        - recovery:
+        - accessLog:
+        - errorHandle:
+        - graphql:
+            publicErrorMsg: "` + publicMsg + `"
+`
+
+	cfg := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
+	srv := web.New(web.WithConfiguration(cfg.Sub("web")),
+		web.WithMiddlewareNewFunc(graphqlHandlerName, Middleware))
+	schema := gqlparser.MustLoadSchema(&ast.Source{Input: `
+		type Query {
+			hello: Boolean!
+		}
+	`})
+	mock := graphql.ExecutableSchemaMock{
+		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
+			panic("mock out the Complexity method")
+		},
+		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {
+			opCtx := graphql.GetOperationContext(ctx)
+			switch opCtx.Operation.Operation {
+			case ast.Query:
+				ran := false
+				return func(ctx context.Context) *graphql.Response {
+					if ran {
+						return nil
+					}
+					ran = true
+					gctx, _ := FromIncomingContext(ctx)
+					ps := gctx.Request.Header.Get("resolverError")
+					switch ps {
+					case "plainError":
+						// resolver returns a plain error (not gin.Error)
+						graphql.AddError(ctx, errors.New("resolver plain error"))
+					case "mappedError":
+						// resolver returns an error that has mapping in errorMap
+						graphql.AddError(ctx, errors.New("mapped resolver error"))
+					}
+					return &graphql.Response{
+						Data: []byte(`null`),
+					}
+				}
+			default:
+				return graphql.OneShot(graphql.ErrorResponse(ctx, "unsupported GraphQL operation"))
+			}
+		},
+		SchemaFunc: func() *ast.Schema {
+			return schema
+		},
+	}
+	_, err := RegisterSchema(srv, &mock)
+	require.NoError(t, err)
+	var request = func(resolverError string) *http.Request {
+		r := httptest.NewRequest("POST", "/query", bytes.NewReader([]byte(`{"query":"query hello { hello }"}`)))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("resolverError", resolverError)
+		return r
+	}
+
+	t.Run("plain error should show publicErrorMsg when configured", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := request("plainError")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusOK, w.Code)
+		var rt graphql.Response
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rt), w.Body.String())
+		assert.Len(t, rt.Errors, 1)
+		// plain error should be masked by publicErrorMsg
+		assert.EqualValues(t, publicMsg, rt.Errors[0].Message)
+		assert.NotContains(t, rt.Errors[0].Message, "resolver plain error")
+	})
+
+	t.Run("mapped error should show mapped message", func(t *testing.T) {
+		// set up error map for plain error
+		handler.SetErrorMap(nil, map[string]string{
+			"mapped resolver error": "user friendly error message",
+		})
+		w := httptest.NewRecorder()
+		r := request("mappedError")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusOK, w.Code)
+		var rt graphql.Response
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rt), w.Body.String())
+		assert.Len(t, rt.Errors, 1)
+		// mapped error should show mapped message
+		assert.EqualValues(t, "user friendly error message", rt.Errors[0].Message)
+	})
+}
+
+func TestWorkWithResolverErrorNoPublicMsg(t *testing.T) {
+	errPublic = nil
+	publicErrorMsg = ""
+	// Reset global state before test
+	handler.SetErrorMap(nil, nil)
+
+	// test without publicErrorMsg configured
+	var cfgStr = `
+web:
+  server:
+  engine:
+    routerGroups:
+    - default:
+        middlewares:
+        - recovery:
+        - accessLog:
+        - errorHandle:
+        - graphql:
+`
+
+	cfg := conf.NewFromBytes([]byte(cfgStr)).AsGlobal()
+	srv := web.New(web.WithConfiguration(cfg.Sub("web")),
+		web.WithMiddlewareNewFunc(graphqlHandlerName, Middleware))
+	schema := gqlparser.MustLoadSchema(&ast.Source{Input: `
+		type Query {
+			hello: Boolean!
+		}
+	`})
+	mock := graphql.ExecutableSchemaMock{
+		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
+			panic("mock out the Complexity method")
+		},
+		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {
+			opCtx := graphql.GetOperationContext(ctx)
+			switch opCtx.Operation.Operation {
+			case ast.Query:
+				ran := false
+				return func(ctx context.Context) *graphql.Response {
+					if ran {
+						return nil
+					}
+					ran = true
+					gctx, _ := FromIncomingContext(ctx)
+					ps := gctx.Request.Header.Get("resolverError")
+					switch ps {
+					case "plainError":
+						// resolver returns a plain error (not gin.Error)
+						graphql.AddError(ctx, errors.New("resolver plain error"))
+					}
+					return &graphql.Response{
+						Data: []byte(`null`),
+					}
+				}
+			default:
+				return graphql.OneShot(graphql.ErrorResponse(ctx, "unsupported GraphQL operation"))
+			}
+		},
+		SchemaFunc: func() *ast.Schema {
+			return schema
+		},
+	}
+	_, err := RegisterSchema(srv, &mock)
+	require.NoError(t, err)
+	var request = func(resolverError string) *http.Request {
+		r := httptest.NewRequest("POST", "/query", bytes.NewReader([]byte(`{"query":"query hello { hello }"}`)))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("resolverError", resolverError)
+		return r
+	}
+
+	t.Run("plain error should show original message when no publicErrorMsg", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := request("plainError")
+		srv.Router().ServeHTTP(w, r)
+		assert.Equal(t, http.StatusOK, w.Code)
+		var rt graphql.Response
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rt), w.Body.String())
+		assert.Len(t, rt.Errors, 1)
+		// plain error should show original message when no publicErrorMsg configured
+		assert.EqualValues(t, "resolver plain error", rt.Errors[0].Message)
+	})
+}

@@ -283,7 +283,7 @@ func ErrorPresenter(ctx context.Context, err error) *gqlerror.Error {
 	gctx, _ := FromIncomingContext(ctx)
 	if gctx != nil {
 		if fc := handler.GetLogCarrierFromGinContext(gctx); fc != nil {
-			fc.Fields = append(fc.Fields, zap.Error(err))
+			fc.Fields = append(fc.Fields, zap.Error(errors.New(err.Error())))
 		}
 	}
 	var gqlErr *gqlerror.Error

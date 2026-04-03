@@ -3,14 +3,14 @@ package httpx
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
+	"time"
+
 	"github.com/mitchellh/hashstructure/v2"
 	"github.com/tsingsun/woocoo/pkg/cache"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
-	"net/http"
-	"net/url"
-	"strings"
-	"time"
 
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"golang.org/x/net/http/httpproxy"
@@ -37,10 +37,15 @@ type (
 		base http.RoundTripper
 	}
 
-	// Authorization contains HTTP authorization credentials.
+	// Authorization contains HTTP authorization configuration for OAuth2 requests.
+	// It customizes how the OAuth2 token is sent in HTTP requests.
 	Authorization struct {
-		Type        string `yaml:"type,omitempty" json:"type,omitempty"`
-		Credentials string `yaml:"credentials,omitempty" json:"credentials,omitempty"`
+		// HeaderName is the header name to send the OAuth2 token.
+		// Default is "Authorization".
+		HeaderName string `yaml:"headerName,omitempty" json:"headerName,omitempty"`
+		// HeaderPrefix is the prefix to add before the token value.
+		// Default is "Bearer". Set to empty string for no prefix.
+		HeaderPrefix string `yaml:"headerPrefix,omitempty" json:"headerPrefix,omitempty"`
 	}
 
 	// BasicAuth contains basic HTTP authentication credentials.
@@ -84,13 +89,11 @@ func NewClientConfig(cnf *conf.Configuration, opts ...Option) (cfg *ClientConfig
 
 func (c *ClientConfig) Validate() error {
 	if c.Authorization != nil {
-		if c.Authorization.Type == "" {
-			c.Authorization.Type = "Bearer"
+		if c.Authorization.HeaderName == "" {
+			c.Authorization.HeaderName = "Authorization"
 		}
-		switch strings.ToLower(c.Authorization.Type) {
-		case "bearer", "basic_auth":
-		default:
-			return fmt.Errorf("authorization type %q no support", c.Authorization.Type)
+		if c.Authorization.HeaderPrefix == "" {
+			c.Authorization.HeaderPrefix = "Bearer"
 		}
 	}
 	if c.OAuth2 != nil {
@@ -140,22 +143,81 @@ func (c *ClientConfig) Client(ctx context.Context, t *oauth2.Token) (*http.Clien
 	return NewClient(c)
 }
 
-// TokenSource returns a default token source base on clientcredentials.Config. it called in NewClient
+// TokenSource returns a default token source base on clientcredentials.Config or password grant.
 func (c *ClientConfig) TokenSource(ctx context.Context) oauth2.TokenSource {
-	config := &clientcredentials.Config{
-		ClientID:       c.OAuth2.ClientID,
-		ClientSecret:   c.OAuth2.ClientSecret,
-		Scopes:         c.OAuth2.Scopes,
-		TokenURL:       c.OAuth2.Endpoint.TokenURL,
-		EndpointParams: c.OAuth2.EndpointParams,
+	// Create HTTP client for token requests with custom transport for TokenHeader
+	baseTransport := c.base
+	if len(c.OAuth2.TokenHeader) > 0 {
+		baseTransport = &tokenHeaderTransport{
+			base:    c.base,
+			headers: c.OAuth2.TokenHeader,
+		}
 	}
-	hc := &http.Client{Transport: c.base, Timeout: c.Timeout}
+
+	// Create HTTP client for token requests
+	hc := &http.Client{Transport: baseTransport, Timeout: c.Timeout}
 	ctx = context.WithValue(ctx, oauth2.HTTPClient, hc)
-	base := config.TokenSource(context.WithValue(ctx, oauth2.HTTPClient, hc))
+
+	var base oauth2.TokenSource
+	// Check if grant_type is password
+	grantType := ""
+	if c.OAuth2.EndpointParams != nil {
+		grantType = c.OAuth2.EndpointParams.Get("grant_type")
+	}
+
+	if grantType == "password" {
+		// Use password grant type - reuse oauth2.Config.PasswordCredentialsToken
+		base = &passwordTokenSource{
+			cfg:  c.OAuth2,
+			ctx:  ctx,
+			http: hc,
+		}
+	} else {
+		// Use standard client credentials grant
+		config := &clientcredentials.Config{
+			ClientID:       c.OAuth2.ClientID,
+			ClientSecret:   c.OAuth2.ClientSecret,
+			Scopes:         c.OAuth2.Scopes,
+			TokenURL:       c.OAuth2.Endpoint.TokenURL,
+			EndpointParams: c.OAuth2.EndpointParams,
+		}
+		base = config.TokenSource(ctx)
+	}
 	return &TokenSource{
 		storage: c.OAuth2.storage,
 		base:    base,
 	}
+}
+
+// tokenHeaderTransport is a transport that adds custom headers to token requests.
+type tokenHeaderTransport struct {
+	base    http.RoundTripper
+	headers http.Header
+}
+
+func (t *tokenHeaderTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Clone request to avoid modifying the original
+	req = req.Clone(req.Context())
+	for key, values := range t.headers {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
+	return t.base.RoundTrip(req)
+}
+
+// passwordTokenSource is a token source that uses password grant type to fetch token.
+// It reuses oauth2.Config.PasswordCredentialsToken for token retrieval.
+type passwordTokenSource struct {
+	cfg  *OAuth2Config
+	ctx  context.Context
+	http *http.Client
+}
+
+func (p *passwordTokenSource) Token() (*oauth2.Token, error) {
+	// Reuse the standard PasswordCredentialsToken method
+	// It uses the HTTP client from context (set in TokenSource)
+	return p.cfg.Config.PasswordCredentialsToken(p.ctx, p.cfg.ClientID, p.cfg.ClientSecret)
 }
 
 type ProxyConfig struct {
@@ -198,6 +260,9 @@ type OAuth2Config struct {
 	// Default is empty. If StoreKey is empty, the token will not be cached.
 	StoreKey       string `json:"storeKey" yaml:"storeKey"`
 	EndpointParams url.Values
+	// TokenHeader is the header to send when fetching token.
+	// This is useful when the OAuth2 server requires additional headers for authentication.
+	TokenHeader http.Header `yaml:"tokenHeader,omitempty" json:"tokenHeader,omitempty"`
 
 	ts      oauth2.TokenSource
 	storage TokenStorage
@@ -345,10 +410,51 @@ func NewClient(cfg *ClientConfig) (c *http.Client, err error) {
 		if cfg.OAuth2.ts == nil {
 			cfg.OAuth2.ts = cfg.TokenSource(context.Background())
 		}
-		c.Transport = &oauth2.Transport{
-			Base:   c.Transport,
-			Source: cfg.OAuth2.ts,
+		// Use custom auth transport if Authorization is configured with custom values
+		// Default is Authorization: Bearer <token>, use standard oauth2.Transport
+		useCustomAuth := cfg.Authorization != nil && (cfg.Authorization.HeaderName != "" && cfg.Authorization.HeaderName != "Authorization" ||
+			cfg.Authorization.HeaderPrefix != "" && cfg.Authorization.HeaderPrefix != "Bearer")
+
+		if useCustomAuth {
+			c.Transport = &oauth2AuthTransport{
+				base:         c.Transport,
+				source:       cfg.OAuth2.ts,
+				headerName:   cfg.Authorization.HeaderName,
+				headerPrefix: cfg.Authorization.HeaderPrefix,
+			}
+		} else {
+			c.Transport = &oauth2.Transport{
+				Base:   c.Transport,
+				Source: cfg.OAuth2.ts,
+			}
 		}
 	}
 	return
+}
+
+// oauth2AuthTransport is a custom transport that adds OAuth2 token to HTTP requests with custom header.
+type oauth2AuthTransport struct {
+	base         http.RoundTripper
+	source       oauth2.TokenSource
+	headerName   string
+	headerPrefix string
+}
+
+func (t *oauth2AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Get token from source
+	token, err := t.source.Token()
+	if err != nil {
+		return nil, err
+	}
+
+	// Clone request to avoid modifying the original
+	req = req.Clone(req.Context())
+
+	// Set custom header with token
+	headerValue := token.AccessToken
+	if t.headerPrefix != "" {
+		headerValue = t.headerPrefix + " " + token.AccessToken
+	}
+	req.Header.Set(t.headerName, headerValue)
+	return t.base.RoundTrip(req)
 }

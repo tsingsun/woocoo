@@ -191,7 +191,8 @@ func TestClientConfig_Validate(t *testing.T) {
 			name: "empty auth type",
 			cfg: ClientConfig{
 				Authorization: &Authorization{
-					Type: "",
+					HeaderName:   "",
+					HeaderPrefix: "",
 				},
 			},
 			wantErr: false,
@@ -200,10 +201,11 @@ func TestClientConfig_Validate(t *testing.T) {
 			name: "invalid auth type",
 			cfg: ClientConfig{
 				Authorization: &Authorization{
-					Type: "invalid",
+					HeaderName:   "X-Custom",
+					HeaderPrefix: "Custom",
 				},
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "missing oauth2 clientID",
@@ -592,5 +594,410 @@ func TestOAuth2(t *testing.T) {
 		tk, err := source.Token()
 		require.NoError(t, err)
 		assert.Equal(t, "test", tk.AccessToken)
+	})
+}
+
+func TestOAuth2PasswordGrant(t *testing.T) {
+	tokenCount := 0
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.String() {
+		case "/token":
+			// Verify password grant request
+			err := r.ParseForm()
+			require.NoError(t, err)
+			require.Equal(t, "password", r.FormValue("grant_type"))
+			require.Equal(t, "client", r.FormValue("username"))
+			require.Equal(t, "secret", r.FormValue("password"))
+
+			tokenCount++
+			w.Header().Set("Content-Type", "application/json")
+			d, err := json.Marshal(map[string]string{
+				"access_token": "password_grant_token_" + fmt.Sprintf("%d", tokenCount),
+				"expires_in":   "11",
+				"scope":        "user",
+				"token_type":   "bearer",
+			})
+			require.NoError(t, err)
+			w.Write(d)
+		case "/get":
+			auth := r.Header.Get("Authorization")
+			require.Contains(t, auth, "password_grant_token_")
+			_, _ = fmt.Fprint(w, "Hello")
+		default:
+			t.Errorf("Unexpected request URL %q", r.URL)
+		}
+	}))
+	ts.Start()
+	defer ts.Close()
+
+	t.Run("password grant basic", func(t *testing.T) {
+		tokenCount = 0
+		tc := ClientConfig{
+			Timeout: 2 * time.Second,
+			OAuth2: &OAuth2Config{
+				Config: oauth2.Config{
+					ClientID:     "client",
+					ClientSecret: "secret",
+					Endpoint: oauth2.Endpoint{
+						TokenURL: ts.URL + "/token",
+					},
+				},
+				EndpointParams: url.Values{
+					"grant_type": []string{"password"},
+				},
+			},
+		}
+
+		client, err := tc.Client(context.Background(), nil)
+		require.NoError(t, err)
+
+		// First request - should fetch token
+		res, err := client.Get(ts.URL + "/get")
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, res.StatusCode)
+		assert.Equal(t, 1, tokenCount)
+
+		// Second request - should reuse token source
+		_, err = client.Get(ts.URL + "/get")
+		require.NoError(t, err)
+		// Token count should be 1 or 2 depending on oauth2 library caching
+		assert.True(t, tokenCount >= 1 && tokenCount <= 2)
+	})
+
+	t.Run("password grant with cache", func(t *testing.T) {
+		tokenCount = 0
+		mr := miniredis.RunT(t)
+		// Initialize redis cache driver with a unique name to avoid conflict
+		_, err := redisc.New(conf.NewFromStringMap(map[string]any{
+			"driverName": "redis-password",
+			"addrs":      []string{mr.Addr()},
+		}))
+		require.NoError(t, err)
+
+		cnf := conf.NewFromStringMap(map[string]any{
+			"oauth2": map[string]any{
+				"clientID":     "client",
+				"clientSecret": "secret",
+				"endpoint": map[string]any{
+					"tokenUrl": ts.URL + "/token",
+				},
+				"endpointParams": map[string]any{
+					"grant_type": "password",
+				},
+				"storeKey": "redis-password",
+			},
+		})
+
+		cfg, err := NewClientConfig(cnf)
+		require.NoError(t, err)
+
+		client, err := cfg.Client(context.Background(), nil)
+		require.NoError(t, err)
+
+		// First request - should fetch token
+		res, err := client.Get(ts.URL + "/get")
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, res.StatusCode)
+
+		// Second request - should use cached token from memory
+		_, err = client.Get(ts.URL + "/get")
+		require.NoError(t, err)
+
+		// Wait a bit for async cache write
+		time.Sleep(100 * time.Millisecond)
+
+		// Verify token is stored in cache
+		v, err := mr.Get(tokenKey(cfg.OAuth2))
+		require.NoError(t, err)
+		assert.NotNil(t, v)
+	})
+
+	t.Run("client credentials grant (default)", func(t *testing.T) {
+		tokenCount = 0
+		// Create a test server for client credentials grant
+		ts2 := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.String() {
+			case "/token":
+				err := r.ParseForm()
+				require.NoError(t, err)
+				require.Equal(t, "client_credentials", r.FormValue("grant_type"))
+
+				tokenCount++
+				w.Header().Set("Content-Type", "application/json")
+				d, err := json.Marshal(map[string]string{
+					"access_token": "client_cred_token_" + fmt.Sprintf("%d", tokenCount),
+					"expires_in":   "11",
+					"scope":        "user",
+					"token_type":   "bearer",
+				})
+				require.NoError(t, err)
+				w.Write(d)
+			case "/get":
+				auth := r.Header.Get("Authorization")
+				require.Contains(t, auth, "client_cred_token_")
+				_, _ = fmt.Fprint(w, "Hello")
+			default:
+				t.Errorf("Unexpected request URL %q", r.URL)
+			}
+		}))
+		ts2.Start()
+		defer ts2.Close()
+
+		tc := ClientConfig{
+			Timeout: 2 * time.Second,
+			OAuth2: &OAuth2Config{
+				Config: oauth2.Config{
+					ClientID:     "client",
+					ClientSecret: "secret",
+					Endpoint: oauth2.Endpoint{
+						TokenURL: ts2.URL + "/token",
+					},
+				},
+			},
+		}
+
+		client, err := tc.Client(context.Background(), nil)
+		require.NoError(t, err)
+
+		// First request - should fetch token using client credentials grant
+		res, err := client.Get(ts2.URL + "/get")
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, res.StatusCode)
+		assert.Equal(t, 1, tokenCount)
+	})
+
+	t.Run("password grant with token header", func(t *testing.T) {
+		tokenCount = 0
+		// Create a test server that requires custom header
+		ts3 := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.String() {
+			case "/token":
+				// Verify custom header (X-API-Key) and Basic Auth from PasswordCredentialsToken
+				require.Equal(t, "api-key-123", r.Header.Get("X-API-Key"))
+				// PasswordCredentialsToken adds Basic Auth with client:secret
+				require.Contains(t, r.Header.Get("Authorization"), "Basic ")
+				require.Equal(t, "password", r.FormValue("grant_type"))
+				require.Equal(t, "client", r.FormValue("username"))
+				require.Equal(t, "secret", r.FormValue("password"))
+
+				tokenCount++
+				w.Header().Set("Content-Type", "application/json")
+				d, err := json.Marshal(map[string]string{
+					"access_token": "header_token_" + fmt.Sprintf("%d", tokenCount),
+					"expires_in":   "11",
+					"scope":        "user",
+					"token_type":   "bearer",
+				})
+				require.NoError(t, err)
+				w.Write(d)
+			case "/get":
+				auth := r.Header.Get("Authorization")
+				require.Contains(t, auth, "header_token_")
+				_, _ = fmt.Fprint(w, "Hello")
+			default:
+				t.Errorf("Unexpected request URL %q", r.URL)
+			}
+		}))
+		ts3.Start()
+		defer ts3.Close()
+
+		tc := ClientConfig{
+			Timeout: 2 * time.Second,
+			OAuth2: &OAuth2Config{
+				Config: oauth2.Config{
+					ClientID:     "client",
+					ClientSecret: "secret",
+					Endpoint: oauth2.Endpoint{
+						TokenURL: ts3.URL + "/token",
+					},
+				},
+				EndpointParams: url.Values{
+					"grant_type": []string{"password"},
+				},
+				TokenHeader: http.Header{
+					"X-API-Key": []string{"api-key-123"},
+				},
+			},
+		}
+
+		client, err := tc.Client(context.Background(), nil)
+		require.NoError(t, err)
+
+		// First request - should fetch token with custom header
+		res, err := client.Get(ts3.URL + "/get")
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, res.StatusCode)
+		assert.Equal(t, 1, tokenCount)
+	})
+
+	t.Run("client credentials with token header", func(t *testing.T) {
+		tokenCount = 0
+		// Create a test server that requires custom header for client credentials
+		ts4 := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.String() {
+			case "/token":
+				// Verify custom header
+				require.Equal(t, "Bearer api-key-123", r.Header.Get("X-API-Key"))
+				require.Equal(t, "client_credentials", r.FormValue("grant_type"))
+
+				tokenCount++
+				w.Header().Set("Content-Type", "application/json")
+				d, err := json.Marshal(map[string]string{
+					"access_token": "cc_header_token_" + fmt.Sprintf("%d", tokenCount),
+					"expires_in":   "11",
+					"scope":        "user",
+					"token_type":   "bearer",
+				})
+				require.NoError(t, err)
+				w.Write(d)
+			case "/get":
+				auth := r.Header.Get("Authorization")
+				require.Contains(t, auth, "cc_header_token_")
+				_, _ = fmt.Fprint(w, "Hello")
+			default:
+				t.Errorf("Unexpected request URL %q", r.URL)
+			}
+		}))
+		ts4.Start()
+		defer ts4.Close()
+
+		tc := ClientConfig{
+			Timeout: 2 * time.Second,
+			OAuth2: &OAuth2Config{
+				Config: oauth2.Config{
+					ClientID:     "client",
+					ClientSecret: "secret",
+					Endpoint: oauth2.Endpoint{
+						TokenURL: ts4.URL + "/token",
+					},
+				},
+				TokenHeader: http.Header{
+					"X-API-Key": []string{"Bearer api-key-123"},
+				},
+			},
+		}
+
+		client, err := tc.Client(context.Background(), nil)
+		require.NoError(t, err)
+
+		// First request - should fetch token with custom header
+		res, err := client.Get(ts4.URL + "/get")
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, res.StatusCode)
+		assert.Equal(t, 1, tokenCount)
+	})
+
+	t.Run("password grant with custom request auth header", func(t *testing.T) {
+		tokenCount = 0
+		// Create a test server that requires custom auth header
+		ts5 := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.String() {
+			case "/token":
+				require.Equal(t, "password", r.FormValue("grant_type"))
+				tokenCount++
+				w.Header().Set("Content-Type", "application/json")
+				d, err := json.Marshal(map[string]string{
+					"access_token": "custom_header_token_" + fmt.Sprintf("%d", tokenCount),
+					"expires_in":   "11",
+					"scope":        "user",
+					"token_type":   "bearer",
+				})
+				require.NoError(t, err)
+				w.Write(d)
+			case "/get":
+				// Verify custom auth header (no prefix)
+				require.Equal(t, "custom_header_token_1", r.Header.Get("X-Custom-Auth"))
+				_, _ = fmt.Fprint(w, "Hello")
+			default:
+				t.Errorf("Unexpected request URL %q", r.URL)
+			}
+		}))
+		ts5.Start()
+		defer ts5.Close()
+
+		tc := ClientConfig{
+			Timeout: 2 * time.Second,
+			Authorization: &Authorization{
+				HeaderName:   "X-Custom-Auth",
+				HeaderPrefix: "",
+			},
+			OAuth2: &OAuth2Config{
+				Config: oauth2.Config{
+					ClientID:     "client",
+					ClientSecret: "secret",
+					Endpoint: oauth2.Endpoint{
+						TokenURL: ts5.URL + "/token",
+					},
+				},
+				EndpointParams: url.Values{
+					"grant_type": []string{"password"},
+				},
+			},
+		}
+
+		client, err := tc.Client(context.Background(), nil)
+		require.NoError(t, err)
+
+		// Request should use custom auth header
+		res, err := client.Get(ts5.URL + "/get")
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, res.StatusCode)
+	})
+
+	t.Run("password grant with custom prefix", func(t *testing.T) {
+		tokenCount = 0
+		// Create a test server that requires custom prefix
+		ts6 := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.String() {
+			case "/token":
+				require.Equal(t, "password", r.FormValue("grant_type"))
+				tokenCount++
+				w.Header().Set("Content-Type", "application/json")
+				d, err := json.Marshal(map[string]string{
+					"access_token": "prefix_token_" + fmt.Sprintf("%d", tokenCount),
+					"expires_in":   "11",
+					"scope":        "user",
+					"token_type":   "bearer",
+				})
+				require.NoError(t, err)
+				w.Write(d)
+			case "/get":
+				// Verify custom prefix
+				require.Equal(t, "ApiKey prefix_token_1", r.Header.Get("Authorization"))
+				_, _ = fmt.Fprint(w, "Hello")
+			default:
+				t.Errorf("Unexpected request URL %q", r.URL)
+			}
+		}))
+		ts6.Start()
+		defer ts6.Close()
+
+		tc := ClientConfig{
+			Timeout: 2 * time.Second,
+			Authorization: &Authorization{
+				HeaderName:   "Authorization",
+				HeaderPrefix: "ApiKey",
+			},
+			OAuth2: &OAuth2Config{
+				Config: oauth2.Config{
+					ClientID:     "client",
+					ClientSecret: "secret",
+					Endpoint: oauth2.Endpoint{
+						TokenURL: ts6.URL + "/token",
+					},
+				},
+				EndpointParams: url.Values{
+					"grant_type": []string{"password"},
+				},
+			},
+		}
+
+		client, err := tc.Client(context.Background(), nil)
+		require.NoError(t, err)
+
+		// Request should use custom prefix
+		res, err := client.Get(ts6.URL + "/get")
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, res.StatusCode)
 	})
 }

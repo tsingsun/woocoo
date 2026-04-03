@@ -1,6 +1,6 @@
 module github.com/tsingsun/woocoo
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/alicebob/miniredis/v2 v2.33.0
@@ -25,7 +25,7 @@ require (
 	go.uber.org/zap v1.26.0
 	golang.org/x/net v0.42.0
 	golang.org/x/oauth2 v0.27.0
-	golang.org/x/sync v0.16.0
+	golang.org/x/sync v0.19.0
 	golang.org/x/text v0.27.0
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.36.9

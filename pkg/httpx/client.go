@@ -16,6 +16,15 @@ import (
 	"golang.org/x/net/http/httpproxy"
 )
 
+// OAuth2 grant types per RFC 6749.
+const (
+	GrantTypeAuthorizationCode = "authorization_code"
+	GrantTypeImplicit          = "implicit"
+	GrantTypePassword          = "password"
+	GrantTypeClientCredentials = "client_credentials"
+	GrantTypeRefreshToken      = "refresh_token"
+)
+
 type (
 	// TokenStorage is an interface to store and retrieve oauth2 token
 	TokenStorage interface {
@@ -91,9 +100,12 @@ func (c *ClientConfig) Validate() error {
 	if c.Authorization != nil {
 		if c.Authorization.HeaderName == "" {
 			c.Authorization.HeaderName = "Authorization"
-		}
-		if c.Authorization.HeaderPrefix == "" {
 			c.Authorization.HeaderPrefix = "Bearer"
+		}
+	}
+	if c.BasicAuth != nil {
+		if c.BasicAuth.Username == "" {
+			return fmt.Errorf("basicAuth.username must be configured")
 		}
 	}
 	if c.OAuth2 != nil {
@@ -105,6 +117,12 @@ func (c *ClientConfig) Validate() error {
 		}
 		if c.OAuth2.Endpoint.TokenURL == "" {
 			return fmt.Errorf("oauth2 tokenUrl must be configured")
+		}
+		// Check if grant_type is password and validate username/password
+		if c.OAuth2.EndpointParams != nil && c.OAuth2.EndpointParams.Get("grant_type") == GrantTypePassword {
+			if c.OAuth2.Username == "" {
+				return fmt.Errorf("username must be configured for password grant type")
+			}
 		}
 	}
 	return nil
@@ -145,6 +163,9 @@ func (c *ClientConfig) Client(ctx context.Context, t *oauth2.Token) (*http.Clien
 
 // TokenSource returns a default token source base on clientcredentials.Config or password grant.
 func (c *ClientConfig) TokenSource(ctx context.Context) oauth2.TokenSource {
+	if c.OAuth2 != nil && c.OAuth2.ts != nil {
+		return c.OAuth2.ts
+	}
 	// Create HTTP client for token requests with custom transport for TokenHeader
 	baseTransport := c.base
 	if len(c.OAuth2.TokenHeader) > 0 {
@@ -165,7 +186,7 @@ func (c *ClientConfig) TokenSource(ctx context.Context) oauth2.TokenSource {
 		grantType = c.OAuth2.EndpointParams.Get("grant_type")
 	}
 
-	if grantType == "password" {
+	if grantType == GrantTypePassword {
 		// Use password grant type - reuse oauth2.Config.PasswordCredentialsToken
 		base = &passwordTokenSource{
 			cfg:  c.OAuth2,
@@ -189,14 +210,14 @@ func (c *ClientConfig) TokenSource(ctx context.Context) oauth2.TokenSource {
 	}
 }
 
-// tokenHeaderTransport is a transport that adds custom headers to token requests.
+// tokenHeaderTransport is transport that adds custom headers to token requests.
 type tokenHeaderTransport struct {
 	base    http.RoundTripper
 	headers http.Header
 }
 
 func (t *tokenHeaderTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// Clone request to avoid modifying the original
+	// usually Clone request to avoid modifying the original
 	req = req.Clone(req.Context())
 	for key, values := range t.headers {
 		for _, value := range values {
@@ -217,7 +238,8 @@ type passwordTokenSource struct {
 func (p *passwordTokenSource) Token() (*oauth2.Token, error) {
 	// Reuse the standard PasswordCredentialsToken method
 	// It uses the HTTP client from context (set in TokenSource)
-	return p.cfg.Config.PasswordCredentialsToken(p.ctx, p.cfg.ClientID, p.cfg.ClientSecret)
+	// ClientID/ClientSecret are sent via Basic Auth, Username/Password are sent as form data
+	return p.cfg.Config.PasswordCredentialsToken(p.ctx, p.cfg.Username, p.cfg.Password)
 }
 
 type ProxyConfig struct {
@@ -258,11 +280,23 @@ type OAuth2Config struct {
 	oauth2.Config `yaml:",inline" json:",inline"`
 	// StoreKey is the name of the cache driver which is used to store token.
 	// Default is empty. If StoreKey is empty, the token will not be cached.
-	StoreKey       string `json:"storeKey" yaml:"storeKey"`
+	StoreKey string `json:"storeKey" yaml:"storeKey"`
+	// EndpointParams specifies additional parameters for token endpoint requests.
+	// Common parameters include:
+	//   - grant_type: "authorization_code", "client_credentials", "password", etc.
+	//   - scope: requested permissions
+	//   - audience: target API identifier
+	// If grant_type is "password", the Username and Password fields will be used.
 	EndpointParams url.Values
 	// TokenHeader is the header to send when fetching token.
 	// This is useful when the OAuth2 server requires additional headers for authentication.
 	TokenHeader http.Header `yaml:"tokenHeader,omitempty" json:"tokenHeader,omitempty"`
+	// Username is the username for password grant type.
+	// Only used when grant_type is "password".
+	Username string `yaml:"username,omitempty" json:"username,omitempty"`
+	// Password is the password for password grant type.
+	// Only used when grant_type is "password".
+	Password string `yaml:"password,omitempty" json:"password,omitempty"`
 
 	ts      oauth2.TokenSource
 	storage TokenStorage

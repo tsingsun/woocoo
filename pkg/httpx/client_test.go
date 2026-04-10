@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -183,6 +184,26 @@ func TestClientConfig_Validate(t *testing.T) {
 				BasicAuth: &BasicAuth{
 					Username: "user1",
 					Password: "password1",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "BasicAuth username empty",
+			cfg: ClientConfig{
+				BasicAuth: &BasicAuth{
+					Username: "",
+					Password: "password1",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "BasicAuth with empty password",
+			cfg: ClientConfig{
+				BasicAuth: &BasicAuth{
+					Username: "user1",
+					Password: "",
 				},
 			},
 			wantErr: false,
@@ -606,8 +627,14 @@ func TestOAuth2PasswordGrant(t *testing.T) {
 			err := r.ParseForm()
 			require.NoError(t, err)
 			require.Equal(t, "password", r.FormValue("grant_type"))
-			require.Equal(t, "client", r.FormValue("username"))
-			require.Equal(t, "secret", r.FormValue("password"))
+			require.Equal(t, "testuser", r.FormValue("username"))
+			require.Equal(t, "testpass", r.FormValue("password"))
+
+			// Verify client credentials are sent via Basic Auth
+			clientID, clientSecret, ok := r.BasicAuth()
+			require.True(t, ok, "Basic Auth should be present")
+			require.Equal(t, "client", clientID)
+			require.Equal(t, "secret", clientSecret)
 
 			tokenCount++
 			w.Header().Set("Content-Type", "application/json")
@@ -645,6 +672,8 @@ func TestOAuth2PasswordGrant(t *testing.T) {
 				EndpointParams: url.Values{
 					"grant_type": []string{"password"},
 				},
+				Username: "testuser",
+				Password: "testpass",
 			},
 		}
 
@@ -684,6 +713,8 @@ func TestOAuth2PasswordGrant(t *testing.T) {
 				"endpointParams": map[string]any{
 					"grant_type": "password",
 				},
+				"username": "testuser",
+				"password": "testpass",
 				"storeKey": "redis-password",
 			},
 		})
@@ -772,13 +803,18 @@ func TestOAuth2PasswordGrant(t *testing.T) {
 		ts3 := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.String() {
 			case "/token":
-				// Verify custom header (X-API-Key) and Basic Auth from PasswordCredentialsToken
+				// Verify custom header (X-API-Key) and Basic Auth from client credentials
 				require.Equal(t, "api-key-123", r.Header.Get("X-API-Key"))
-				// PasswordCredentialsToken adds Basic Auth with client:secret
+				// Verify client credentials are sent via Basic Auth
 				require.Contains(t, r.Header.Get("Authorization"), "Basic ")
+				clientID, clientSecret, ok := r.BasicAuth()
+				require.True(t, ok, "Basic Auth should be present")
+				require.Equal(t, "client", clientID)
+				require.Equal(t, "secret", clientSecret)
+
 				require.Equal(t, "password", r.FormValue("grant_type"))
-				require.Equal(t, "client", r.FormValue("username"))
-				require.Equal(t, "secret", r.FormValue("password"))
+				require.Equal(t, "testuser", r.FormValue("username"))
+				require.Equal(t, "testpass", r.FormValue("password"))
 
 				tokenCount++
 				w.Header().Set("Content-Type", "application/json")
@@ -814,6 +850,8 @@ func TestOAuth2PasswordGrant(t *testing.T) {
 				EndpointParams: url.Values{
 					"grant_type": []string{"password"},
 				},
+				Username: "testuser",
+				Password: "testpass",
 				TokenHeader: http.Header{
 					"X-API-Key": []string{"api-key-123"},
 				},
@@ -894,6 +932,14 @@ func TestOAuth2PasswordGrant(t *testing.T) {
 			switch r.URL.String() {
 			case "/token":
 				require.Equal(t, "password", r.FormValue("grant_type"))
+				require.Equal(t, "testuser", r.FormValue("username"))
+				require.Equal(t, "testpass", r.FormValue("password"))
+				// Verify client credentials are sent via Basic Auth
+				clientID, clientSecret, ok := r.BasicAuth()
+				require.True(t, ok, "Basic Auth should be present")
+				require.Equal(t, "client", clientID)
+				require.Equal(t, "secret", clientSecret)
+
 				tokenCount++
 				w.Header().Set("Content-Type", "application/json")
 				d, err := json.Marshal(map[string]string{
@@ -932,6 +978,8 @@ func TestOAuth2PasswordGrant(t *testing.T) {
 				EndpointParams: url.Values{
 					"grant_type": []string{"password"},
 				},
+				Username: "testuser",
+				Password: "testpass",
 			},
 		}
 
@@ -951,6 +999,14 @@ func TestOAuth2PasswordGrant(t *testing.T) {
 			switch r.URL.String() {
 			case "/token":
 				require.Equal(t, "password", r.FormValue("grant_type"))
+				require.Equal(t, "testuser", r.FormValue("username"))
+				require.Equal(t, "testpass", r.FormValue("password"))
+				// Verify client credentials are sent via Basic Auth
+				clientID, clientSecret, ok := r.BasicAuth()
+				require.True(t, ok, "Basic Auth should be present")
+				require.Equal(t, "client", clientID)
+				require.Equal(t, "secret", clientSecret)
+
 				tokenCount++
 				w.Header().Set("Content-Type", "application/json")
 				d, err := json.Marshal(map[string]string{
@@ -989,6 +1045,8 @@ func TestOAuth2PasswordGrant(t *testing.T) {
 				EndpointParams: url.Values{
 					"grant_type": []string{"password"},
 				},
+				Username: "testuser",
+				Password: "testpass",
 			},
 		}
 
@@ -1000,4 +1058,248 @@ func TestOAuth2PasswordGrant(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, res.StatusCode)
 	})
+}
+
+// TestWrappedTokenResponse tests the wrapped token response parsing.
+func TestWrappedTokenResponse(t *testing.T) {
+	// Standard OAuth2 response
+	standardResp := []byte(`{
+		"access_token": "standard_token",
+		"token_type": "Bearer",
+		"expires_in": 3600
+	}`)
+
+	token, err := extractWrappedToken(standardResp)
+	require.NoError(t, err)
+	assert.Equal(t, "standard_token", token.AccessToken)
+	assert.Equal(t, "Bearer", token.TokenType)
+
+	// Wrapped OAuth2 response
+	wrappedResp := []byte(`{
+		"code": 0,
+		"msg": "success",
+		"data": {
+			"access_token": "wrapped_token",
+			"token_type": "Bearer",
+			"expires_in": 7200
+		}
+	}`)
+
+	token, err = extractWrappedToken(wrappedResp)
+	require.NoError(t, err)
+	assert.Equal(t, "wrapped_token", token.AccessToken)
+	assert.Equal(t, "Bearer", token.TokenType)
+
+	// Invalid response
+	invalidResp := []byte(`{"invalid": "json"}`)
+	_, err = extractWrappedToken(invalidResp)
+	assert.Error(t, err)
+}
+
+// simpleTokenSource is a simple implementation of oauth2.TokenSource for example.
+type simpleTokenSource struct {
+	token *oauth2.Token
+}
+
+// Token implements oauth2.TokenSource interface.
+func (s *simpleTokenSource) Token() (*oauth2.Token, error) {
+	return s.token, nil
+}
+
+// Example_oauth2WrappedResponse demonstrates a complete OAuth2 flow with
+// wrapped token response handling. It shows how to:
+//  1. Make HTTP request to token endpoint
+//  2. Parse wrapped response
+//  3. Extract and use the token
+func Example_oauth2WrappedResponse() {
+	// Simulate a wrapped token response from OAuth2 server
+	wrappedResp := []byte(`{
+		"code": 0,
+		"msg": "success",
+		"data": {
+			"access_token": "access_123456",
+			"token_type": "Bearer",
+			"expires_in": 3600,
+			"refresh_token": "refresh_789012"
+		}
+	}`)
+
+	// Step 1: Parse the wrapper structure
+	var wrapped struct {
+		Code    int             `json:"code"`
+		Message string          `json:"msg"`
+		Data    json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(wrappedResp, &wrapped); err != nil {
+		fmt.Println("Parse error:", err)
+		return
+	}
+
+	// Step 2: Extract token from wrapped data
+	var token oauth2.Token
+	if err := json.Unmarshal(wrapped.Data, &token); err != nil {
+		fmt.Println("Token parse error:", err)
+		return
+	}
+
+	// Step 3: Use the token
+	fmt.Printf("Token acquired: %s %s\n", token.TokenType, token.AccessToken)
+	fmt.Printf("Expires in: 3600 seconds\n")
+	fmt.Printf("Refresh token available: %v\n", token.RefreshToken != "")
+
+	// Output:
+	// Token acquired: Bearer access_123456
+	// Expires in: 3600 seconds
+	// Refresh token available: true
+}
+
+// Example_customTokenSource demonstrates a complete custom TokenSource implementation
+// that fetches tokens from an OAuth2 server with wrapped responses.
+func Example_customTokenSource() {
+	// wrappedTokenSource is a custom implementation that handles wrapped responses
+	type wrappedTokenSource struct {
+		clientID     string
+		clientSecret string
+		tokenURL     string
+		username     string
+		password     string
+		httpClient   *http.Client
+	}
+
+	// Implement Token() method
+	_ = func(w *wrappedTokenSource) (*oauth2.Token, error) {
+		// Step 1: Prepare the request
+		form := url.Values{}
+		form.Set("grant_type", "password")
+		form.Set("client_id", w.clientID)
+		form.Set("client_secret", w.clientSecret)
+		form.Set("username", w.username)
+		form.Set("password", w.password)
+
+		req, _ := http.NewRequest("POST", w.tokenURL, strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		// Step 2: Send request
+		resp, err := w.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("request failed: %w", err)
+		}
+		defer resp.Body.Close()
+
+		// Step 3: Read response body
+		body, _ := io.ReadAll(resp.Body)
+
+		// Step 4: Parse wrapped response
+		var wrapped struct {
+			Code int             `json:"code"`
+			Data json.RawMessage `json:"data"`
+		}
+		if err := json.Unmarshal(body, &wrapped); err == nil && wrapped.Data != nil {
+			var token oauth2.Token
+			json.Unmarshal(wrapped.Data, &token)
+			return &token, nil
+		}
+
+		// Standard response
+		var token oauth2.Token
+		json.Unmarshal(body, &token)
+		return &token, nil
+	}
+
+	fmt.Println("Custom TokenSource with HTTP request configured")
+
+	// Output:
+	// Custom TokenSource with HTTP request configured
+}
+
+// extractWrappedToken extracts the oauth2.Token from a wrapped response.
+// This is an example helper function showing how to handle OAuth2 servers
+// that wrap token responses in an additional layer.
+func extractWrappedToken(body []byte) (*oauth2.Token, error) {
+	// Try to parse as wrapped response first
+	var wrapped struct {
+		Code    int             `json:"code"`
+		Message string          `json:"msg"`
+		Data    json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(body, &wrapped); err == nil && wrapped.Data != nil {
+		// Successfully parsed as wrapped response, now parse the data
+		var token oauth2.Token
+		if err := json.Unmarshal(wrapped.Data, &token); err != nil {
+			return nil, fmt.Errorf("failed to parse token from wrapped data: %w", err)
+		}
+		return &token, nil
+	}
+
+	// Not wrapped, try to parse as standard oauth2.Token
+	var token oauth2.Token
+	if err := json.Unmarshal(body, &token); err != nil {
+		return nil, fmt.Errorf("failed to parse token response: %w", err)
+	}
+	if token.AccessToken == "" {
+		return nil, fmt.Errorf("token response missing access_token")
+	}
+	return &token, nil
+}
+
+// Example_extractWrappedToken demonstrates how to handle OAuth2 servers that wrap
+// token responses in an additional layer.
+//
+// Some OAuth2 servers return wrapped responses like:
+//
+//	{
+//	  "code": 0,
+//	  "msg": "success",
+//	  "data": {
+//	    "access_token": "...",
+//	    "token_type": "Bearer",
+//	    "expires_in": 3600
+//	  }
+//	}
+func Example_extractWrappedToken() {
+	// wrappedTokenResponse is the structure for wrapped responses
+	type wrappedTokenResponse struct {
+		Code    int             `json:"code"`
+		Message string          `json:"msg"`
+		Data    json.RawMessage `json:"data"`
+	}
+
+	// Example wrapped response
+	wrappedResp := []byte(`{
+		"code": 0,
+		"msg": "success",
+		"data": {
+			"access_token": "access_123456",
+			"token_type": "Bearer",
+			"expires_in": 3600,
+			"refresh_token": "refresh_789012"
+		}
+	}`)
+
+	// First, parse the wrapper to show the structure
+	var wrapped wrappedTokenResponse
+	if err := json.Unmarshal(wrappedResp, &wrapped); err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Use the helper function to extract the token
+	token, err := extractWrappedToken(wrappedResp)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	fmt.Printf("Wrapper Code: %d\n", wrapped.Code)
+	fmt.Printf("Wrapper Message: %s\n", wrapped.Message)
+	fmt.Printf("Access Token: %s\n", token.AccessToken)
+	fmt.Printf("Token Type: %s\n", token.TokenType)
+	fmt.Printf("Has Refresh Token: %v\n", token.RefreshToken != "")
+
+	// Output:
+	// Wrapper Code: 0
+	// Wrapper Message: success
+	// Access Token: access_123456
+	// Token Type: Bearer
+	// Has Refresh Token: true
 }

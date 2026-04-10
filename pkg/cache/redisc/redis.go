@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/redis/go-redis/v9"
 	"github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/cache/lfu"
@@ -48,14 +49,16 @@ func WithRedisClient(cli redis.UniversalClient) Option {
 //
 // Cache Configuration:
 //
-//	driverName: redis # optional, default is redis
-//	addrs: # required
-//	db: 0
-//	... # other redis configuration
-//	local: # local cache,optional, default is nil
-//	  size: 1000 # optional, default is 1000
-//	  samples: 100000 # optional, default is 100000
-//	  ttl: 1m # optional, default is 1m
+//		driverName: redis # optional, default is redis
+//	 # required
+//		addrs:
+//	   - localhost:6379
+//		db: 0
+//		... # other redis configuration
+//		local: # local cache,optional, default is nil
+//		  size: 1000 # optional, default is 1000
+//		  samples: 100000 # optional, default is 100000
+//		  ttl: 1m # optional, default is 1m
 //
 // If you want to register to cache manager, set a `driverName` in configuration.
 func New(cfg *conf.Configuration, opts ...Option) (*Redisc, error) {

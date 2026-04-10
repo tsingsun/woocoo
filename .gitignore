@@ -21,4 +21,9 @@
 go.work
 go.work.sum
 
+# AI
+
+.qwen
+.claude
+
 test/tmp/

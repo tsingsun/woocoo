@@ -49,7 +49,7 @@ func (mr *MockResponse) MarshalGQL(w io.Writer) {
 }
 
 var gqlSchemaMock = graphql.ExecutableSchemaMock{
-	ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
+	ComplexityFunc: func(ctx context.Context, typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
 		panic("mock out the Complexity method")
 	},
 	ExecFunc: func(ctx context.Context) graphql.ResponseHandler {
@@ -194,7 +194,7 @@ web:
 		r := httptest.NewRequest("GET", "/graphql", nil)
 		w := httptest.NewRecorder()
 		g2.ServeHTTP(w, r)
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 	})
 }
 
@@ -266,7 +266,7 @@ web:
 	srv := web.New(web.WithConfiguration(cfg.Sub("web")),
 		web.WithMiddlewareNewFunc(graphqlHandlerName, Middleware))
 	mock := graphql.ExecutableSchemaMock{
-		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
+		ComplexityFunc: func(ctx context.Context, typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
 			panic("mock out the Complexity method")
 		},
 		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {
@@ -410,7 +410,7 @@ web:
 		}
 	`})
 	mock := graphql.ExecutableSchemaMock{
-		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
+		ComplexityFunc: func(ctx context.Context, typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
 			panic("mock out the Complexity method")
 		},
 		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {
@@ -569,7 +569,7 @@ web:
 		}
 	`})
 	mock := graphql.ExecutableSchemaMock{
-		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
+		ComplexityFunc: func(ctx context.Context, typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
 			panic("mock out the Complexity method")
 		},
 		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {
@@ -648,7 +648,7 @@ web:
 		}
 	`})
 	mock := graphql.ExecutableSchemaMock{
-		ComplexityFunc: func(typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
+		ComplexityFunc: func(ctx context.Context, typeName string, fieldName string, childComplexity int, args map[string]any) (int, bool) {
 			panic("mock out the Complexity method")
 		},
 		ExecFunc: func(ctx context.Context) graphql.ResponseHandler {

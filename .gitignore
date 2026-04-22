@@ -4,6 +4,14 @@
 .idea
 .run
 
+# AI agent directories
+.qwen
+.cursor
+.roo
+.claude
+.cursorrules
+.gemini
+
 # Binaries for programs and plugins
 *.exe
 *.exe~

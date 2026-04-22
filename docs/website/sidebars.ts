@@ -11,41 +11,51 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
  Create as many sidebars as you want.
  */
 const sidebars: SidebarsConfig = {
-  // But you can create a sidebar manually
   md: [
     'guide',
     {
       type: 'category',
-      label: '启航',
-      items: ['quickstart'],
+      label: '快速开始',
+      items: ['install', 'quickstart'],
       collapsed: false,
     },
     {
       type: 'category',
-      label: '乘风',
-      items: ['install','conf',
-        {
-          type: 'category',
-          label: 'Web',
-          items: ['gin','graphql']
-        },
-        'grpc','db','cache'
-      ],
+      label: '核心概念',
+      items: ['conf', 'logger'],
       collapsed: false,
     },
     {
       type: 'category',
-      label: '破浪',
-      items: ['logger','otel','micro','pkg-gds'],
+      label: 'Web 开发',
+      items: ['gin', 'graphql'],
       collapsed: false,
     },
     {
       type: 'category',
-      label: '沙滩美女',
-      items: ["codegen","cli-init","oasgen","utils"],
+      label: '微服务',
+      items: ['grpc', 'micro'],
+      collapsed: false,
+    },
+    {
+      type: 'category',
+      label: '数据与缓存',
+      items: ['db', 'cache'],
+      collapsed: false,
+    },
+    {
+      type: 'category',
+      label: '可观测性',
+      items: ['otel'],
+      collapsed: false,
+    },
+    {
+      type: 'category',
+      label: '工具链',
+      items: ['cli-init', 'codegen', 'oasgen', 'utils', 'pkg-gds'],
       collapsed: false,
     }
   ],
 };
 
-module.exports = sidebars;
+export default sidebars;

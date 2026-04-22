@@ -20,7 +20,13 @@ function HomepageHeader() {
           <Link
             className="button button--secondary button--lg"
             to="/docs/guide">
-            立即体验
+            快速开始
+          </Link>
+          <Link
+            className="button button--primary button--lg"
+            style={{marginLeft: '1rem'}}
+            to="https://github.com/tsingsun/woocoo">
+            GitHub ⭐
           </Link>
         </div>
       </div>

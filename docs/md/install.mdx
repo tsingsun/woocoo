@@ -1,73 +1,240 @@
 ---
-title: 安装
+title: 安装指南
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-## Golang
+# 安装指南
 
-可以依照[go官方站点](https://golang.google.cn/doc/install)上的详细安装说明来安装,最低要求是1.18版本. 
+本指南将帮助你安装 WooCoo 及其相关工具。
 
-## 环境设置
+## 系统要求
 
-```shell
-# 大陆用户配置加载镜像
-go env -w GOPROXY=https://goproxy.cn,direct
-```
+### Go 版本
 
-## WoCoCli安装
+WooCoo 需要 **Go 1.24** 或更高版本。
 
-WoCo(音:我可) cli是一个代码工具,希望能在项目开发中,减少一些重复的工作,提高开发效率.
-
-```shell
-go install github.com/tsingsun/woocoo/cmd/woco@main
-```
-
-安装位置在`$GOPATH/bin`目录下,请确保该目录在`$PATH`或环境变量中.
-
-安装验证:
-```shell
-woco -v
-```
-
-## GRPC相关工具
-
-[protoc](https://github.com/protocolbuffers/protobuf)以及[protoc-gen-go](https://github.com/protocolbuffers/protobuf-go),
-可以通过各平台工具安装.
-
-<Tabs defaultValue="mac"
-  values={[
-    {label: 'mac', value: 'mac'},
-    {label: 'windows', value: 'windows'},
+<Tabs groupId="os" defaultValue="linux" values={[
+  {label: 'Linux / macOS', value: 'linux'},
+  {label: 'Windows', value: 'windows'},
 ]}>
-  <TabItem value="mac">
-    ```console
-    brew install protobuf
+  <TabItem value="linux">
+    使用 [gvm](https://github.com/moovweb/gvm) 或从 [Go 官网](https://golang.org/doc/install) 下载最新版本：
+    
+    ```bash
+    # 使用 gvm 安装
+    gvm install go1.24
+    gvm use go1.24 --default
     ```
   </TabItem>
   <TabItem value="windows">
-    ```console
+    从 [Go 官网](https://golang.org/doc/install) 下载 Windows 安装包并安装。
+  </TabItem>
+</Tabs>
+
+### 验证安装
+
+```bash
+go version
+# 输出: go version go1.24.x linux/amd64
+```
+
+## 环境配置
+
+### Go 模块代理（中国大陆用户）
+
+```bash
+# 设置 Go 模块代理
+go env -w GOPROXY=https://goproxy.cn,direct
+
+# 启用 Go 模块
+go env -w GO111MODULE=on
+```
+
+## 安装 WooCoo
+
+### 1. 创建项目
+
+```bash
+# 创建项目目录
+mkdir myapp && cd myapp
+
+# 初始化 Go 模块
+go mod init myapp
+
+# 安装 WooCoo
+go get github.com/tsingsun/woocoo
+```
+
+### 2. 验证安装
+
+创建一个简单的测试文件 `main.go`：
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/tsingsun/woocoo"
+)
+
+func main() {
+	app := woocoo.New()
+	fmt.Println("WooCoo 版本:", app.Version())
+}
+```
+
+运行测试：
+
+```bash
+go run main.go
+```
+
+## 安装 WoCo CLI 工具
+
+WoCo（音：我可）是 WooCoo 的命令行工具，用于代码生成和项目初始化。
+
+```bash
+# 安装 CLI
+go install github.com/tsingsun/woocoo/cmd/woco@latest
+
+# 验证安装
+woco -v
+```
+
+:::tip 提示
+安装后，确保 `$GOPATH/bin` 或 `%GOPATH%\bin` 在你的 `PATH` 环境变量中。
+:::
+
+### 使用 CLI 快速开始
+
+```bash
+# 创建包含完整功能的项目
+woco init -p myapp -m web,grpc,cache,otel -t ./myapp
+
+# 进入项目
+cd myapp
+```
+
+## 安装 gRPC 工具（可选）
+
+如果你需要开发 gRPC 微服务，需要安装 Protocol Buffers 编译器。
+
+### 安装 protoc
+
+<Tabs groupId="os" defaultValue="mac" values={[
+  {label: 'macOS', value: 'mac'},
+  {label: 'Linux', value: 'linux'},
+  {label: 'Windows', value: 'windows'},
+]}>
+  <TabItem value="mac">
+    ```bash
+    brew install protobuf
+    ```
+  </TabItem>
+  <TabItem value="linux">
+    ```bash
+    # Ubuntu/Debian
+    apt-get install -y protobuf-compiler
+    
+    # 或从源码安装
+    PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+    curl -LO $PB_REL/download/v25.1/protoc-25.1-linux-x86_64.zip
+    unzip protoc-25.1-linux-x86_64.zip -d $HOME/.local
+    export PATH="$PATH:$HOME/.local/bin"
+    ```
+  </TabItem>
+  <TabItem value="windows">
+    ```powershell
+    # 使用 Chocolatey
     choco install protobuf
+    
+    # 或手动安装
+    # 从 https://github.com/protocolbuffers/protobuf/releases 下载 protoc-x.x.x-win64.zip
+    # 解压并将 bin 目录添加到 PATH
     ```
   </TabItem>
 </Tabs>
 
-下载安装 `protoc-gen-go`
+验证安装：
 
-```console
+```bash
+protoc --version
+# 输出: libprotoc 25.1
+```
+
+### 安装 Go gRPC 插件
+
+```bash
+# 安装 protoc-gen-go
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+
+# 安装 protoc-gen-go-grpc
 go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 ```
 
-## 其他
+## 安装可选依赖
 
-woocoo同样有为了接入优秀的环境生态而开发配套的客户端.根据需要安装对应的环境.
+根据你的项目需求，可能需要安装以下服务：
 
-- mysql
-- redis
-- polaris,etcd
+| 服务 | 用途 | 安装指南 |
+|------|------|----------|
+| **MySQL** | 关系型数据库 | [MySQL 下载](https://dev.mysql.com/downloads/) |
+| **Redis** | 缓存和会话 | [Redis 下载](https://redis.io/download) |
+| **etcd** | 服务注册与发现 | [etcd 安装](https://etcd.io/docs/v3.5/install/) |
+| **Polaris** | 服务治理 | [Polaris 安装](https://polarismesh.cn/docs/) |
 
-WooCoo建议使用ORM工具,在这边就不去讨论ORM的好坏了.
+### 使用 Docker 快速安装
 
-我们推荐使用[ent](https://entgo.io/),因为它是一个非常优秀的ORM工具,并且支持GRPC,可以很好的和WooCoo配合使用.
+```bash
+# Redis
+docker run -d -p 6379:6379 --name redis redis:latest
+
+# MySQL
+docker run -d -p 3306:3306 --name mysql -e MYSQL_ROOT_PASSWORD=root mysql:8.0
+
+# etcd
+docker run -d -p 2379:2379 -p 2380:2380 --name etcd quay.io/coreos/etcd:latest
+```
+
+## 推荐的 ORM 工具
+
+WooCoo 推荐使用 [Ent ORM](https://entgo.io/) 作为数据库 ORM 工具：
+
+```bash
+# 安装 Ent CLI
+go install entgo.io/ent/cmd/ent@latest
+
+# 验证安装
+ent --version
+```
+
+Ent 提供了强大的代码生成和 gRPC 集成，与 WooCoo 完美配合。
+
+## 下一步
+
+安装完成后，前往 [快速开始](./quickstart) 创建你的第一个 WooCoo 应用！
+
+## 常见问题
+
+### Q: 如何更新 WooCoo 到最新版本？
+
+```bash
+go get -u github.com/tsingsun/woocoo@latest
+go mod tidy
+```
+
+### Q: 如何更新 WoCo CLI？
+
+```bash
+go install github.com/tsingsun/woocoo/cmd/woco@latest
+```
+
+### Q: 安装时遇到网络问题？
+
+确保已配置 Go 模块代理：
+
+```bash
+go env -w GOPROXY=https://goproxy.cn,direct
+```

@@ -4,19 +4,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/polarismesh/polaris-go"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/serviceconfig"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/polarismesh/polaris-go"
 	"github.com/polarismesh/polaris-go/api"
 	"github.com/polarismesh/polaris-go/pkg/model"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/balancer/base"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/serviceconfig"
 )
 
 var (

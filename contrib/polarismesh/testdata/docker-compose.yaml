@@ -1,0 +1,18 @@
+name: polaris
+services:
+  polaris:
+    image: polarismesh/polaris-standalone:latest
+    privileged: true
+    ports:
+      - "8080:8080"   # Console
+      - "8090:8090"   # API HTTP
+      - "8091:8091"   # Service gRPC (SDK)
+      - "8093:8093"   # Config gRPC
+      - "8100:8100"   # Limiter HTTP
+      - "8101:8101"   # Limiter gRPC
+      - "8761:8761"   # Eureka
+      - "8848:8848"   # Nacos HTTP
+      - "9090:9090"   # Prometheus
+      - "9091:9091"   # Pushgateway
+      - "9848:9848"   # Nacos gRPC
+      - "15010:15010" # xDS v3

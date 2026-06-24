@@ -85,7 +85,6 @@ func (b balancerBuilder) ParseConfig(cfgStr json.RawMessage) (serviceconfig.Load
 	if err := json.Unmarshal(cfgStr, cfg); err != nil {
 		return nil, err
 	}
-
 	return cfg, nil
 }
 
@@ -159,6 +158,7 @@ func (pb *pickerBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
 		readySCs: scs,
 		response: &copyR,
 		options:  pb.balancer.options,
+		lbCfg:    pb.balancer.lbCfg,
 	}
 }
 
@@ -247,8 +247,10 @@ func (pnp *polarisNamingPicker) buildLoadBalanceRequest(info balancer.PickInfo,
 		lbPolicyValues := md.Get(polarisRequestLbPolicy)
 		lbHashKeyValues := md.Get(polarisRequestLbHashKey)
 
-		if len(lbPolicyValues) > 0 && len(lbHashKeyValues) > 0 {
+		if len(lbPolicyValues) > 0 {
 			lbReq.LbPolicy = lbPolicyValues[0]
+		}
+		if len(lbHashKeyValues) > 0 {
 			lbReq.HashKey = []byte(lbHashKeyValues[0])
 		}
 	}

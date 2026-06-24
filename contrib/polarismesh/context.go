@@ -1,13 +1,16 @@
 package polarismesh
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/polarismesh/polaris-go/api"
 	"github.com/polarismesh/polaris-go/pkg/config"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"sync"
+	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -84,4 +87,21 @@ func InitPolarisContext(cnf *conf.Configuration) (ctx api.SDKContext, err error)
 		ctx, err = api.InitContextByConfig(pConfig)
 	}
 	return
+}
+
+// WithLoadBalance sets the load balancing policy and optional hash key for the request.
+// The policy and hash key will override the values from LBConfig.
+//
+// Examples:
+//
+//	// Use weighted random (default)
+//	ctx = polarismesh.WithLoadBalance(ctx, config.DefaultLoadBalancerWR)
+//	// Use ring hash with a specific hash key
+//	ctx = polarismesh.WithLoadBalance(ctx, config.DefaultLoadBalancerRingHash, "user-id-123")
+func WithLoadBalance(ctx context.Context, policy string, hashKey ...string) context.Context {
+	pairs := []string{polarisRequestLbPolicy, policy}
+	if len(hashKey) > 0 && hashKey[0] != "" {
+		pairs = append(pairs, polarisRequestLbHashKey, hashKey[0])
+	}
+	return metadata.AppendToOutgoingContext(ctx, pairs...)
 }

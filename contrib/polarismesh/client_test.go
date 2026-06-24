@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/polarismesh/polaris-go/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tsingsun/woocoo/pkg/conf"
@@ -419,6 +420,109 @@ func TestClientRouting(t *testing.T) {
 				assert.Equal(t, expectedMsg, resp.Message)
 			}
 		}
+	})
+}
+
+func TestClientRouting_LoadBalance(t *testing.T) {
+	b, err := os.ReadFile("./testdata/routing.yaml")
+	require.NoError(t, err)
+	cnf := conf.NewFromBytes(b)
+
+	// Initialize polaris environment (same as TestClientRouting)
+	api := meshapi(t)
+	api.getToken().routings()
+
+	drv, ok := registry.GetRegistry(scheme)
+	require.True(t, ok)
+	rb, err := drv.ResolverBuilder(cnf.Sub("routingRegistry"))
+	require.NoError(t, err)
+
+	// Start 3 servers, each returns its address as response message
+	var lbSrvs []*grpcx.Server
+	lbConfigs := []string{"grpcLB1", "grpcLB2", "grpcLB3"}
+	for _, name := range lbConfigs {
+		cfg := cnf.Sub(name)
+		addr := cfg.String("server.addr")
+		srv := grpcx.New(grpcx.WithConfiguration(cfg), grpcx.WithGrpcOption(
+			grpc.ChainUnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+				return &helloworld.HelloReply{Message: addr}, nil
+			}),
+		))
+		helloworld.RegisterGreeterServer(srv.Engine(), &helloworld.Server{})
+		lbSrvs = append(lbSrvs, srv)
+	}
+	// Start all servers in goroutines (Run is blocking)
+	for _, srv := range lbSrvs {
+		go srv.Run()
+	}
+	// Wait for all instances to register with polaris
+	time.Sleep(3 * time.Second)
+
+	// Re-register the "polaris" balancer with a valid SDKContext (after servers init the registry)
+	balancer.Register(NewBalancerBuilder(scheme, getPolarisContext(t, "routing")))
+
+	// Subtest 1: grpcx.NewClient with serviceConfig lb_policy=ringHash
+	// If lbCfg is nil, ringHash won't be set and consistent hashing won't work
+	t.Run("config_ringHash", func(t *testing.T) {
+		cli, err := grpcx.NewClient(cnf.Sub("grpcLBClient"))
+		require.NoError(t, err)
+		conn, err := cli.Dial("")
+		require.NoError(t, err)
+		defer conn.Close()
+
+		gcli := helloworld.NewGreeterClient(conn)
+		var firstAddr string
+		for i := 0; i < 10; i++ {
+			resp, err := gcli.SayHello(context.Background(), &helloworld.HelloRequest{Name: "lb"})
+			require.NoError(t, err)
+			if i == 0 {
+				firstAddr = resp.Message
+			} else {
+				assert.Equal(t, firstAddr, resp.Message,
+					"config ringHash should consistently hit same instance, got %q and %q", firstAddr, resp.Message)
+			}
+		}
+	})
+
+	// Subtest 2: WithLoadBalance overrides config's ringHash to weightedRandom
+	t.Run("override_to_weightedRandom", func(t *testing.T) {
+		cli, err := grpcx.NewClient(cnf.Sub("grpcLBClient"))
+		require.NoError(t, err)
+		conn, err := cli.Dial("")
+		require.NoError(t, err)
+		defer conn.Close()
+
+		gcli := helloworld.NewGreeterClient(conn)
+		addrs := make(map[string]bool)
+		for i := 0; i < 100; i++ {
+			ctx := WithLoadBalance(context.Background(), config.DefaultLoadBalancerWR)
+			resp, err := gcli.SayHello(ctx, &helloworld.HelloRequest{Name: "lb"})
+			require.NoError(t, err)
+			addrs[resp.Message] = true
+		}
+		assert.Equal(t, 3, len(addrs), "WithLoadBalance should override config ringHash to weightedRandom")
+	})
+
+	// Subtest 3: use grpc.Dial + WithLoadBalance (tests direct API without config)
+	t.Run("WithLoadBalance_policy_only", func(t *testing.T) {
+		target := fmt.Sprintf("%s://lbTest/helloworld.Greeter?route=false", scheme)
+		conn, err := grpc.Dial(target,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithResolvers(rb),
+			grpc.WithDefaultServiceConfig(`{"loadBalancingConfig":[{"polaris":{}}]}`),
+		)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		gcli := helloworld.NewGreeterClient(conn)
+		addrs := make(map[string]bool)
+		for i := 0; i < 100; i++ {
+			ctx := WithLoadBalance(context.Background(), config.DefaultLoadBalancerWR)
+			resp, err := gcli.SayHello(ctx, &helloworld.HelloRequest{Name: "lb"})
+			require.NoError(t, err)
+			addrs[resp.Message] = true
+		}
+		assert.Equal(t, 3, len(addrs), "WithLoadBalance weightedRandom should hit all instances")
 	})
 }
 

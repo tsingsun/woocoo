@@ -4,11 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	"reflect"
+	"go.opentelemetry.io/otel/trace/noop"
 )
+
+var noopSpan = noop.Span{}
 
 // Attribute returns an attribute.KeyValue from a key and any value.
 func Attribute(key string, value any) attribute.KeyValue {
@@ -71,7 +75,7 @@ func Attribute(key string, value any) attribute.KeyValue {
 
 // Inject set cross-cutting concerns from the Context into the carrier.
 func Inject(ctx context.Context) propagation.TextMapCarrier {
-	if globalConfig == nil || globalConfig.Tracer == nil {
+	if globalConfig == nil || globalConfig.TextMapPropagator == nil {
 		return nil
 	}
 	// 将跟踪信息注入消息
@@ -83,9 +87,10 @@ func Inject(ctx context.Context) propagation.TextMapCarrier {
 
 // StartWith starts a span and extracts the carrier info to the parameter context.
 // Note: parameter 'ctx' is the parent context need extract.
+// Returns a noop span if globalConfig is not initialized, allowing callers to safely call span.End() without nil checks.
 func StartWith(ctx context.Context, spanName string, carrier propagation.TextMapCarrier, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
 	if globalConfig == nil || globalConfig.Tracer == nil {
-		return ctx, nil
+		return ctx, noopSpan
 	}
 	if carrier != nil {
 		propagator := globalConfig.TextMapPropagator

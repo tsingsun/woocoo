@@ -72,17 +72,17 @@ func TestStartWith(t *testing.T) {
 		}
 	}()
 
-	t.Run("returns ctx and nil when globalConfig or tracer is nil", func(t *testing.T) {
+	t.Run("returns noop span when globalConfig or tracer is nil", func(t *testing.T) {
 		globalConfig = nil
 		ctx := context.Background()
 		newCtx, span := StartWith(ctx, "test", nil)
-		assert.Equal(t, ctx, newCtx)
-		assert.Nil(t, span)
+		assert.NotNil(t, span)
+		assert.Equal(t, ctx, newCtx) // returns original ctx
 
 		globalConfig = &Config{Tracer: nil}
 		newCtx, span = StartWith(ctx, "test", nil)
+		assert.NotNil(t, span)
 		assert.Equal(t, ctx, newCtx)
-		assert.Nil(t, span)
 	})
 
 	t.Run("extracts context from carrier and starts span", func(t *testing.T) {

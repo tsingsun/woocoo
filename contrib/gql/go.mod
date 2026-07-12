@@ -10,7 +10,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/tsingsun/woocoo v0.7.1
 	github.com/vektah/gqlparser/v2 v2.5.23
-	go.uber.org/zap v1.26.0
+	go.uber.org/zap v1.28.0
 )
 
 require (

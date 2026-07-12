@@ -3,12 +3,13 @@ package woocoo
 import (
 	"context"
 	"errors"
-	"golang.org/x/sync/errgroup"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/log"
@@ -123,6 +124,7 @@ func (a *App) Sync() error {
 	return nil
 }
 
+// miniServer is an adapter that wraps start/stop functions into a Server.
 type miniServer struct {
 	start func(ctx context.Context) error
 	stop  func(ctx context.Context) error
@@ -136,7 +138,9 @@ func (s *miniServer) Stop(ctx context.Context) error {
 	return s.stop(ctx)
 }
 
-// MiniApp is a simple way to run multi goroutine base on simplified App.
+// MiniApp provides a simplified way to run multiple servers with lifecycle management.
+// It returns a run function that starts all servers and a stop function to gracefully shut them down.
+// If timeout > 0, the context will be cancelled after the timeout duration.
 func MiniApp(ctx context.Context, timeout time.Duration, servers ...Server) (run, stop func() error) {
 	app := &App{}
 	if timeout > 0 {
@@ -150,7 +154,63 @@ func MiniApp(ctx context.Context, timeout time.Duration, servers ...Server) (run
 	}, app.Stop
 }
 
-// GroupRun is a simple way to run multi goroutine with start and stop function base on simplified App.
-func GroupRun(ctx context.Context, timeout time.Duration, start, release func(ctx context.Context) error) (run, stop func() error) {
-	return MiniApp(ctx, timeout, &miniServer{start: start, stop: release})
+// Group implementation is derived from github.com/oklog/run (MIT License).
+// Copyright (c) 2017 Peter Bourgon
+// See https://github.com/oklog/run/blob/master/LICENSE for the full license.
+
+type actor struct {
+	execute   func() error
+	interrupt func(error)
+}
+
+// Group collects actors (functions) and runs them concurrently.
+// When one actor (function) returns, all actors are interrupted.
+// The zero value of a Group is useful.
+type Group struct {
+	actors []actor
+}
+
+// Add an actor (function) to the group. Each actor must be pre-emptable by an
+// interrupt function. That is, if interrupt is invoked, execute should return.
+// Also, it must be safe to call interrupt even after execute has returned.
+//
+// The first actor (function) to return interrupts all running actors.
+// The error is passed to the interrupt functions, and is returned by Run.
+func (g *Group) Add(execute func() error, interrupt func(error)) *Group {
+	g.actors = append(g.actors, actor{execute, interrupt})
+	return g
+}
+
+// Run all actors (functions) concurrently.
+// When the first actor returns, all others are interrupted.
+// Run only returns when all actors have exited.
+// Run returns the error returned by the first exiting actor.
+func (g *Group) Run() error {
+	if len(g.actors) == 0 {
+		return nil
+	}
+
+	// Run each actor.
+	errs := make(chan error, len(g.actors))
+	for _, a := range g.actors {
+		go func(a actor) {
+			errs <- a.execute()
+		}(a)
+	}
+
+	// Wait for the first actor to stop.
+	err := <-errs
+
+	// Signal all actors to stop.
+	for _, a := range g.actors {
+		a.interrupt(err)
+	}
+
+	// Wait for all actors to stop.
+	for i := 1; i < cap(errs); i++ {
+		<-errs
+	}
+
+	// Return the original error.
+	return err
 }

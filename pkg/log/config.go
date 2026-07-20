@@ -100,13 +100,13 @@ func NewConfig(cnf *conf.Configuration) (*Config, error) {
 
 // DefaultTimeEncoder serializes time.Time to a human-readable formatted string
 func DefaultTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-	s := t.Format("2006/01/02 15:04:05.000 -07:00")
 	if e, ok := enc.(*TextEncoder); ok {
-		for _, c := range []byte(s) {
-			e.buf.AppendByte(c)
-		}
+		// Use direct encoding for TextEncoder to avoid string allocation
+		e.encodeTimeDirect(t)
 		return
 	}
+	// Fallback for other encoders
+	s := t.Format("2006/01/02 15:04:05.000 -07:00")
 	enc.AppendString(s)
 }
 

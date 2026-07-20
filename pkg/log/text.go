@@ -250,7 +250,7 @@ func (enc *TextEncoder) AppendBool(val bool) {
 
 func (enc *TextEncoder) AppendByteString(val []byte) {
 	enc.addElementSeparator()
-	if !enc.needDoubleQuotes(string(val)) {
+	if !enc.needDoubleQuotesByteString(val) {
 		enc.safeAddByteString(val)
 		return
 	}
@@ -535,7 +535,7 @@ func (enc *TextEncoder) needDoubleQuotes(s string) bool {
 	if !enc.needQuotes {
 		return false
 	}
-	for i := 0; i < len(s); {
+	for i := 0; i < len(s); i++ {
 		b := s[i]
 		if b <= 0x20 {
 			return true
@@ -544,7 +544,25 @@ func (enc *TextEncoder) needDoubleQuotes(s string) bool {
 		case '\\', '"', '[', ']', '=':
 			return true
 		}
-		i++
+	}
+	return false
+}
+
+// needDoubleQuotesByteString is the []byte variant of needDoubleQuotes,
+// avoiding string(val) allocation.
+func (enc *TextEncoder) needDoubleQuotesByteString(b []byte) bool {
+	if !enc.needQuotes {
+		return false
+	}
+	for i := 0; i < len(b); i++ {
+		c := b[i]
+		if c <= 0x20 {
+			return true
+		}
+		switch c {
+		case '\\', '"', '[', ']', '=':
+			return true
+		}
 	}
 	return false
 }
@@ -625,4 +643,59 @@ func (enc *TextEncoder) encodeError(f zapcore.Field) {
 // String returns the encoded log message.
 func (enc *TextEncoder) String() string {
 	return enc.buf.String()
+}
+
+// writePadding appends n to buf with leading zeros to ensure width digits.
+func writePadding(buf *buffer.Buffer, n uint64, width int) {
+	// Max uint64 is 20 digits; 8 is enough for any time component
+	var digits [8]byte
+	i := len(digits)
+	for n >= 10 {
+		i--
+		digits[i] = byte(n%10) + '0'
+		n /= 10
+	}
+	i--
+	digits[i] = byte(n) + '0'
+	for i > 0 && len(digits)-i < width {
+		i--
+		digits[i] = '0'
+	}
+	buf.Write(digits[i:])
+}
+
+// encodeTimeDirect writes time directly to the buffer without intermediate
+// string allocation. Format: "2006/01/02 15:04:05.000 -07:00"
+func (enc *TextEncoder) encodeTimeDirect(t time.Time) {
+	// Date: YYYY/MM/DD
+	y, m, d := t.Date()
+	writePadding(enc.buf, uint64(y), 4)
+	enc.buf.AppendByte('/')
+	writePadding(enc.buf, uint64(m), 2)
+	enc.buf.AppendByte('/')
+	writePadding(enc.buf, uint64(d), 2)
+	enc.buf.AppendByte(' ')
+
+	// Time: HH:MM:SS.mmm
+	h, min, s := t.Clock()
+	writePadding(enc.buf, uint64(h), 2)
+	enc.buf.AppendByte(':')
+	writePadding(enc.buf, uint64(min), 2)
+	enc.buf.AppendByte(':')
+	writePadding(enc.buf, uint64(s), 2)
+	enc.buf.AppendByte('.')
+	writePadding(enc.buf, uint64(t.Nanosecond()/1e6), 3)
+	enc.buf.AppendByte(' ')
+
+	// Timezone: ±HH:MM
+	_, offset := t.Zone()
+	if offset < 0 {
+		enc.buf.AppendByte('-')
+		offset = -offset
+	} else {
+		enc.buf.AppendByte('+')
+	}
+	writePadding(enc.buf, uint64(offset/3600), 2)
+	enc.buf.AppendByte(':')
+	writePadding(enc.buf, uint64((offset%3600)/60), 2)
 }

@@ -128,6 +128,38 @@ func BenchmarkWc(b *testing.B) {
 	})
 }
 
+func BenchmarkTextEncoder(b *testing.B) {
+	b.Run("TextEncoder", func(b *testing.B) {
+		b.ReportAllocs()
+		ec := zap.NewProductionEncoderConfig()
+		enc := NewTextEncoder(ec, true, false, true)
+		core := zapcore.NewCore(enc, &logtest.Discarder{}, zap.DebugLevel)
+		logger := zap.New(core)
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				logger.Info(getMessage(0), fakeFields()...)
+			}
+		})
+	})
+}
+
+func BenchmarkConsoleEncoder(b *testing.B) {
+	b.Run("ConsoleEncoder", func(b *testing.B) {
+		b.ReportAllocs()
+		ec := zap.NewDevelopmentEncoderConfig()
+		enc := zapcore.NewConsoleEncoder(ec)
+		core := zapcore.NewCore(enc, &logtest.Discarder{}, zap.DebugLevel)
+		logger := zap.New(core)
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				logger.Info(getMessage(0), fakeFields()...)
+			}
+		})
+	})
+}
+
 func BenchmarkWcWithContext(b *testing.B) {
 	b.Logf("Logging with additional context at each log site.")
 	b.Run("woocoo", func(b *testing.B) {

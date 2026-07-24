@@ -1,6 +1,6 @@
 module github.com/tsingsun/woocoo
 
-go 1.24
+go 1.25.0
 
 require (
 	github.com/alicebob/miniredis/v2 v2.33.0
@@ -23,12 +23,12 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.26.0
-	golang.org/x/net v0.42.0
-	golang.org/x/oauth2 v0.27.0
-	golang.org/x/sync v0.16.0
-	golang.org/x/text v0.27.0
-	google.golang.org/grpc v1.65.0
-	google.golang.org/protobuf v1.36.9
+	golang.org/x/net v0.53.0
+	golang.org/x/oauth2 v0.36.0
+	golang.org/x/sync v0.20.0
+	golang.org/x/text v0.36.0
+	google.golang.org/grpc v1.82.1
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
@@ -69,10 +69,10 @@ require (
 	go.uber.org/goleak v1.2.1 // indirect
 	go.uber.org/mock v0.5.0 // indirect
 	golang.org/x/arch v0.20.0 // indirect
-	golang.org/x/crypto v0.40.0 // indirect
-	golang.org/x/mod v0.25.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/tools v0.34.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
+	golang.org/x/crypto v0.50.0 // indirect
+	golang.org/x/mod v0.34.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/tools v0.43.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

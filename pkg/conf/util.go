@@ -5,16 +5,19 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/hashicorp/go-envparse"
 	"log"
 	"net"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
+
+	"github.com/hashicorp/go-envparse"
 )
 
 var (
-	envRegexp       = regexp.MustCompile(`\${[ \w]+}`) // with space
+	// envRegexp matches ${VAR}, ${ VAR }, ${VAR:-default}, and \${VAR} (escaped literal).
+	envRegexp       = regexp.MustCompile(`\\?\$\{[ \t]*[A-Za-z_][A-Za-z0-9_.]*(?:[ \t]*:-[ \t]*[^}]*)?[ \t]*\}`)
 	defaultEnvFiles = []string{".env", ".env.local"}
 )
 
@@ -122,13 +125,40 @@ func TryLoadEnvFromFile(scan, mod string) {
 }
 
 // ParseEnv parse env value in src.
+//
+// Supported syntax:
+//   - ${VAR}          — replaced with env value, empty if not set
+//   - ${VAR:-default} — replaced with env value, or "default" if not set/empty
+//   - \${VAR}         — escaped, literal ${VAR} in output
+//
+// Variable names must start with [A-Za-z_], followed by [A-Za-z0-9_.].
 func ParseEnv(src []byte) []byte {
-	if !envRegexp.Match(src) {
+	if !bytes.Contains(src, []byte("${")) {
 		return src
 	}
-	return envRegexp.ReplaceAllFunc(src, func(s []byte) []byte {
-		name := s[2 : len(s)-1]
-		ev := os.Getenv(string(bytes.Trim(name, " ")))
-		return []byte(ev)
+	return envRegexp.ReplaceAllFunc(src, func(match []byte) []byte {
+		// \${...} → literal ${...}
+		if match[0] == '\\' {
+			return match[1:]
+		}
+		// strip ${ and }
+		inner := string(bytes.TrimSpace(match[2 : len(match)-1]))
+
+		name := inner
+		defVal := ""
+		hasDefault := false
+		if idx := strings.Index(inner, ":-"); idx >= 0 {
+			name = strings.TrimSpace(inner[:idx])
+			defVal = strings.TrimSpace(inner[idx+2:])
+			hasDefault = true
+		}
+
+		if val := os.Getenv(name); val != "" {
+			return []byte(val)
+		}
+		if hasDefault {
+			return []byte(defVal)
+		}
+		return nil
 	})
 }

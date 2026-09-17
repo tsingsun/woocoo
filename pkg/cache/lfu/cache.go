@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/vmihailenco/go-tinylfu"
+	"github.com/tsingsun/woocoo/pkg/cache/lfu/tinylfu"
 	"math/rand"
 	"reflect"
 	"sync"

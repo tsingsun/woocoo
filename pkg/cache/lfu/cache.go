@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/tsingsun/woocoo/pkg/cache"
-	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/pkg/cache/lfu/tinylfu"
 	"math/rand"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/dgraph-io/ristretto/v2"
+	"github.com/tsingsun/woocoo/pkg/cache"
+	"github.com/tsingsun/woocoo/pkg/conf"
 )
 
 const (
@@ -39,16 +40,24 @@ type Config struct {
 	Subsidiary bool `yaml:"subsidiary" json:"subsidiary"`
 }
 
-// TinyLFU is a cache implementation of TinyLFU algorithm. It forces the cache data to have an expiration time.
+// TinyLFU is a cache implementation backed by ristretto (TinyLFU algorithm).
+// It forces the cache data to have an expiration time.
 //
-// Default ttl is 1 minute.Notice that the ttl will be less the setting,
+// Default ttl is 1 minute. Notice that the ttl will be less than the setting,
 // randomly reduced by a value between 0 and the offset.
+//
+// Set/Get/Del/Has are eventually consistent (ristretto processes Sets asynchronously).
+// SetNX is synchronous — it blocks until the item is visible to Get.
 type TinyLFU struct {
 	Config
-	mu     sync.Mutex
-	rand   *rand.Rand
-	lfu    *tinylfu.T
 	offset time.Duration
+
+	// nxMu 保护 SetNX 的同步语义.
+	// ristretto 的 Set 是异步的, SetNX 需要 Get-then-Set 原子性,
+	// 通过 nxMu 序列化 + Wait() 确保 item 对后续 Get 立即可见.
+	// SetXX 不需要锁: 并发 Get 都看到 hit 后都执行 Set, 不违反"key 存在时才设置"的语义.
+	nxMu  sync.Mutex
+	lfu   *ristretto.Cache[string, any]
 
 	marshal   cache.MarshalFunc
 	unmarshal cache.UnmarshalFunc
@@ -75,13 +84,21 @@ func (c *TinyLFU) Apply(cnf *conf.Configuration) error {
 			return err
 		}
 	}
-	c.lfu = tinylfu.New(c.Size, c.Samples)
+	numCounters := int64(c.Samples)
+	if numCounters < 1 {
+		numCounters = 1
+	}
+	c.lfu, _ = ristretto.NewCache(&ristretto.Config[string, any]{
+		NumCounters:        numCounters,
+		MaxCost:            int64(c.Size),
+		BufferItems:        64,
+		IgnoreInternalCost: true,
+	})
 	return nil
 }
 
 func NewTinyLFU(cnf *conf.Configuration) (*TinyLFU, error) {
 	c := TinyLFU{
-		rand: rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec
 		Config: Config{
 			Samples:   defaultSamples,
 			Deviation: 10,
@@ -124,8 +141,6 @@ func (c *TinyLFU) GetInner(_ context.Context, key string, value any, raw bool) e
 	if value == nil {
 		return ErrValueReceiverNil
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	val, ok := c.lfu.Get(key)
 	if !ok {
@@ -169,9 +184,6 @@ func (c *TinyLFU) Set(ctx context.Context, key string, value any, opts ...cache.
 }
 
 func (c *TinyLFU) setOptions(_ context.Context, key string, value any, ttl time.Duration, opt *cache.Options) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	ttl = c.fixTTL(ttl, opt)
 
 	switch {
@@ -180,9 +192,16 @@ func (c *TinyLFU) setOptions(_ context.Context, key string, value any, ttl time.
 			return fmt.Errorf("setxx: key not exist:%s", key)
 		}
 	case opt.SetNX:
+		c.nxMu.Lock()
+		defer c.nxMu.Unlock()
 		if _, ok := c.lfu.Get(key); ok {
 			return fmt.Errorf("setnx key already exist:%s", key)
 		}
+		if err := c.setValue(key, value, ttl, opt.Raw); err != nil {
+			return err
+		}
+		c.lfu.Wait()
+		return nil
 	}
 	return c.setValue(key, value, ttl, opt.Raw)
 }
@@ -200,51 +219,47 @@ func (c *TinyLFU) fixTTL(ttl time.Duration, opt *cache.Options) time.Duration {
 	}
 	if c.offset > 0 {
 		if ttl >= c.TTL {
-			ttl += time.Duration(c.rand.Int63n(int64(c.offset)))
+			ttl += time.Duration(rand.Int63n(int64(c.offset)))
 		} else {
-			ttl += time.Duration(c.rand.Int63n(int64(ttl) / c.Deviation))
+			ttl += time.Duration(rand.Int63n(int64(ttl) / c.Deviation))
 		}
 	}
 	return ttl
 }
 
 func (c *TinyLFU) setValue(key string, value any, ttl time.Duration, raw bool) error {
-	exp := time.Time{}
-	if ttl != 0 {
-		exp = time.Now().Add(ttl)
-	}
 	if raw {
-		c.lfu.Set(&tinylfu.Item{Key: key, Value: value, ExpireAt: exp})
+		if ttl > 0 {
+			c.lfu.SetWithTTL(key, value, 1, ttl)
+		} else {
+			c.lfu.Set(key, value, 1)
+		}
 		return nil
 	}
 	v, err := c.marshal(value)
 	if err != nil {
 		return err
 	}
-	c.lfu.Set(&tinylfu.Item{Key: key, Value: v, ExpireAt: exp})
+	if ttl > 0 {
+		c.lfu.SetWithTTL(key, v, 1, ttl)
+	} else {
+		c.lfu.Set(key, v, 1)
+	}
 	return nil
 }
 
 // SetInner sets the value for the given key.ttl is the expiration time, if ttl is zero, the default ttl will be used.
 func (c *TinyLFU) SetInner(_ context.Context, key string, value any, ttl time.Duration, opt *cache.Options) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	ttl = c.fixTTL(ttl, opt)
 	return c.setValue(key, value, ttl, opt.Raw)
 }
 
 func (c *TinyLFU) Has(_ context.Context, key string) bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	_, ok := c.lfu.Get(key)
 	return ok
 }
 
 func (c *TinyLFU) Del(_ context.Context, key string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	c.lfu.Del(key)
 	return nil
 }
@@ -254,5 +269,11 @@ func (c *TinyLFU) IsNotFound(err error) bool {
 }
 
 func (c *TinyLFU) Clean() {
-	c.lfu = tinylfu.New(c.Size, c.Samples)
+	c.lfu.Clear()
+}
+
+// Wait blocks until all buffered Set operations have been applied.
+// This ensures a call to Set/SetInner will be visible to future calls to Get.
+func (c *TinyLFU) Wait() {
+	c.lfu.Wait()
 }

@@ -56,8 +56,8 @@ func WithRedisClient(cli redis.UniversalClient) Option {
 //		db: 0
 //		... # other redis configuration
 //		local: # local cache,optional, default is nil
-//		  size: 1000 # optional, default is 1000
-//		  samples: 100000 # optional, default is 100000
+//		  size: 1000 # optional, default is 100000
+//		  samples: 100000 # optional, default is size * 10
 //		  ttl: 1m # optional, default is 1m
 //
 // If you want to register to cache manager, set a `driverName` in configuration.

@@ -113,12 +113,12 @@ LFU缓存的TTL当做为二级缓存时是可额外配置,考虑到二级缓存�
 driverName: redis
 # 内存缓存配置
 local:
-  # 内存缓存容量,必须指定 > 1 
+  # 内存缓存容量,默认100000
   size: 100000
   # 过期时间,默认1分钟,如果Set方法未指定,则采用此过期时间
   ttl: 10m
-  # 内置的小型布隆过滤器的容量,默认100000
-  samples: 100000
+  # 频率统计窗口(每N次Get后重置),默认为size * 10
+  samples: 1000000
 # 以下为redis option配置,同store redis配置,可查询go-redis文档: 
 # 如果指定了 masterName 选项，则返回 FailoverClient 哨兵客户端。
 # 如果 Addrs 是2个以上的地址，则返回 ClusterClient 集群客户端。

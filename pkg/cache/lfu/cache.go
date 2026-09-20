@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	defaultTTL     = time.Minute
-	maxOffset      = 10 * time.Second
-	defaultSamples = 100000
+	defaultTTL  = time.Minute
+	maxOffset   = 10 * time.Second
+	defaultSize = 100000
 )
 
 var (
@@ -64,6 +64,12 @@ func (c *TinyLFU) Apply(cnf *conf.Configuration) error {
 	if err := cnf.Unmarshal(&c.Config); err != nil {
 		return err
 	}
+	if c.Size <= 0 {
+		c.Size = defaultSize
+	}
+	if c.Samples <= 0 {
+		c.Samples = c.Size * 10
+	}
 	if c.Subsidiary {
 		c.offset = c.TTL / time.Duration(c.Deviation)
 		if c.offset > maxOffset {
@@ -83,7 +89,6 @@ func NewTinyLFU(cnf *conf.Configuration) (*TinyLFU, error) {
 	c := TinyLFU{
 		rand: rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec
 		Config: Config{
-			Samples:   defaultSamples,
 			Deviation: 10,
 			TTL:       defaultTTL,
 		},
@@ -125,9 +130,9 @@ func (c *TinyLFU) GetInner(_ context.Context, key string, value any, raw bool) e
 		return ErrValueReceiverNil
 	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	val, ok := c.lfu.Get(key)
+	c.mu.Unlock()
+
 	if !ok {
 		return cache.ErrCacheMiss
 	}
@@ -169,6 +174,14 @@ func (c *TinyLFU) Set(ctx context.Context, key string, value any, opts ...cache.
 }
 
 func (c *TinyLFU) setOptions(_ context.Context, key string, value any, ttl time.Duration, opt *cache.Options) error {
+	if !opt.Raw {
+		v, err := c.marshal(value)
+		if err != nil {
+			return err
+		}
+		value = v
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -184,7 +197,13 @@ func (c *TinyLFU) setOptions(_ context.Context, key string, value any, ttl time.
 			return fmt.Errorf("setnx key already exist:%s", key)
 		}
 	}
-	return c.setValue(key, value, ttl, opt.Raw)
+
+	exp := time.Time{}
+	if ttl != 0 {
+		exp = time.Now().Add(ttl)
+	}
+	c.lfu.Set(&tinylfu.Item{Key: key, Value: value, ExpireAt: exp})
+	return nil
 }
 
 // skip remote cache is mean that only set local cache as not a subsidiary cache temporarily,
@@ -208,30 +227,26 @@ func (c *TinyLFU) fixTTL(ttl time.Duration, opt *cache.Options) time.Duration {
 	return ttl
 }
 
-func (c *TinyLFU) setValue(key string, value any, ttl time.Duration, raw bool) error {
-	exp := time.Time{}
-	if ttl != 0 {
-		exp = time.Now().Add(ttl)
-	}
-	if raw {
-		c.lfu.Set(&tinylfu.Item{Key: key, Value: value, ExpireAt: exp})
-		return nil
-	}
-	v, err := c.marshal(value)
-	if err != nil {
-		return err
-	}
-	c.lfu.Set(&tinylfu.Item{Key: key, Value: v, ExpireAt: exp})
-	return nil
-}
-
 // SetInner sets the value for the given key.ttl is the expiration time, if ttl is zero, the default ttl will be used.
 func (c *TinyLFU) SetInner(_ context.Context, key string, value any, ttl time.Duration, opt *cache.Options) error {
+	if !opt.Raw {
+		v, err := c.marshal(value)
+		if err != nil {
+			return err
+		}
+		value = v
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	ttl = c.fixTTL(ttl, opt)
-	return c.setValue(key, value, ttl, opt.Raw)
+	exp := time.Time{}
+	if ttl != 0 {
+		exp = time.Now().Add(ttl)
+	}
+	c.lfu.Set(&tinylfu.Item{Key: key, Value: value, ExpireAt: exp})
+	return nil
 }
 
 func (c *TinyLFU) Has(_ context.Context, key string) bool {
@@ -254,5 +269,7 @@ func (c *TinyLFU) IsNotFound(err error) bool {
 }
 
 func (c *TinyLFU) Clean() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.lfu = tinylfu.New(c.Size, c.Samples)
 }

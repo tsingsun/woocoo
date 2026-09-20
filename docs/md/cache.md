@@ -87,7 +87,7 @@ MyComponent{
 ### LFU缓存
 
 通过对比[基准测试](https://github.com/vmihailenco/go-cache-benchmark),
-我们选取了缓存命中率最高的[ristretto](https://github.com/dgraph-io/ristretto)(TinyLFU算法)
+我们选取了缓存命中率最高的[tinylru](https://github.com/vmihailenco/go-tinylfu)
 
 WithGroup: 由于已经是内存化的,Group设置差距不是特别大,如果独立使用,该选项无效.
 

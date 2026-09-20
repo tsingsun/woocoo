@@ -434,7 +434,6 @@ func TestCache_Op(t *testing.T) {
 				rc, rdb := initStandaloneRedisc(t)
 				want := ""
 				assert.NoError(t, rc.Set(context.Background(), "key", "123", cache.WithSkip(cache.SkipRemote)))
-				rc.local.Wait()
 				assert.NoError(t, rc.Get(context.Background(), "key", &want, cache.WithSkip(cache.SkipRemote)))
 				assert.Equal(t, "123", want)
 				assert.EqualValues(t, rc.stats.Hits, 0)
@@ -460,6 +459,7 @@ func TestCache_Op(t *testing.T) {
 				})
 				assert.NoError(t, rc.Get(ctx, "key", &want, cache.WithSkip(0)))
 				assert.Equal(t, "123", want)
+				assert.EqualValues(t, rc.stats.Hits, 0)
 				v, err := rdb.Get("key")
 				require.NoError(t, err)
 				assert.Equal(t, "123", v)
@@ -521,7 +521,6 @@ func TestCache_Op(t *testing.T) {
 				rc, rdb := initStandaloneRedisc(t)
 				ctx := context.Background()
 				assert.NoError(t, rc.Set(context.Background(), "key", "123", cache.WithRaw()))
-				rc.local.Wait()
 				want := ""
 				assert.True(t, rc.local.Has(context.TODO(), "key"), "local")
 				assert.True(t, rdb.Exists("key"), "remote")

@@ -1,16 +1,3 @@
-// Package lfu provides a TinyLFU cache implementation based on ristretto/v2.
-//
-// ristretto 异步机制: Set 操作将 item 发送到内部 setBuf channel(缓冲 32K),
-// 由单个 processItems goroutine 串行处理(TinyLFU 准入 + 写入 store).
-// Set 之后 Get 不一定能立即读到值, 需要强一致性时调用 Wait().
-//
-// 并发语义:
-//   - Set: 最终一致, 异步处理
-//   - SetNX: 强一致, nxMu 锁 + Wait() 保证 Get-then-Set 原子性
-//   - SetXX: 最终一致, 并发 Set 不违反 "key 存在时才设置" 语义
-//   - Del: 即时, 直接从 store 删除
-//
-// 配置建议: samples 应为预期最大 item 数的 10 倍, 默认 1000000.
 package lfu
 
 import (
@@ -28,11 +15,9 @@ import (
 )
 
 const (
-	defaultTTL         = time.Minute
-	maxOffset          = 10 * time.Second
-	defaultSize        = 100_000
-	defaultSamples     = 1_000_000
-	defaultBufferItems = 64
+	defaultTTL     = time.Minute
+	maxOffset      = 10 * time.Second
+	defaultSamples = 100000
 )
 
 var (
@@ -46,12 +31,7 @@ type Config struct {
 	// DriverName set it to register to cache manager.
 	DriverName string `yaml:"driverName" json:"driverName"`
 	Size       int    `yaml:"size" json:"size"`
-	// Samples is the number of frequency counters for TinyLFU admission policy.
-	// Defaults to 1000000 if not set. Should be ~10x expected max items for optimal hit ratio.
-	Samples int `yaml:"samples" json:"samples"`
-	// BufferItems determines the size of Get buffers.
-	// Defaults to 64 if not set.
-	BufferItems int64 `yaml:"bufferItems" json:"bufferItems"`
+	Samples    int    `yaml:"samples" json:"samples"`
 	// TTL is default to set item ttl, if you use no expired cache, this value is not used.
 	TTL       time.Duration `yaml:"ttl" json:"ttl"`
 	Deviation int64         `yaml:"deviation" json:"deviation"`
@@ -76,8 +56,8 @@ type TinyLFU struct {
 	// ristretto 的 Set 是异步的, SetNX 需要 Get-then-Set 原子性,
 	// 通过 nxMu 序列化 + Wait() 确保 item 对后续 Get 立即可见.
 	// SetXX 不需要锁: 并发 Get 都看到 hit 后都执行 Set, 不违反"key 存在时才设置"的语义.
-	nxMu sync.Mutex
-	lfu  *ristretto.Cache[string, any]
+	nxMu  sync.Mutex
+	lfu   *ristretto.Cache[string, any]
 
 	marshal   cache.MarshalFunc
 	unmarshal cache.UnmarshalFunc
@@ -104,22 +84,14 @@ func (c *TinyLFU) Apply(cnf *conf.Configuration) error {
 			return err
 		}
 	}
-	size := c.Size
-	if size < 1 {
-		size = defaultSize
-	}
 	numCounters := int64(c.Samples)
 	if numCounters < 1 {
-		numCounters = defaultSamples
-	}
-	bufferItems := c.BufferItems
-	if bufferItems < 1 {
-		bufferItems = defaultBufferItems
+		numCounters = 1
 	}
 	c.lfu, _ = ristretto.NewCache(&ristretto.Config[string, any]{
 		NumCounters:        numCounters,
-		MaxCost:            int64(size),
-		BufferItems:        bufferItems,
+		MaxCost:            int64(c.Size),
+		BufferItems:        64,
 		IgnoreInternalCost: true,
 	})
 	return nil
@@ -128,6 +100,7 @@ func (c *TinyLFU) Apply(cnf *conf.Configuration) error {
 func NewTinyLFU(cnf *conf.Configuration) (*TinyLFU, error) {
 	c := TinyLFU{
 		Config: Config{
+			Samples:   defaultSamples,
 			Deviation: 10,
 			TTL:       defaultTTL,
 		},

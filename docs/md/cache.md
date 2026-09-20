@@ -87,46 +87,7 @@ MyComponent{
 ### LFU缓存
 
 通过对比[基准测试](https://github.com/vmihailenco/go-cache-benchmark),
-我们选取了缓存命中率最高的[ristretto](https://github.com/dgraph-io/ristretto/v2)(TinyLFU算法)
-
-#### ristretto 异步机制
-
-ristretto 的 `Set` 操作是**异步**的: item 被发送到内部 `setBuf` channel(缓冲 32K),
-由单个 `processItems` goroutine 串行处理(TinyLFU 准入决策 + 写入 store)。
-这意味着 `Set` 之后 `Get` **不一定**能立即读到值。
-
-**需要强一致性的场景**(如 SetNX),调用 `Wait()` 阻塞直到所有排队的 Set 被处理完成:
-
-```go
-c.lfu.Set(key, value, 1)
-c.lfu.Wait()  // 阻塞直到 item 对 Get 可见
-```
-
-**普通读写不需要 Wait()** — 异步处理即可获得更高的吞吐量。
-
-#### 准入与淘汰策略
-
-- **TinyLFU 准入**: 用 Count-Min Sketch(4-bit 计数器)+ Bloom Filter 门控估算 key 的访问频率,
-  新 key 必须比缓存中随机采样的最弱候选更频繁才能进入
-- **Sampled LFU 淘汰**: 空间不足时,随机采样 5 个候选,淘汰频率最低的
-- **周期性衰减**: 累计 increment 达到 `NumCounters` 时,Bloom 清零 + CM Sketch 计数器减半,
-  防止历史数据永远主导决策
-
-#### 配置建议
-
-- `NumCounters`(配置项 `samples`): 默认 1000000, 每个计数器约占 3 字节内存
-- `MaxCost`(配置项 `size`): 缓存容量上限, 默认 100000
-- `BufferItems`: Get 缓冲区批次大小, 默认 64, 每攒满该数量个 Get 操作批量提交频率计数
-
-#### 并发语义
-
-| 操作 | 一致性 | 说明 |
-|------|--------|------|
-| Set | 最终一致 | 异步处理,Set 后 Get 不一定立即可见 |
-| Get | 即时 | 直接读 concurrent hashmap |
-| SetNX | 强一致 | nxMu 锁 + Wait() 保证 Get-then-Set 原子性 |
-| SetXX | 最终一致 | 并发 Get 都看到 hit 后都 Set 不违反语义 |
-| Del | 即时 | 直接从 store 删除,同时发 setBuf 清理 policy |
+我们选取了缓存命中率最高的[ristretto](https://github.com/dgraph-io/ristretto)(TinyLFU算法)
 
 WithGroup: 由于已经是内存化的,Group设置差距不是特别大,如果独立使用,该选项无效.
 
@@ -152,14 +113,12 @@ LFU缓存的TTL当做为二级缓存时是可额外配置,考虑到二级缓存�
 driverName: redis
 # 内存缓存配置
 local:
-  # 内存缓存容量, 默认 100000
+  # 内存缓存容量,必须指定 > 1 
   size: 100000
   # 过期时间,默认1分钟,如果Set方法未指定,则采用此过期时间
   ttl: 10m
-  # 频率计数器数量(TinyLFU NumCounters), 默认 1000000, 通常无需配置
-  # samples: 1000000
-  # Get 缓冲区批次大小, 默认 64, 通常无需配置
-  # bufferItems: 64
+  # 内置的小型布隆过滤器的容量,默认100000
+  samples: 100000
 # 以下为redis option配置,同store redis配置,可查询go-redis文档: 
 # 如果指定了 masterName 选项，则返回 FailoverClient 哨兵客户端。
 # 如果 Addrs 是2个以上的地址，则返回 ClusterClient 集群客户端。

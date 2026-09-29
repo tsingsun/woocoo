@@ -279,6 +279,65 @@ func TestTinyLFU_Get(t *testing.T) {
 	})
 }
 
+func TestTinyLFU_CleanupCron(t *testing.T) {
+	t.Run("valid cron expression", func(t *testing.T) {
+		c, err := NewTinyLFU(conf.NewFromStringMap(map[string]any{
+			"size":        "100",
+			"samples":     "1000",
+			"ttl":         "100ms",
+			"cleanupCron": "@every 50ms",
+		}))
+		require.NoError(t, err)
+		defer c.Close()
+
+		require.NotNil(t, c.cron)
+
+		// 设置 item
+		require.NoError(t, c.Set(context.Background(), "k1", "v1"))
+
+		// 等待 TTL 过期 + cron 触发
+		time.Sleep(200 * time.Millisecond)
+
+		// 过期 item 应已被后台清理
+		var v string
+		err = c.Get(context.Background(), "k1", &v, cache.WithRaw())
+		assert.ErrorIs(t, err, cache.ErrCacheMiss)
+	})
+
+	t.Run("invalid cron expression", func(t *testing.T) {
+		_, err := NewTinyLFU(conf.NewFromStringMap(map[string]any{
+			"size":        "100",
+			"samples":     "1000",
+			"cleanupCron": "invalid-cron",
+		}))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid cleanup cron expression")
+	})
+
+	t.Run("empty cron no scheduler", func(t *testing.T) {
+		c, err := NewTinyLFU(conf.NewFromStringMap(map[string]any{
+			"size":    "100",
+			"samples": "1000",
+		}))
+		require.NoError(t, err)
+		assert.Nil(t, c.cron)
+	})
+
+	t.Run("close stops scheduler", func(t *testing.T) {
+		c, err := NewTinyLFU(conf.NewFromStringMap(map[string]any{
+			"size":        "100",
+			"samples":     "1000",
+			"cleanupCron": "@every 10ms",
+		}))
+		require.NoError(t, err)
+
+		// Close 应停止 cron
+		c.Close()
+		// 再次 Close 不应 panic
+		c.Close()
+	})
+}
+
 func TestTinyLFU_Set(t *testing.T) {
 	t.Run("setInner", func(t *testing.T) {
 		local, err := NewTinyLFU(conf.NewFromStringMap(map[string]any{

@@ -19,6 +19,7 @@ require (
 	github.com/knadh/koanf/v2 v2.3.0
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/redis/go-redis/v9 v9.7.3
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.11.1
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	go.uber.org/multierr v1.11.0

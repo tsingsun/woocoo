@@ -168,6 +168,21 @@ func (t *T) Del(key string) {
 	}
 }
 
+// Cleanup removes all expired items from the cache.
+// It returns the number of items removed.
+func (t *T) Cleanup() int {
+	now := time.Now()
+	var count int
+	for _, val := range t.data {
+		item := val.Value.(*Item)
+		if !item.ExpireAt.IsZero() && now.After(item.ExpireAt) {
+			t.del(val)
+			count++
+		}
+	}
+	return count
+}
+
 func (t *T) del(val *list.Element) {
 	item := val.Value.(*Item)
 	delete(t.data, item.Key)
@@ -211,4 +226,11 @@ func (t *SyncT) Del(key string) {
 	t.mu.Lock()
 	t.t.Del(key)
 	t.mu.Unlock()
+}
+
+func (t *SyncT) Cleanup() int {
+	t.mu.Lock()
+	n := t.t.Cleanup()
+	t.mu.Unlock()
+	return n
 }

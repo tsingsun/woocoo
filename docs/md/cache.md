@@ -96,8 +96,34 @@ WithRaw指示了即是否进行序列化处理.需要自行注意数据安全.�
 
 LFU缓存的TTL当做为二级缓存时是可额外配置,考虑到二级缓存的作用为只是为了短时间的缓存,因此不建议设置过长的时间.如以下场景:
 
-1. 防止缓存击穿: 由于空值也会被存储,可缓解该问题, 
+1. 防止缓存击穿: 由于空值也会被存储,可缓解该问题,
 2. 提高整体缓存性能.
+
+#### 过期数据后台清理
+
+默认情况下,过期数据仅在访问时惰性删除.如果需要在后台主动清理过期数据,可通过 `cleanupCron` 配置 cron 表达式:
+
+```yaml
+local:
+  size: 100000
+  ttl: 10m
+  # 后台清理 cron 表达式,空值表示不启用(默认)
+  cleanupCron: "@every 1m"
+```
+
+cron 表达式支持秒级精度(6字段),常用语法:
+
+- `@every 1m` - 每分钟
+- `@hourly`, `@daily` - 预设
+- `0 */5 * * * *` - 每5分钟
+- `0 0 2,14 * * *` - 每天凌晨2点和下午2点
+
+使用 `Close()` 方法可停止后台清理调度器(可选,不调用不会阻塞程序退出):
+
+```go
+lfu, _ := lfu.NewTinyLFU(cnf)
+defer lfu.Close()
+```
 
 ## Redis缓存
 
@@ -119,6 +145,8 @@ local:
   ttl: 10m
   # 频率统计窗口(每N次Get后重置),默认为size * 10
   samples: 1000000
+  # 后台清理过期数据的cron表达式,空值表示不启用(默认)
+  cleanupCron: "@every 1m"
 # 以下为redis option配置,同store redis配置,可查询go-redis文档: 
 # 如果指定了 masterName 选项，则返回 FailoverClient 哨兵客户端。
 # 如果 Addrs 是2个以上的地址，则返回 ClusterClient 集群客户端。

@@ -4,13 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/tsingsun/woocoo/pkg/cache"
-	"github.com/tsingsun/woocoo/pkg/conf"
-	"github.com/tsingsun/woocoo/pkg/cache/lfu/tinylfu"
 	"math/rand"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/robfig/cron/v3"
+	"github.com/tsingsun/woocoo/pkg/cache"
+	"github.com/tsingsun/woocoo/pkg/cache/lfu/tinylfu"
+	"github.com/tsingsun/woocoo/pkg/conf"
 )
 
 const (
@@ -37,6 +39,10 @@ type Config struct {
 	// Subsidiary indicate whether the cache is a subsidiary cache,
 	// if true, the cache will not be registered to cache manager and ttl will be the max ttl.
 	Subsidiary bool `yaml:"subsidiary" json:"subsidiary"`
+	// CleanupCron is the cron expression for background cleanup of expired items.
+	// Empty means no background cleanup (expired items are only removed on access).
+	// Examples: "@every 1m", "0 */5 * * * *" (every 5 minutes), "0 0 2 * * *" (daily at 2am).
+	CleanupCron string `yaml:"cleanupCron" json:"cleanupCron"`
 }
 
 // TinyLFU is a cache implementation of TinyLFU algorithm. It forces the cache data to have an expiration time.
@@ -49,6 +55,7 @@ type TinyLFU struct {
 	rand   *rand.Rand
 	lfu    *tinylfu.T
 	offset time.Duration
+	cron   *cron.Cron
 
 	marshal   cache.MarshalFunc
 	unmarshal cache.UnmarshalFunc
@@ -82,6 +89,17 @@ func (c *TinyLFU) Apply(cnf *conf.Configuration) error {
 		}
 	}
 	c.lfu = tinylfu.New(c.Size, c.Samples)
+	if c.CleanupCron != "" {
+		c.cron = cron.New(cron.WithSeconds())
+		if _, err := c.cron.AddFunc(c.CleanupCron, func() {
+			c.mu.Lock()
+			c.lfu.Cleanup()
+			c.mu.Unlock()
+		}); err != nil {
+			return fmt.Errorf("invalid cleanup cron expression: %w", err)
+		}
+		c.cron.Start()
+	}
 	return nil
 }
 
@@ -272,4 +290,11 @@ func (c *TinyLFU) Clean() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.lfu = tinylfu.New(c.Size, c.Samples)
+}
+
+// Close stops the background cleanup cron scheduler if running.
+func (c *TinyLFU) Close() {
+	if c.cron != nil {
+		c.cron.Stop()
+	}
 }

@@ -129,6 +129,81 @@ func randWord() string {
 	return string(buf)
 }
 
+func TestCleanup(t *testing.T) {
+	c := tinylfu.New(100, 1000)
+
+	// 设置 3 个已过期 item 和 2 个未过期 item
+	for i := 0; i < 3; i++ {
+		c.Set(&tinylfu.Item{
+			Key:      fmt.Sprintf("expired-%d", i),
+			Value:    i,
+			ExpireAt: time.Now().Add(-time.Second),
+		})
+	}
+	for i := 0; i < 2; i++ {
+		c.Set(&tinylfu.Item{
+			Key:      fmt.Sprintf("valid-%d", i),
+			Value:    i,
+			ExpireAt: time.Now().Add(time.Hour),
+		})
+	}
+
+	n := c.Cleanup()
+	assert.Equal(t, 3, n)
+
+	// 已过期 item 应被清除
+	for i := 0; i < 3; i++ {
+		_, ok := c.Get(fmt.Sprintf("expired-%d", i))
+		assert.False(t, ok)
+	}
+	// 未过期 item 应保留
+	for i := 0; i < 2; i++ {
+		v, ok := c.Get(fmt.Sprintf("valid-%d", i))
+		assert.True(t, ok)
+		assert.Equal(t, i, v)
+	}
+
+	// 再次清理应返回 0
+	n = c.Cleanup()
+	assert.Equal(t, 0, n)
+}
+
+func TestCleanupNoExpire(t *testing.T) {
+	c := tinylfu.New(100, 1000)
+
+	// 无 TTL 的 item 不应被清理
+	for i := 0; i < 5; i++ {
+		c.Set(&tinylfu.Item{
+			Key:   fmt.Sprintf("key-%d", i),
+			Value: i,
+		})
+	}
+
+	n := c.Cleanup()
+	assert.Equal(t, 0, n)
+
+	// 所有 item 应保留
+	for i := 0; i < 5; i++ {
+		_, ok := c.Get(fmt.Sprintf("key-%d", i))
+		assert.True(t, ok)
+	}
+}
+
+func TestSyncTCleanup(t *testing.T) {
+	c := tinylfu.NewSync(100, 1000)
+
+	c.Set(&tinylfu.Item{Key: "expired", Value: 1, ExpireAt: time.Now().Add(-time.Second)})
+	c.Set(&tinylfu.Item{Key: "valid", Value: 2, ExpireAt: time.Now().Add(time.Hour)})
+
+	n := c.Cleanup()
+	assert.Equal(t, 1, n)
+
+	_, ok := c.Get("expired")
+	assert.False(t, ok)
+	_, ok = c.Get("valid")
+	assert.True(t, ok)
+}
+
 func TestAddAlreadyInCache(t *testing.T) {
 	c := tinylfu.New(100, 10000)
 

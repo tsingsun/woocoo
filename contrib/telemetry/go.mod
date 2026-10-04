@@ -1,6 +1,6 @@
 module github.com/tsingsun/woocoo/contrib/telemetry
 
-go 1.23.0
+go 1.25
 
 require (
 	github.com/gin-gonic/gin v1.10.0

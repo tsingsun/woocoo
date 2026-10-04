@@ -33,15 +33,19 @@ clog.Info("hello world1")
 
 ```yaml
 log:
-  disableTimestamp: false # encoder text 时,是否显示时间戳
-  disableErrorVerbose: false # encoder text 时,是否显示错误详情
+  disableTimestamp: false # 是否禁用时间戳
+  disableErrorVerbose: false # 是否禁用错误详细信息
   callerSkip: 1 # 跳过的调用层级
+  # 异步日志配置,启用后日志写入通过 channel 异步发送,减少 I/O 阻塞
+  # 程序退出前需调用 Sync() 确保日志刷出
+  # async:
+  #   channelBuffer: 1024
   # 单日志组件,不需要复杂日志记录时一般采用sole
   cores:
     - level: debug
       disableCaller: true
       disableStacktrace: true
-      encoding: json #json console text 三种格式
+      encoding: json #json console 两种格式
       encoderConfig:
         timeEncoder: iso8601 # 默认值
       # outputPaths 日志输出路径,支持stdout,stderr,文件路径

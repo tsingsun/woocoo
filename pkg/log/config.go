@@ -52,6 +52,10 @@ type Config struct {
 	WithTraceID bool `json:"withTraceID" yaml:"withTraceID"`
 	// TraceIDKey is the key used to store the trace ID. defaults to "trace_id".
 	TraceIDKey string `json:"traceIDKey" yaml:"traceIDKey"`
+	// Async enables asynchronous log writing. When enabled, log entries are
+	// sent to a background worker via a channel, reducing I/O blocking.
+	// Call Sync() before exit to flush pending entries.
+	Async *AsyncConfig `json:"async" yaml:"async"`
 	callerSkip int
 	useRotate  bool
 	basedir    string
@@ -100,12 +104,6 @@ func NewConfig(cnf *conf.Configuration) (*Config, error) {
 
 // DefaultTimeEncoder serializes time.Time to a human-readable formatted string
 func DefaultTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-	if e, ok := enc.(*TextEncoder); ok {
-		// Use direct encoding for TextEncoder to avoid string allocation
-		e.encodeTimeDirect(t)
-		return
-	}
-	// Fallback for other encoders
 	s := t.Format("2006/01/02 15:04:05.000 -07:00")
 	enc.AppendString(s)
 }
@@ -139,16 +137,6 @@ func (c *Config) fixZapConfig(zc *zap.Config) error {
 // Multi Zap Config not means multi loggers. It collects all zap cores and build a zap.Logger.
 func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 	once.Do(func() {
-		// register encoder
-		encoder := buildTextEncoder(c)
-		// text encode
-		err = zap.RegisterEncoder("text", func(zapcore.EncoderConfig) (zapcore.Encoder, error) {
-			return encoder, nil
-		})
-		if err != nil {
-			panic(err)
-		}
-
 		// RegisterSink
 		if c.useRotate {
 			err := zap.RegisterSink(rotateSchema, func(u *url.URL) (zap.Sink, error) {
@@ -196,7 +184,11 @@ func (c *Config) BuildZap(opts ...zap.Option) (zl *zap.Logger, err error) {
 		if err != nil {
 			return nil, err
 		}
-		cores = append(cores, tmpzl.Core())
+		core := tmpzl.Core()
+		if c.Async != nil {
+			core = NewAsyncCore(core, c.Async.ChannelBuffer)
+		}
+		cores = append(cores, core)
 		if i == 0 {
 			copts = c.buildZapOptions(&zc)
 		}

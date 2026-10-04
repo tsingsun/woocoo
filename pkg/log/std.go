@@ -54,7 +54,6 @@ func (w *Writer) Check(bs []byte) (lvl zapcore.Level, miss bool, msgIndex int) {
 	}
 	return
 }
-
 // Write writes the provided bytes to the underlying logger at the configured
 // log level and returns the length of the bytes.
 //

@@ -337,28 +337,6 @@ func TestConfig_BuildZap(t *testing.T) {
 	}
 }
 
-func TestTextEncode(t *testing.T) {
-	var cfgStr = `
-development: true
-log:
-  disableTimestamp: true
-  disableErrorVerbose: true
-  cores:
-    - level: debug
-      disableCaller: true
-      disableStacktrace: true
-      encoding: text
-`
-	cfg := conf.NewFromBytes([]byte(cfgStr)).Load()
-	got, err := NewConfig(cfg.Sub("log"))
-	if err != nil {
-		t.Error(err)
-	}
-	assert.True(t, got.DisableTimestamp)
-	assert.True(t, got.DisableErrorVerbose)
-	assert.Equal(t, "text", got.ZapConfigs[0].Encoding)
-}
-
 func lineCounter(r io.Reader) (int, error) {
 	buf := make([]byte, 32*1024)
 	count := 0

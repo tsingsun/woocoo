@@ -14,8 +14,8 @@ import (
 var (
 	global          *Logger
 	globalComponent ComponentLogger
-	compoenetMu     sync.RWMutex
-	components      = map[string]*component{}
+	components      sync.Map
+	globalSugar     *zap.SugaredLogger
 )
 
 func init() {
@@ -54,15 +54,21 @@ type Logger struct {
 	contextLogger ContextLogger
 	// level of zap cores
 	logLevels []zap.AtomicLevel
+	// sugar caches the SugaredLogger to avoid per-call allocation
+	sugar *zap.SugaredLogger
 }
 
 // New create an Instance from zap
 func New(zl *zap.Logger) *Logger {
-	return &Logger{
+	l := &Logger{
 		Logger:        zl,
 		contextLogger: &DefaultContextLogger{},
 		TraceIDKey:    TraceIDKey,
 	}
+	if zl != nil {
+		l.sugar = zl.Sugar()
+	}
+	return l
 }
 
 func InitGlobalLogger() *Logger {
@@ -86,13 +92,16 @@ func Global() ComponentLogger {
 // AsGlobal set the Logger as global logger
 func (l *Logger) AsGlobal() *Logger {
 	global = l
+	globalSugar = l.Sugar()
 	globalComponent.SetLogger(l)
 	// reset component,don't reset user defined
-	for _, cp := range components {
+	components.Range(func(_, value any) bool {
+		cp := value.(*component)
 		if cp.useGlobal {
 			cp.SetLogger(l)
 		}
-	}
+		return true
+	})
 	zap.ReplaceGlobals(global.Logger)
 	return global
 }
@@ -113,6 +122,7 @@ func (l *Logger) Apply(cfg *conf.Configuration) {
 		l.logLevels[i] = zc.Level
 	}
 	l.Logger = zl
+	l.sugar = zl.Sugar()
 	l.WithTraceID = config.WithTraceID
 	if config.TraceIDKey != "" {
 		l.TraceIDKey = config.TraceIDKey
@@ -136,6 +146,7 @@ func (l *Logger) SetLevel(lvl string) error {
 func (l *Logger) With(fields ...zap.Field) *Logger {
 	clone := *l
 	clone.Logger = l.Logger.With(fields...)
+	clone.sugar = clone.Logger.Sugar()
 	return &clone
 }
 
@@ -144,6 +155,7 @@ func (l *Logger) With(fields ...zap.Field) *Logger {
 func (l *Logger) WithOptions(opts ...zap.Option) *Logger {
 	clone := *l
 	clone.Logger = l.Logger.WithOptions(opts...)
+	clone.sugar = clone.Logger.Sugar()
 	return &clone
 }
 
@@ -160,6 +172,14 @@ func (l *Logger) ContextLogger() ContextLogger {
 // SetContextLogger set contextLogger field,if you use the contextLogger,can set or override it.
 func (l *Logger) SetContextLogger(f ContextLogger) {
 	l.contextLogger = f
+}
+
+// Sugar returns the cached SugaredLogger to avoid per-call allocation.
+func (l *Logger) Sugar() *zap.SugaredLogger {
+	if l.sugar == nil {
+		l.sugar = l.Logger.Sugar()
+	}
+	return l.sugar
 }
 
 // Ctx returns a new logger with the context.
@@ -183,72 +203,72 @@ func Sync() error {
 
 // Debug uses fmt.Sprint to construct and log a message.
 func Debug(args ...any) {
-	global.Logger.Sugar().Debug(args...)
+	globalSugar.Debug(args...)
 }
 
 // Info uses fmt.Sprint to construct and log a message.
 func Info(args ...any) {
-	global.Logger.Sugar().Info(args...)
+	globalSugar.Info(args...)
 }
 
 // Warn uses fmt.Sprint to construct and log a message.
 func Warn(args ...any) {
-	global.Logger.Sugar().Warn(args...)
+	globalSugar.Warn(args...)
 }
 
 // Error uses fmt.Sprint to construct and log a message.
 func Error(args ...any) {
-	global.Logger.Sugar().Error(args...)
+	globalSugar.Error(args...)
 }
 
 // DPanic uses fmt.Sprint to construct and log a message. In development, the
 // logger then panics. (See DPanicLevel for details.)
 func DPanic(args ...any) {
-	global.Logger.Sugar().DPanic(args...)
+	globalSugar.DPanic(args...)
 }
 
 // Panic uses fmt.Sprint to construct and log a message, then panics.
 func Panic(args ...any) {
-	global.Logger.Sugar().Panic(args...)
+	globalSugar.Panic(args...)
 }
 
 // Fatal uses fmt.Sprint to construct and log a message, then calls os.Exit.
 func Fatal(args ...any) {
-	global.Logger.Sugar().Fatal(args...)
+	globalSugar.Fatal(args...)
 }
 
 // Debugf uses fmt.Sprintf to log a templated message.
 func Debugf(template string, args ...any) {
-	global.Logger.Sugar().Debugf(template, args...)
+	globalSugar.Debugf(template, args...)
 }
 
 // Infof uses fmt.Sprintf to log a templated message.
 func Infof(template string, args ...any) {
-	global.Logger.Sugar().Infof(template, args...)
+	globalSugar.Infof(template, args...)
 }
 
 // Warnf uses fmt.Sprintf to log a templated message.
 func Warnf(template string, args ...any) {
-	global.Logger.Sugar().Warnf(template, args...)
+	globalSugar.Warnf(template, args...)
 }
 
 // Errorf uses fmt.Sprintf to log a templated message.
 func Errorf(template string, args ...any) {
-	global.Logger.Sugar().Errorf(template, args...)
+	globalSugar.Errorf(template, args...)
 }
 
 // DPanicf uses fmt.Sprintf to log a templated message. In development, the
 // logger then panics. (See DPanicLevel for details.)
 func DPanicf(template string, args ...any) {
-	global.Logger.Sugar().DPanicf(template, args...)
+	globalSugar.DPanicf(template, args...)
 }
 
 // Panicf uses fmt.Sprintf to log a templated message, then panics.
 func Panicf(template string, args ...any) {
-	global.Logger.Sugar().Panicf(template, args...)
+	globalSugar.Panicf(template, args...)
 }
 
 // Fatalf uses fmt.Sprintf to log a templated message, then calls os.Exit.
 func Fatalf(template string, args ...any) {
-	global.Logger.Sugar().Fatalf(template, args...)
+	globalSugar.Fatalf(template, args...)
 }

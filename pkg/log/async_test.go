@@ -91,7 +91,8 @@ func TestAsyncCore_SyncFlushes(t *testing.T) {
 }
 
 func TestAsyncCore_ViaConfig(t *testing.T) {
-	var cfgStr = `
+	t.Run("explicit-set", func(t *testing.T) {
+		var cfgStr = `
 cores:
   - level: debug
     disableCaller: true
@@ -99,11 +100,26 @@ cores:
 async:
   channelBuffer: 512
 `
-	cfg := conf.NewFromBytes([]byte(cfgStr))
-	c, err := NewConfig(cfg)
-	require.NoError(t, err)
-	require.NotNil(t, c.Async)
-	assert.Equal(t, 512, c.Async.ChannelBuffer)
+		cfg := conf.NewFromBytes([]byte(cfgStr))
+		c, err := NewConfig(cfg)
+		require.NoError(t, err)
+		require.NotNil(t, c.Async)
+		assert.Equal(t, 512, c.Async.ChannelBuffer)
+	})
+	t.Run("empty-set", func(t *testing.T) {
+		var cfgStr = `
+cores:
+  - level: debug
+    disableCaller: true
+    disableStacktrace: true
+async:
+
+`
+		cfg := conf.NewFromBytes([]byte(cfgStr))
+		c, err := NewConfig(cfg)
+		require.NoError(t, err)
+		assert.Nil(t, c.Async)
+	})
 }
 
 func TestAsyncCore_AsyncIsFaster(t *testing.T) {

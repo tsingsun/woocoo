@@ -67,6 +67,7 @@ func (a *App) RegisterServer(servers ...Server) {
 // Run returns when all Server have exited.
 // Run returns the first non-nil error (if any) from them.
 func (a *App) Run() error {
+	defer a.Sync()
 	eg, ctx := errgroup.WithContext(a.ctx)
 	wg := sync.WaitGroup{}
 	for _, srv := range a.opts.servers {

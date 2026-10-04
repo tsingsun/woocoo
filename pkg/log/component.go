@@ -4,7 +4,6 @@ import (
 	"context"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"sync"
 )
 
 // ComponentLogger is sample and base using for component that also carries a context.Context. It uses the global logger.
@@ -65,10 +64,8 @@ func WithContextLogger() GetComponentLoggerOption {
 //
 // The logger will be lazy set up,Using the global logger by default.
 func Component(name string, fields ...zap.Field) ComponentLogger {
-	compoenetMu.Lock()
-	defer compoenetMu.Unlock()
-	if cData, ok := components[name]; ok {
-		return cData
+	if v, ok := components.Load(name); ok {
+		return v.(*component)
 	}
 	c := &component{
 		name:          name,
@@ -76,7 +73,9 @@ func Component(name string, fields ...zap.Field) ComponentLogger {
 		useGlobal:     true,
 	}
 	c.Init()
-	components[name] = c
+	if v, loaded := components.LoadOrStore(name, c); loaded {
+		return v.(*component)
+	}
 	return c
 }
 
@@ -146,26 +145,6 @@ func (c *component) Ctx(ctx context.Context) *LoggerWithCtx {
 	return lc
 }
 
-// loggerWithCtxPool
-var (
-	loggerWithCtxPool = sync.Pool{
-		New: func() any {
-			return &LoggerWithCtx{}
-		},
-	}
-	GetLoggerWithCtx = func(ctx context.Context, l *Logger) *LoggerWithCtx {
-		lc := loggerWithCtxPool.Get().(*LoggerWithCtx)
-		lc.ctx = ctx
-		lc.l = l
-		return lc
-	}
-	PutLoggerWithCtx = func(lc *LoggerWithCtx) {
-		lc.ctx = nil
-		lc.l = nil
-		loggerWithCtxPool.Put(lc)
-	}
-)
-
 // LoggerWithCtx is a wrapper for Logger that also carries a context.Context.
 type LoggerWithCtx struct {
 	ctx context.Context
@@ -211,11 +190,10 @@ func (c *LoggerWithCtx) Log(lvl zapcore.Level, msg string, fields []zap.Field) {
 }
 
 func (c *LoggerWithCtx) logFields(ctx context.Context, lvl zapcore.Level, msg string, fields []zap.Field) {
-	defer PutLoggerWithCtx(c)
 	c.l.contextLogger.LogFields(c.l, ctx, lvl, msg, fields)
 }
 
-// NewLoggerWithCtx get a logger with context from pool
+// NewLoggerWithCtx creates a new LoggerWithCtx.
 func NewLoggerWithCtx(ctx context.Context, l *Logger) *LoggerWithCtx {
-	return GetLoggerWithCtx(ctx, l)
+	return &LoggerWithCtx{ctx: ctx, l: l}
 }

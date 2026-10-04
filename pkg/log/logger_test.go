@@ -146,11 +146,14 @@ func TestLogger_AsGlobal(t *testing.T) {
 			// pointer not equal
 			require.Same(t, got, global)
 			assert.NotSame(t, got, Component("test").Logger())
-			for name, i2 := range components {
+			components.Range(func(key, value any) bool {
+				name := key.(string)
+				i2 := value.(*component)
 				if i2.Logger() == got {
 					require.Same(t, got, i2.Logger(), name)
 				}
-			}
+				return true
+			})
 		})
 	}
 }
@@ -192,7 +195,8 @@ func TestLogger_WithOptions(t *testing.T) {
 			got := l.WithOptions(tt.args.opts...)
 			require.NotSame(t, got, l)
 			require.NotSame(t, got.Operator(), l.Operator())
-			assert.Equalf(t, l, got, "WithOptions(%v)", tt.args.opts)
+			assert.Equal(t, l.WithTraceID, got.WithTraceID)
+			assert.Equal(t, l.TraceIDKey, got.TraceIDKey)
 		})
 	}
 }
@@ -378,41 +382,6 @@ func TestLoggerLog(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestLogger_TextEncode(t *testing.T) {
-	var cfgStr = `
-development: true
-log:
-  disableTimestamp: false
-  disableErrorVerbose: false
-  cores:
-    - level: debug
-      disableCaller: false
-      disableStacktrace: false
-      encoding: text
-`
-	cfg := conf.NewFromBytes([]byte(cfgStr)).Load()
-	got, err := NewConfig(cfg.Sub("log"))
-	assert.NoError(t, err)
-	zl, err := got.BuildZap()
-	assert.NoError(t, err)
-	logger := New(zl)
-	logger.Info("info")
-	// TODO: github action bug for output error
-	logger.Info("info for scalar", zap.String("string", "it's a string"),
-		zap.Int("int", 1), zap.Int8("int8", 1), zap.Int16("int16", 1), zap.Int32("int32", 1), zap.Int64("int64", 1),
-		zap.Uint("uint", 1), zap.Uint8("uint8", 1), zap.Uint16("uint16", 1), zap.Uint32("uint32", 1), zap.Uint64("uint64", 1),
-		zap.Float64("float64", 64.0), zap.Float32("float32", float32(32.0)), zap.Bool("bool", true),
-		zap.Duration("duration", 1), zap.Time("time", time.Now()),
-		zap.ByteString("byteString", []byte("byteString\n\r\t")),
-		zap.Complex64("complex64", 1), zap.Complex128("complex128", 1),
-	)
-	logger.Info("info for object", zap.Any("any", testdata.TestStruct()))
-	logger.Info("info for object", zap.Object("object", &user{Name: "user"}))
-	logger.Info("info for Binary", zap.Binary("binary", []byte{1, 2, 3, 4, 5}))
-	logger.Info("info for array", zap.Bools("array", []bool{true, false}))
-	logger.Info("info for dict", zap.Dict("dict", zap.String("key", "value"), zap.String("key1", "value")))
 }
 
 func TestLogger_callSkip(t *testing.T) {

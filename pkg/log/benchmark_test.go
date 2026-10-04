@@ -128,22 +128,6 @@ func BenchmarkWc(b *testing.B) {
 	})
 }
 
-func BenchmarkTextEncoder(b *testing.B) {
-	b.Run("TextEncoder", func(b *testing.B) {
-		b.ReportAllocs()
-		ec := zap.NewProductionEncoderConfig()
-		enc := NewTextEncoder(ec, true, false, true)
-		core := zapcore.NewCore(enc, &logtest.Discarder{}, zap.DebugLevel)
-		logger := zap.New(core)
-		b.ResetTimer()
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
-				logger.Info(getMessage(0), fakeFields()...)
-			}
-		})
-	})
-}
-
 func BenchmarkConsoleEncoder(b *testing.B) {
 	b.Run("ConsoleEncoder", func(b *testing.B) {
 		b.ReportAllocs()
@@ -169,6 +153,34 @@ func BenchmarkWcWithContext(b *testing.B) {
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
 				global.Ctx(context.Background()).Info(getMessage(0), fakeFields()...)
+			}
+		})
+	})
+}
+
+func BenchmarkPackageLevelInfo(b *testing.B) {
+	b.Run("PackageLevelInfo", func(b *testing.B) {
+		b.ReportAllocs()
+		newWcLogger(zap.DebugLevel)
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				Info(getMessage(0), "key", "value", "int", 42)
+			}
+		})
+	})
+}
+
+func BenchmarkComponentLog(b *testing.B) {
+	b.Run("ComponentLog", func(b *testing.B) {
+		b.ReportAllocs()
+		newWcLogger(zap.DebugLevel)
+		comp := Component("bench")
+		fields := fakeFields()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				comp.Info(getMessage(0), fields...)
 			}
 		})
 	})

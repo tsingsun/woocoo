@@ -144,6 +144,46 @@ func TestAsyncCore_AsyncIsFaster(t *testing.T) {
 	t.Logf("sync: %v, async: %v", syncElapsed, asyncElapsed)
 }
 
+func TestAsyncCore_SyncMultipleTimes(t *testing.T) {
+	logdata := &logtest.Buffer{}
+	ec := zap.NewProductionEncoderConfig()
+	enc := zapcore.NewJSONEncoder(ec)
+	core := zapcore.NewCore(enc, logdata, zap.DebugLevel)
+	asyncCore := NewAsyncCore(core, 256)
+
+	logger := zap.New(asyncCore)
+	logger.Info("before sync", zap.String("key", "value"))
+
+	// first Sync
+	require.NoError(t, logger.Sync())
+	assert.Contains(t, logdata.String(), "before sync")
+
+	// second Sync should not panic or block
+	require.NoError(t, logger.Sync())
+
+	// third Sync for good measure
+	require.NoError(t, logger.Sync())
+}
+
+func TestAsyncCore_SyncThenWrite(t *testing.T) {
+	logdata := &logtest.Buffer{}
+	ec := zap.NewProductionEncoderConfig()
+	enc := zapcore.NewJSONEncoder(ec)
+	core := zapcore.NewCore(enc, logdata, zap.DebugLevel)
+	asyncCore := NewAsyncCore(core, 256)
+
+	logger := zap.New(asyncCore)
+	logger.Info("before sync")
+	require.NoError(t, logger.Sync())
+
+	// After Sync, worker is stopped; writes enter channel but are not processed.
+	// This is expected: Sync means shutdown, no panic or deadlock should occur.
+	assert.NotPanics(t, func() {
+		logger.Info("after sync")
+		_ = logger.Sync()
+	})
+}
+
 func BenchmarkAsyncVsSyncCore(b *testing.B) {
 	b.Run("Async", func(b *testing.B) {
 		b.ReportAllocs()

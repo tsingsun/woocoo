@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/robfig/cron/v3"
 	"github.com/tsingsun/woocoo/pkg/cache"
 	"github.com/tsingsun/woocoo/pkg/cache/lfu/tinylfu"
@@ -16,9 +17,10 @@ import (
 )
 
 const (
-	defaultTTL  = time.Minute
-	maxOffset   = 10 * time.Second
-	defaultSize = 100000
+	defaultTTL    = time.Minute
+	maxOffset     = 10 * time.Second
+	defaultSize   = 100000
+	defaultShards = 64
 )
 
 var (
@@ -31,11 +33,20 @@ var _ cache.Cache = (*TinyLFU)(nil)
 type Config struct {
 	// DriverName set it to register to cache manager.
 	DriverName string `yaml:"driverName" json:"driverName"`
-	Size       int    `yaml:"size" json:"size"`
-	Samples    int    `yaml:"samples" json:"samples"`
+	// Size is the maximum number of items the cache can hold.
+	// Total capacity is distributed evenly across shards.
+	// Defaults to 100000.
+	Size int `yaml:"size" json:"size"`
+	// Samples is the number of samples for the TinyLFU admission filter.
+	// Higher values improve admission accuracy at the cost of memory.
+	// Defaults to Size * 10.
+	Samples int `yaml:"samples" json:"samples"`
 	// TTL is default to set item ttl, if you use no expired cache, this value is not used.
-	TTL       time.Duration `yaml:"ttl" json:"ttl"`
-	Deviation int64         `yaml:"deviation" json:"deviation"`
+	TTL time.Duration `yaml:"ttl" json:"ttl"`
+	// Deviation controls the random TTL offset range for subsidiary caches.
+	// The offset is calculated as TTL / Deviation, capped at 10 seconds.
+	// Defaults to 10.
+	Deviation int64 `yaml:"deviation" json:"deviation"`
 	// Subsidiary indicate whether the cache is a subsidiary cache,
 	// if true, the cache will not be registered to cache manager and ttl will be the max ttl.
 	Subsidiary bool `yaml:"subsidiary" json:"subsidiary"`
@@ -43,6 +54,16 @@ type Config struct {
 	// Empty means no background cleanup (expired items are only removed on access).
 	// Examples: "@every 1m", "0 */5 * * * *" (every 5 minutes), "0 0 2 * * *" (daily at 2am).
 	CleanupCron string `yaml:"cleanupCron" json:"cleanupCron"`
+	// Shards is the number of cache shards for reducing lock contention.
+	// Must be a power of 2. Defaults to 64.
+	// Each shard has an independent lock, random source, and TinyLFU instance.
+	Shards int `yaml:"shards" json:"shards"`
+}
+
+type shard struct {
+	mu   sync.Mutex
+	rand *rand.Rand
+	lfu  *tinylfu.T
 }
 
 // TinyLFU is a cache implementation of TinyLFU algorithm. It forces the cache data to have an expiration time.
@@ -51,11 +72,10 @@ type Config struct {
 // randomly reduced by a value between 0 and the offset.
 type TinyLFU struct {
 	Config
-	mu     sync.Mutex
-	rand   *rand.Rand
-	lfu    *tinylfu.T
-	offset time.Duration
-	cron   *cron.Cron
+	shards    []shard
+	shardMask uint64
+	offset    time.Duration
+	cron      *cron.Cron
 
 	marshal   cache.MarshalFunc
 	unmarshal cache.UnmarshalFunc
@@ -88,13 +108,32 @@ func (c *TinyLFU) Apply(cnf *conf.Configuration) error {
 			return err
 		}
 	}
-	c.lfu = tinylfu.New(c.Size, c.Samples)
+
+	numShards := c.Shards
+	if numShards < 1 {
+		numShards = defaultShards
+	}
+	// reduce shard count to ensure each shard has at least minShardSize capacity
+	for numShards > 1 && c.Size/numShards < 2 {
+		numShards /= 2
+	}
+	shardSize := c.Size / numShards
+	shardSamples := c.Samples / numShards
+	if shardSamples < 1 {
+		shardSamples = 1
+	}
+
+	c.shards = make([]shard, numShards)
+	c.shardMask = uint64(numShards - 1)
+	for i := range c.shards {
+		c.shards[i].rand = rand.New(rand.NewSource(time.Now().UnixNano() + int64(i)))
+		c.shards[i].lfu = tinylfu.New(shardSize, shardSamples)
+	}
+
 	if c.CleanupCron != "" {
 		c.cron = cron.New(cron.WithSeconds())
 		if _, err := c.cron.AddFunc(c.CleanupCron, func() {
-			c.mu.Lock()
-			c.lfu.Cleanup()
-			c.mu.Unlock()
+			c.cleanup()
 		}); err != nil {
 			return fmt.Errorf("invalid cleanup cron expression: %w", err)
 		}
@@ -103,9 +142,21 @@ func (c *TinyLFU) Apply(cnf *conf.Configuration) error {
 	return nil
 }
 
+func (c *TinyLFU) cleanup() {
+	for i := range c.shards {
+		s := &c.shards[i]
+		s.mu.Lock()
+		s.lfu.Cleanup()
+		s.mu.Unlock()
+	}
+}
+
+func (c *TinyLFU) getShard(key string) *shard {
+	return &c.shards[xxhash.Sum64String(key)&c.shardMask]
+}
+
 func NewTinyLFU(cnf *conf.Configuration) (*TinyLFU, error) {
 	c := TinyLFU{
-		rand: rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec
 		Config: Config{
 			Deviation: 10,
 			TTL:       defaultTTL,
@@ -147,9 +198,10 @@ func (c *TinyLFU) GetInner(_ context.Context, key string, value any, raw bool) e
 	if value == nil {
 		return ErrValueReceiverNil
 	}
-	c.mu.Lock()
-	val, ok := c.lfu.Get(key)
-	c.mu.Unlock()
+	s := c.getShard(key)
+	s.mu.Lock()
+	val, ok := s.lfu.Get(key)
+	s.mu.Unlock()
 
 	if !ok {
 		return cache.ErrCacheMiss
@@ -200,18 +252,19 @@ func (c *TinyLFU) setOptions(_ context.Context, key string, value any, ttl time.
 		value = v
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	s := c.getShard(key)
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	ttl = c.fixTTL(ttl, opt)
+	ttl = c.fixTTL(s, ttl, opt)
 
 	switch {
 	case opt.SetXX:
-		if _, ok := c.lfu.Get(key); !ok {
+		if _, ok := s.lfu.Get(key); !ok {
 			return fmt.Errorf("setxx: key not exist:%s", key)
 		}
 	case opt.SetNX:
-		if _, ok := c.lfu.Get(key); ok {
+		if _, ok := s.lfu.Get(key); ok {
 			return fmt.Errorf("setnx key already exist:%s", key)
 		}
 	}
@@ -220,13 +273,13 @@ func (c *TinyLFU) setOptions(_ context.Context, key string, value any, ttl time.
 	if ttl != 0 {
 		exp = time.Now().Add(ttl)
 	}
-	c.lfu.Set(&tinylfu.Item{Key: key, Value: value, ExpireAt: exp})
+	s.lfu.Set(&tinylfu.Item{Key: key, Value: value, ExpireAt: exp})
 	return nil
 }
 
 // skip remote cache is mean that only set local cache as not a subsidiary cache temporarily,
 // that ttl can greater than default c.TTL
-func (c *TinyLFU) fixTTL(ttl time.Duration, opt *cache.Options) time.Duration {
+func (c *TinyLFU) fixTTL(s *shard, ttl time.Duration, opt *cache.Options) time.Duration {
 	if c.Subsidiary && !opt.Skip.Is(cache.SkipRemote) {
 		if ttl > c.TTL {
 			ttl = c.TTL
@@ -237,9 +290,9 @@ func (c *TinyLFU) fixTTL(ttl time.Duration, opt *cache.Options) time.Duration {
 	}
 	if c.offset > 0 {
 		if ttl >= c.TTL {
-			ttl += time.Duration(c.rand.Int63n(int64(c.offset)))
+			ttl += time.Duration(s.rand.Int63n(int64(c.offset)))
 		} else {
-			ttl += time.Duration(c.rand.Int63n(int64(ttl) / c.Deviation))
+			ttl += time.Duration(s.rand.Int63n(int64(ttl) / c.Deviation))
 		}
 	}
 	return ttl
@@ -255,30 +308,32 @@ func (c *TinyLFU) SetInner(_ context.Context, key string, value any, ttl time.Du
 		value = v
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	s := c.getShard(key)
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	ttl = c.fixTTL(ttl, opt)
+	ttl = c.fixTTL(s, ttl, opt)
 	exp := time.Time{}
 	if ttl != 0 {
 		exp = time.Now().Add(ttl)
 	}
-	c.lfu.Set(&tinylfu.Item{Key: key, Value: value, ExpireAt: exp})
+	s.lfu.Set(&tinylfu.Item{Key: key, Value: value, ExpireAt: exp})
 	return nil
 }
 
 func (c *TinyLFU) Has(_ context.Context, key string) bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	_, ok := c.lfu.Get(key)
+	s := c.getShard(key)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, ok := s.lfu.Get(key)
 	return ok
 }
 
 func (c *TinyLFU) Del(_ context.Context, key string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.lfu.Del(key)
+	s := c.getShard(key)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lfu.Del(key)
 	return nil
 }
 
@@ -287,9 +342,18 @@ func (c *TinyLFU) IsNotFound(err error) bool {
 }
 
 func (c *TinyLFU) Clean() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.lfu = tinylfu.New(c.Size, c.Samples)
+	n := len(c.shards)
+	shardSize := c.Size / n
+	shardSamples := c.Samples / n
+	if shardSamples < 1 {
+		shardSamples = 1
+	}
+	for i := range c.shards {
+		s := &c.shards[i]
+		s.mu.Lock()
+		s.lfu = tinylfu.New(shardSize, shardSamples)
+		s.mu.Unlock()
+	}
 }
 
 // Close stops the background cleanup cron scheduler if running.

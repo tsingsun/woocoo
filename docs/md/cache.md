@@ -125,6 +125,23 @@ lfu, _ := lfu.NewTinyLFU(cnf)
 defer lfu.Close()
 ```
 
+#### 分片并发
+
+TinyLFU 采用分片锁机制降低并发竞争.缓存被拆分为多个独立的 shard,每个 shard 拥有独立的锁,随机源和 TinyLFU 实例.不同 key 通过 hash 路由到不同 shard,从而大幅降低锁竞争.
+
+```yaml
+local:
+  size: 100000
+  ttl: 10m
+  # 分片数,必须为2的幂,默认64
+  shards: 64
+```
+
+分片数的选择需要在并发性能和频率估计精度之间权衡:
+
+- 更多分片: 降低锁竞争,但每个分片容量更小,频率估计精度下降
+- 更少分片: 频率估计更精确,但锁竞争更高
+
 ## Redis缓存
 
 是采用的内存缓存(可选)与Redis的组合缓存.
@@ -147,7 +164,9 @@ local:
   samples: 1000000
   # 后台清理过期数据的cron表达式,空值表示不启用(默认)
   cleanupCron: "@every 1m"
-# 以下为redis option配置,同store redis配置,可查询go-redis文档: 
+  # 分片数,必须为2的幂,默认64
+  shards: 64
+# 以下为redis option配置,同store redis配置,可查询go-redis文档:
 # 如果指定了 masterName 选项，则返回 FailoverClient 哨兵客户端。
 # 如果 Addrs 是2个以上的地址，则返回 ClusterClient 集群客户端。
 # 其他情况，返回 Client 单节点客户端。
